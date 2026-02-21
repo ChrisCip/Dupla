@@ -1,0 +1,7 @@
+.env
+*.pyc
+__pycache__/
+cad_output/
+demo_files/
+*.txt
+!requirements.txt
