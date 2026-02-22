@@ -1,0 +1,1493 @@
+[
+  {
+    "page_number": 1,
+    "layout_name": "TORRE GIUALCA I",
+    "scale": "No visible",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA DE SUPERPOSICION DE SOLARES CON LINDEROS",
+      "revision": "00",
+      "date": "2026-02-21"
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5"
+      ],
+      "vertical": [],
+      "dimensions_between_axes_m": []
+    },
+    "spaces": [
+      {
+        "name": "SOLAR CATASTRAL",
+        "area_m2": 0.0,
+        "level": "",
+        "notes": ""
+      },
+      {
+        "name": "SOLAR REALIDAD",
+        "area_m2": 0.0,
+        "level": "",
+        "notes": ""
+      },
+      {
+        "name": "SUPERPOSICION DE MENSURAS",
+        "area_m2": 0.0,
+        "level": "",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 30.87,
+        "description": "Lado E1-E2 del Solar Catastral",
+        "location": "Parte superior izquierda"
+      },
+      {
+        "value_m": 21.66,
+        "description": "Lado E2-E3 del Solar Catastral",
+        "location": "Parte superior izquierda"
+      },
+      {
+        "value_m": 27.18,
+        "description": "Lado E3-E4 del Solar Catastral",
+        "location": "Parte superior izquierda"
+      },
+      {
+        "value_m": 25.29,
+        "description": "Lado E1-E2 del Solar Realidad",
+        "location": "Parte inferior izquierda"
+      },
+      {
+        "value_m": 22.46,
+        "description": "Lado E2-E3 del Solar Realidad",
+        "location": "Parte inferior izquierda"
+      },
+      {
+        "value_m": 12.3,
+        "description": "Lado E3-E4 del Solar Realidad",
+        "location": "Parte inferior izquierda"
+      },
+      {
+        "value_m": 14.97,
+        "description": "Lado E4-E5 del Solar Realidad",
+        "location": "Parte inferior izquierda"
+      },
+      {
+        "value_m": 28.98,
+        "description": "Lado E1-E5 del Solar Realidad",
+        "location": "Parte inferior izquierda"
+      }
+    ],
+    "elements": [],
+    "texts_found": [
+      "SOLAR CATASTRAL",
+      "SOLAR REALIDAD",
+      "SUPERPOSICION DE MENSURAS",
+      "LEYENDA DE MENSURAS",
+      "MENSURA LEGAL",
+      "MENSURA REAL",
+      "PLANTA DE SUPERPOSICION DE SOLARES CON LINDEROS",
+      "FRANJA EXCEDENTE",
+      "FRANJA OCUPADA"
+    ],
+    "observations": "El plano muestra la comparación entre el solar catastral y el solar real, con una superposición de mensuras. Se indican las dimensiones de los lados de cada solar.",
+    "_tokens": 2995,
+    "_page_file": "page_01.png"
+  },
+  {
+    "page_number": 2,
+    "layout_name": "PLANTA DE UBICACION Y LINDEROS",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA DE UBICACION Y LINDEROS",
+      "revision": "01",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "vertical": [],
+      "dimensions_between_axes_m": []
+    },
+    "spaces": [
+      {
+        "name": "TECHO",
+        "area_m2": 478.25,
+        "level": "",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 30.65,
+        "description": "frente a Avenida 4TA",
+        "location": "parte inferior del plano"
+      },
+      {
+        "value_m": 2.16,
+        "description": "dimensión lateral",
+        "location": "parte inferior izquierda"
+      },
+      {
+        "value_m": 2.4,
+        "description": "dimensión lateral",
+        "location": "parte inferior derecha"
+      },
+      {
+        "value_m": 2.11,
+        "description": "dimensión lateral",
+        "location": "parte superior izquierda"
+      },
+      {
+        "value_m": 2.0,
+        "description": "dimensión lateral",
+        "location": "parte superior derecha"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "muro perimetral",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.0,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "",
+        "location": "alrededor del perímetro"
+      }
+    ],
+    "texts_found": [
+      "SOLAR 669.17 M2",
+      "COORDENADAS UTM",
+      "COORDENADAS GPS",
+      "NPT",
+      "NIVEL 1",
+      "NIVEL 2",
+      "NIVEL 3",
+      "NIVEL 4",
+      "NIVEL 5",
+      "NIVEL 6",
+      "NIVEL 7",
+      "NIVEL 8",
+      "NIVEL 9",
+      "NIVEL 10",
+      "NIVEL 11",
+      "NIVEL 12",
+      "NIVEL 13",
+      "NIVEL 14",
+      "TECHO",
+      "REPARTO LOS TRES OJOS",
+      "LOCALIZACION",
+      "SIN ESCALA",
+      "LEYENDA DIMENSIONES",
+      "DIMENSION RAMPAS",
+      "DIMENSION GENERAL",
+      "DIMENSION A ELEM. ESTRUCTURALES"
+    ],
+    "observations": "El plano muestra la ubicación y linderos del proyecto Torre Giualca I, con dimensiones detalladas de los linderos y un área total del techo especificada.",
+    "_tokens": 2974,
+    "_page_file": "page_02.png"
+  },
+  {
+    "page_number": 3,
+    "layout_name": "PLANTA ARQ. DIMENSIONADA SEMI SOTANO",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA ARQ. AMUEBLADA SEMI SOTANO",
+      "revision": "02",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "vertical": [
+        "1",
+        "2",
+        "3"
+      ],
+      "dimensions_between_axes_m": [
+        21.65,
+        27.74,
+        30.86,
+        25.29
+      ]
+    },
+    "spaces": [
+      {
+        "name": "SALA 1",
+        "area_m2": 0.0,
+        "level": "Semi Sotano",
+        "notes": ""
+      },
+      {
+        "name": "SALA 2",
+        "area_m2": 0.0,
+        "level": "Semi Sotano",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 21.65,
+        "description": "Distancia entre ejes E2 y E3",
+        "location": "parte superior del plano"
+      },
+      {
+        "value_m": 27.74,
+        "description": "Distancia entre ejes E3 y E4",
+        "location": "parte derecha del plano"
+      },
+      {
+        "value_m": 30.86,
+        "description": "Distancia entre ejes E1 y E4",
+        "location": "parte inferior del plano"
+      },
+      {
+        "value_m": 25.29,
+        "description": "Distancia entre ejes E1 y E2",
+        "location": "parte izquierda del plano"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "Muro estructural",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.15,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "Concreto",
+        "location": "General"
+      },
+      {
+        "type": "puerta",
+        "description": "Puerta de acceso",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.9,
+          "width_m": 0.0,
+          "height_m": 2.1,
+          "area_m2": 0.0
+        },
+        "material": "Madera",
+        "location": "Entrada principal"
+      }
+    ],
+    "texts_found": [
+      "NPT",
+      "Semi Sotano",
+      "Nivel 1",
+      "Nivel 2",
+      "Nivel 3",
+      "Nivel 4",
+      "Nivel 5",
+      "Nivel 6",
+      "Nivel 7",
+      "Nivel 8",
+      "Nivel 9",
+      "Nivel 10",
+      "Nivel 11",
+      "Nivel 12",
+      "Nivel 13",
+      "Nivel 14",
+      "Techo",
+      "Tabla de Muros",
+      "Muro Estr.",
+      "Muro Bajo",
+      "Muro Resistente al Fuego"
+    ],
+    "observations": "El plano muestra la distribución del semi sótano con detalles de muros y ejes claramente marcados.",
+    "_tokens": 3044,
+    "_page_file": "page_03.png"
+  },
+  {
+    "page_number": 3,
+    "layout_name": "TORRE GIUALCA I",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA ARQ. AMUEBLADA NIVEL 1",
+      "revision": "",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "vertical": [
+        "1",
+        "2",
+        "3"
+      ],
+      "dimensions_between_axes_m": [
+        21.65,
+        27.14,
+        22.83,
+        30.56
+      ]
+    },
+    "spaces": [
+      {
+        "name": "SALA",
+        "area_m2": 0.0,
+        "level": "Nivel 1",
+        "notes": ""
+      },
+      {
+        "name": "COCINA",
+        "area_m2": 0.0,
+        "level": "Nivel 1",
+        "notes": ""
+      },
+      {
+        "name": "DORMITORIO",
+        "area_m2": 0.0,
+        "level": "Nivel 1",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 21.65,
+        "description": "dimensión entre ejes E2 y E3",
+        "location": "parte superior del plano"
+      },
+      {
+        "value_m": 27.14,
+        "description": "dimensión entre ejes E3 y E4",
+        "location": "parte superior derecha del plano"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "Muro exterior",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.15,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "concreto",
+        "location": "perímetro del edificio"
+      },
+      {
+        "type": "puerta",
+        "description": "Puerta de acceso principal",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.9,
+          "width_m": 0.0,
+          "height_m": 2.1,
+          "area_m2": 0.0
+        },
+        "material": "madera",
+        "location": "entrada principal"
+      }
+    ],
+    "texts_found": [
+      "NORTE",
+      "AVENIDA 4TA",
+      "PLANTA ARQ. AMUEBLADA NIVEL 1",
+      "ESCALA 1:100",
+      "TORRE GIUALCA I"
+    ],
+    "observations": "El plano muestra la distribución arquitectónica del nivel 1 con mobiliario. Se observan las dimensiones principales entre ejes y la orientación del edificio.",
+    "_tokens": 2922,
+    "_page_file": "page_04.png"
+  },
+  {
+    "page_number": 5,
+    "layout_name": "PLANTA ARQ. AMUEBLADA NIVEL 2",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA ARQ. DIMENSIONADA NIVEL 2",
+      "revision": "",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "vertical": [
+        "1",
+        "2",
+        "3"
+      ],
+      "dimensions_between_axes_m": [
+        21.65,
+        22.78,
+        30.56
+      ]
+    },
+    "spaces": [
+      {
+        "name": "BAÑO",
+        "area_m2": 0.0,
+        "level": "Nivel 2",
+        "notes": ""
+      },
+      {
+        "name": "COCINA",
+        "area_m2": 0.0,
+        "level": "Nivel 2",
+        "notes": ""
+      },
+      {
+        "name": "SALA",
+        "area_m2": 0.0,
+        "level": "Nivel 2",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 21.65,
+        "description": "Distancia entre E2 y E3",
+        "location": "parte superior del plano"
+      },
+      {
+        "value_m": 22.78,
+        "description": "Distancia entre E1 y E2",
+        "location": "parte izquierda del plano"
+      },
+      {
+        "value_m": 30.56,
+        "description": "Distancia entre E1 y E4",
+        "location": "parte inferior del plano"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "Muro exterior",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.15,
+          "width_m": 0.0,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "Concreto",
+        "location": "perímetro del edificio"
+      },
+      {
+        "type": "puerta",
+        "description": "Puerta de acceso",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.0,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "Madera",
+        "location": "entrada principal"
+      }
+    ],
+    "texts_found": [
+      "NPT",
+      "SEMI SOTANO -1.40",
+      "NIVEL 1 0.00",
+      "NIVEL 2 3.05",
+      "NIVEL 3 6.10",
+      "NIVEL 4 10.54",
+      "NIVEL 5 13.59",
+      "NIVEL 6 16.64",
+      "NIVEL 7 19.69",
+      "NIVEL 8 22.74",
+      "NIVEL 9 25.79",
+      "NIVEL 10 28.84",
+      "NIVEL 11 31.89",
+      "NIVEL 12 34.94",
+      "NIVEL 13 37.99",
+      "NIVEL 14 43.26",
+      "TECHO 45.94",
+      "TABLA DE MUROS",
+      "MURO EXT. 0.15 M",
+      "MURO 0.10 M",
+      "MURO BAJO",
+      "MURO RESISTENTE AL FUEGO 90 MIN."
+    ],
+    "observations": "El plano muestra una distribución típica de un nivel de edificio con espacios comunes como baños, cocina y sala. Las dimensiones principales están claramente indicadas entre los ejes.",
+    "_tokens": 3154,
+    "_page_file": "page_05.png"
+  },
+  {
+    "page_number": 6,
+    "layout_name": "TORRE GIUALCA I",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA ARQ. AMUEBLADA NIVEL 3",
+      "revision": "",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "vertical": [
+        "1",
+        "2",
+        "3"
+      ],
+      "dimensions_between_axes_m": [
+        21.65,
+        22.78,
+        30.86,
+        27.91
+      ]
+    },
+    "spaces": [
+      {
+        "name": "RAMPA 1",
+        "area_m2": 0.0,
+        "level": "Nivel 3",
+        "notes": ""
+      },
+      {
+        "name": "RAMPA 2",
+        "area_m2": 0.0,
+        "level": "Nivel 3",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 21.65,
+        "description": "Distancia entre E2 y E3",
+        "location": "Plano izquierdo"
+      },
+      {
+        "value_m": 22.78,
+        "description": "Distancia entre E1 y E2",
+        "location": "Plano izquierdo"
+      },
+      {
+        "value_m": 30.86,
+        "description": "Distancia entre E1 y E4",
+        "location": "Plano izquierdo"
+      },
+      {
+        "value_m": 27.91,
+        "description": "Distancia entre E3 y E4",
+        "location": "Plano derecho"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "Muro exterior",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.15,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "Concreto",
+        "location": "Perímetro del edificio"
+      },
+      {
+        "type": "rampa",
+        "description": "Rampa de acceso",
+        "quantity": 2,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.0,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "Concreto",
+        "location": "Interior del edificio"
+      }
+    ],
+    "texts_found": [
+      "PLANTA ARQ. AMUEBLADA NIVEL 3",
+      "ESCALA 1:100",
+      "TORRE GIUALCA I",
+      "RAMPA 1",
+      "RAMPA 2",
+      "NPP",
+      "NIVEL",
+      "NPT",
+      "Semi Sotano -1.40",
+      "Nivel 1 0.00",
+      "Nivel 2 3.05",
+      "Nivel 3 6.10",
+      "Nivel 4 10.34",
+      "Nivel 5 13.39",
+      "Nivel 6 16.44",
+      "Nivel 7 19.49",
+      "Nivel 8 22.76",
+      "Nivel 9 25.76",
+      "Nivel 10 28.82",
+      "Nivel 11 31.87",
+      "Nivel 12 34.92",
+      "Nivel 13 36.96",
+      "Nivel 14 42.76",
+      "Techo 45.94",
+      "TABLA DE MUROS",
+      "MURO EST.",
+      "MURO 0.15 M",
+      "MURO 0.10 M",
+      "MURO RESISTENTE AL FUEGO 60 MIN."
+    ],
+    "observations": "El plano muestra la distribución del nivel 3 con detalles de rampas y muros. Las dimensiones entre ejes están claramente indicadas.",
+    "_tokens": 3171,
+    "_page_file": "page_06.png"
+  },
+  {
+    "page_number": 7,
+    "layout_name": "PLANTA ARQ. AMUEBLADA NIVEL 4",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA ARQ. DIMENSIONADA NIVEL 4",
+      "revision": "",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "vertical": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "dimensions_between_axes_m": [
+        21.65,
+        25.23,
+        29.56
+      ]
+    },
+    "spaces": [
+      {
+        "name": "SALA",
+        "area_m2": 0.0,
+        "level": "Nivel 4",
+        "notes": ""
+      },
+      {
+        "name": "COCINA",
+        "area_m2": 0.0,
+        "level": "Nivel 4",
+        "notes": ""
+      },
+      {
+        "name": "DORMITORIO",
+        "area_m2": 0.0,
+        "level": "Nivel 4",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 21.65,
+        "description": "dimensión entre ejes E2 y E3",
+        "location": "parte superior del plano"
+      },
+      {
+        "value_m": 25.23,
+        "description": "dimensión entre ejes E1 y E2",
+        "location": "parte izquierda del plano"
+      },
+      {
+        "value_m": 29.56,
+        "description": "dimensión entre ejes E3 y E4",
+        "location": "parte inferior del plano"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "muro estructural",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.15,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "concreto",
+        "location": "varios lugares en el plano"
+      },
+      {
+        "type": "puerta",
+        "description": "puerta estándar",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.9,
+          "width_m": 0.0,
+          "height_m": 2.1,
+          "area_m2": 0.0
+        },
+        "material": "madera",
+        "location": "entrada de la sala"
+      }
+    ],
+    "texts_found": [
+      "NORTE",
+      "TABLA DE MUROS",
+      "MURO ESTR.",
+      "MURO 0.15 M",
+      "MURO 0.10 M",
+      "MURO HASTA TECHO AL F.F.E. 0.15 M"
+    ],
+    "observations": "El plano muestra una distribución detallada de un nivel de un edificio residencial con varias unidades habitacionales. Las dimensiones y ejes están claramente marcados, facilitando la interpretación del diseño.",
+    "_tokens": 2986,
+    "_page_file": "page_07.png"
+  },
+  {
+    "page_number": 8,
+    "layout_name": "TORRE GIUALCA I",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA ARQ. AMUEBLADA NIVELES TIPO 5-8",
+      "revision": "07",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "vertical": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8"
+      ],
+      "dimensions_between_axes_m": []
+    },
+    "spaces": [
+      {
+        "name": "SALA",
+        "area_m2": 0.0,
+        "level": "Nivel 5-8",
+        "notes": ""
+      },
+      {
+        "name": "COCINA",
+        "area_m2": 0.0,
+        "level": "Nivel 5-8",
+        "notes": ""
+      },
+      {
+        "name": "DORMITORIO",
+        "area_m2": 0.0,
+        "level": "Nivel 5-8",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 21.65,
+        "description": "Dimensión horizontal entre E2 y E3",
+        "location": "parte superior del plano"
+      },
+      {
+        "value_m": 25.43,
+        "description": "Dimensión vertical entre E1 y E2",
+        "location": "parte izquierda del plano"
+      },
+      {
+        "value_m": 30.56,
+        "description": "Dimensión horizontal entre E1 y E4",
+        "location": "parte inferior del plano"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "Muro estructural",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.15,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "Hormigón",
+        "location": "varios en el plano"
+      },
+      {
+        "type": "puerta",
+        "description": "Puerta de acceso",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.9,
+          "width_m": 0.0,
+          "height_m": 2.1,
+          "area_m2": 0.0
+        },
+        "material": "Madera",
+        "location": "entrada principal"
+      }
+    ],
+    "texts_found": [
+      "NPT",
+      "SEMI SOTANO",
+      "NIVEL 1",
+      "NIVEL 2",
+      "NIVEL 3",
+      "NIVEL 4",
+      "NIVEL 5",
+      "NIVEL 6",
+      "NIVEL 7",
+      "NIVEL 8",
+      "NIVEL 9",
+      "NIVEL 10",
+      "NIVEL 11",
+      "NIVEL 12",
+      "NIVEL 13",
+      "NIVEL 14",
+      "TECHO",
+      "TARJA DE MUROS",
+      "MURO EST.",
+      "MURO 0.15 M",
+      "MURO 0.10 M",
+      "MURO RESISTENTE AL FUEGO 0.15 M"
+    ],
+    "observations": "El plano muestra una planta arquitectónica amueblada de niveles tipo 5-8 con detalles de muros y dimensiones generales.",
+    "_tokens": 3098,
+    "_page_file": "page_08.png"
+  },
+  {
+    "page_number": 9,
+    "layout_name": "TORRE GIUALCA I",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA ARQ. AMUEBLADA NIVELES TIPO 9-12",
+      "revision": "05",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "vertical": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "dimensions_between_axes_m": [
+        30.56,
+        21.65,
+        25.63,
+        21.65
+      ]
+    },
+    "spaces": [
+      {
+        "name": "SALA",
+        "area_m2": 0.0,
+        "level": "Nivel 9",
+        "notes": ""
+      },
+      {
+        "name": "COCINA",
+        "area_m2": 0.0,
+        "level": "Nivel 9",
+        "notes": ""
+      },
+      {
+        "name": "DORMITORIO",
+        "area_m2": 0.0,
+        "level": "Nivel 9",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 3.0,
+        "description": "ancho de pasillo",
+        "location": "centro del plano"
+      },
+      {
+        "value_m": 5.0,
+        "description": "largo de sala",
+        "location": "parte superior del plano"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "muro exterior",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 30.56,
+          "width_m": 0.3,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "concreto",
+        "location": "perímetro del edificio"
+      },
+      {
+        "type": "puerta",
+        "description": "puerta de entrada",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.9,
+          "width_m": 0.0,
+          "height_m": 2.1,
+          "area_m2": 0.0
+        },
+        "material": "madera",
+        "location": "entrada principal"
+      }
+    ],
+    "texts_found": [
+      "NIVEL 9",
+      "NIVEL 10",
+      "NIVEL 11",
+      "NIVEL 12",
+      "ESCALA 1:100",
+      "PLANTA ARQ. AMUEBLADA NIVELES TIPO 9-12"
+    ],
+    "observations": "El plano muestra una distribución típica de niveles 9 a 12 con detalles de amueblado y dimensiones claras entre ejes.",
+    "_tokens": 2929,
+    "_page_file": "page_09.png"
+  },
+  {
+    "page_number": 9,
+    "layout_name": "TORRE GIUALCA I",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA ARQ. AMUEBLADA NIVEL 13 (1ER NIVEL DE PENTHOUSE)",
+      "revision": "",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "vertical": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "dimensions_between_axes_m": [
+        21.65,
+        25.82,
+        30.56
+      ]
+    },
+    "spaces": [
+      {
+        "name": "SALA",
+        "area_m2": 0.0,
+        "level": "Nivel 13",
+        "notes": ""
+      },
+      {
+        "name": "COCINA",
+        "area_m2": 0.0,
+        "level": "Nivel 13",
+        "notes": ""
+      },
+      {
+        "name": "DORMITORIO",
+        "area_m2": 0.0,
+        "level": "Nivel 13",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 21.65,
+        "description": "Distancia entre E1 y E3",
+        "location": "Parte superior del plano"
+      },
+      {
+        "value_m": 25.82,
+        "description": "Distancia entre E2 y E4",
+        "location": "Parte izquierda del plano"
+      },
+      {
+        "value_m": 30.56,
+        "description": "Distancia entre E1 y E4",
+        "location": "Parte inferior del plano"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "Muro estructural",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.15,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "Concreto",
+        "location": "General"
+      },
+      {
+        "type": "puerta",
+        "description": "Puerta de acceso",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.9,
+          "width_m": 0.0,
+          "height_m": 2.1,
+          "area_m2": 0.0
+        },
+        "material": "Madera",
+        "location": "Entrada principal"
+      }
+    ],
+    "texts_found": [
+      "NORTE",
+      "PLANTA ARQ. AMUEBLADA NIVEL 13 (1ER NIVEL DE PENTHOUSE)",
+      "ESCALA 1:100",
+      "TABLA DE MUROS",
+      "MURO EST.",
+      "MURO 0.15 X",
+      "MURO 0.10 X",
+      "MURO RESISTENTE AL FUEGO 60 MIN"
+    ],
+    "observations": "El plano muestra la distribución de un nivel de penthouse con detalles de muros y ejes claramente marcados.",
+    "_tokens": 2991,
+    "_page_file": "page_10.png"
+  },
+  {
+    "page_number": 11,
+    "layout_name": "TORRE GUALCA I",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GUALCA I",
+      "drawing_title": "PLANTA ARQ. AMUEBLADA NIVEL 14 (200 NIVEL DE PENTHOUSE)",
+      "revision": "",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "vertical": [
+        "1",
+        "2",
+        "3"
+      ],
+      "dimensions_between_axes_m": [
+        38.56,
+        25.83,
+        21.45,
+        11.87
+      ]
+    },
+    "spaces": [
+      {
+        "name": "SALA",
+        "area_m2": 0.0,
+        "level": "Nivel 14",
+        "notes": ""
+      },
+      {
+        "name": "COCINA",
+        "area_m2": 0.0,
+        "level": "Nivel 14",
+        "notes": ""
+      },
+      {
+        "name": "DORMITORIO",
+        "area_m2": 0.0,
+        "level": "Nivel 14",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 38.56,
+        "description": "Dimensión entre ejes E1 y E4",
+        "location": "parte inferior del plano"
+      },
+      {
+        "value_m": 25.83,
+        "description": "Dimensión entre ejes E1 y E2",
+        "location": "parte izquierda del plano"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "Muro estructural",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.15,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "Concreto",
+        "location": "varios en el plano"
+      },
+      {
+        "type": "puerta",
+        "description": "Puerta de acceso",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.9,
+          "width_m": 0.0,
+          "height_m": 2.1,
+          "area_m2": 0.0
+        },
+        "material": "Madera",
+        "location": "entrada principal"
+      }
+    ],
+    "texts_found": [
+      "NORTE",
+      "PLANTA ARQ. AMUEBLADA NIVEL 14 (200 NIVEL DE PENTHOUSE)",
+      "ESCALA 1:100",
+      "TORRE GUALCA I",
+      "TABLA DE MUROS",
+      "NPT",
+      "NIVEL",
+      "MT2"
+    ],
+    "observations": "El plano muestra la distribución de un nivel de penthouse con detalles de amueblado y dimensiones estructurales.",
+    "_tokens": 2945,
+    "_page_file": "page_11.png"
+  },
+  {
+    "page_number": 12,
+    "layout_name": "PLANTA ATIQ, AMUEBLADA TECHO",
+    "scale": "1:100",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "PLANTA ATIQ, DIMENSIONADA TECHO",
+      "revision": "",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [
+        "E1",
+        "E2",
+        "E3"
+      ],
+      "vertical": [
+        "1",
+        "2",
+        "3"
+      ],
+      "dimensions_between_axes_m": [
+        21.85,
+        25.82,
+        30.56
+      ]
+    },
+    "spaces": [
+      {
+        "name": "ESP",
+        "area_m2": 0.0,
+        "level": "",
+        "notes": ""
+      }
+    ],
+    "dimensions_found": [
+      {
+        "value_m": 21.85,
+        "description": "dimension horizontal entre ejes E2 y E3",
+        "location": "parte superior del plano"
+      },
+      {
+        "value_m": 25.82,
+        "description": "dimension horizontal entre ejes E1 y E2",
+        "location": "parte izquierda del plano"
+      },
+      {
+        "value_m": 30.56,
+        "description": "dimension horizontal entre ejes E1 y E4",
+        "location": "parte inferior del plano"
+      }
+    ],
+    "elements": [
+      {
+        "type": "muro",
+        "description": "muro exterior",
+        "quantity": 1,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.15,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "hormigón",
+        "location": "perímetro del edificio"
+      }
+    ],
+    "texts_found": [
+      "NORTE",
+      "NPT",
+      "NIVEL",
+      "NPT",
+      "Semi Sotano",
+      "Nivel 1",
+      "Nivel 2",
+      "Nivel 3",
+      "Nivel 4",
+      "Nivel 5",
+      "Nivel 6",
+      "Nivel 7",
+      "Nivel 8",
+      "Nivel 9",
+      "Nivel 10",
+      "Nivel 11",
+      "Nivel 12",
+      "Nivel 13",
+      "Techo",
+      "TABLA DE MUROS",
+      "MURO ESTR.",
+      "MURO 0.15 M",
+      "MURO 0.10 M",
+      "MURO RESISTENTE AL FUEGO 60 MIN.",
+      "AVENIDA 4TA"
+    ],
+    "observations": "El plano muestra una planta arquitectónica con dimensiones y ejes claramente marcados. La tabla de niveles y muros proporciona información adicional sobre la estructura.",
+    "_tokens": 2901,
+    "_page_file": "page_12.png"
+  },
+  {
+    "page_number": 12,
+    "layout_name": "TORRE GIUALCA I",
+    "scale": "1:125",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "ELEVACION FRONTAL / ELEVACION LATERAL DERECHA",
+      "revision": "",
+      "date": ""
+    },
+    "grid_axes": {
+      "horizontal": [],
+      "vertical": [],
+      "dimensions_between_axes_m": []
+    },
+    "spaces": [],
+    "dimensions_found": [
+      {
+        "value_m": 45.64,
+        "description": "Altura total del edificio",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 42.79,
+        "description": "Nivel 14",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 39.46,
+        "description": "Nivel 13",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 36.32,
+        "description": "Nivel 12",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 33.18,
+        "description": "Nivel 11",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 29.94,
+        "description": "Nivel 10",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 26.8,
+        "description": "Nivel 9",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 23.65,
+        "description": "Nivel 8",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 20.42,
+        "description": "Nivel 7",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 17.18,
+        "description": "Nivel 6",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 13.94,
+        "description": "Nivel 5",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 10.7,
+        "description": "Nivel 4",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 7.56,
+        "description": "Nivel 3",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 3.05,
+        "description": "Nivel 2",
+        "location": "Elevación frontal"
+      },
+      {
+        "value_m": 0.0,
+        "description": "Nivel 1",
+        "location": "Elevación frontal"
+      }
+    ],
+    "elements": [],
+    "texts_found": [
+      "ELEVACION FRONTAL",
+      "ELEVACION LATERAL DERECHA",
+      "ESCALA 1:125",
+      "TORRE GIUALCA I",
+      "NIVEL 1",
+      "NIVEL 2",
+      "NIVEL 3",
+      "NIVEL 4",
+      "NIVEL 5",
+      "NIVEL 6",
+      "NIVEL 7",
+      "NIVEL 8",
+      "NIVEL 9",
+      "NIVEL 10",
+      "NIVEL 11",
+      "NIVEL 12",
+      "NIVEL 13",
+      "NIVEL 14",
+      "TECHO"
+    ],
+    "observations": "El plano muestra las elevaciones frontal y lateral derecha de un edificio con múltiples niveles claramente etiquetados.",
+    "_tokens": 3072,
+    "_page_file": "page_13.png"
+  },
+  {
+    "page_number": 13,
+    "layout_name": "TORRE GIUALCA I",
+    "scale": "1:125",
+    "title_block": {
+      "project_name": "TORRE GIUALCA I",
+      "drawing_title": "ELEVACIÓN POSTERIOR Y ELEVACIÓN LATERAL IZQUIERDA",
+      "revision": "RV7",
+      "date": "2026-02-21"
+    },
+    "grid_axes": {
+      "horizontal": [],
+      "vertical": [],
+      "dimensions_between_axes_m": []
+    },
+    "spaces": [],
+    "dimensions_found": [
+      {
+        "value_m": 0.0,
+        "description": "Niveles de elevación",
+        "location": "lado izquierdo y derecho del plano"
+      }
+    ],
+    "elements": [
+      {
+        "type": "ventana",
+        "description": "Ventanas en fachada",
+        "quantity": 20,
+        "dimensions": {
+          "length_m": 0.0,
+          "width_m": 0.0,
+          "height_m": 0.0,
+          "area_m2": 0.0
+        },
+        "material": "no especificado",
+        "location": "fachada del edificio"
+      }
+    ],
+    "texts_found": [
+      "ELEVACIÓN POSTERIOR",
+      "ELEVACIÓN LATERAL IZQUIERDA",
+      "ESCALA 1:125",
+      "TORRE GIUALCA I",
+      "Nivel 1 0.05",
+      "Nivel 2 3.65",
+      "Nivel 3 5.50",
+      "Nivel 4 10.33",
+      "Nivel 5 13.54",
+      "Nivel 6 18.75",
+      "Nivel 7 20.02",
+      "Nivel 8 23.63",
+      "Nivel 9 26.04",
+      "Nivel 10 29.74",
+      "Nivel 11 32.89",
+      "Nivel 12 36.12",
+      "Nivel 13 39.16",
+      "Nivel 14 42.70",
+      "Tocho 45.54"
+    ],
+    "observations": "El plano muestra las elevaciones posterior y lateral izquierda de un edificio con múltiples niveles indicados. No se observan ejes de grilla visibles.",
+    "_tokens": 2783,
+    "_page_file": "page_14.png"
+  }
+]

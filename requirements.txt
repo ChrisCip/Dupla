@@ -1,0 +1,7 @@
+ezdxf>=0.18
+pywin32>=306
+pyautocad>=0.2.0
+openai>=1.0
+python-dotenv>=1.0
+PyMuPDF>=1.24
+pytest>=7.0
