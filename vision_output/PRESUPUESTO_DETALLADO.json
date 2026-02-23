@@ -1,0 +1,912 @@
+{
+  "project": "TORRE GIUALCA I",
+  "location": "Santo Domingo, Republica Dominicana",
+  "currency": "RD$",
+  "bc3_source": "CTXI0000TRM.bc3",
+  "date": "2026-02-23",
+  "method": "BC3 Presto + DWG CAD + GPT-4o (por capitulos)",
+  "chapters": [
+    {
+      "chapter_code": "01",
+      "chapter_name": "Movimiento de Tierras y Cimentacion",
+      "items": [
+        {
+          "presto_code": "H0190503",
+          "description": "Fumigación Suelo Zapata de columnas",
+          "unit": "m²",
+          "quantity": 3426.0,
+          "unit_price": 90.0,
+          "total": 308340.0,
+          "cad_source": "00-MEDICION",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H0203010",
+          "description": "Bote y carga a mano en camión 6M3",
+          "unit": "u",
+          "quantity": 50.0,
+          "unit_price": 2500.0,
+          "total": 125000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H0220011",
+          "description": "Regado y compactado de caliche",
+          "unit": "m²",
+          "quantity": 3426.0,
+          "unit_price": 273.57,
+          "total": 936055.62,
+          "cad_source": "00-MEDICION",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P0201010",
+          "description": "Excavación para zapatas de muros",
+          "unit": "m³n",
+          "quantity": 500.0,
+          "unit_price": 575.0,
+          "total": 287500.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P0202010",
+          "description": "Relleno compactado",
+          "unit": "m³c",
+          "quantity": 500.0,
+          "unit_price": 757.62,
+          "total": 378810.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P0303001",
+          "description": "Zapata de columnas Z1",
+          "unit": "m³",
+          "quantity": 100.0,
+          "unit_price": 12649.83,
+          "total": 1264983.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P0303020",
+          "description": "Zapata de muros de bloques 0.20",
+          "unit": "m³",
+          "quantity": 100.0,
+          "unit_price": 11073.35,
+          "total": 1107335.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P0590001",
+          "description": "Bote de material inservible (Dist. hasta 5 km)",
+          "unit": "m³e",
+          "quantity": 200.0,
+          "unit_price": 200.0,
+          "total": 40000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        }
+      ],
+      "subtotal": 4448023.62
+    },
+    {
+      "chapter_code": "03",
+      "chapter_name": "Muros, Bloques, Panetes, Revestimientos",
+      "items": [
+        {
+          "presto_code": "H0320101",
+          "description": "M.O. Alb colocación bloques de 4\"",
+          "unit": "u",
+          "quantity": 2044.0,
+          "unit_price": 20.5,
+          "total": 41902.0,
+          "cad_source": "A-WALL",
+          "match": "calculado"
+        },
+        {
+          "presto_code": "H0330210",
+          "description": "M.O. pañete muro Interior",
+          "unit": "m²",
+          "quantity": 18.0,
+          "unit_price": 140.0,
+          "total": 2520.0,
+          "cad_source": "A-WALL-PATT",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "H0330211",
+          "description": "M.O. pañete muro Exterior",
+          "unit": "m²",
+          "quantity": 3426.0,
+          "unit_price": 175.0,
+          "total": 599550.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P0410010",
+          "description": "Muro Bloques 10x20x40 SNP Ø3/8\"@40",
+          "unit": "m²",
+          "quantity": 2044.0,
+          "unit_price": 1060.42,
+          "total": 2166948.88,
+          "cad_source": "A-WALL",
+          "match": "calculado"
+        },
+        {
+          "presto_code": "P0501101",
+          "description": "Pañete liso sobre muros interiores e=1.75cm",
+          "unit": "m²",
+          "quantity": 3426.0,
+          "unit_price": 314.58,
+          "total": 1077260.28,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P08R1012",
+          "description": "Revestimiento de cerámica en Baño",
+          "unit": "m²",
+          "quantity": 342.6,
+          "unit_price": 1508.86,
+          "total": 516566.76,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        }
+      ],
+      "subtotal": 4404747.92
+    },
+    {
+      "chapter_code": "04",
+      "chapter_name": "Pisos, Ceramica, Porcelanato, Zocalos",
+      "items": [
+        {
+          "presto_code": "B0305110",
+          "description": "M.O. de Coloc. Ceramica hasta 40x40 cm en Pisos",
+          "unit": "m2",
+          "quantity": 3426.0,
+          "unit_price": 365.0,
+          "total": 1250490.0,
+          "cad_source": "estimacion basada en area total",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "B0307025",
+          "description": "M.O. Prep. de Superficie Colocar Pisos",
+          "unit": "m2",
+          "quantity": 3426.0,
+          "unit_price": 10.05,
+          "total": 34416.3,
+          "cad_source": "estimacion basada en area total",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H0335101",
+          "description": "M.O. Colocación pisos porcelanato",
+          "unit": "m2",
+          "quantity": 3426.0,
+          "unit_price": 330.0,
+          "total": 1130580.0,
+          "cad_source": "estimacion basada en area total",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M0902001",
+          "description": "Suministro de Porcelanato Int. Apto",
+          "unit": "m2",
+          "quantity": 3426.0,
+          "unit_price": 885.5,
+          "total": 3030783.0,
+          "cad_source": "estimacion basada en area total",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P0705010",
+          "description": "Zocalos Porcelanato Interior h=10 cm",
+          "unit": "m",
+          "quantity": 1062.0,
+          "unit_price": 257.84,
+          "total": 273798.08,
+          "cad_source": "A-FLOR-HRAL",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "P0705030",
+          "description": "Zocalos Cerámica h=10 cm",
+          "unit": "m",
+          "quantity": 1062.0,
+          "unit_price": 234.52,
+          "total": 249012.24,
+          "cad_source": "A-FLOR-HRAL",
+          "match": "exacto"
+        }
+      ],
+      "subtotal": 5969079.62
+    },
+    {
+      "chapter_code": "05",
+      "chapter_name": "Puertas, Ventanas, Vidrios, Herrajes",
+      "items": [
+        {
+          "presto_code": "H08P1001",
+          "description": "Inst. Puerta metalica blanca tipo door tech (0.80x2.10)",
+          "unit": "ud",
+          "quantity": 160.0,
+          "unit_price": 1300.0,
+          "total": 208000.0,
+          "cad_source": "A-DOOR",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "H08P1011",
+          "description": "Mano de obra Inst. de Puerta incluye Llavín",
+          "unit": "ud",
+          "quantity": 160.0,
+          "unit_price": 1950.0,
+          "total": 312000.0,
+          "cad_source": "A-DOOR",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "M08P1001",
+          "description": "Puerta PVC blanca tipo door tech (0.80x2.10)",
+          "unit": "ud",
+          "quantity": 160.0,
+          "unit_price": 7000.0,
+          "total": 1120000.0,
+          "cad_source": "A-DOOR",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "M08P1045",
+          "description": "Puerta comercial aluminio blanco y vidrio c (1.0x2.10)",
+          "unit": "p²",
+          "quantity": 0.08,
+          "unit_price": 608.73,
+          "total": 48.7,
+          "cad_source": "A-DOOR-GLAZ",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "M08V1045",
+          "description": "Ventana Corredera Aluminio y Vidrio claro 3/16\" Perfil P92",
+          "unit": "m",
+          "quantity": 181.0,
+          "unit_price": 410.0,
+          "total": 74210.0,
+          "cad_source": "A-GLAZ",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "M0811100",
+          "description": "Bisagras 3-1/2\" x 3-1/2\"",
+          "unit": "ud",
+          "quantity": 320.0,
+          "unit_price": 195.0,
+          "total": 62400.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M0811150",
+          "description": "Llavín Stanley",
+          "unit": "ud",
+          "quantity": 160.0,
+          "unit_price": 1675.0,
+          "total": 268000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P1501004",
+          "description": "Puerta de aluminio y vidrio (1.00x2.10) batiente",
+          "unit": "p²",
+          "quantity": 0.08,
+          "unit_price": 2283.73,
+          "total": 182.7,
+          "cad_source": "A-DOOR-GLAZ",
+          "match": "exacto"
+        }
+      ],
+      "subtotal": 2044841.4
+    },
+    {
+      "chapter_code": "06",
+      "chapter_name": "Instalaciones Electricas y Telecomunicaciones",
+      "items": [
+        {
+          "presto_code": "H2441050",
+          "description": "MO Alimentador desde MODULO DE MEDICION a panel",
+          "unit": "pl",
+          "quantity": 342.6,
+          "unit_price": 92.35,
+          "total": 31632.21,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H2481020",
+          "description": "MO Alimentadores desde Transformador a Módulo",
+          "unit": "pl",
+          "quantity": 14.0,
+          "unit_price": 1515.53,
+          "total": 21217.42,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H3800022",
+          "description": "Electricista 3ra",
+          "unit": "día",
+          "quantity": 50.0,
+          "unit_price": 2000.0,
+          "total": 100000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H5010221",
+          "description": "M.O. de interruptor sencillo",
+          "unit": "u",
+          "quantity": 510.2,
+          "unit_price": 374.0,
+          "total": 190814.8,
+          "cad_source": "E-ELEC-FIXT",
+          "match": "calculado"
+        },
+        {
+          "presto_code": "H5010231",
+          "description": "M.O. de salida de tomacorriente Doble 110V.",
+          "unit": "u",
+          "quantity": 510.2,
+          "unit_price": 300.0,
+          "total": 153060.0,
+          "cad_source": "E-ELEC-FIXT",
+          "match": "calculado"
+        },
+        {
+          "presto_code": "H5010280",
+          "description": "M.O. Panel de Distrib 8-16 Circuitos",
+          "unit": "u",
+          "quantity": 14.0,
+          "unit_price": 6125.0,
+          "total": 85750.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H5010290",
+          "description": "M.O. Transformador trifásico 150 Kva",
+          "unit": "u",
+          "quantity": 1.0,
+          "unit_price": 85000.0,
+          "total": 85000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M2401005",
+          "description": "Alambre Elect. Thw #10",
+          "unit": "pl",
+          "quantity": 3426.0,
+          "unit_price": 9.1,
+          "total": 31176.6,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M2401101",
+          "description": "\"breakers\" 15 y 20 A.",
+          "unit": "u",
+          "quantity": 100.0,
+          "unit_price": 160.0,
+          "total": 16000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M2421020",
+          "description": "Suministro e Instalacion Lampara de 25w, 110V de pared",
+          "unit": "u",
+          "quantity": 100.0,
+          "unit_price": 1800.0,
+          "total": 180000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M2470200",
+          "description": "Transformador trifásico tipo Pad-Mounted: 150 KVA",
+          "unit": "u",
+          "quantity": 1.0,
+          "unit_price": 195000.0,
+          "total": 195000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M24SSS2",
+          "description": "Registro telefónico, telecable e intercom",
+          "unit": "u",
+          "quantity": 14.0,
+          "unit_price": 800.0,
+          "total": 11200.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        }
+      ],
+      "subtotal": 1100851.03
+    },
+    {
+      "chapter_code": "07",
+      "chapter_name": "Instalaciones Sanitarias, Plomeria, Agua, Gas",
+      "items": [
+        {
+          "presto_code": "A2095146B",
+          "description": "Equipo de Bombeo Agua Potable",
+          "unit": "u",
+          "quantity": 1.0,
+          "unit_price": 200500.0,
+          "total": 200500.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H0360001",
+          "description": "Colocación de Tapa de Cisterna",
+          "unit": "u",
+          "quantity": 1.0,
+          "unit_price": 500.0,
+          "total": 500.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H2200014",
+          "description": "Mano de obra colocación tuberia de 3\" pvc",
+          "unit": "m",
+          "quantity": 500.0,
+          "unit_price": 40.0,
+          "total": 20000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H2200015",
+          "description": "Mano de obra colocación tuberia de 4\" pvc",
+          "unit": "m",
+          "quantity": 300.0,
+          "unit_price": 50.0,
+          "total": 15000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H2200025",
+          "description": "Mano de obra colocación tuberia de 6\" pvc",
+          "unit": "m",
+          "quantity": 200.0,
+          "unit_price": 60.0,
+          "total": 12000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H3800001",
+          "description": "Plomero 1",
+          "unit": "día",
+          "quantity": 30.0,
+          "unit_price": 2000.0,
+          "total": 60000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H4005059",
+          "description": "M.O. instalación de Inodoro de tanque",
+          "unit": "u",
+          "quantity": 26.0,
+          "unit_price": 807.04,
+          "total": 20982.04,
+          "cad_source": "P-SANR-FIXT",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "H4005062",
+          "description": "M.O. instalación de Lavamanos",
+          "unit": "u",
+          "quantity": 26.0,
+          "unit_price": 504.4,
+          "total": 13114.4,
+          "cad_source": "P-SANR-FIXT",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "H4015076",
+          "description": "M.O. colocación mezcladora para duchas",
+          "unit": "u",
+          "quantity": 26.0,
+          "unit_price": 1000.0,
+          "total": 26000.0,
+          "cad_source": "P-SANR-FIXT",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "M2202017",
+          "description": "Tubo PVC SDR-32.5 de 3\" X 19'",
+          "unit": "u",
+          "quantity": 50.0,
+          "unit_price": 1223.55,
+          "total": 61177.5,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M2203006",
+          "description": "Tubo PVC SDR-32.5 de 4\" X 19'",
+          "unit": "u",
+          "quantity": 30.0,
+          "unit_price": 2009.29,
+          "total": 60278.7,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M2267452",
+          "description": "Mezcladora para Bañera",
+          "unit": "u",
+          "quantity": 26.0,
+          "unit_price": 3705.0,
+          "total": 96330.0,
+          "cad_source": "P-SANR-FIXT",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "M2268010",
+          "description": "Inodoro Bath Collection con tapa V2\"",
+          "unit": "u",
+          "quantity": 26.0,
+          "unit_price": 12300.0,
+          "total": 319800.0,
+          "cad_source": "P-SANR-FIXT",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "M2269019",
+          "description": "Lavamanos taino blanco",
+          "unit": "u",
+          "quantity": 26.0,
+          "unit_price": 3300.0,
+          "total": 85800.0,
+          "cad_source": "P-SANR-FIXT",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "P2200043",
+          "description": "Suministro y colocación de tuberias de 2\" pvc sdr-32.5",
+          "unit": "m",
+          "quantity": 500.0,
+          "unit_price": 131.4,
+          "total": 65700.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P2200044",
+          "description": "Suministro y colocación de tuberias de 3\" pvc sdr-32.5",
+          "unit": "m",
+          "quantity": 300.0,
+          "unit_price": 285.46,
+          "total": 85638.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P2200045",
+          "description": "Suministro y colocación de tuberias de 4\" pvc sdr-32.5",
+          "unit": "m",
+          "quantity": 200.0,
+          "unit_price": 441.93,
+          "total": 88386.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        }
+      ],
+      "subtotal": 1231206.64
+    },
+    {
+      "chapter_code": "08",
+      "chapter_name": "Pintura y Acabados Finales",
+      "items": [
+        {
+          "presto_code": "M0709020",
+          "description": "Suministro y Aplicacion Impermeabilizante Lona de 4mm",
+          "unit": "m²",
+          "quantity": 3426.0,
+          "unit_price": 366.0,
+          "total": 1253316.0,
+          "cad_source": "estimacion basada en area construida total",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M1005200",
+          "description": "Pintura Tráfico Popular",
+          "unit": "P.A.",
+          "quantity": 0.0,
+          "unit_price": 730.8,
+          "total": 0.0,
+          "cad_source": "no aplicable",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M4002100",
+          "description": "Pintura Acrílica interior",
+          "unit": "Gl",
+          "quantity": 0.0,
+          "unit_price": 975.0,
+          "total": 0.0,
+          "cad_source": "no aplicable",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M4003100",
+          "description": "Pintura Económica",
+          "unit": "m²",
+          "quantity": 2044.0,
+          "unit_price": 315.0,
+          "total": 643860.0,
+          "cad_source": "A-WALL",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "P1103101",
+          "description": "Impermeabilizante de 4mm granular en techo Plano",
+          "unit": "m²",
+          "quantity": 3426.0,
+          "unit_price": 366.0,
+          "total": 1253316.0,
+          "cad_source": "estimacion basada en area construida total",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P1801101",
+          "description": "Pintura Acrílica Interior",
+          "unit": "m²",
+          "quantity": 2044.0,
+          "unit_price": 159.6,
+          "total": 326702.4,
+          "cad_source": "A-WALL",
+          "match": "exacto"
+        },
+        {
+          "presto_code": "P1801102",
+          "description": "Pintura Acrílica Exterior",
+          "unit": "m²",
+          "quantity": 3426.0,
+          "unit_price": 303.6,
+          "total": 1039443.6,
+          "cad_source": "estimacion basada en area construida total",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "PITRL0005",
+          "description": "Pintura Tráfico",
+          "unit": "m",
+          "quantity": 0.0,
+          "unit_price": 26.31,
+          "total": 0.0,
+          "cad_source": "no aplicable",
+          "match": "estimado"
+        }
+      ],
+      "subtotal": 4516638.0
+    },
+    {
+      "chapter_code": "09",
+      "chapter_name": "Mobiliario, Equipos, Miscelaneos",
+      "items": [
+        {
+          "presto_code": "H0375100",
+          "description": "Limpieza Periódica y Final",
+          "unit": "mes",
+          "quantity": 1.0,
+          "unit_price": 25000.0,
+          "total": 25000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H0504713",
+          "description": "M.O. Andamio Interior Edificación",
+          "unit": "m²",
+          "quantity": 3426.0,
+          "unit_price": 40.0,
+          "total": 137040.0,
+          "cad_source": "area construida total",
+          "match": "calculado"
+        },
+        {
+          "presto_code": "H3805026",
+          "description": "Equipos Topografia",
+          "unit": "mes",
+          "quantity": 1.0,
+          "unit_price": 100000.0,
+          "total": 100000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H3805500",
+          "description": "Coordinador de Proyecto Topografico",
+          "unit": "mes",
+          "quantity": 1.0,
+          "unit_price": 80000.0,
+          "total": 80000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H3805555",
+          "description": "Ayudante Topografía",
+          "unit": "mes",
+          "quantity": 1.0,
+          "unit_price": 35000.0,
+          "total": 35000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H3805560",
+          "description": "Peones x mes BT (Topografia)",
+          "unit": "mes",
+          "quantity": 1.0,
+          "unit_price": 16000.0,
+          "total": 16000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M2201100",
+          "description": "Equipo de Bombeo 3 HP",
+          "unit": "u",
+          "quantity": 1.0,
+          "unit_price": 68000.0,
+          "total": 68000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M22B1800",
+          "description": "Equipo hidráulico de prueba",
+          "unit": "u",
+          "quantity": 1.0,
+          "unit_price": 10044.41,
+          "total": 10044.41,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P0100100",
+          "description": "Trazo y Replanteo. Topografía + trabajos auxiliares",
+          "unit": "mes",
+          "quantity": 1.0,
+          "unit_price": 105666.67,
+          "total": 105666.67,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P0112200",
+          "description": "Fumigación de Fondos y Paramentos de Suelo Fundación",
+          "unit": "m²",
+          "quantity": 3426.0,
+          "unit_price": 90.0,
+          "total": 308340.0,
+          "cad_source": "area construida total",
+          "match": "calculado"
+        }
+      ],
+      "subtotal": 885091.08
+    },
+    {
+      "chapter_code": "10",
+      "chapter_name": "Gastos Indirectos, Desperdicios, Otros",
+      "items": [
+        {
+          "presto_code": "%DESP",
+          "description": "Desperdicios, retoques y material gastable - 20%",
+          "unit": "P.A.",
+          "quantity": 1.0,
+          "unit_price": 20.0,
+          "total": 20.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H0100100",
+          "description": "Almacen y Caseta de Materiales",
+          "unit": "pa",
+          "quantity": 1.0,
+          "unit_price": 150000.0,
+          "total": 150000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H0380100",
+          "description": "Subida y acarreo Interno de Materiales",
+          "unit": "mes",
+          "quantity": 14.0,
+          "unit_price": 50000.0,
+          "total": 700000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "H3815009",
+          "description": "Guarda Almacén",
+          "unit": "mes",
+          "quantity": 14.0,
+          "unit_price": 35000.0,
+          "total": 490000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M0101051",
+          "description": "Alquiler baños",
+          "unit": "mes",
+          "quantity": 14.0,
+          "unit_price": 4971.93,
+          "total": 69506.02,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M2400015",
+          "description": "Consumo Eléctrico",
+          "unit": "mes",
+          "quantity": 14.0,
+          "unit_price": 4000.0,
+          "total": 56000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "M2400502",
+          "description": "Consumo Energía Eléctrica",
+          "unit": "mes",
+          "quantity": 14.0,
+          "unit_price": 12000.0,
+          "total": 168000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        },
+        {
+          "presto_code": "P0112100",
+          "description": "Vigilancia Permanente en Obra",
+          "unit": "mes",
+          "quantity": 14.0,
+          "unit_price": 30000.0,
+          "total": 420000.0,
+          "cad_source": "estimacion",
+          "match": "estimado"
+        }
+      ],
+      "subtotal": 2053526.02
+    }
+  ],
+  "grand_total": 26654005.33,
+  "summary": {
+    "total_chapters": 9,
+    "total_items": 83,
+    "area_m2": 3426,
+    "costo_por_m2": 7779.919827787507,
+    "total_tokens": 33475,
+    "cost_usd": 0.16737500000000002
+  }
+}

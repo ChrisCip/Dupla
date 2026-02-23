@@ -1,0 +1,716 @@
+[
+  {
+    "code": "Hormigon",
+    "unit": "kg",
+    "description": "/cm2",
+    "price": 6300.0,
+    "offset": 3848
+  },
+  {
+    "code": "AISLT020",
+    "unit": "pa",
+    "description": "de registro 24\" con marco H.F.",
+    "price": 4698.0,
+    "offset": 4670
+  },
+  {
+    "code": "Fumigación",
+    "unit": "pa",
+    "description": "ta de columnas",
+    "price": 90.0,
+    "offset": 10236
+  },
+  {
+    "code": "Regado",
+    "unit": "pa",
+    "description": "ctado de caliche",
+    "price": 273.57,
+    "offset": 10481
+  },
+  {
+    "code": "H0360001",
+    "unit": "pa",
+    "description": "de Cisterna",
+    "price": 2.000000000001042,
+    "offset": 13052
+  },
+  {
+    "code": "Envarillado",
+    "unit": "pa",
+    "description": "tas Aisladas",
+    "price": 1500.0,
+    "offset": 13495
+  },
+  {
+    "code": "Andamio",
+    "unit": "pa",
+    "description": "ra pañetes.",
+    "price": 265.0,
+    "offset": 14912
+  },
+  {
+    "code": "Instalaion",
+    "unit": "pa",
+    "description": "nelada para closet en Andiroba",
+    "price": 52.0,
+    "offset": 15219
+  },
+  {
+    "code": "Inst.",
+    "unit": "pa",
+    "description": "l incluye Llavín",
+    "price": 2100.0,
+    "offset": 15510
+  },
+  {
+    "code": "Colocación",
+    "unit": "pa",
+    "description": "so 3/4\"",
+    "price": 230.78,
+    "offset": 16598
+  },
+  {
+    "code": "Peones",
+    "unit": "mes",
+    "description": "BT (Topografia)",
+    "price": 2.000000000001049,
+    "offset": 18432
+  },
+  {
+    "code": "Confección",
+    "unit": "pa",
+    "description": "Grasa 120x120x1.00",
+    "price": 3000.0,
+    "offset": 19365
+  },
+  {
+    "code": "H4036002",
+    "unit": "ud",
+    "description": "ante de plomero",
+    "price": 2.000000000001042,
+    "offset": 19758
+  },
+  {
+    "code": "Plomería",
+    "unit": "pa",
+    "description": "Grasa",
+    "price": 2.0000000000010423,
+    "offset": 19933
+  },
+  {
+    "code": "Perforación",
+    "unit": "pa",
+    "description": "ra pvc de 8\"",
+    "price": 9280.0,
+    "offset": 20310
+  },
+  {
+    "code": "Doble",
+    "unit": "pa",
+    "description": "ra exterior",
+    "price": 2.000000000001049,
+    "offset": 21104
+  },
+  {
+    "code": "M0101025",
+    "unit": "pa",
+    "description": "ra pisos",
+    "price": 1200.0,
+    "offset": 22125
+  },
+  {
+    "code": "Arena",
+    "unit": "pa",
+    "description": "ñete",
+    "price": 1100.0,
+    "offset": 22580
+  },
+  {
+    "code": "Caliche",
+    "unit": "pa",
+    "description": "ra relleno",
+    "price": 14745.600000028138,
+    "offset": 22911
+  },
+  {
+    "code": "M0210170",
+    "unit": "pa",
+    "description": "radores de cerámica",
+    "price": 290.0,
+    "offset": 23674
+  },
+  {
+    "code": "M05102010",
+    "unit": "pa",
+    "description": "de registro 24\" con marco H.F.",
+    "price": 4698.0,
+    "offset": 25003
+  },
+  {
+    "code": "Regla",
+    "unit": "pa",
+    "description": "ra pañete de PATC",
+    "price": 43.0,
+    "offset": 25534
+  },
+  {
+    "code": "M0601005",
+    "unit": "gl",
+    "description": "a (1 de 1\"x4\"x10' / 20 usos)",
+    "price": 58.0,
+    "offset": 25591
+  },
+  {
+    "code": "M0811160",
+    "unit": "pa",
+    "description": "ra puertas PVC",
+    "price": 765.0,
+    "offset": 26412
+  },
+  {
+    "code": "Puerta",
+    "unit": "pa",
+    "description": "nelada para closet en Andiroba",
+    "price": 690.0,
+    "offset": 26609
+  },
+  {
+    "code": "Manómetro",
+    "unit": "gl",
+    "description": "icerina 0-160 PSI",
+    "price": 950.0,
+    "offset": 28549
+  },
+  {
+    "code": "M2201501",
+    "unit": "pa",
+    "description": "de Cisterna 24\" Aluminio",
+    "price": 2100.0,
+    "offset": 28685
+  },
+  {
+    "code": "Material",
+    "unit": "pa",
+    "description": ") 2\" PVC",
+    "price": 5.0,
+    "offset": 31137
+  },
+  {
+    "code": "M2267452",
+    "unit": "pa",
+    "description": "ra Bañera",
+    "price": 3705.0,
+    "offset": 31688
+  },
+  {
+    "code": "Acople",
+    "unit": "pa",
+    "description": "ra inodoro",
+    "price": 146.51,
+    "offset": 32367
+  },
+  {
+    "code": "M2269960",
+    "unit": "pa",
+    "description": "ra lavamanos",
+    "price": 14.0,
+    "offset": 32627
+  },
+  {
+    "code": "M2270820",
+    "unit": "pa",
+    "description": "ra mezcladora",
+    "price": 215.0,
+    "offset": 33230
+  },
+  {
+    "code": "M2271410",
+    "unit": "pa",
+    "description": "ra sellar tubo",
+    "price": 282.49,
+    "offset": 33445
+  },
+  {
+    "code": "M22B156251",
+    "unit": "pa",
+    "description": "so de  1/2\"",
+    "price": 210.81,
+    "offset": 34106
+  },
+  {
+    "code": "M22B156255",
+    "unit": "pa",
+    "description": "so de 1\"",
+    "price": 468.887,
+    "offset": 34168
+  },
+  {
+    "code": "M2400020",
+    "unit": "pa",
+    "description": "ra 500W, 220V",
+    "price": 8500.0,
+    "offset": 34820
+  },
+  {
+    "code": "Cable",
+    "unit": "pa",
+    "description": "ra 33%",
+    "price": 145.0,
+    "offset": 35264
+  },
+  {
+    "code": "M2420901",
+    "unit": "pa",
+    "description": "ra Control puerta Intercom",
+    "price": 39964.29,
+    "offset": 35933
+  },
+  {
+    "code": "Suministro",
+    "unit": "pa",
+    "description": "ra de 25w, 110V de pared",
+    "price": 1800.0,
+    "offset": 36032
+  },
+  {
+    "code": "M2470230",
+    "unit": "pa",
+    "description": "rtarrayos",
+    "price": 3160.0,
+    "offset": 36805
+  },
+  {
+    "code": "Tornillos",
+    "unit": "pa",
+    "description": "sante",
+    "price": 30.0,
+    "offset": 36939
+  },
+  {
+    "code": "M2480G",
+    "unit": "pa",
+    "description": "Ciega Pvc",
+    "price": 75.0,
+    "offset": 38036
+  },
+  {
+    "code": "M2485D",
+    "unit": "pa",
+    "description": "ra calentador",
+    "price": 198.0,
+    "offset": 38347
+  },
+  {
+    "code": "Panel",
+    "unit": "pa",
+    "description": "ra area comun",
+    "price": 12860.0,
+    "offset": 38659
+  },
+  {
+    "code": "Hormigón",
+    "unit": "m2",
+    "description": "Agreg 3/8@1/2, llenado cámaras bloques",
+    "price": 4138.98,
+    "offset": 40288
+  },
+  {
+    "code": "Excavación",
+    "unit": "pa",
+    "description": "ra zapatas de muros.",
+    "price": 575.0,
+    "offset": 41453
+  },
+  {
+    "code": "Relleno",
+    "unit": "pa",
+    "description": "ctado",
+    "price": 757.62,
+    "offset": 41662
+  },
+  {
+    "code": "GázAÅ@:\u0001=\u0003>N",
+    "unit": "ud",
+    "description": "@Anchura AAltura ",
+    "price": 11983.99,
+    "offset": 42420
+  },
+  {
+    "code": "4@=\u0003>N",
+    "unit": "ud",
+    "description": "@Anchura AAltura ",
+    "price": 538932.7157165188,
+    "offset": 47614
+  },
+  {
+    "code": "P0501005",
+    "unit": "pa",
+    "description": "ra Cernir Arena de Madera y Malla Metálica 36\"x100'",
+    "price": 1926.67,
+    "offset": 47656
+  },
+  {
+    "code": "Equipo",
+    "unit": "pa",
+    "description": "ñete",
+    "price": 12.4,
+    "offset": 49349
+  },
+  {
+    "code": "Porcelanato",
+    "unit": "pa",
+    "description": "rtamento",
+    "price": 1659.2399999999998,
+    "offset": 49814
+  },
+  {
+    "code": "Pp@=\u0003>N",
+    "unit": "ud",
+    "description": "@Anchura AArea f",
+    "price": 124.69000000000001,
+    "offset": 51187
+  },
+  {
+    "code": "7«>W[Ys@=\u0003>N",
+    "unit": "ud",
+    "description": "@Anchura AArea i",
+    "price": 132.47,
+    "offset": 51419
+  },
+  {
+    "code": "S@:\u0001=\u0003>N",
+    "unit": "ud",
+    "description": "@Ancho AArea ",
+    "price": 536761.2294039252,
+    "offset": 53454
+  },
+  {
+    "code": "P20MISC1",
+    "unit": "pa",
+    "description": "de Cisterna 24\" Aluminio",
+    "price": 2600.0,
+    "offset": 53902
+  },
+  {
+    "code": "P2540030",
+    "unit": "pa",
+    "description": "ra interruptor sencillo",
+    "price": 886.12,
+    "offset": 59937
+  },
+  {
+    "code": "P2540031",
+    "unit": "pa",
+    "description": "ra interruptor doble",
+    "price": 991.7199999999999,
+    "offset": 60056
+  },
+  {
+    "code": "P2540033",
+    "unit": "pa",
+    "description": "ra interruptor 3W",
+    "price": 1185.6799999999998,
+    "offset": 60172
+  },
+  {
+    "code": "P2540095",
+    "unit": "pa",
+    "description": "ra calentador 208V, 30A",
+    "price": 1264.59,
+    "offset": 60285
+  },
+  {
+    "code": "Tomacorriente",
+    "unit": "pa",
+    "description": "ra exterior",
+    "price": 1215.37,
+    "offset": 60536
+  },
+  {
+    "code": "P2550020",
+    "unit": "pa",
+    "description": "ras 25w, 110V de pared",
+    "price": 1800.0,
+    "offset": 60907
+  },
+  {
+    "code": "P25CO030",
+    "unit": "pa",
+    "description": "ra Control puerta Intercom",
+    "price": 39964.29,
+    "offset": 62197
+  },
+  {
+    "code": "Inspecc",
+    "unit": "pa",
+    "description": "HA , Bloques 6\"",
+    "price": 5152.95,
+    "offset": 64166
+  },
+  {
+    "code": "PISNBL012",
+    "unit": "pa",
+    "description": "de Grasa 120x100x100, Tapa HA , Bloques 6\"",
+    "price": 14665.019999999999,
+    "offset": 64297
+  },
+  {
+    "code": "Q2904103",
+    "unit": "pa",
+    "description": "raciones (75% Deprec. horaria).",
+    "price": 183.33,
+    "offset": 66337
+  },
+  {
+    "code": "G(\u000b!Ñh\u000e",
+    "unit": "pa",
+    "description": "©P!ô!ÃþA",
+    "price": 0.0,
+    "offset": 367019
+  },
+  {
+    "code": "C§÷aB\u0001",
+    "unit": "ml",
+    "description": "¿k?Wøcâk~a",
+    "price": 0.0,
+    "offset": 578967
+  },
+  {
+    "code": "H3FûwÄü",
+    "unit": "m²",
+    "description": "nÇÛùÇ: ùÃô",
+    "price": 0.0,
+    "offset": 711429
+  },
+  {
+    "code": "CJsøÂ8ËM\u0002",
+    "unit": "m2",
+    "description": "³¬^] [^K8zk:&@¾·¤",
+    "price": 363947.87164751044,
+    "offset": 751892
+  },
+  {
+    "code": "1-¼\u0007F",
+    "unit": "gl",
+    "description": "bao",
+    "price": 0.0,
+    "offset": 831037
+  },
+  {
+    "code": "T2'ÙÆ×ãÄáUø",
+    "unit": "gl",
+    "description": "cøð´",
+    "price": 3.437052512348993,
+    "offset": 850572
+  },
+  {
+    "code": "F\b)\u0015Àu\b(Ò",
+    "unit": "ud",
+    "description": "ï+ÓàUH",
+    "price": 288.31290091598567,
+    "offset": 1306242
+  },
+  {
+    "code": "G2@Ò\u0010\u000fñÂ\u0006\f",
+    "unit": "pa",
+    "description": "½\\ eÚÂ",
+    "price": 49368.00815791474,
+    "offset": 1381661
+  },
+  {
+    "code": "D\u0001ÑB\u0006Þ$",
+    "unit": "ml",
+    "description": "jÛÂ ûè@Ò?",
+    "price": 3183.009299737416,
+    "offset": 1455698
+  },
+  {
+    "code": "L>ëÖ",
+    "unit": "ml",
+    "description": "¶ÈK/Îóþ",
+    "price": 0.0,
+    "offset": 1642879
+  },
+  {
+    "code": "1il\\par\nse",
+    "unit": "m3",
+    "description": "en 5 horas\\par",
+    "price": 2.0287933200306725,
+    "offset": 1668875
+  },
+  {
+    "code": "SçÃ\rq¬bë§h",
+    "unit": "ud",
+    "description": "p.¸C#ÕÚ¹º",
+    "price": 0.0,
+    "offset": 1706383
+  },
+  {
+    "code": "H\u0004Fp.]\u0015",
+    "unit": "m²",
+    "description": "@!ò",
+    "price": 2796.851564528771,
+    "offset": 1709596
+  },
+  {
+    "code": "Xv£q\u001dÄ\u0007ý!º\u0012",
+    "unit": "ml",
+    "description": "êæç¦ãÃ[N",
+    "price": 0.01126899263957461,
+    "offset": 1780551
+  },
+  {
+    "code": "V\bsl2Ðñ\u0014A»",
+    "unit": "pa",
+    "description": ">UA",
+    "price": 0.0,
+    "offset": 1825140
+  },
+  {
+    "code": "Wº\u00044éö!§OA",
+    "unit": "ml",
+    "description": "+!§O",
+    "price": 100756.39972269567,
+    "offset": 1854978
+  },
+  {
+    "code": "1ÙÆ8\u0007F261O8Ç",
+    "unit": "gl",
+    "description": "bq",
+    "price": 0.0,
+    "offset": 2082672
+  },
+  {
+    "code": "5\u0016Ä\u0004)Ûb\u0002V±",
+    "unit": "ml",
+    "description": "@8â¶ &O",
+    "price": 0.0,
+    "offset": 2189527
+  },
+  {
+    "code": "3\\'d8,",
+    "unit": "pa",
+    "description": "cios, General Electric TL12412C con: 9-20/1,2-30/2 Y 1-60/3.\\par",
+    "price": 0.0,
+    "offset": 6343189
+  },
+  {
+    "code": "ISNGBL017",
+    "unit": "pa",
+    "description": "de H.A",
+    "price": 1.0,
+    "offset": 6679951
+  },
+  {
+    "code": "P24ISS002",
+    "unit": "pa",
+    "description": "Cisterna",
+    "price": 1.0,
+    "offset": 6684746
+  },
+  {
+    "code": "P24ISS007",
+    "unit": "pa",
+    "description": "Grasa",
+    "price": 5.0,
+    "offset": 6692617
+  },
+  {
+    "code": "P2540001",
+    "unit": "pa",
+    "description": "ras 25w, 110V de pared",
+    "price": 11.0,
+    "offset": 6695067
+  },
+  {
+    "code": "PISNBL005",
+    "unit": "pa",
+    "description": "de registro",
+    "price": 1.0,
+    "offset": 6696271
+  },
+  {
+    "code": "P0315100",
+    "unit": "pa",
+    "description": "Trampa De Grasa D",
+    "price": 1.0,
+    "offset": 6697027
+  },
+  {
+    "code": "PISNBL013",
+    "unit": "pa",
+    "description": "de H.A",
+    "price": 0.75,
+    "offset": 6698674
+  },
+  {
+    "code": "PISNBL014",
+    "unit": "pa",
+    "description": "de H.A",
+    "price": 0.75,
+    "offset": 6700488
+  },
+  {
+    "code": "CTXI00S02",
+    "unit": "pa",
+    "description": "CTXI00S02    P0303230       ppa CTXI00S02    P0303230       Ïpa CTXI00S02    P0303230       ,qa CTXI",
+    "price": 0.0,
+    "offset": 6723883
+  },
+  {
+    "code": "CTXI01N05.1",
+    "unit": "ud",
+    "description": "CTXI01N05.1  P0502053       Ãud CTXI01N05.1  P0502053       Hvd CTXI01N05.1  P0502053       Ívd CTXI",
+    "price": 0.0,
+    "offset": 6778603
+  },
+  {
+    "code": "CTXI00S21",
+    "unit": "gl",
+    "description": "CTXI00S21    P2570110       '<gl CTXI00S21    P2570110       (ngl CTXI00S21    P2570110       ) gl C",
+    "price": 0.0,
+    "offset": 8431542
+  },
+  {
+    "code": "TXI00S21",
+    "unit": "gl",
+    "description": "CTXI00S21    P2570110       +",
+    "price": 0.0,
+    "offset": 8431675
+  },
+  {
+    "code": "00S21",
+    "unit": "gl",
+    "description": "CTXI00S21    P2570110",
+    "price": 0.0,
+    "offset": 9345842
+  },
+  {
+    "code": "HW6­ëÿ",
+    "unit": "m2",
+    "description": "¾xPm®e",
+    "price": 0.0,
+    "offset": 10423579
+  },
+  {
+    "code": "D»Ö?És¦nv±h",
+    "unit": "ml",
+    "description": "åé¯P",
+    "price": 0.0,
+    "offset": 10484615
+  },
+  {
+    "code": "7ôþ|g",
+    "unit": "pa",
+    "description": ";J¯è¶",
+    "price": 0.0,
+    "offset": 10507128
+  },
+  {
+    "code": "5>%-w\u0015X]é¥",
+    "unit": "p²",
+    "description": "ÈGÆA{ÐM_|",
+    "price": 0.0,
+    "offset": 10544233
+  }
+]
