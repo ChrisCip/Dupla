@@ -1,0 +1,1885 @@
+[
+  {
+    "code": "A.024APOT",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 87113.66,
+    "parents": ""
+  },
+  {
+    "code": "A.024APOT01",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 20000.62,
+    "parents": ""
+  },
+  {
+    "code": "A.024APOT02",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 14890.93,
+    "parents": ""
+  },
+  {
+    "code": "A.024APOT03",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 33101.71,
+    "parents": ""
+  },
+  {
+    "code": "A.024APOT04",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 152389.29,
+    "parents": ""
+  },
+  {
+    "code": "A.024APOT05",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 210923.16,
+    "parents": ""
+  },
+  {
+    "code": "A.024APOT09",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 208231.41,
+    "parents": ""
+  },
+  {
+    "code": "A.024APOT13",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 211200.35,
+    "parents": ""
+  },
+  {
+    "code": "A.024APOT14",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 162806.26,
+    "parents": ""
+  },
+  {
+    "code": "A.024APOT15",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 44159.78,
+    "parents": ""
+  },
+  {
+    "code": "A.024ASA01",
+    "unit": "",
+    "summary": "APARATOS SANITARIOS",
+    "price": 33905.13,
+    "parents": ""
+  },
+  {
+    "code": "A.024ASA04",
+    "unit": "",
+    "summary": "APARATOS SANITARIOS",
+    "price": 791865.09,
+    "parents": ""
+  },
+  {
+    "code": "A.024ASA05",
+    "unit": "",
+    "summary": "APARATOS SANITARIOS",
+    "price": 808640.08,
+    "parents": ""
+  },
+  {
+    "code": "A.024ASA09",
+    "unit": "",
+    "summary": "APARATOS SANITARIOS",
+    "price": 792516.9,
+    "parents": ""
+  },
+  {
+    "code": "A.024ASA13",
+    "unit": "",
+    "summary": "APARATOS SANITARIOS",
+    "price": 941302.22,
+    "parents": ""
+  },
+  {
+    "code": "A.024ASA14",
+    "unit": "",
+    "summary": "APARATOS SANITARIOS",
+    "price": 648273.8,
+    "parents": ""
+  },
+  {
+    "code": "A.024BOMB",
+    "unit": "",
+    "summary": "EQUIPOS DE BOMBEO",
+    "price": 918000.0,
+    "parents": ""
+  },
+  {
+    "code": "A.024CIST",
+    "unit": "",
+    "summary": "CISTERNA",
+    "price": 2061577.29,
+    "parents": ""
+  },
+  {
+    "code": "A.024DAN",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 244923.47,
+    "parents": ""
+  },
+  {
+    "code": "A.024DAN01",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 118477.14,
+    "parents": ""
+  },
+  {
+    "code": "A.024DAN02",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 88841.18,
+    "parents": ""
+  },
+  {
+    "code": "A.024DAN03",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 173396.69,
+    "parents": ""
+  },
+  {
+    "code": "A.024DAN04",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 153896.69,
+    "parents": ""
+  },
+  {
+    "code": "A.024DAN05",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 153896.69,
+    "parents": ""
+  },
+  {
+    "code": "A.024DAN09",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 153896.69,
+    "parents": ""
+  },
+  {
+    "code": "A.024DAN13",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 153896.69,
+    "parents": ""
+  },
+  {
+    "code": "A.024DAN14",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 201475.09,
+    "parents": ""
+  },
+  {
+    "code": "A.024DAN15",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 61431.4,
+    "parents": ""
+  },
+  {
+    "code": "A.024EESP",
+    "unit": "",
+    "summary": "ESTRUCTURAS ESPECIALES",
+    "price": 3023520.7,
+    "parents": ""
+  },
+  {
+    "code": "A.024M04",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 69894.84,
+    "parents": ""
+  },
+  {
+    "code": "A.024M05",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 108681.05,
+    "parents": ""
+  },
+  {
+    "code": "A.024M09",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 91631.05,
+    "parents": ""
+  },
+  {
+    "code": "A.024M13",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 101003.47,
+    "parents": ""
+  },
+  {
+    "code": "A.024M14",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 60522.42,
+    "parents": ""
+  },
+  {
+    "code": "A.024SCIN",
+    "unit": "",
+    "summary": "SISTEMA CONTRA INCENDIOS",
+    "price": 178692.58,
+    "parents": ""
+  },
+  {
+    "code": "A.024SCIN01",
+    "unit": "",
+    "summary": "SISTEMA CONTRA INCENDIOS",
+    "price": 145159.01,
+    "parents": ""
+  },
+  {
+    "code": "A.024SCIN02",
+    "unit": "",
+    "summary": "SISTEMA CONTRA INCENDIOS",
+    "price": 151934.51,
+    "parents": ""
+  },
+  {
+    "code": "A.024SCIN03",
+    "unit": "",
+    "summary": "SISTEMA CONTRA INCENDIOS",
+    "price": 146878.68,
+    "parents": ""
+  },
+  {
+    "code": "A.024SCIN04",
+    "unit": "",
+    "summary": "SISTEMA CONTRA INCENDIOS",
+    "price": 145588.93,
+    "parents": ""
+  },
+  {
+    "code": "A.024SCIN05",
+    "unit": "",
+    "summary": "SISTEMA CONTRA INCENDIOS",
+    "price": 145588.93,
+    "parents": ""
+  },
+  {
+    "code": "A.024SCIN09",
+    "unit": "",
+    "summary": "SISTEMA CONTRA INCENDIOS",
+    "price": 145588.93,
+    "parents": ""
+  },
+  {
+    "code": "A.024SCIN13",
+    "unit": "",
+    "summary": "SISTEMA CONTRA INCENDIOS",
+    "price": 145588.93,
+    "parents": ""
+  },
+  {
+    "code": "A.024SCIN14",
+    "unit": "",
+    "summary": "SISTEMA CONTRA INCENDIOS",
+    "price": 145588.93,
+    "parents": ""
+  },
+  {
+    "code": "EI02.01",
+    "unit": "",
+    "summary": "EQUIPOS DE POTENCIA",
+    "price": 4035816.85,
+    "parents": ""
+  },
+  {
+    "code": "EI02.02",
+    "unit": "",
+    "summary": "SISTEMA DE GENERACIÓN",
+    "price": 3788857.27,
+    "parents": ""
+  },
+  {
+    "code": "EI02.03",
+    "unit": "",
+    "summary": "ALIMENTADORES ELECTRICOS",
+    "price": 1672613.59,
+    "parents": ""
+  },
+  {
+    "code": "EI02.04",
+    "unit": "",
+    "summary": "SISTEMA DE PARARRAYOS Y ATERRIZAJE",
+    "price": 700007.93,
+    "parents": ""
+  },
+  {
+    "code": "EI02.05",
+    "unit": "",
+    "summary": "CANALIZACIONES ELÉCTRICAS Y COMUNICACIÓN",
+    "price": 1165509.6,
+    "parents": ""
+  },
+  {
+    "code": "EI02.06",
+    "unit": "",
+    "summary": "ACOMETIDA ELÉCTRICA PRINCIPAL",
+    "price": 175000.0,
+    "parents": ""
+  },
+  {
+    "code": "HORMDES",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 54105.56,
+    "parents": ""
+  },
+  {
+    "code": "HORMIMB",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 1267224.28,
+    "parents": ""
+  },
+  {
+    "code": "HORMIMBS",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 1502493.07,
+    "parents": ""
+  },
+  {
+    "code": "MAMPOSTERIADE",
+    "unit": "",
+    "summary": "MAMPOSTERIA",
+    "price": 57876.37,
+    "parents": ""
+  },
+  {
+    "code": "MAMPOSTERIAS",
+    "unit": "",
+    "summary": "MAMPOSTERIA",
+    "price": 60830.4,
+    "parents": ""
+  },
+  {
+    "code": "MISCDES",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 170000.0,
+    "parents": ""
+  },
+  {
+    "code": "MISCIMB",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 155935.84,
+    "parents": ""
+  },
+  {
+    "code": "MISCIMBS",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 209000.0,
+    "parents": ""
+  },
+  {
+    "code": "MOVIDES",
+    "unit": "",
+    "summary": "MOVIMIENTO DE TIERRA",
+    "price": 44871.65,
+    "parents": ""
+  },
+  {
+    "code": "MOVIMB",
+    "unit": "",
+    "summary": "MOVIMIENTO DE TIERRA",
+    "price": 413261.7,
+    "parents": ""
+  },
+  {
+    "code": "MOVIMBS",
+    "unit": "",
+    "summary": "MOVIMIENTO DE TIERRA",
+    "price": 241776.5,
+    "parents": ""
+  },
+  {
+    "code": "TERMDES",
+    "unit": "",
+    "summary": "TERMINACION DE SUPERFICIE",
+    "price": 28152.8,
+    "parents": ""
+  },
+  {
+    "code": "TERMIMB",
+    "unit": "",
+    "summary": "TERMINACION DE SUPERFICIE",
+    "price": 225155.47,
+    "parents": ""
+  },
+  {
+    "code": "TERMIMBS",
+    "unit": "",
+    "summary": "TERMINACION DE SUPERFICIE",
+    "price": 196606.46,
+    "parents": ""
+  },
+  {
+    "code": "TGIU",
+    "unit": "",
+    "summary": "TORRE GIUALCA I",
+    "price": 293782601.08,
+    "parents": "#"
+  },
+  {
+    "code": "TGIU0001",
+    "unit": "",
+    "summary": "PRELIMINARES",
+    "price": 11136652.1,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0002",
+    "unit": "",
+    "summary": "MOVIMIENTO DE TIERRA",
+    "price": 3703079.76,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0003",
+    "unit": "",
+    "summary": "SEMISOTANO (-1.40@-2.90)",
+    "price": 23897939.13,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0004",
+    "unit": "",
+    "summary": "NIVEL 1 (LOBBY-PARQUEOS) N0.00",
+    "price": 13497163.93,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0005",
+    "unit": "",
+    "summary": "NIVEL 2 (PARQUEOS) N3.05",
+    "price": 11040922.49,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0006",
+    "unit": "",
+    "summary": "NIVEL 3 (PARQUEOS) N5.60",
+    "price": 12004837.31,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0007",
+    "unit": "",
+    "summary": "NIVEL 4 APTOS & AC N10.30",
+    "price": 18529398.45,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0008",
+    "unit": "",
+    "summary": "NIVEL 5 APTOS N13.54 (N5-8)",
+    "price": 16845319.88,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0009",
+    "unit": "",
+    "summary": "NIVEL 6 APTOS N16.78 (N5-8)",
+    "price": 16845319.88,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0010",
+    "unit": "",
+    "summary": "NIVEL 7 APTOS N20.02 (N5-8)",
+    "price": 16845319.88,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0011",
+    "unit": "",
+    "summary": "NIVEL 8 APTOS N23.26 (N5-8)",
+    "price": 16845319.88,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0012",
+    "unit": "",
+    "summary": "NIVEL 9 APTOS N26.50 (N9-12)",
+    "price": 16572184.92,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0013",
+    "unit": "",
+    "summary": "NIVEL 10 APTOS N29.74 (N9-12)",
+    "price": 16572184.92,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0014",
+    "unit": "",
+    "summary": "NIVEL 11 APTOS N32.98 (N9-12)",
+    "price": 16572184.92,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0015",
+    "unit": "",
+    "summary": "NIVEL 12 APTOS N36.22 (N9-12)",
+    "price": 16572184.92,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0016",
+    "unit": "",
+    "summary": "NIVEL 13 APTOS / PH N36.46",
+    "price": 17045375.03,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0017",
+    "unit": "",
+    "summary": "NIVEL 14 PH / GYM N42.70",
+    "price": 14164404.65,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0018",
+    "unit": "",
+    "summary": "TECHO N45.94",
+    "price": 4422235.3,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0020",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 19132768.49,
+    "parents": ""
+  },
+  {
+    "code": "TGIU0021",
+    "unit": "",
+    "summary": "EQUIPOS ELECTRICOS",
+    "price": 11537805.24,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00301",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 15078599.36,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00304",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 93963.41,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00305",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 716874.83,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00306",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 95952.54,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00311",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 108696.52,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00314",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 95975.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00316",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 476333.22,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00318",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 111132.99,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00320",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 6513827.7,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00321",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 606583.56,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00401",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 7622380.35,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00404",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 303959.72,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00405",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 1244071.26,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00406",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 267072.94,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00408",
+    "unit": "",
+    "summary": "REVESTIMIENTOS",
+    "price": 43861.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00411",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 185811.84,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00414",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 253765.6,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00415",
+    "unit": "",
+    "summary": "VENTANAS",
+    "price": 257317.18,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00416",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 895870.94,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00418",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 1571529.21,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00420",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 317541.9,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00421",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 533981.99,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00501",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 7736294.87,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00504",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 196500.32,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00505",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 1030413.57,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00506",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 65009.95,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00508",
+    "unit": "",
+    "summary": "REVESTIMIENTOS",
+    "price": 0.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00511",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 175669.01,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00514",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 107000.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00515",
+    "unit": "",
+    "summary": "VENTANAS",
+    "price": 0.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00516",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 840928.35,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00518",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 210209.57,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00520",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 255666.62,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00521",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 423230.23,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00601",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 8613756.55,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00604",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 237769.38,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00605",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 1143841.61,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00606",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 62173.59,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00611",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 189725.01,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00614",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 53500.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00616",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 869056.46,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00618",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 147002.59,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00620",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 353377.08,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00621",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 334635.04,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00701",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 6499958.72,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00704",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 1306364.58,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00705",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 2134826.84,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00706",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 1507748.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00708",
+    "unit": "",
+    "summary": "REVESTIMIENTOS",
+    "price": 338202.15,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00711",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 349398.57,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00714",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 1280861.7,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00715",
+    "unit": "",
+    "summary": "VENTANAS",
+    "price": 274876.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00716",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 1450647.61,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00717",
+    "unit": "",
+    "summary": "COCINA",
+    "price": 482407.5,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00718",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 800671.56,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00720",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 1313634.84,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00721",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 789800.38,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00801",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 4610776.23,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00804",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 1260696.53,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00805",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 1940165.64,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00806",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 1413060.63,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00808",
+    "unit": "",
+    "summary": "REVESTIMIENTOS",
+    "price": 404722.73,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00811",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 199148.21,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00814",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 1795580.3,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00815",
+    "unit": "",
+    "summary": "VENTANAS",
+    "price": 324156.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00816",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 1275260.98,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00817",
+    "unit": "",
+    "summary": "COCINA",
+    "price": 629358.5,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00818",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 633121.97,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00820",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 1427729.91,
+    "parents": ""
+  },
+  {
+    "code": "TGIU00821",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 931542.25,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01201",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 4468665.11,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01204",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 1298396.41,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01205",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 1984297.1,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01206",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 1415762.9,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01208",
+    "unit": "",
+    "summary": "REVESTIMIENTOS",
+    "price": 402506.35,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01211",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 199148.21,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01214",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 1701608.38,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01215",
+    "unit": "",
+    "summary": "VENTANAS",
+    "price": 294554.4,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01216",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 1311707.35,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01217",
+    "unit": "",
+    "summary": "COCINA",
+    "price": 579087.5,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01218",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 629869.37,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01220",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 1391864.98,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01221",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 894716.86,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01601",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 4672977.71,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01604",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 1088677.97,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01605",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 1791301.87,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01606",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 1403409.24,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01608",
+    "unit": "",
+    "summary": "REVESTIMIENTOS",
+    "price": 514637.7,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01611",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 453382.18,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01614",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 1493568.5,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01615",
+    "unit": "",
+    "summary": "VENTANAS",
+    "price": 289256.8,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01616",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 1184971.27,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01617",
+    "unit": "",
+    "summary": "COCINA",
+    "price": 921246.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01618",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 851808.48,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01620",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 1552991.66,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01621",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 827145.65,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01701",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 4400635.71,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01704",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 1166880.59,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01705",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 1736830.24,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01706",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 1246936.51,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01708",
+    "unit": "",
+    "summary": "REVESTIMIENTOS",
+    "price": 440913.89,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01711",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 0.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01714",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 1133681.5,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01715",
+    "unit": "",
+    "summary": "VENTANAS",
+    "price": 472734.43,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01716",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 1156959.23,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01717",
+    "unit": "",
+    "summary": "COCINA",
+    "price": 0.0,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01718",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 554193.21,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01720",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 1218666.5,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01721",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 635972.84,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01801",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 2914294.93,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01804",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 162278.96,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01805",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 170092.64,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01812",
+    "unit": "",
+    "summary": "TERMINACIÓN DE TECHO",
+    "price": 964016.66,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01816",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 105960.93,
+    "parents": ""
+  },
+  {
+    "code": "TGIU01820",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 105591.18,
+    "parents": ""
+  },
+  {
+    "code": "%INDI",
+    "unit": "",
+    "summary": "GASTOS INDIRECTOS ELECTRICOS (SUPERVIS, MO, LIQ. OBR, ITBIS)",
+    "price": 15.0,
+    "parents": ""
+  },
+  {
+    "code": "CTXI00",
+    "unit": "",
+    "summary": "PRELIMINARES",
+    "price": 4740079.8,
+    "parents": ""
+  },
+  {
+    "code": "CTXI0000",
+    "unit": "",
+    "summary": "CONDOMINIO TITO XI",
+    "price": 55649646.78,
+    "parents": "#"
+  },
+  {
+    "code": "CTXI00S",
+    "unit": "",
+    "summary": "NIVEL 0",
+    "price": 5903336.79,
+    "parents": ""
+  },
+  {
+    "code": "CTXI00S01",
+    "unit": "",
+    "summary": "MOVIMIENTO DE TIERRAS",
+    "price": 225070.28,
+    "parents": ""
+  },
+  {
+    "code": "CTXI00S02",
+    "unit": "",
+    "summary": "CIMENTACION",
+    "price": 1475502.43,
+    "parents": ""
+  },
+  {
+    "code": "CTXI00S03",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 688149.35,
+    "parents": ""
+  },
+  {
+    "code": "CTXI00S04",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 116418.49,
+    "parents": ""
+  },
+  {
+    "code": "CTXI00S18",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 46018.25,
+    "parents": ""
+  },
+  {
+    "code": "CTXI00S20",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 1811891.98,
+    "parents": ""
+  },
+  {
+    "code": "CTXI00S21",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 1540286.01,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N",
+    "unit": "",
+    "summary": "PRIMER NIVEL",
+    "price": 11002723.86,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N01",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 1237781.81,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N01.1",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 1234433.58,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N04",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 1755486.15,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N04.1",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 1755486.15,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N05",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 1297607.93,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N05.1",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 1297607.93,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N06",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 810302.26,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N06.1",
+    "unit": "",
+    "summary": "TERMINACIÓN DE PISOS",
+    "price": 810302.26,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N07",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ZÓCALOS",
+    "price": 127766.38,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N07.1",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ZÓCALOS",
+    "price": 127766.38,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N08",
+    "unit": "",
+    "summary": "REVESTIMIENTOS",
+    "price": 326932.46,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N08.1",
+    "unit": "",
+    "summary": "REVESTIMIENTOS",
+    "price": 326932.46,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N09",
+    "unit": "",
+    "summary": "TOPES",
+    "price": 151700.0,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N09.1",
+    "unit": "",
+    "summary": "TOPES",
+    "price": 151700.0,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N10",
+    "unit": "",
+    "summary": "EBANISTERIA",
+    "price": 582778.5,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N10.1",
+    "unit": "",
+    "summary": "EBANISTERIA",
+    "price": 582778.5,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N11",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 254454.06,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N11.1",
+    "unit": "",
+    "summary": "TERMINACIÓN DE ESCALERAS",
+    "price": 205959.21,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N14",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 1828932.98,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N14.1",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 1674118.92,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N15",
+    "unit": "",
+    "summary": "VENTANAS",
+    "price": 202400.6,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N15.1",
+    "unit": "",
+    "summary": "VENTANAS",
+    "price": 216959.7,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N16",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 516374.15,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N16.1",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 516374.15,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N17",
+    "unit": "",
+    "summary": "PLAFOND",
+    "price": 33177.9,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N17.1",
+    "unit": "",
+    "summary": "PLAFOND",
+    "price": 33177.9,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N18",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 438850.0,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N18.1",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 438850.0,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N20",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 967734.21,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N20.1",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 967734.21,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N201.1",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 967734.21,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N21",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 470444.47,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N21.1",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 477053.52,
+    "parents": ""
+  },
+  {
+    "code": "CTXI01N21.2",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 483662.57,
+    "parents": ""
+  },
+  {
+    "code": "CTXI02N",
+    "unit": "",
+    "summary": "SEGUNDO NIVEL",
+    "price": 10817234.87,
+    "parents": ""
+  },
+  {
+    "code": "CTXI03N",
+    "unit": "",
+    "summary": "TERCER NIVEL",
+    "price": 10823843.92,
+    "parents": ""
+  },
+  {
+    "code": "CTXI04N",
+    "unit": "",
+    "summary": "CUARTO NIVEL",
+    "price": 10340181.35,
+    "parents": ""
+  },
+  {
+    "code": "CTXI06N",
+    "unit": "",
+    "summary": "TECHO",
+    "price": 2022246.19,
+    "parents": ""
+  },
+  {
+    "code": "P24IS01N3",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 164651.5,
+    "parents": ""
+  },
+  {
+    "code": "P24IS01N5",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 133892.66,
+    "parents": ""
+  },
+  {
+    "code": "P24IS01N6",
+    "unit": "",
+    "summary": "APARATOS SANITARIOS",
+    "price": 646275.9,
+    "parents": ""
+  },
+  {
+    "code": "P24IS01N7",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE PLUVIAL",
+    "price": 22914.15,
+    "parents": ""
+  },
+  {
+    "code": "P24IS02N7",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE PLUVIAL",
+    "price": 54413.0,
+    "parents": ""
+  },
+  {
+    "code": "P24ISS002",
+    "unit": "",
+    "summary": "CISTERNA",
+    "price": 529239.45,
+    "parents": ""
+  },
+  {
+    "code": "P24ISS006",
+    "unit": "",
+    "summary": "MOVIMIENTO DE TIERRA SANITARIA",
+    "price": 84898.25,
+    "parents": ""
+  },
+  {
+    "code": "P24ISS007",
+    "unit": "",
+    "summary": "ESTRUCTURAS ESPECIALES",
+    "price": 786691.94,
+    "parents": ""
+  },
+  {
+    "code": "P24ISS008",
+    "unit": "",
+    "summary": "EQUIPO DE BOMBEO",
+    "price": 200500.0,
+    "parents": ""
+  },
+  {
+    "code": "P24ISS010",
+    "unit": "",
+    "summary": "SISTEMA DE AGUA POTABLE FRIA Y CALIENTE",
+    "price": 134958.28,
+    "parents": ""
+  },
+  {
+    "code": "P24ISS080",
+    "unit": "",
+    "summary": "SISTEMA DE DRENAJE DE AGUAS NEGRAS",
+    "price": 75604.06,
+    "parents": ""
+  },
+  {
+    "code": "PVM06N03",
+    "unit": "",
+    "summary": "HORMIGON ARMADO",
+    "price": 212691.76,
+    "parents": ""
+  },
+  {
+    "code": "PVM06N04",
+    "unit": "",
+    "summary": "MUROS Y DIVISIONES",
+    "price": 394608.35,
+    "parents": ""
+  },
+  {
+    "code": "PVM06N05",
+    "unit": "",
+    "summary": "TERMINACIÓN DE SUPERFICIES",
+    "price": 369399.09,
+    "parents": ""
+  },
+  {
+    "code": "PVM06N12",
+    "unit": "",
+    "summary": "TERMINACIÓN DE TECHOS",
+    "price": 574635.37,
+    "parents": ""
+  },
+  {
+    "code": "PVM06N14",
+    "unit": "",
+    "summary": "PUERTAS",
+    "price": 38384.48,
+    "parents": ""
+  },
+  {
+    "code": "PVM06N16",
+    "unit": "",
+    "summary": "PINTURA",
+    "price": 155051.02,
+    "parents": ""
+  },
+  {
+    "code": "PVM06N18",
+    "unit": "",
+    "summary": "MISCELANEOS",
+    "price": 212212.0,
+    "parents": ""
+  },
+  {
+    "code": "PVM06N20",
+    "unit": "",
+    "summary": "INSTALACION SANITARIA",
+    "price": 54413.0,
+    "parents": ""
+  },
+  {
+    "code": "PVM06N21",
+    "unit": "",
+    "summary": "INSTALACION ELECTRICA",
+    "price": 10851.12,
+    "parents": ""
+  }
+]
