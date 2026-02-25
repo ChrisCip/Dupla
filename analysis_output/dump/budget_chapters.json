@@ -4,72 +4,72 @@
     "items": [
       {
         "presto_code": "P0201008",
-        "description": "Excavación en terreno común",
+        "description": "Excavación en terreno natural",
         "unit": "m³n",
         "quantity": 2543.1,
-        "unit_price": 8615.44,
-        "total": 219048.06,
+        "unit_price": 8.6,
+        "total": 21870.66,
         "cad_layer": "A-FLOR-HRAL",
         "calculation": "Cantidad tomada directamente del CAD",
         "match_type": "exacto"
       },
       {
-        "presto_code": "P0203010",
-        "description": "Relleno con material de préstamo",
-        "unit": "m3n",
-        "quantity": 3880.9,
-        "unit_price": 6143.43,
-        "total": 23835673.49,
+        "presto_code": "P0202010",
+        "description": "Compactación de terreno",
+        "unit": "m³c",
+        "quantity": 234.5,
+        "unit_price": 14.1,
+        "total": 3304.45,
         "cad_layer": "A-FLOR-HRAL",
         "calculation": "Cantidad tomada directamente del CAD",
         "match_type": "exacto"
       },
       {
         "presto_code": "P0303000",
-        "description": "Compactación de terreno",
-        "unit": "m3",
+        "description": "Relleno con material de préstamo",
+        "unit": "m³",
         "quantity": 33.8,
-        "unit_price": 6961.7,
-        "total": 235342.46,
+        "unit_price": 85.8,
+        "total": 2900.04,
         "cad_layer": "A-FLOR-HRAL",
         "calculation": "Cantidad tomada directamente del CAD",
         "match_type": "exacto"
       },
       {
         "presto_code": "P0303130",
-        "description": "Zapatas corridas",
-        "unit": "m3",
-        "quantity": 7.6,
-        "unit_price": 8950.9,
-        "total": 68026.84,
-        "cad_layer": "S-COLS",
-        "calculation": "Cantidad tomada directamente del CAD",
-        "match_type": "exacto"
-      },
-      {
-        "presto_code": "P0303140",
         "description": "Bote de material sobrante",
-        "unit": "m3",
-        "quantity": 24.7,
-        "unit_price": 6143.43,
-        "total": 151742.52,
+        "unit": "m³",
+        "quantity": 7.6,
+        "unit_price": 399.4,
+        "total": 3035.44,
         "cad_layer": "A-FLOR-HRAL",
         "calculation": "Cantidad tomada directamente del CAD",
         "match_type": "exacto"
       },
       {
-        "presto_code": "P0303150",
-        "description": "Cimentación de hormigón",
-        "unit": "m3",
-        "quantity": 174.9,
-        "unit_price": 6961.7,
-        "total": 1217070.33,
+        "presto_code": "P0303140",
+        "description": "Cimentación de zapatas",
+        "unit": "m³",
+        "quantity": 24.7,
+        "unit_price": 363.1,
+        "total": 8968.57,
         "cad_layer": "S-COLS",
+        "calculation": "Cantidad tomada directamente del CAD",
+        "match_type": "exacto"
+      },
+      {
+        "presto_code": "P0303150",
+        "description": "Cimentación de vigas",
+        "unit": "m³",
+        "quantity": 174.9,
+        "unit_price": 429.2,
+        "total": 75057.08,
+        "cad_layer": "S-BEAM",
         "calculation": "Cantidad tomada directamente del CAD",
         "match_type": "exacto"
       }
     ],
-    "subtotal": 25726903.7
+    "subtotal": 115136.24
   },
   {
     "category": "02_ESTRUCTURA",
@@ -80,20 +80,20 @@
         "unit": "m3",
         "quantity": 3880.9,
         "unit_price": 6961.7,
-        "total": 27016658.53,
+        "total": 27015866.53,
         "cad_layer": "S-COLS",
-        "calculation": "Usando cantidad de CAD para columnas",
+        "calculation": "Cantidad tomada de mediciones CAD para columnas",
         "match_type": "exacto"
       },
       {
         "presto_code": "ACERO001",
         "description": "Acero Corrugado",
         "unit": "qq",
-        "quantity": 349.3,
+        "quantity": 500,
         "unit_price": 3590.0,
-        "total": 1253207.0,
-        "cad_layer": "S-STRS",
-        "calculation": "Estimado basado en longitud de vigas y columnas",
+        "total": 1795000.0,
+        "cad_layer": "S-COLS",
+        "calculation": "Estimación basada en área total y niveles",
         "match_type": "estimado"
       },
       {
@@ -102,63 +102,107 @@
         "unit": "m3",
         "quantity": 2543.1,
         "unit_price": 8615.44,
-        "total": 21904891.86,
-        "cad_layer": "A-FLOR-HRAL",
-        "calculation": "Usando cantidad de CAD para losas",
+        "total": 21904873.86,
+        "cad_layer": "S-BEAM",
+        "calculation": "Cantidad tomada de mediciones CAD para vigas",
         "match_type": "exacto"
       },
       {
         "presto_code": "A03010434",
         "description": "Mortero 1:4 pañete",
         "unit": "m3",
-        "quantity": 676.7,
+        "quantity": 234.5,
         "unit_price": 8950.9,
-        "total": 6053708.03,
+        "total": 2099360.05,
         "cad_layer": "A-WALL",
-        "calculation": "Usando cantidad de CAD para encofrado",
+        "calculation": "Cantidad tomada de mediciones CAD para paredes",
         "match_type": "exacto"
       },
       {
         "presto_code": "A0301044",
         "description": "Mezcla 1:10 Pisos",
         "unit": "m3",
-        "quantity": 234.5,
+        "quantity": 676.7,
         "unit_price": 6143.43,
-        "total": 1440142.84,
-        "cad_layer": "A-FLOR-PATT",
-        "calculation": "Usando cantidad de CAD para escaleras",
+        "total": 4155635.78,
+        "cad_layer": "A-FLOR",
+        "calculation": "Cantidad tomada de mediciones CAD para pisos",
         "match_type": "exacto"
+      },
+      {
+        "presto_code": "A0404135",
+        "description": "Hormigón en ligadora (1:3:5)",
+        "unit": "m3",
+        "quantity": 1000,
+        "unit_price": 6961.7,
+        "total": 6961700.0,
+        "cad_layer": "S-STRS",
+        "calculation": "Estimación basada en área total y niveles para escaleras",
+        "match_type": "estimado"
       }
     ],
-    "subtotal": 57668608.26
+    "subtotal": 63932436.22
   },
   {
-    "category": "04_PISOS_CERAMICA",
+    "category": "03_MUROS_BLOQUES_PANETE",
     "items": [
+      {
+        "presto_code": "A03010434",
+        "description": "Mortero 1:4 pañete",
+        "unit": "m³",
+        "quantity": 2543.1,
+        "unit_price": 8950.9,
+        "total": 22766256.79,
+        "cad_layer": "A-WALL-PATT",
+        "calculation": "2543.1 m³ (CAD) * 8950.90 RD$/m³",
+        "match_type": "exacto"
+      },
+      {
+        "presto_code": "A0301043",
+        "description": "Mezcla 1:3",
+        "unit": "m³",
+        "quantity": 3880.9,
+        "unit_price": 8615.44,
+        "total": 33429796.5,
+        "cad_layer": "A-WALL",
+        "calculation": "3880.9 m³ (CAD) * 8615.44 RD$/m³",
+        "match_type": "exacto"
+      },
+      {
+        "presto_code": "A0301044",
+        "description": "Mezcla 1:10 Pisos",
+        "unit": "m³",
+        "quantity": 676.7,
+        "unit_price": 6143.43,
+        "total": 4156460.58,
+        "cad_layer": "A-FLOR-HRAL",
+        "calculation": "676.7 m³ (CAD) * 6143.43 RD$/m³",
+        "match_type": "exacto"
+      },
+      {
+        "presto_code": "A.0059",
+        "description": "Fino de Techo",
+        "unit": "m²",
+        "quantity": 3426,
+        "unit_price": 1053.7,
+        "total": 3607912.2,
+        "cad_layer": "A-FLOR",
+        "calculation": "3426 m² (Área total) * 1053.70 RD$/m²",
+        "match_type": "estimado"
+      },
       {
         "presto_code": "A.0188",
         "description": "Suministro y Colocación de Plafones Densglass",
-        "unit": "m2",
+        "unit": "m²",
         "quantity": 3426,
         "unit_price": 2780.0,
-        "total": 9518280.0,
-        "cad_layer": "A-FLOR",
-        "calculation": "Área total del edificio (3426 m2) utilizada para estimar cantidad",
-        "match_type": "estimado"
-      },
-      {
-        "presto_code": "A0301044",
-        "description": "Mezcla 1:10 Pisos",
-        "unit": "m3",
-        "quantity": 342.6,
-        "unit_price": 6143.43,
-        "total": 2104203.14,
-        "cad_layer": "A-FLOR",
-        "calculation": "Área total del edificio (3426 m2) dividida por 10 para estimar volumen",
+        "total": 9524280.0,
+        "cad_layer": "A-FLOR-OVHD",
+        "calculation": "3426 m² (Área total) * 2780.00 RD$/m²",
         "match_type": "estimado"
       }
     ],
-    "subtotal": 11622483.14
+    "subtotal": 73484706.07
   },
   {
     "category": "05_PUERTAS_VENTANAS",
@@ -171,7 +215,7 @@
         "unit_price": 0,
         "total": 0,
         "cad_layer": "A-DOOR",
-        "calculation": "Cantidad de puertas metálicas según CAD",
+        "calculation": "Cantidad tomada directamente del CAD",
         "match_type": "exacto"
       },
       {
@@ -182,7 +226,7 @@
         "unit_price": 0,
         "total": 0,
         "cad_layer": "A-DOOR-FRAM",
-        "calculation": "Longitud de marcos de puertas según CAD",
+        "calculation": "Longitud tomada directamente del CAD",
         "match_type": "exacto"
       },
       {
@@ -193,7 +237,7 @@
         "unit_price": 0,
         "total": 0,
         "cad_layer": "A-GLAZ",
-        "calculation": "Longitud de ventanas según CAD",
+        "calculation": "Longitud tomada directamente del CAD",
         "match_type": "exacto"
       },
       {
@@ -204,7 +248,7 @@
         "unit_price": 0,
         "total": 0,
         "cad_layer": "A-GLAZ-CURT",
-        "calculation": "Longitud de muros cortina según CAD",
+        "calculation": "Longitud tomada directamente del CAD",
         "match_type": "exacto"
       },
       {
@@ -215,18 +259,18 @@
         "unit_price": 0,
         "total": 0,
         "cad_layer": "A-DOOR-GLAZ",
-        "calculation": "Longitud de puertas de vidrio según CAD",
+        "calculation": "Longitud tomada directamente del CAD",
         "match_type": "exacto"
       },
       {
-        "presto_code": "A-GLAZ-CWMG",
-        "description": "Ventanas de aluminio y vidrio (curvas)",
-        "unit": "m",
-        "quantity": 9.2,
+        "presto_code": "A-WALL-PATT",
+        "description": "Paneles de PVC",
+        "unit": "m2",
+        "quantity": 18.0,
         "unit_price": 0,
         "total": 0,
-        "cad_layer": "A-GLAZ-CWMG",
-        "calculation": "Longitud de ventanas curvas según CAD",
+        "cad_layer": "A-WALL-PATT",
+        "calculation": "Área tomada directamente del CAD",
         "match_type": "exacto"
       }
     ],
@@ -241,7 +285,7 @@
         "unit": "ud",
         "quantity": 5102,
         "unit_price": 3159.67,
-        "total": 16129592.34,
+        "total": 16130877.34,
         "cad_layer": "E-ELEC-FIXT",
         "calculation": "Cantidad de entradas en CAD",
         "match_type": "exacto"
@@ -263,7 +307,7 @@
         "unit": "ud",
         "quantity": 5102,
         "unit_price": 5288.44,
-        "total": 26985164.88,
+        "total": 26987492.88,
         "cad_layer": "E-ELEC-FIXT",
         "calculation": "Cantidad de entradas en CAD",
         "match_type": "exacto"
@@ -274,7 +318,7 @@
         "unit": "ud",
         "quantity": 5102,
         "unit_price": 3859.53,
-        "total": 19696499.06,
+        "total": 19696447.06,
         "cad_layer": "E-ELEC-FIXT",
         "calculation": "Cantidad de entradas en CAD",
         "match_type": "exacto"
@@ -285,7 +329,7 @@
         "unit": "ud",
         "quantity": 5102,
         "unit_price": 2898.07,
-        "total": 14787084.14,
+        "total": 14784194.14,
         "cad_layer": "E-ELEC-FIXT",
         "calculation": "Cantidad de entradas en CAD",
         "match_type": "exacto"
@@ -302,6 +346,17 @@
         "match_type": "estimado"
       },
       {
+        "presto_code": "A.0103",
+        "description": "Panel Eléctrico 12 Espacios",
+        "unit": "ud",
+        "quantity": 14,
+        "unit_price": 14962.81,
+        "total": 209479.34,
+        "cad_layer": "",
+        "calculation": "1 panel por nivel",
+        "match_type": "estimado"
+      },
+      {
         "presto_code": "A.0302",
         "description": "Luminaria 120V, 60Hz",
         "unit": "ud",
@@ -313,7 +368,7 @@
         "match_type": "exacto"
       }
     ],
-    "subtotal": 95687723.32
+    "subtotal": 95897873.66
   },
   {
     "category": "07_SANITARIAS_PLOMERIA",
@@ -358,8 +413,8 @@
         "quantity": 100,
         "unit_price": 1497.85,
         "total": 149785.0,
-        "cad_layer": "S-STRS",
-        "calculation": "Estimación de 100m para conexiones soterradas",
+        "cad_layer": "P-SANR-FIXT",
+        "calculation": "Estimación de 100m de tubería soterrada",
         "match_type": "estimado"
       },
       {
@@ -396,7 +451,7 @@
         "unit": "m2",
         "quantity": 3426,
         "unit_price": 1053.7,
-        "total": 3608012.2,
+        "total": 3607936.2,
         "cad_layer": "A-FLOR-LEVL",
         "calculation": "Área total del edificio (3426 m2) aplicada a fino de techo",
         "match_type": "estimado"
@@ -407,13 +462,13 @@
         "unit": "m2",
         "quantity": 3426,
         "unit_price": 2780.0,
-        "total": 9518280.0,
+        "total": 9524280.0,
         "cad_layer": "A-FLOR-LEVL",
         "calculation": "Área total del edificio (3426 m2) aplicada a plafones",
         "match_type": "estimado"
       }
     ],
-    "subtotal": 17253722.2
+    "subtotal": 17259646.2
   },
   {
     "category": "09_GASTOS_INDIRECTOS",
@@ -422,34 +477,34 @@
         "presto_code": "P0100003",
         "description": "Supervisión de obra",
         "unit": "mes",
-        "quantity": 18,
+        "quantity": 18.0,
         "unit_price": 396.8,
         "total": 7142.4,
         "cad_layer": "",
-        "calculation": "18 meses de supervisión",
-        "match_type": "exacto"
+        "calculation": "Cantidad estimada basada en 14 niveles + PH + semi-sótano",
+        "match_type": "estimado"
       },
       {
         "presto_code": "P0100100",
         "description": "Topografía",
         "unit": "mes",
-        "quantity": 10,
+        "quantity": 10.0,
         "unit_price": 1677.2,
         "total": 16772.0,
         "cad_layer": "",
-        "calculation": "10 meses de topografía",
-        "match_type": "exacto"
+        "calculation": "Cantidad estimada basada en 14 niveles + PH + semi-sótano",
+        "match_type": "estimado"
       },
       {
         "presto_code": "P0112350",
-        "description": "Seguridad en obra",
+        "description": "Seguridad de obra",
         "unit": "mes",
-        "quantity": 54,
+        "quantity": 54.0,
         "unit_price": 127.0,
         "total": 6858.0,
         "cad_layer": "",
-        "calculation": "54 meses de seguridad",
-        "match_type": "exacto"
+        "calculation": "Cantidad estimada basada en 14 niveles + PH + semi-sótano",
+        "match_type": "estimado"
       },
       {
         "presto_code": "P0112200",
@@ -457,45 +512,45 @@
         "unit": "m2",
         "quantity": 872.7,
         "unit_price": 2.9,
-        "total": 2530.83,
+        "total": 2531.83,
         "cad_layer": "",
-        "calculation": "872.7 m2 de limpieza",
-        "match_type": "exacto"
+        "calculation": "Cantidad estimada basada en área total de 3426 m2",
+        "match_type": "estimado"
       },
       {
         "presto_code": "P01121002",
         "description": "Andamios",
         "unit": "mes",
-        "quantity": 24,
+        "quantity": 24.0,
         "unit_price": 1512.7,
         "total": 36304.8,
         "cad_layer": "",
-        "calculation": "24 meses de uso de andamios",
-        "match_type": "exacto"
+        "calculation": "Cantidad estimada basada en 14 niveles + PH + semi-sótano",
+        "match_type": "estimado"
       },
       {
-        "presto_code": "%DESP20",
+        "presto_code": "P0100015",
         "description": "Desperdicios y retoques",
-        "unit": "%",
-        "quantity": 1,
-        "unit_price": 18.0,
-        "total": 617.4,
+        "unit": "P.A.",
+        "quantity": 1.0,
+        "unit_price": 49602.1,
+        "total": 49602.1,
         "cad_layer": "",
-        "calculation": "18% de desperdicios sobre subtotal",
-        "match_type": "estimado"
+        "calculation": "Costo fijo para desperdicios y retoques",
+        "match_type": "exacto"
       },
       {
         "presto_code": "EQUPSO1",
         "description": "Equipos varios",
         "unit": "P.A.",
-        "quantity": 1,
+        "quantity": 1.0,
         "unit_price": 5507.9,
         "total": 5507.9,
         "cad_layer": "",
-        "calculation": "Equipos varios para la obra",
+        "calculation": "Costo fijo para equipos varios",
         "match_type": "exacto"
       }
     ],
-    "subtotal": 75733.33
+    "subtotal": 124719.03
   }
 ]
