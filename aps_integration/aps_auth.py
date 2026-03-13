@@ -21,7 +21,7 @@ def get_aps_token():
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET,
         'grant_type': 'client_credentials',
-        'scope': 'data:read data:write data:create bucket:create bucket:read code:all'
+        'scope': 'data:read data:write data:create bucket:create bucket:read code:all viewables:read'
     }
 
     headers = {

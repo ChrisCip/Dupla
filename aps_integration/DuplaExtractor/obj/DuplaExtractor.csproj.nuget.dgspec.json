@@ -44,10 +44,12 @@
           "targetAlias": "net48",
           "dependencies": {
             "AutoCAD.NET": {
+              "include": "Compile, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "target": "Package",
               "version": "[24.3.*, )"
             },
             "AutoCAD.NET.Core": {
+              "include": "Compile, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "target": "Package",
               "version": "[24.3.*, )"
             },

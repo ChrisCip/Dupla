@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DuplaExtractor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+18e9c6523fba69b058c0a9c88f9459d42e88fa6a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5c5a2043a688a77b67f5243981aaeaeaf15d7e98")]
 [assembly: System.Reflection.AssemblyProductAttribute("DuplaExtractor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DuplaExtractor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

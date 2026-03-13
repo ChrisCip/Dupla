@@ -108,8 +108,8 @@ CSPROJ_CODE = """<Project Sdk="Microsoft.NET.Sdk">
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AutoCAD.NET.Core" Version="24.3.*" />
-    <PackageReference Include="AutoCAD.NET" Version="24.3.*" />
+    <PackageReference Include="AutoCAD.NET.Core" Version="24.3.*" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET" Version="24.3.*" ExcludeAssets="runtime" />
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
   </ItemGroup>
 </Project>
@@ -118,7 +118,7 @@ CSPROJ_CODE = """<Project Sdk="Microsoft.NET.Sdk">
 PACKAGE_XML = """<?xml version="1.0" encoding="utf-8"?>
 <ApplicationPackage SchemaVersion="1.0" AppVersion="1.0" Author="Dupla" Name="DuplaExtractor" Description="Extrae datos de bloques y polilineas a JSON">
   <Components>
-    <RuntimeRequirements OS="Win64" Platform="AutoCAD" SeriesMin="24.0" SeriesMax="24.3" />
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD" SeriesMin="R24.0" SeriesMax="R24.3" />
     <ComponentEntry AppName="DuplaExtractor" Version="1.0" ModuleName="./Contents/DuplaExtractor.dll" AppDescription="Extractor de cantidades" LoadOnAutoCADStartup="true" />
   </Components>
 </ApplicationPackage>
@@ -147,9 +147,14 @@ def create_bundle():
     with open(os.path.join(BUNDLE_DIR, "PackageContents.xml"), "w", encoding="utf-8") as f:
         f.write(PACKAGE_XML)
         
-    # Copiar el DLL compilado
-    dll_path = os.path.join(PROJECT_DIR, "bin", "Release", "net48", "DuplaExtractor.dll")
-    shutil.copy(dll_path, os.path.join(BUNDLE_DIR, "Contents"))
+    # Copiar el DLL compilado y sus dependencias (ej. System.Text.Json)
+    release_dir = os.path.join(PROJECT_DIR, "bin", "Release", "net48")
+    for file_name in os.listdir(release_dir):
+        if file_name.endswith(".dll"):
+            lower_name = file_name.lower()
+            # Ignorar dlls de autocad en el paquete final (por si acaso el ExcludeAssets no los limpia del todo)
+            if not lower_name.startswith("ac") and not lower_name.startswith("ad") and not lower_name.startswith("autocad"):
+                shutil.copy(os.path.join(release_dir, file_name), os.path.join(BUNDLE_DIR, "Contents"))
     
     print("4. Comprimiendo en formato ZIP para la nube...")
     with zipfile.ZipFile(OUTPUT_ZIP, 'w', zipfile.ZIP_DEFLATED) as zipf:

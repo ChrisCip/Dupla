@@ -40,34 +40,7 @@
           }
         },
         "runtime": {
-          "lib/net47/AcCui.dll": {
-            "related": ".xml"
-          },
-          "lib/net47/AcDx.dll": {
-            "related": ".xml"
-          },
-          "lib/net47/AcMgd.dll": {
-            "related": ".xml"
-          },
-          "lib/net47/AcMr.dll": {
-            "related": ".xml"
-          },
-          "lib/net47/AcSeamless.dll": {
-            "related": ".xml"
-          },
-          "lib/net47/AcTcMgd.dll": {
-            "related": ".xml"
-          },
-          "lib/net47/AcWindows.dll": {
-            "related": ".xml"
-          },
-          "lib/net47/AdUIMgd.dll": {
-            "related": ".xml"
-          },
-          "lib/net47/AdUiPalettes.dll": {
-            "related": ".xml"
-          },
-          "lib/net47/AdWindows.dll": {
+          "lib/net47/_._": {
             "related": ".xml"
           }
         }
@@ -83,7 +56,7 @@
           }
         },
         "runtime": {
-          "lib/net47/AcCoreMgd.dll": {
+          "lib/net47/_._": {
             "related": ".xml"
           }
         }
@@ -97,10 +70,9 @@
           "lib/net47/acdbmgdbrep.dll": {}
         },
         "runtime": {
-          "lib/net47/AcDbMgd.dll": {
+          "lib/net47/_._": {
             "related": ".xml"
-          },
-          "lib/net47/acdbmgdbrep.dll": {}
+          }
         }
       },
       "Microsoft.Bcl.AsyncInterfaces/8.0.0": {
@@ -1140,10 +1112,12 @@
         "targetAlias": "net48",
         "dependencies": {
           "AutoCAD.NET": {
+            "include": "Compile, Build, Native, ContentFiles, Analyzers, BuildTransitive",
             "target": "Package",
             "version": "[24.3.*, )"
           },
           "AutoCAD.NET.Core": {
+            "include": "Compile, Build, Native, ContentFiles, Analyzers, BuildTransitive",
             "target": "Package",
             "version": "[24.3.*, )"
           },
