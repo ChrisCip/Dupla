@@ -34,10 +34,11 @@ def urn_from_object_id(bucket_key: str, object_name: str) -> str:
     return urn_b64
 
 
-def translate_to_svf2(token: str, urn: str) -> dict:
+def translate_to_svf2(token: str, urn: str, max_retries: int = 3) -> dict:
     """
     Envía un job de traducción para convertir el DWG a formato SVF2.
     SVF2 permite que Autodesk indexe todas las propiedades del archivo.
+    Incluye reintentos automáticos para errores 5xx (Gateway Timeout, etc.).
     """
     print(f"\n[MODEL DERIVATIVE] Enviando job de traducción...")
     url = f"{MD_URL}/job"
@@ -56,17 +57,28 @@ def translate_to_svf2(token: str, urn: str) -> dict:
         },
     }
 
-    response = requests.post(url, json=payload, headers=_get_headers(token))
+    for attempt in range(1, max_retries + 1):
+        response = requests.post(url, json=payload, headers=_get_headers(token))
 
-    if response.status_code == 200:
-        print("[OK] Job de traducción aceptado (ya estaba traducido).")
-    elif response.status_code == 201:
-        print("[OK] Job de traducción iniciado.")
-    else:
-        print(f"[ERROR] {response.status_code}: {response.text}")
-        response.raise_for_status()
+        if response.status_code == 200:
+            print("[OK] Job de traducción aceptado (ya estaba traducido).")
+            return response.json()
+        elif response.status_code == 201:
+            print("[OK] Job de traducción iniciado.")
+            return response.json()
+        elif response.status_code >= 500:
+            wait_secs = 10 * attempt
+            print(f"[WARN] Error {response.status_code} del servidor (intento {attempt}/{max_retries}). "
+                  f"Reintentando en {wait_secs}s...")
+            time.sleep(wait_secs)
+        else:
+            print(f"[ERROR] {response.status_code}: {response.text}")
+            response.raise_for_status()
 
-    return response.json()
+    # Si agotó todos los reintentos
+    print(f"[ERROR] Falló después de {max_retries} intentos: {response.status_code}: {response.text}")
+    response.raise_for_status()
+    raise RuntimeError(f"Traducción falló después de {max_retries} intentos")
 
 
 def wait_for_translation(token: str, urn: str, timeout: int = 300) -> str:
