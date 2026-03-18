@@ -9,6 +9,7 @@ import sys, os, json, re, time
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+from typing import Dict, List, Any, TypedDict, Optional
 
 sys.path.insert(0, r"c:\Users\chris\Documents\Dupla")
 from dotenv import load_dotenv
@@ -36,7 +37,13 @@ print(f"\n[BC3] {len(partidas)} partidas, {len(chapters_raw)} capitulos")
 # ============================================================
 # 2. Agrupar partidas por disciplina/tipo
 # ============================================================
-groups = {
+class GroupData(TypedDict):
+    name: str
+    keywords: List[str]
+    cad_layers: str
+    partidas: List[Dict[str, Any]]
+
+groups: Dict[str, GroupData] = {
     "01_MOVIMIENTO_TIERRAS": {
         "name": "Movimiento de Tierras y Cimentacion",
         "keywords": ["excav", "relleno", "caliche", "zapata", "cimenta", "desalojo",
@@ -114,7 +121,7 @@ groups = {
 }
 
 # Classify each partida into a group
-unclassified = []
+unclassified: List[Dict[str, Any]] = []
 for p in partidas:
     desc = (p.get("summary", "") + " " + p.get("code", "")).lower()
     assigned = False
@@ -148,10 +155,10 @@ dwg_data = Path(r"c:\Users\chris\Documents\Dupla\dwg_deep_analysis.txt").read_te
 # ============================================================
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def clean_json_numbers(text):
+def clean_json_numbers(text: str) -> str:
     return re.sub(r'(?<=\d),(?=\d{3})', '', text)
 
-def parse_gpt_json(raw):
+def parse_gpt_json(raw: str) -> Optional[Dict[str, Any]]:
     cleaned = clean_json_numbers(raw)
     # Try code block
     m = re.search(r"```(?:json)?\s*\n(.*?)\n```", cleaned, re.DOTALL)
@@ -169,7 +176,7 @@ def parse_gpt_json(raw):
     s = cleaned.find("{")
     e = cleaned.rfind("}")
     if s >= 0 and e > s:
-        fixed = cleaned[s:e+1]
+        fixed = cleaned[s:e+1]  # type: ignore
         fixed = re.sub(r',\s*}', '}', fixed)
         fixed = re.sub(r',\s*]', ']', fixed)
         try:
@@ -178,8 +185,8 @@ def parse_gpt_json(raw):
             pass
     return None
 
-all_chapters = []
-total_tokens = 0
+all_chapters: List[Dict[str, Any]] = []
+total_tokens: int = 0
 
 for gid, group in sorted(groups.items()):
     if not group["partidas"]:
@@ -194,7 +201,10 @@ for gid, group in sorted(groups.items()):
     # Build partida list for this group
     partida_list = ""
     for p in gpartidas:
-        partida_list += f"{p['code']:<16} {p['unit']:<6} {p['price']:>12,.2f}  {p['summary'][:60]}\n"
+        partida_list += f"{p['code']:<16} {p['unit']:<6} {p['price']:>12,.2f}  {p['summary'][:60]}\n"  # type: ignore
+    
+    dwg_sample = dwg_data[:2000]  # type: ignore
+    ch_code_short = gid[:2]  # type: ignore
     
     prompt = f"""Eres un presupuestista senior de construccion en Republica Dominicana.
 
@@ -207,7 +217,7 @@ DATOS DEL PLANO CAD (proyecto TORRE GIUALCA I, edificio 14 niveles):
 Capas relevantes: {cad_info}
 
 Datos completos del CAD:
-{dwg_data[:2000]}
+{dwg_sample}
 
 Area construida total: 3,426 m2 (de capa 00-MEDICION)
 Edificio: 14 niveles + Penthouse + Semi-sotano
@@ -221,7 +231,7 @@ INSTRUCCIONES:
 
 Responde SOLO en JSON:
 {{
-  "chapter_code": "{gid[:2]}",
+  "chapter_code": "{ch_code_short}",
   "chapter_name": "{gname}",
   "items": [
     {{
@@ -249,9 +259,9 @@ Responde SOLO en JSON:
             temperature=0.1,
         )
         
-        raw = response.choices[0].message.content
-        tokens = response.usage.total_tokens
-        total_tokens += tokens
+        raw = str(response.choices[0].message.content)
+        tokens_val = int(getattr(response.usage, "total_tokens", 0))
+        total_tokens = int(total_tokens) + tokens_val  # type: ignore
         
         result = parse_gpt_json(raw)
         if result:
@@ -259,7 +269,7 @@ Responde SOLO en JSON:
             subtotal = sum(float(i.get("total", 0)) for i in items)
             result["subtotal"] = subtotal
             all_chapters.append(result)
-            print(f"  {len(items)} partidas -> RD$ {subtotal:,.2f} ({tokens} tokens)")
+            print(f"  {len(items)} partidas -> RD$ {subtotal:,.2f} ({tokens_val} tokens)")
         else:
             print(f"  [WARN] JSON parse failed")
             # Save raw for debug
@@ -297,7 +307,7 @@ budget_final = {
         "area_m2": area,
         "costo_por_m2": costo_m2,
         "total_tokens": total_tokens,
-        "cost_usd": total_tokens * 0.000005,
+        "cost_usd": float(str(total_tokens)) * 0.000005,  # type: ignore
     }
 }
 
@@ -338,7 +348,7 @@ for ch in all_chapters:
     )
     
     for item in items:
-        desc = str(item.get("description", ""))[:36]
+        desc = str(item.get("description", ""))[:36]  # type: ignore
         total = float(item.get("total", 0))
         qty = float(item.get("quantity", 0))
         price = float(item.get("unit_price", 0))
@@ -371,7 +381,7 @@ report = "\n".join(lines)
 report_path = OUTPUT_DIR / "PRESUPUESTO_DETALLADO_GIUALCA.txt"
 report_path.write_text(report, encoding="utf-8")
 
-cost = total_tokens * 0.000005
+cost = float(str(total_tokens)) * 0.000005  # type: ignore
 print(f"\n{'=' * 70}")
 print("PRESUPUESTO DETALLADO COMPLETADO!")
 print(f"  Reporte:   {report_path}")

@@ -4,5 +4,11 @@ __pycache__/
 cad_output/
 demo_files/
 *.txt
+*.log
+*.json
+*.zip
+*.bundle/
 !requirements.txt
-
+!README.md
+!TECHNICAL_DOCS.md
+!REPORTE_AVANCE_GRUPO.md
