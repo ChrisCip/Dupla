@@ -23,7 +23,9 @@ Usuario semilla (tras `seed` en el contenedor backend):
 
 ## Variables de entorno (opcional)
 
-El backend usa `pydantic-settings` con valores por defecto para demo (ver `backend/app/config.py`). En producción:
+El backend usa `pydantic-settings` con valores por defecto para demo (ver `backend/app/config.py`). Por defecto **Postgres y Redis apuntan a `127.0.0.1`** para poder ejecutar `alembic`, `seed` o `uvicorn` en tu máquina mientras los contenedores publican los puertos 5432 y 6379. En **Docker Compose**, el servicio `backend` define `DATABASE_URL` / `REDIS_URL` con los hostnames `postgres` y `redis`.
+
+En producción:
 
 - `JWT_SECRET`
 - `DATABASE_URL`
@@ -39,6 +41,20 @@ pnpm dev
 ```
 
 Proxy Vite: `/api` → `http://127.0.0.1:8000` (levanta el backend aparte).
+
+## Backend local (sin Docker)
+
+Con Postgres en `127.0.0.1:5432` (por ejemplo `docker compose up -d postgres redis`):
+
+```bash
+cd backend
+source venv/bin/activate   # o tu entorno
+alembic upgrade head       # crea tablas; obligatorio antes del seed
+python -m app.seed         # usuario demo master@dupla.demo / master123
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Si ejecutas `seed` sin migraciones, verás un error indicando que falta `alembic upgrade head`.
 
 ## Plantillas GA-FO (Excel 1:1)
 

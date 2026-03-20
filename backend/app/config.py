@@ -15,13 +15,19 @@ class Settings(BaseSettings):
     database_url: Annotated[
         str,
         Field(
-            default="postgresql+asyncpg://dupla:dupla@postgres:5432/dupla",
-            description="Async SQLAlchemy URL",
+            default="postgresql+asyncpg://dupla:dupla@127.0.0.1:5432/dupla",
+            description=(
+                "Async SQLAlchemy URL. Default targets localhost (run Postgres with exposed 5432). "
+                "Docker Compose sets DATABASE_URL to host `postgres`."
+            ),
         ),
     ]
     redis_url: Annotated[
         str,
-        Field(default="redis://redis:6379/0", description="Redis URL for cache"),
+        Field(
+            default="redis://127.0.0.1:6379/0",
+            description="Redis URL. Docker Compose sets REDIS_URL to host `redis`.",
+        ),
     ]
     jwt_secret: Annotated[str, Field(default="demo-secret-change-in-production-min-32-chars!!")]
     jwt_algorithm: Annotated[str, Field(default="HS256")]
