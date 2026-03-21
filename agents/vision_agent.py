@@ -1,21 +1,15 @@
 """
-Analizador Visual con GPT-4o.
+Vision Agent especializado para la Torre Giualca I.
 
-Envia PDFs/imagenes renderizados del DWG a GPT-4o Vision para:
-- Identificar elementos constructivos
-- Clasificar por tipo (muro, puerta, ventana, columna, etc.)
-- Estimar dimensiones y materiales visualmente
-- Detectar anomalias (elementos mal clasificados por capa)
-- Generar descripciones para presupuesto
+Combina análisis visual con GPT-4o y validación cruzada computada en Python
+usando los datos extraídos del modelo CAD (resumen_procesado.json).
 """
 
 import os
-import base64
 import json
+import base64
 from pathlib import Path
-from typing import Optional
 from datetime import datetime
-
 from dotenv import load_dotenv
 
 # Cargar API key desde .env
@@ -26,7 +20,6 @@ try:
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
-
 
 def get_client() -> "OpenAI":
     """Crea cliente OpenAI con la key del .env."""
@@ -41,208 +34,283 @@ def get_client() -> "OpenAI":
         )
     return OpenAI(api_key=api_key)
 
-
 def encode_image(image_path: Path) -> str:
     """Codifica una imagen a base64 para enviar a GPT-4o."""
     with open(image_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
-
-# ============================================================================
-# PROMPTS ESPECIALIZADOS POR DISCIPLINA
-# ============================================================================
-
-SYSTEM_PROMPT = """Eres un ingeniero experto en analisis de planos CAD para presupuestos de construccion.
-Tu trabajo es analizar imagenes de planos arquitectonicos, estructurales, electricos, etc.
-y generar un inventario detallado de elementos constructivos con sus propiedades medibles.
-
-IMPORTANTE:
-- Responde SIEMPRE en formato JSON estructurado
-- Estima dimensiones en metros basandote en las cotas visibles o la escala del plano
-- Si no puedes medir algo exactamente, indica que es una estimacion
-- Clasifica cada elemento con su partida presupuestaria correspondiente
-- Incluye unidad de medida (m, m2, m3, ud, ml, kg) para cada partida"""
-
-ANALYSIS_PROMPT = """Analiza este plano CAD en detalle. Es un plano de la disciplina: {discipline}
-
-Datos extraidos automaticamente del archivo CAD (COM):
-{com_data}
-
-Con base en lo que VES en la imagen y los datos del CAD, genera un JSON con esta estructura:
-
-{{
-  "layout_name": "nombre del layout/plano",
-  "discipline": "{discipline}",
-  "scale": "escala detectada o estimada",
-  "elements": [
-    {{
-      "id": "numero secuencial",
-      "type": "tipo de elemento (muro, puerta, ventana, columna, viga, etc.)",
-      "layer": "capa CAD probable",
-      "description": "descripcion detallada para presupuesto",
-      "quantity": 1,
-      "unit": "ud/m/m2/m3/ml/kg",
-      "dimensions": {{
-        "length_m": 0.0,
-        "width_m": 0.0,
-        "height_m": 0.0,
-        "area_m2": 0.0,
-        "volume_m3": 0.0
-      }},
-      "material": "material estimado",
-      "budget_category": "partida presupuestaria",
-      "confidence": "alta/media/baja",
-      "notes": "observaciones"
-    }}
-  ],
-  "anomalies": [
-    {{
-      "description": "descripcion de la anomalia",
-      "location": "ubicacion en el plano",
-      "severity": "alta/media/baja"
-    }}
-  ],
-  "summary": {{
-    "total_elements": 0,
-    "wall_length_m": 0.0,
-    "floor_area_m2": 0.0,
-    "doors_count": 0,
-    "windows_count": 0,
-    "columns_count": 0,
-    "observations": "observaciones generales"
-  }}
-}}"""
-
-BUDGET_PROMPT = """Analiza este plano CAD y genera las PARTIDAS PRESUPUESTARIAS.
-
-Datos del archivo CAD:
-{com_data}
-
-Para cada elemento visible en el plano, genera una partida con:
-- Codigo de partida (ej: 05.01, 05.02)
-- Descripcion de la partida
-- Unidad de medida (m, m2, m3, ud, ml, kg, gl)
-- Cantidad estimada
-- Observaciones
-
-Responde en JSON:
-{{
-  "budget_items": [
-    {{
-      "code": "01.01",
-      "chapter": "nombre del capitulo",
-      "description": "descripcion de la partida",
-      "unit": "m2",
-      "quantity": 0.0,
-      "source": "com|visual|estimated",
-      "layer": "capa CAD",
-      "notes": ""
-    }}
-  ],
-  "chapters": [
-    {{
-      "code": "01",
-      "name": "MOVIMIENTO DE TIERRAS",
-      "item_count": 0
-    }}
-  ]
-}}"""
+def _extract_json(text: str) -> dict:
+    """Extrae JSON de la respuesta del LLM."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    
+    import re
+    match = re.search(r"```(?:json)?\s*\n(.*?)\n```", text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+    
+    brace_start = text.find("{")
+    if brace_start >= 0:
+        depth = 0
+        for i in range(brace_start, len(text)):
+            if text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(text[brace_start : i + 1])
+                    except json.JSONDecodeError:
+                        break
+                        
+    return {"raw_text": text, "parse_error": True}
 
 
 # ============================================================================
-# FUNCIONES DE ANALISIS
+# PROMPTS ESPECIALIZADOS
 # ============================================================================
 
-def analyze_pdf(
-    pdf_path: Path,
-    discipline: str = "General",
-    com_data: str = "",
-    prompt_type: str = "analysis",
-) -> dict:
-    """
-    Envia un PDF a GPT-4o Vision para analisis.
+SYSTEM_PROMPT = """Eres un ingeniero experto en presupuestos de construcción (estándar Presto), especializado en análisis visual cuantitativo de planos arquitectónicos.
+Tu tarea es contar ELEMENTOS VISUALMENTE y generar partidas usando EXACTAMENTE los nombres de disciplina permitidos.
+
+REGLAS DE ORO:
+1. RESPONDE ÚNICAMENTE CON UN JSON VÁLIDO. No añadas texto introductorio ni markdown fuera del bloque JSON.
+2. DISCIPLINAS PERMITIDAS: DEBES agrupar todas tus partidas usando EXACTAMENTE estas keys (ignora las que no apliquen):
+   - Hormigón Armado
+   - Muros y Divisiones
+   - Terminación de Superficies
+   - Terminación de Pisos
+   - Revestimientos
+   - Terminación de Escaleras
+   - Puertas
+   - Ventanas
+   - Pintura
+   - Cocina
+   - Misceláneos
+   - Aparatos Sanitarios
+   - Instalación Eléctrica
+   - Sistema de Agua Potable
+   - Sistema de Drenaje de Aguas Negras
+   - Sistema Contra Incendios
+3. Sigue EXACTAMENTE este schema JSON:
+{
+  "level": "Nombre del nivel analizado",
+  "floor_height_m": 0.0,
+  "apartments_count": 0,
+  "confidence_score": 0.0,
+  "disciplines": {
+    "Nombre EXACTO de Disciplina": {
+      "items": [
+        {
+          "description": "Descripción muy específica (ej. Puerta Madera Roble Principal)",
+          "unit": "m2/p2/ud/m",
+          "quantity_per_floor": 0.0,
+          "calculation": "Explicación de cómo contaste o infiriste el valor",
+          "confidence": "alta/media/baja",
+          "source": "visual_count"
+        }
+      ]
+    }
+  }
+}"""
+
+PROMPT_PLANTAS = """Analiza la IMAGEN de este plano de PLANTA.
+Nivel indicado: {level_name}
+
+=== INSTRUCCIONES ESTRICTAS DE CONTEO Y DESCRIPCIÓN VISUAL ===
+
+1. PUERTAS Y VENTANAS (Tipología y Medición):
+   - Ventanas corredizas (líneas dobles en muros exteriores): clasificar como "Ventanas corredera aluminio". Calcula el Área en *p2* (estima dimensiones visuales).
+   - Puertas principales (entrada a aptos, suelen ser más anchas): clasificar como "Puerta Madera Roble Principal". Unidad: *ud*.
+   - Puertas interiores (habitaciones, baños): clasificar como "Puerta Madera Andiroba Interior". Unidad: *ud*.
+   - Puertas de closet (plegables/corredizas): clasificar como "Puerta Madera Closet en Andiroba". Unidad: *p2*.
+   - Puertas de aluminio (salida a balcones/servicio): "Puerta Comercial aluminio batiente". Unidad: *ud*.
+   - Puerta general (escalera/ascensor): "Puerta Polimetálica blanca". Unidad: *ud*.
+
+2. MUROS, PISOS Y SUPERFICIES (Unidad *m2*):
+   - Muros gruesos (bloque 15cm) vs Muros divisorios delgados (bloque 10cm). Fórmula: `Largo x {altura_entrepiso} - Vanos`.
+   - Terminación de Superficies (Pañete/Fraguache): estima área multiplicando el área total de muros x 2 (ambas caras).
+   - Pintura: similar al pañete.
+   - Pisos (Porcelanato/Cerámica): estima los *m2* visualmente basadas en el área de planta.
+
+3. SISTEMAS OCULTOS E INFERENCIA:
+   - APARATOS SANITARIOS (*ud*): Cuenta inodoros, lavamanos y duchas en cada baño. Fregaderos en cada cocina.
+   - TUBERÍAS (*m*): Estima metros lineales de "Agua Potable" y "Drenaje" basándote en la distancia visual de los baños/cocinas al ducto o núcleo.
+   - INSTALACIÓN ELÉCTRICA (*ud*): Infiera basado en habitaciones. Ej: si ves habitaciones, baños y sala, calcula ~6 tomacorrientes/luces por espacio principal.
+   
+=== REFERENCIA DE CALIBRACIÓN ===
+Un piso tipo documentado de esta torre tiene aproximadamente:
+- 5 apartamentos funcionales
+- ~29 puertas individuales en total (no p2 de closet)
+- ~7 baños (7 inodoros, 7 duchas, 7 lavamanos)
+- ~669 m2 de muro de bloque 15cm y ~32 m2 bloque 10cm
+- ~578 p2 de ventanas
+- ~90 tomacorrientes y ~53 salidas de luz
+Usa esto como ancla si tu conteo visual se desvía exageradamente.
+
+=== DATOS DE APOYO DEL CAD (DIMENSIONES Y ÁREAS) ===
+{json_data}
+====================================================
+
+Genera las partidas con DESCRIPCIONES DETALLADAS, UNIDADES CORRECTAS y en las DISCIPLINAS EXACTAS dictadas."""
+
+PROMPT_ELEVACIONES = """Analiza este plano de ELEVACION/FACHADA.
+Nivel indicado: {level_name}
+
+=== INSTRUCCIONES ===
+1. Confirma alturas de entrepiso leyendo visualmente las cotas NPT.
+2. Cuenta las ventanas por fachada visibles (estima p2).
+3. Identifica materiales exteriores y acabados (pañete, pintura, etc en m2). 
+Usa las Disciplinas exactas ("Terminación de Superficies", "Ventanas", "Pintura").
+
+=== DATOS DE APOYO ===
+{json_data}
+======================"""
+
+PROMPT_SITIO = """Analiza este plano de SITIO/EMPLAZAMIENTO.
+Nivel indicado: {level_name}
+
+=== INSTRUCCIONES ===
+1. Extrae área total del solar visualmente de las tablas o linderos.
+2. Identifica circulaciones y parqueos.
+Usa Disciplinas exactas ("Movimiento de Tierras", "Misceláneos").
+
+=== DATOS DE APOYO ===
+{json_data}
+======================"""
+
+
+# ============================================================================
+# FUNCIONES PRINCIPALES
+# ============================================================================
+
+def format_json_summary_for_prompt(json_summary: dict) -> str:
+    """Extrae SÓLO información geométrica (dimensiones, áreas) para no ensuciar el conteo del LLM."""
+    if not json_summary:
+        return "No hay datos JSON disponibles."
     
-    Args:
-        pdf_path: Ruta al PDF del layout
-        discipline: Disciplina del plano (A, S, E, P, etc.)
-        com_data: Datos extraidos del COM como texto
-        prompt_type: "analysis" o "budget"
+    lines = []
+    usable = json_summary.get('usable_data', {})
     
-    Returns:
-        dict con los resultados del analisis
-    """
-    client = get_client()
-    pdf_path = Path(pdf_path).resolve()
+    # Dimensiones (00-MEDICION)
+    dims = usable.get("dimensions", [])
+    if dims:
+        lines.append(f"Cotas reales extraídas del modelo (Layer 00-MEDICION) para usar como regla de escala:")
+        for i, d in enumerate(dims[:15]): 
+            lines.append(f"  - {d.get('measurement')}")
     
-    if not pdf_path.exists():
-        raise FileNotFoundError(f"PDF no encontrado: {pdf_path}")
+    # Áreas de Columnas (S-COLS)
+    hatches = usable.get("hatches_with_area", [])
+    if hatches:
+        cols = [h for h in hatches if 'S-COLS' in h.get('layer', '')]
+        if cols:
+            lines.append(f"\nÁreas detectadas de columnas estructurales (m2):")
+            lines.append(f"  {[c.get('area') for c in cols[:10]]}")
+            
+    # TABLA NPT HARDCODEADA COMO REFERENCIA
+    lines.append("\nTabla de Alturas NPT de Referencia del Edificio:")
+    lines.append("- Semi Sótano: -1.40 (altura libre: 1.40m)")
+    lines.append("- Nivel 1: NPT 0.00 (altura: 3.05m)")
+    lines.append("- Nivel 2: NPT 3.05 (altura: 2.55m)")
+    lines.append("- Nivel 3: NPT 5.60 (altura: 4.70m)")
+    lines.append("- Nivel 4-14: (altura típica: 3.24m)")
+            
+    return "\n".join(lines)
+
+
+def run_cross_validation(result: dict, json_summary: dict) -> dict:
+    """Python compara el conteo visual de GPT-4o contra las líneas del CAD."""
+    validation = {
+        "json_cross_checks": []
+    }
     
-    print(f"[VISION] Analizando: {pdf_path.name} ({discipline})")
+    layers = json_summary.get("layer_summary", {})
     
-    # Codificar PDF a base64
-    pdf_b64 = encode_image(pdf_path)
+    # Extraer cantidades visuales dictadas por GPT-4o
+    vision_doors = 0
+    vision_windows = 0
     
-    # Seleccionar prompt
-    if prompt_type == "budget":
-        user_prompt = BUDGET_PROMPT.format(com_data=com_data)
-    else:
-        user_prompt = ANALYSIS_PROMPT.format(
-            discipline=discipline, com_data=com_data
-        )
+    disciplines_out = result.get("disciplines", {})
     
-    # Llamada a GPT-4o
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": user_prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:application/pdf;base64,{pdf_b64}",
-                            "detail": "high",
-                        },
-                    },
-                ],
-            },
-        ],
-        max_tokens=4096,
-        temperature=0.1,  # Bajo para respuestas mas consistentes
-    )
-    
-    raw_text = response.choices[0].message.content
-    print(f"[VISION] Respuesta recibida ({len(raw_text)} chars)")
-    
-    # Parsear JSON de la respuesta
-    result = _extract_json(raw_text)
-    result["_raw_response"] = raw_text
-    result["_model"] = "gpt-4o"
-    result["_pdf_file"] = str(pdf_path)
-    result["_timestamp"] = datetime.now().isoformat()
-    
+    # Búsqueda en todas las disciplinas iterando sobre items
+    for disc_name, disc_data in disciplines_out.items():
+        for item in disc_data.get("items", []):
+            desc = item.get("description", "").lower()
+            if item.get("unit") in ["ud", "un", "unidad", "unidades"]:
+                if "puerta" in desc:
+                    vision_doors += item.get("quantity_per_floor", 0)
+                elif "ventana" in desc:
+                    vision_windows += item.get("quantity_per_floor", 0)
+
+    # Validar Puertas vs Líneas A-DOOR
+    a_door_lines = layers.get("A-DOOR", {}).get("object_count", 0)
+    if vision_doors > 0 and a_door_lines > 0:
+        lines_per_door = a_door_lines / vision_doors
+        status = "ok" if 20 <= lines_per_door <= 100 else "warning"
+        msg = f"Ratio: {lines_per_door:.1f} líneas por puerta (ideal 30-70)"
+        validation["json_cross_checks"].append({
+            "check": "door_count_ratio",
+            "vision": vision_doors,
+            "json_estimate": f"{a_door_lines} líneas CAD",
+            "status": status,
+            "message": msg
+        })
+
+    # Validar Ventanas vs Líneas A-GLAZ
+    a_glaz_lines = layers.get("A-GLAZ", {}).get("object_count", 0)
+    if vision_windows > 0 and a_glaz_lines > 0:
+        lines_per_window = a_glaz_lines / vision_windows
+        status = "ok" if 15 <= lines_per_window <= 150 else "warning"
+        msg = f"Ratio: {lines_per_window:.1f} líneas por ventana"
+        validation["json_cross_checks"].append({
+            "check": "window_count_ratio",
+            "vision": vision_windows,
+            "json_estimate": f"{a_glaz_lines} líneas CAD",
+            "status": status,
+            "message": msg
+        })
+        
+    result["validation"] = validation
     return result
 
 
-def analyze_image(
-    image_path: Path,
-    discipline: str = "General",
-    com_data: str = "",
-) -> dict:
-    """Analiza una imagen PNG/JPG con GPT-4o."""
+def analyze_plan(image_path: Path, json_summary: dict, level_name: str) -> dict:
+    """Invoca la API de Visión usando el prompt adecuado y hace validación cruzada."""
     client = get_client()
     image_path = Path(image_path).resolve()
     
+    if not image_path.exists():
+        raise FileNotFoundError(f"Imagen no encontrada: {image_path}")
+
+    # Determinar qué prompt usar
+    name_lower = image_path.name.lower()
+    if "01" in name_lower or "02" in name_lower or "sitio" in name_lower:
+        base_prompt = PROMPT_SITIO
+    elif "12" in name_lower or "13" in name_lower or "14" in name_lower or "elev" in name_lower:
+        base_prompt = PROMPT_ELEVACIONES
+    else:
+        base_prompt = PROMPT_PLANTAS
+
+    formatted_json = format_json_summary_for_prompt(json_summary)
+    # inyectar a PROMPT_PLANTAS
+    user_prompt = base_prompt.format(
+        level_name=level_name, 
+        json_data=formatted_json,
+        altura_entrepiso="3.24m" # por simplificar la iteracion en el prompt actual
+    )
+
+    print(f"\n[VISION] Analizando: {image_path.name}")
+    print(f"[VISION] Construyendo payload GPT-4o...")
+
     img_b64 = encode_image(image_path)
     ext = image_path.suffix.lower().replace(".", "")
-    mime = f"image/{ext}" if ext in ("png", "jpg", "jpeg", "gif", "webp") else "image/png"
-    
-    user_prompt = ANALYSIS_PROMPT.format(
-        discipline=discipline, com_data=com_data
-    )
-    
+    mime = f"image/{ext}" if ext in ("png", "jpg", "jpeg", "webp") else "image/png"
+
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
@@ -264,137 +332,56 @@ def analyze_image(
         max_tokens=4096,
         temperature=0.1,
     )
-    
+
     raw_text = response.choices[0].message.content
+    print(f"[VISION] OK: Respuesta LLM recibida")
+    
     result = _extract_json(raw_text)
+    
+    if not result.get("parse_error"):
+        result = run_cross_validation(result, json_summary)
+        
     result["_raw_response"] = raw_text
-    result["_model"] = "gpt-4o"
-    result["_image_file"] = str(image_path)
+    result["_metadata"] = {
+        "file": image_path.name,
+        "timestamp": datetime.now().isoformat()
+    }
     
     return result
 
 
-def analyze_multiple(
-    file_paths: list[Path],
-    discipline: str = "General",
-    com_data: str = "",
-    prompt_type: str = "analysis",
-) -> list[dict]:
-    """Analiza multiples PDFs/imagenes secuencialmente."""
+def run_full_vision_analysis(pages_dir: str, json_summary: dict) -> list[dict]:
+    """Itera sobre todas las páginas en el directorio y consolida los resultados."""
+    pages_path = Path(pages_dir)
+    images = sorted([p for p in pages_path.iterdir() if p.suffix.lower() in ('.png', '.jpg')])
+    
     results = []
-    for i, path in enumerate(file_paths, 1):
-        print(f"\n[VISION] [{i}/{len(file_paths)}] {path.name}")
+    for img in images:
+        level_name = f"Nivel {img.name}" 
         try:
-            if path.suffix.lower() == ".pdf":
-                result = analyze_pdf(path, discipline, com_data, prompt_type)
-            else:
-                result = analyze_image(path, discipline, com_data)
-            results.append(result)
+            res = analyze_plan(img, json_summary, level_name)
+            results.append(res)
         except Exception as e:
-            print(f"  [ERROR] {e}")
-            results.append({"error": str(e), "file": str(path)})
+            results.append({"error": str(e), "file": img.name})
+            
     return results
 
-
-# ============================================================================
-# UTILIDADES
-# ============================================================================
-
-def _extract_json(text: str) -> dict:
-    """Extrae JSON de la respuesta del LLM (puede estar envuelto en markdown)."""
-    # Intentar parsear directamente
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
+if __name__ == "__main__":
+    # Prueba del script con los nuevos settings
+    json_path = Path("resumen_procesado.json") if Path("resumen_procesado.json").exists() else Path("../resumen_procesado.json")
     
-    # Buscar bloque JSON en markdown ```json ... ```
-    import re
-    match = re.search(r"```(?:json)?\s*\n(.*?)\n```", text, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group(1))
-        except json.JSONDecodeError:
-            pass
+    json_data = {}
+    if json_path.exists():
+        with open(json_path, 'r', encoding='utf-8') as f:
+            json_data = json.load(f)
+            
+    test_image = Path("_legacy/vision_output/pages/page_08.png") if Path("_legacy/vision_output/pages/page_08.png").exists() else Path("../_legacy/vision_output/pages/page_08.png")
     
-    # Buscar primer { ... } valido
-    brace_start = text.find("{")
-    if brace_start >= 0:
-        depth = 0
-        for i in range(brace_start, len(text)):
-            if text[i] == "{":
-                depth += 1
-            elif text[i] == "}":
-                depth -= 1
-                if depth == 0:
-                    try:
-                        return json.loads(text[brace_start : i + 1])
-                    except json.JSONDecodeError:
-                        break
-    
-    # No se pudo parsear - devolver texto raw
-    return {"raw_text": text, "parse_error": True}
-
-
-def save_vision_results(results: list[dict], output_path: Path) -> Path:
-    """Guarda resultados del analisis visual en JSON."""
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
-    
-    print(f"[VISION] Resultados guardados: {output_path}")
-    return output_path
-
-
-def generate_vision_report(results: list[dict]) -> str:
-    """Genera reporte legible de los resultados del analisis visual."""
-    lines = []
-    lines.append("=" * 80)
-    lines.append("REPORTE DE ANALISIS VISUAL (GPT-4o)")
-    lines.append(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    lines.append("=" * 80)
-    
-    for i, result in enumerate(results, 1):
-        if "error" in result:
-            lines.append(f"\n--- Layout {i}: ERROR ---")
-            lines.append(f"  {result['error']}")
-            continue
-        
-        layout = result.get("layout_name", f"Layout {i}")
-        disc = result.get("discipline", "N/A")
-        
-        lines.append(f"\n--- {layout} [{disc}] ---")
-        
-        # Elementos
-        elements = result.get("elements", [])
-        if elements:
-            lines.append(f"  Elementos identificados: {len(elements)}")
-            lines.append(f"  {'Tipo':<20} {'Cant':<6} {'Ud':<6} {'Descripcion'}")
-            lines.append(f"  {'-'*20} {'-'*6} {'-'*6} {'-'*40}")
-            for elem in elements:
-                lines.append(
-                    f"  {elem.get('type','?'):<20} "
-                    f"{elem.get('quantity',0):<6} "
-                    f"{elem.get('unit','?'):<6} "
-                    f"{elem.get('description','')[:40]}"
-                )
-        
-        # Anomalias
-        anomalies = result.get("anomalies", [])
-        if anomalies:
-            lines.append(f"\n  ANOMALIAS DETECTADAS: {len(anomalies)}")
-            for a in anomalies:
-                lines.append(f"    [{a.get('severity','?')}] {a.get('description','')}")
-        
-        # Resumen
-        summary = result.get("summary", {})
-        if summary:
-            lines.append(f"\n  Resumen:")
-            for k, v in summary.items():
-                if v:
-                    lines.append(f"    {k}: {v}")
-    
-    lines.append("\n" + "=" * 80)
-    return "\n".join(lines)
+    if test_image.exists():
+        res = analyze_plan(test_image, json_data, "NIVEL 5 APTOS N13.54 (N5-8)")
+        out_path = Path("vision_test_result.json")
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(res, f, indent=2, ensure_ascii=False)
+        print(f"\n[INFO] Ejecución completada. Revisa {out_path} para los resultados refinados.")
+    else:
+        print(f"Imagen de prueba no encontrada: {test_image}")
