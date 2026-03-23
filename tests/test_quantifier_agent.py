@@ -1,5 +1,5 @@
 from agents.quantifier_agent import quantify_inventory
-from core.schemas import LevelInventory, Opening, Wall
+from core.schemas import LevelInventory, Opening, StructuralElement, Wall
 
 
 def test_quantify_inventory_generates_wall_net_floor_and_ceiling_takeoffs() -> None:
@@ -181,3 +181,71 @@ def test_quantify_inventory_allows_count_times_size_when_homogeneity_is_explicit
     )
     assert deduction["multiplication_policy"] == "count_times_size_with_explicit_homogeneity"
     assert deduction["deducted_instance_count"] == 2
+
+
+def test_quantify_inventory_generates_structural_quantities_and_material_hints() -> None:
+    level = LevelInventory(
+        level_id="level_structural_qto",
+        level_name="Level Structural QTO",
+        structural_elements=[
+            StructuralElement(
+                id="beam_01",
+                source="hybrid",
+                element_type="beam",
+                count=1,
+                length_m=12.0,
+                section_width_m=0.25,
+                section_height_m=0.5,
+                material_hint="concrete",
+                reinforcement_hint="reinforced",
+                concrete_grade_hint="H25",
+                source_refs=["geometry:beam_01"],
+            ),
+            StructuralElement(
+                id="column_01",
+                source="hybrid",
+                element_type="column",
+                count=4,
+                length_m=12.0,
+                section_width_m=0.30,
+                section_height_m=0.30,
+                material_hint="concrete",
+                reinforcement_hint="reinforced",
+                source_refs=["geometry:column_01"],
+            ),
+            StructuralElement(
+                id="slab_01",
+                source="hybrid",
+                element_type="slab",
+                count=1,
+                area_m2=30.0,
+                section_height_m=0.15,
+                material_hint="concrete",
+                reinforcement_hint="reinforced",
+                source_refs=["hatch:slab_01"],
+            ),
+        ],
+    )
+
+    takeoffs = quantify_inventory([level])
+    takeoff_map = {takeoff.item_key: takeoff for takeoff in takeoffs}
+
+    assert takeoff_map["beam_01:beam_length"].quantity == 12.0
+    assert takeoff_map["beam_01:beam_volume"].quantity == 1.5
+    assert takeoff_map["beam_01:concrete_volume"].quantity == 1.5
+    assert takeoff_map["beam_01:formwork_area_hint"].quantity == 15.0
+    assert takeoff_map["beam_01:reinforcement_required_hint"].quantity == 1.0
+
+    assert round(takeoff_map["column_01:column_volume"].quantity, 4) == 1.08
+    assert round(takeoff_map["column_01:formwork_area_hint"].quantity, 4) == 14.4
+    assert takeoff_map["column_01:reinforcement_required_hint"].quantity == 4.0
+
+    assert takeoff_map["slab_01:slab_area"].quantity == 30.0
+    assert takeoff_map["slab_01:slab_volume"].quantity == 4.5
+    assert takeoff_map["slab_01:concrete_volume"].quantity == 4.5
+    assert takeoff_map["slab_01:formwork_area_hint"].quantity == 30.0
+    assert takeoff_map["slab_01:reinforcement_required_hint"].quantity == 1.0
+
+    assert takeoff_map["beam_01:concrete_volume"].inputs["material_hint"] == "concrete"
+    assert takeoff_map["beam_01:concrete_volume"].trace.metadata["material_hint"] == "concrete"
+    assert takeoff_map["beam_01:reinforcement_required_hint"].inputs["reinforcement_hint"] == "reinforced"

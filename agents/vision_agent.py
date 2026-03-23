@@ -87,6 +87,8 @@ Rules:
 6. This is an inventory task, not a budget task.
 7. Set top-level and entity `source` to `vision`.
 8. Use `source_refs`, `assumptions`, `inputs`, and `conflict_notes` explicitly. Use empty arrays/objects when there is nothing to report.
+9. When you infer probable materials, structural roles, or load-bearing behavior from visible patterns, mark them as hints and record uncertainty in `assumptions`, `inputs`, and `confidence`.
+10. Never express uncertain structural interpretation as a hard fact without an assumption note.
 
 Use this schema:
 {
@@ -96,6 +98,9 @@ Use this schema:
   "source_view": "plan|elevation|site|unknown",
   "floor_area_m2": null,
   "ceiling_area_m2": null,
+  "space_types": ["bathroom|kitchen|bedroom|living_room|corridor|laundry|office|stair|other"],
+  "system_notes": ["string"],
+  "structural_notes": ["string"],
   "source_refs": ["string"],
   "assumptions": ["string"],
   "inputs": {"key": "value"},
@@ -137,6 +142,9 @@ Use this schema:
       "thickness_m": null,
       "area_m2": null,
       "material_hint": null,
+      "wall_system": null,
+      "interior_exterior_hint": null,
+      "finish_required": null,
       "structural": null,
       "openings_count": 0,
       "confidence": 0.0,
@@ -260,6 +268,16 @@ Use this schema:
       "area_m2": null,
       "volume_m3": null,
       "material_hint": null,
+      "section_width_m": null,
+      "section_height_m": null,
+      "span_m": null,
+      "orientation": null,
+      "load_bearing": null,
+      "reinforcement_hint": null,
+      "concrete_grade_hint": null,
+      "steel_grade_hint": null,
+      "host_level": null,
+      "adjacent_elements": [],
       "confidence": 0.0,
       "evidence": ["string"]
     }
@@ -335,6 +353,7 @@ View type hint: {_detect_view_type(image_path)}
 Focus on:
 - floor area and ceiling area when they are explicitly visible or strongly supported by CAD hints
 - walls and wall systems
+- load-bearing walls and probable interior/exterior placement when visible
 - openings tied to walls whenever visible
 - doors
 - windows
@@ -342,7 +361,14 @@ Focus on:
 - kitchens
 - stairs
 - fixtures
-- structural elements
+- structural elements such as beams, columns, slabs, and footings
+- probable construction materials and structural patterns visible in plan or elevation
+
+When structural interpretation is uncertain:
+- keep the element or hint if it is useful
+- lower confidence
+- add an assumption explaining why it is uncertain
+- avoid exact grades or reinforcement schedules unless the source is explicit
 
 Only include dimensions when they are directly visible in the image or supported by the CAD hints below.
 Avoid project-specific defaults such as assumed floor heights, fixed bathroom counts, or tower calibration tables.

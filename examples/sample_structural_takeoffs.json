@@ -1,0 +1,603 @@
+{
+  "level_id": "level_structural_demo",
+  "notes": [
+    "Representative deterministic structural takeoffs derived from sample_structural_inventory.json.",
+    "Exact rebar schedules are intentionally not computed; reinforcement outputs remain auditable hints."
+  ],
+  "takeoffs": [
+    {
+      "item_key": "wall_lb_01:volume",
+      "item_type": "wall_volume",
+      "level_id": "level_structural_demo",
+      "unit": "m3",
+      "quantity": 2.7,
+      "formula": "wall.length_m * wall.height_m * wall.thickness_m",
+      "inputs": {
+        "length_m": 6.0,
+        "height_m": 3.0,
+        "thickness_m": 0.15,
+        "material_hint": "masonry",
+        "structural": true,
+        "context_tags": [
+          "wall",
+          "volume",
+          "load_bearing",
+          "interior"
+        ]
+      },
+      "assumptions": [
+        "Wall was classified as load-bearing from grid continuity and alignment with columns."
+      ],
+      "source_refs": [
+        "geometry:wall_g1",
+        "vision:wall_lb_01"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "wall_lb_01"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed wall volume from length, height, and thickness."
+        ],
+        "evidence": [
+          "CAD wall line aligns with column grid.",
+          "Vision shows thicker wall representation than partitions."
+        ],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "wall",
+            "volume",
+            "load_bearing",
+            "interior"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "beam_demo:beam_length",
+      "item_type": "beam_length",
+      "level_id": "level_structural_demo",
+      "unit": "m",
+      "quantity": 10.0,
+      "formula": "structural_element.span_m * structural_element.count",
+      "inputs": {
+        "span_m": 5.0,
+        "count": 2,
+        "element_type": "beam",
+        "material_hint": "concrete",
+        "section_width_m": 0.25,
+        "section_height_m": 0.45,
+        "load_bearing": true,
+        "orientation": "horizontal",
+        "reinforcement_hint": "reinforced",
+        "concrete_grade_hint": "H25",
+        "steel_grade_hint": null,
+        "host_level": "level_structural_demo",
+        "adjacent_elements": [
+          "column_demo_a",
+          "column_demo_b"
+        ],
+        "context_tags": [
+          "structural",
+          "beam",
+          "length",
+          "frame",
+          "primary_structure"
+        ]
+      },
+      "assumptions": [
+        "Beam span was explicit in CAD, but section depth was inferred from elevation graphics.",
+        "Beam beam_demo total length was inferred from span_m * count because explicit total length was not provided."
+      ],
+      "source_refs": [
+        "geometry:beam_g1",
+        "vision:beam_demo"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "beam_demo"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read typed structural length from normalized inventory."
+        ],
+        "evidence": [
+          "Beam linework and elevation profile align across two bays."
+        ],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "structural",
+            "beam",
+            "length",
+            "frame",
+            "primary_structure"
+          ],
+          "material_hint": "concrete",
+          "section_width_m": 0.25,
+          "section_height_m": 0.45,
+          "span_m": 5.0,
+          "load_bearing": true,
+          "orientation": "horizontal",
+          "reinforcement_hint": "reinforced",
+          "concrete_grade_hint": "H25",
+          "steel_grade_hint": null,
+          "host_level": "level_structural_demo",
+          "adjacent_elements": [
+            "column_demo_a",
+            "column_demo_b"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "beam_demo:concrete_volume",
+      "item_type": "beam_concrete_volume",
+      "level_id": "level_structural_demo",
+      "unit": "m3",
+      "quantity": 1.125,
+      "formula": "structural_element.span_m * structural_element.count * structural_element.section_width_m * structural_element.section_height_m",
+      "inputs": {
+        "span_m": 5.0,
+        "count": 2,
+        "section_width_m": 0.25,
+        "section_height_m": 0.45,
+        "element_type": "beam",
+        "material_hint": "concrete",
+        "load_bearing": true,
+        "orientation": "horizontal",
+        "reinforcement_hint": "reinforced",
+        "concrete_grade_hint": "H25",
+        "steel_grade_hint": null,
+        "host_level": "level_structural_demo",
+        "adjacent_elements": [
+          "column_demo_a",
+          "column_demo_b"
+        ],
+        "context_tags": [
+          "structural",
+          "beam",
+          "concrete",
+          "volume",
+          "frame",
+          "primary_structure"
+        ]
+      },
+      "assumptions": [
+        "Beam span was explicit in CAD, but section depth was inferred from elevation graphics.",
+        "Beam beam_demo concrete volume was produced only because the inventory carried explicit concrete or reinforcement hints."
+      ],
+      "source_refs": [
+        "geometry:beam_g1",
+        "vision:beam_demo"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "beam_demo"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed structural concrete volume from normalized inventory."
+        ],
+        "evidence": [
+          "Beam linework and elevation profile align across two bays."
+        ],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "structural",
+            "beam",
+            "concrete",
+            "volume",
+            "frame",
+            "primary_structure"
+          ],
+          "material_hint": "concrete",
+          "section_width_m": 0.25,
+          "section_height_m": 0.45,
+          "span_m": 5.0,
+          "load_bearing": true,
+          "orientation": "horizontal",
+          "reinforcement_hint": "reinforced",
+          "concrete_grade_hint": "H25",
+          "steel_grade_hint": null,
+          "host_level": "level_structural_demo",
+          "adjacent_elements": [
+            "column_demo_a",
+            "column_demo_b"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "beam_demo:formwork_area_hint",
+      "item_type": "beam_formwork_area_hint",
+      "level_id": "level_structural_demo",
+      "unit": "m2",
+      "quantity": 11.5,
+      "formula": "(2 * structural_element.section_height_m + structural_element.section_width_m) * structural_length_total_m",
+      "inputs": {
+        "span_m": 5.0,
+        "count": 2,
+        "structural_length_total_m": 10.0,
+        "section_width_m": 0.25,
+        "section_height_m": 0.45,
+        "element_type": "beam",
+        "material_hint": "concrete",
+        "load_bearing": true,
+        "orientation": "horizontal",
+        "reinforcement_hint": "reinforced",
+        "concrete_grade_hint": "H25",
+        "steel_grade_hint": null,
+        "host_level": "level_structural_demo",
+        "adjacent_elements": [
+          "column_demo_a",
+          "column_demo_b"
+        ],
+        "context_tags": [
+          "structural",
+          "beam",
+          "formwork",
+          "hint",
+          "frame",
+          "primary_structure"
+        ]
+      },
+      "assumptions": [
+        "Beam span was explicit in CAD, but section depth was inferred from elevation graphics.",
+        "Beam beam_demo formwork area hint excludes the top face and includes two sides plus soffit."
+      ],
+      "source_refs": [
+        "geometry:beam_g1",
+        "vision:beam_demo"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "beam_demo"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed structural formwork area hint from normalized inventory."
+        ],
+        "evidence": [
+          "Beam linework and elevation profile align across two bays."
+        ],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "structural",
+            "beam",
+            "formwork",
+            "hint",
+            "frame",
+            "primary_structure"
+          ],
+          "material_hint": "concrete",
+          "section_width_m": 0.25,
+          "section_height_m": 0.45,
+          "span_m": 5.0,
+          "load_bearing": true,
+          "orientation": "horizontal",
+          "reinforcement_hint": "reinforced",
+          "concrete_grade_hint": "H25",
+          "steel_grade_hint": null,
+          "host_level": "level_structural_demo",
+          "adjacent_elements": [
+            "column_demo_a",
+            "column_demo_b"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "beam_demo:reinforcement_required_hint",
+      "item_type": "beam_reinforcement_required_hint",
+      "level_id": "level_structural_demo",
+      "unit": "flag",
+      "quantity": 2.0,
+      "formula": "structural_element.count",
+      "inputs": {
+        "count": 2,
+        "element_type": "beam",
+        "material_hint": "concrete",
+        "section_width_m": 0.25,
+        "section_height_m": 0.45,
+        "span_m": 5.0,
+        "load_bearing": true,
+        "orientation": "horizontal",
+        "reinforcement_hint": "reinforced",
+        "concrete_grade_hint": "H25",
+        "steel_grade_hint": null,
+        "host_level": "level_structural_demo",
+        "adjacent_elements": [
+          "column_demo_a",
+          "column_demo_b"
+        ],
+        "context_tags": [
+          "structural",
+          "beam",
+          "reinforcement",
+          "hint",
+          "frame",
+          "primary_structure"
+        ]
+      },
+      "assumptions": [
+        "Beam span was explicit in CAD, but section depth was inferred from elevation graphics.",
+        "Beam beam_demo is marked as reinforcement-required only as a hint; exact rebar schedules are intentionally not computed."
+      ],
+      "source_refs": [
+        "geometry:beam_g1",
+        "vision:beam_demo"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "beam_demo"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Recorded structural reinforcement-required hint from normalized inventory."
+        ],
+        "evidence": [
+          "Beam linework and elevation profile align across two bays."
+        ],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "structural",
+            "beam",
+            "reinforcement",
+            "hint",
+            "frame",
+            "primary_structure"
+          ],
+          "material_hint": "concrete",
+          "section_width_m": 0.25,
+          "section_height_m": 0.45,
+          "span_m": 5.0,
+          "load_bearing": true,
+          "orientation": "horizontal",
+          "reinforcement_hint": "reinforced",
+          "concrete_grade_hint": "H25",
+          "steel_grade_hint": null,
+          "host_level": "level_structural_demo",
+          "adjacent_elements": [
+            "column_demo_a",
+            "column_demo_b"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "column_demo:column_volume",
+      "item_type": "column_volume",
+      "level_id": "level_structural_demo",
+      "unit": "m3",
+      "quantity": 1.08,
+      "formula": "structural_element.length_m * structural_element.section_width_m * structural_element.section_height_m",
+      "inputs": {
+        "length_m": 12.0,
+        "section_width_m": 0.3,
+        "section_height_m": 0.3,
+        "element_type": "column",
+        "material_hint": "concrete",
+        "span_m": null,
+        "load_bearing": true,
+        "orientation": "vertical",
+        "reinforcement_hint": "reinforced",
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": "level_structural_demo",
+        "adjacent_elements": [],
+        "context_tags": [
+          "structural",
+          "column",
+          "volume",
+          "frame",
+          "vertical_support"
+        ]
+      },
+      "assumptions": [],
+      "source_refs": [
+        "block:column_b1",
+        "block:column_b2",
+        "block:column_b3",
+        "block:column_b4"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "column_demo"
+        ],
+        "source_entity_sources": [
+          "json"
+        ],
+        "steps": [
+          "Read typed structural volume from normalized inventory."
+        ],
+        "evidence": [
+          "Four column blocks detected on layer S-COLUMN-CONC."
+        ],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "structural",
+            "column",
+            "volume",
+            "frame",
+            "vertical_support"
+          ],
+          "material_hint": "concrete",
+          "section_width_m": 0.3,
+          "section_height_m": 0.3,
+          "span_m": null,
+          "load_bearing": true,
+          "orientation": "vertical",
+          "reinforcement_hint": "reinforced",
+          "concrete_grade_hint": null,
+          "steel_grade_hint": null,
+          "host_level": "level_structural_demo",
+          "adjacent_elements": []
+        }
+      }
+    },
+    {
+      "item_key": "slab_demo:slab_volume",
+      "item_type": "slab_volume",
+      "level_id": "level_structural_demo",
+      "unit": "m3",
+      "quantity": 6.72,
+      "formula": "structural_element.area_m2 * structural_element.section_height_m",
+      "inputs": {
+        "area_m2": 42.0,
+        "section_height_m": 0.16,
+        "element_type": "slab",
+        "material_hint": "concrete",
+        "section_width_m": null,
+        "span_m": null,
+        "load_bearing": true,
+        "orientation": "horizontal",
+        "reinforcement_hint": "reinforced",
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": "level_structural_demo",
+        "adjacent_elements": [],
+        "context_tags": [
+          "structural",
+          "slab",
+          "volume",
+          "horizontal_structure",
+          "wet_area_zone"
+        ]
+      },
+      "assumptions": [
+        "Slab thickness remained a design-stage hint pending structural sheets."
+      ],
+      "source_refs": [
+        "hatch:slab_h1",
+        "vision:slab_demo"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "slab_demo"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read typed structural volume from normalized inventory."
+        ],
+        "evidence": [
+          "Continuous slab hatch is visible across the main bay."
+        ],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "structural",
+            "slab",
+            "volume",
+            "horizontal_structure",
+            "wet_area_zone"
+          ],
+          "material_hint": "concrete",
+          "section_width_m": null,
+          "section_height_m": 0.16,
+          "span_m": null,
+          "load_bearing": true,
+          "orientation": "horizontal",
+          "reinforcement_hint": "reinforced",
+          "concrete_grade_hint": null,
+          "steel_grade_hint": null,
+          "host_level": "level_structural_demo",
+          "adjacent_elements": []
+        }
+      }
+    },
+    {
+      "item_key": "slab_demo:reinforcement_required_hint",
+      "item_type": "slab_reinforcement_required_hint",
+      "level_id": "level_structural_demo",
+      "unit": "flag",
+      "quantity": 1.0,
+      "formula": "structural_element.count",
+      "inputs": {
+        "count": 1,
+        "element_type": "slab",
+        "material_hint": "concrete",
+        "section_width_m": null,
+        "section_height_m": 0.16,
+        "span_m": null,
+        "load_bearing": true,
+        "orientation": "horizontal",
+        "reinforcement_hint": "reinforced",
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": "level_structural_demo",
+        "adjacent_elements": [],
+        "context_tags": [
+          "structural",
+          "slab",
+          "reinforcement",
+          "hint",
+          "horizontal_structure",
+          "wet_area_zone"
+        ]
+      },
+      "assumptions": [
+        "Slab thickness remained a design-stage hint pending structural sheets.",
+        "Slab slab_demo is marked as reinforcement-required only as a hint; exact rebar schedules are intentionally not computed."
+      ],
+      "source_refs": [
+        "hatch:slab_h1",
+        "vision:slab_demo"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "slab_demo"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Recorded structural reinforcement-required hint from normalized inventory."
+        ],
+        "evidence": [
+          "Continuous slab hatch is visible across the main bay."
+        ],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "structural",
+            "slab",
+            "reinforcement",
+            "hint",
+            "horizontal_structure",
+            "wet_area_zone"
+          ],
+          "material_hint": "concrete",
+          "section_width_m": null,
+          "section_height_m": 0.16,
+          "span_m": null,
+          "load_bearing": true,
+          "orientation": "horizontal",
+          "reinforcement_hint": "reinforced",
+          "concrete_grade_hint": null,
+          "steel_grade_hint": null,
+          "host_level": "level_structural_demo",
+          "adjacent_elements": []
+        }
+      }
+    }
+  ]
+}

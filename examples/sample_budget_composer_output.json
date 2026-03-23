@@ -1,0 +1,974 @@
+{
+  "project_context": {
+    "project_id": "sample_budget_v1",
+    "project_name": "Dupla Budget Composer V1",
+    "source_json_path": null,
+    "plan_image_paths": [],
+    "bc3_path": null,
+    "measurement_unit": "m",
+    "metadata": {}
+  },
+  "chapters": [
+    {
+      "chapter_id": "DUP-CH-01",
+      "code": "DUP-CH-01",
+      "title": "ESTRUCTURA",
+      "level": 1,
+      "parent_id": null,
+      "path": [
+        "ESTRUCTURA"
+      ],
+      "child_ids": [
+        "DUP-CH-01.01"
+      ],
+      "line_keys": []
+    },
+    {
+      "chapter_id": "DUP-CH-01.01",
+      "code": "DUP-CH-01.01",
+      "title": "HORMIGON ARMADO",
+      "level": 2,
+      "parent_id": "DUP-CH-01",
+      "path": [
+        "ESTRUCTURA",
+        "HORMIGON ARMADO"
+      ],
+      "child_ids": [],
+      "line_keys": [
+        "beam_01:concrete_volume"
+      ]
+    },
+    {
+      "chapter_id": "DUP-CH-05",
+      "code": "DUP-CH-05",
+      "title": "TERMINACIONES",
+      "level": 1,
+      "parent_id": null,
+      "path": [
+        "TERMINACIONES"
+      ],
+      "child_ids": [
+        "DUP-CH-05.01",
+        "DUP-CH-05.02"
+      ],
+      "line_keys": []
+    },
+    {
+      "chapter_id": "DUP-CH-05.01",
+      "code": "DUP-CH-05.01",
+      "title": "TERMINACION DE SUPERFICIES",
+      "level": 2,
+      "parent_id": "DUP-CH-05",
+      "path": [
+        "TERMINACIONES",
+        "TERMINACION DE SUPERFICIES"
+      ],
+      "child_ids": [],
+      "line_keys": [
+        "wall_01:paint"
+      ]
+    },
+    {
+      "chapter_id": "DUP-CH-05.02",
+      "code": "DUP-CH-05.02",
+      "title": "TERMINACION DE PISOS",
+      "level": 2,
+      "parent_id": "DUP-CH-05",
+      "path": [
+        "TERMINACIONES",
+        "TERMINACION DE PISOS"
+      ],
+      "child_ids": [],
+      "line_keys": [
+        "floor_01:finish"
+      ]
+    },
+    {
+      "chapter_id": "DUP-CH-06",
+      "code": "DUP-CH-06",
+      "title": "CARPINTERIAS",
+      "level": 1,
+      "parent_id": null,
+      "path": [
+        "CARPINTERIAS"
+      ],
+      "child_ids": [
+        "DUP-CH-06.01",
+        "DUP-CH-06.02"
+      ],
+      "line_keys": []
+    },
+    {
+      "chapter_id": "DUP-CH-06.01",
+      "code": "DUP-CH-06.01",
+      "title": "PUERTAS",
+      "level": 2,
+      "parent_id": "DUP-CH-06",
+      "path": [
+        "CARPINTERIAS",
+        "PUERTAS"
+      ],
+      "child_ids": [],
+      "line_keys": [
+        "door_01:leaf"
+      ]
+    },
+    {
+      "chapter_id": "DUP-CH-06.02",
+      "code": "DUP-CH-06.02",
+      "title": "VENTANAS",
+      "level": 2,
+      "parent_id": "DUP-CH-06",
+      "path": [
+        "CARPINTERIAS",
+        "VENTANAS"
+      ],
+      "child_ids": [],
+      "line_keys": [
+        "window_01:sealant"
+      ]
+    }
+  ],
+  "lines": [
+    {
+      "line_id": "BLINE-0001",
+      "takeoff_key": "beam_01:concrete_volume",
+      "chapter_id": "DUP-CH-01.01",
+      "code": "E300100",
+      "nat": "Partida",
+      "unit": "m3",
+      "summary": "Hormigon armado en vigas",
+      "quantity": 14.25,
+      "unit_price": null,
+      "amount_formula": "=ROUND(E6*F6,2)",
+      "candidate_code": "E300100",
+      "candidate_score": 0.83,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "item_type": "beam_concrete_volume",
+        "level_id": "level_01",
+        "line_id": "BLINE-0001",
+        "chapter_path": [
+          "ESTRUCTURA",
+          "HORMIGON ARMADO"
+        ],
+        "chapter_codes": [
+          "01",
+          "01.01"
+        ],
+        "candidate_summary": "Hormigon armado en vigas",
+        "candidate_rationale": "Strong structural concrete beam match.",
+        "trace_metadata": {
+          "material_hint": "concrete",
+          "context_tags": [
+            "structural",
+            "beam",
+            "concrete",
+            "volume"
+          ]
+        },
+        "excel_row": 6
+      }
+    },
+    {
+      "line_id": "BLINE-0002",
+      "takeoff_key": "wall_01:paint",
+      "chapter_id": "DUP-CH-05.01",
+      "code": "DUP-0001",
+      "nat": "Partida",
+      "unit": "m2",
+      "summary": "Pintura en muros interiores",
+      "quantity": 48.0,
+      "unit_price": null,
+      "amount_formula": "=ROUND(E11*F11,2)",
+      "candidate_code": null,
+      "candidate_score": null,
+      "source_refs": [],
+      "assumptions": [
+        "Interior paint finish derived from wall net area."
+      ],
+      "metadata": {
+        "item_type": "wall_finish_paint",
+        "level_id": "level_01",
+        "line_id": "BLINE-0002",
+        "chapter_path": [
+          "TERMINACIONES",
+          "TERMINACION DE SUPERFICIES"
+        ],
+        "chapter_codes": [
+          "05",
+          "05.01"
+        ],
+        "candidate_summary": null,
+        "candidate_rationale": null,
+        "trace_metadata": {
+          "derived_from": "wall_01:net_area",
+          "context_tags": [
+            "wall",
+            "finish",
+            "paint",
+            "interior",
+            "dry_area"
+          ]
+        },
+        "excel_row": 11
+      }
+    },
+    {
+      "line_id": "BLINE-0003",
+      "takeoff_key": "floor_01:finish",
+      "chapter_id": "DUP-CH-05.02",
+      "code": "DUP-0002",
+      "nat": "Partida",
+      "unit": "m2",
+      "summary": "Terminacion de pisos",
+      "quantity": 82.0,
+      "unit_price": null,
+      "amount_formula": "=ROUND(E14*F14,2)",
+      "candidate_code": null,
+      "candidate_score": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "item_type": "floor_finish",
+        "level_id": "level_01",
+        "line_id": "BLINE-0003",
+        "chapter_path": [
+          "TERMINACIONES",
+          "TERMINACION DE PISOS"
+        ],
+        "chapter_codes": [
+          "05",
+          "05.02"
+        ],
+        "candidate_summary": null,
+        "candidate_rationale": null,
+        "trace_metadata": {
+          "derived_from": "level_01:floor_area",
+          "context_tags": [
+            "floor",
+            "finish",
+            "dry_area"
+          ]
+        },
+        "excel_row": 14
+      }
+    },
+    {
+      "line_id": "BLINE-0004",
+      "takeoff_key": "door_01:leaf",
+      "chapter_id": "DUP-CH-06.01",
+      "code": "DUP-0003",
+      "nat": "Partida",
+      "unit": "unit",
+      "summary": "Puerta de madera",
+      "quantity": 6.0,
+      "unit_price": null,
+      "amount_formula": "=ROUND(E19*F19,2)",
+      "candidate_code": null,
+      "candidate_score": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "item_type": "door_leaf_wood_count",
+        "level_id": "level_01",
+        "line_id": "BLINE-0004",
+        "chapter_path": [
+          "CARPINTERIAS",
+          "PUERTAS"
+        ],
+        "chapter_codes": [
+          "06",
+          "06.01"
+        ],
+        "candidate_summary": null,
+        "candidate_rationale": null,
+        "trace_metadata": {
+          "context_tags": [
+            "door",
+            "wood",
+            "leaf"
+          ]
+        },
+        "excel_row": 19
+      }
+    },
+    {
+      "line_id": "BLINE-0005",
+      "takeoff_key": "window_01:sealant",
+      "chapter_id": "DUP-CH-06.02",
+      "code": "V220310",
+      "nat": "Partida",
+      "unit": "m2",
+      "summary": "Sellado perimetral de ventanas",
+      "quantity": 18.5,
+      "unit_price": null,
+      "amount_formula": "=ROUND(E22*F22,2)",
+      "candidate_code": "V220310",
+      "candidate_score": 0.77,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "item_type": "window_sealant_area",
+        "level_id": "level_01",
+        "line_id": "BLINE-0005",
+        "chapter_path": [
+          "CARPINTERIAS",
+          "VENTANAS"
+        ],
+        "chapter_codes": [
+          "06",
+          "06.02"
+        ],
+        "candidate_summary": "Sellado perimetral de ventanas",
+        "candidate_rationale": "Clear sealant/window overlap and matching unit.",
+        "trace_metadata": {
+          "derived_from": "window_01:area",
+          "context_tags": [
+            "window",
+            "area",
+            "sealant"
+          ]
+        },
+        "excel_row": 22
+      }
+    }
+  ],
+  "rows": [
+    {
+      "row_type": "chapter",
+      "code": "DUP-CH-01",
+      "nat": "Capítulo",
+      "unit": "",
+      "summary": "ESTRUCTURA",
+      "quantity": "=E8",
+      "unit_price": "=F8",
+      "amount": "=G8",
+      "chapter_id": "DUP-CH-01",
+      "parent_chapter_id": null,
+      "level": 1,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "ESTRUCTURA"
+        ],
+        "subtotal_row_index": 4
+      },
+      "excel_row": 4
+    },
+    {
+      "row_type": "chapter",
+      "code": "DUP-CH-01.01",
+      "nat": "Capítulo",
+      "unit": "",
+      "summary": "HORMIGON ARMADO",
+      "quantity": "=E7",
+      "unit_price": "=F7",
+      "amount": "=G7",
+      "chapter_id": "DUP-CH-01.01",
+      "parent_chapter_id": "DUP-CH-01",
+      "level": 2,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "ESTRUCTURA",
+          "HORMIGON ARMADO"
+        ],
+        "subtotal_row_index": 3
+      },
+      "excel_row": 5
+    },
+    {
+      "row_type": "line",
+      "code": "E300100",
+      "nat": "Partida",
+      "unit": "m3",
+      "summary": "Hormigon armado en vigas",
+      "quantity": 14.25,
+      "unit_price": null,
+      "amount": "=ROUND(E6*F6,2)",
+      "chapter_id": "DUP-CH-01.01",
+      "parent_chapter_id": "DUP-CH-01",
+      "level": 2,
+      "takeoff_key": "beam_01:concrete_volume",
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "item_type": "beam_concrete_volume",
+        "level_id": "level_01",
+        "line_id": "BLINE-0001",
+        "chapter_path": [
+          "ESTRUCTURA",
+          "HORMIGON ARMADO"
+        ],
+        "chapter_codes": [
+          "01",
+          "01.01"
+        ],
+        "candidate_summary": "Hormigon armado en vigas",
+        "candidate_rationale": "Strong structural concrete beam match.",
+        "trace_metadata": {
+          "material_hint": "concrete",
+          "context_tags": [
+            "structural",
+            "beam",
+            "concrete",
+            "volume"
+          ]
+        }
+      },
+      "excel_row": 6
+    },
+    {
+      "row_type": "subtotal",
+      "code": "",
+      "nat": "Subtotal/Cierre de capítulo",
+      "unit": "",
+      "summary": "Subtotal HORMIGON ARMADO",
+      "quantity": 1,
+      "unit_price": "=SUM(G6)",
+      "amount": "=ROUND(E7*F7,2)",
+      "chapter_id": "DUP-CH-01.01",
+      "parent_chapter_id": "DUP-CH-01",
+      "level": 2,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "ESTRUCTURA",
+          "HORMIGON ARMADO"
+        ],
+        "source_row_indices": [
+          2
+        ],
+        "chapter_code": "DUP-CH-01.01",
+        "source_excel_rows": [
+          6
+        ]
+      },
+      "excel_row": 7
+    },
+    {
+      "row_type": "subtotal",
+      "code": "",
+      "nat": "Subtotal/Cierre de capítulo",
+      "unit": "",
+      "summary": "Subtotal ESTRUCTURA",
+      "quantity": 1,
+      "unit_price": "=SUM(G7)",
+      "amount": "=ROUND(E8*F8,2)",
+      "chapter_id": "DUP-CH-01",
+      "parent_chapter_id": null,
+      "level": 1,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "ESTRUCTURA"
+        ],
+        "source_row_indices": [
+          3
+        ],
+        "chapter_code": "DUP-CH-01",
+        "source_excel_rows": [
+          7
+        ]
+      },
+      "excel_row": 8
+    },
+    {
+      "row_type": "chapter",
+      "code": "DUP-CH-05",
+      "nat": "Capítulo",
+      "unit": "",
+      "summary": "TERMINACIONES",
+      "quantity": "=E16",
+      "unit_price": "=F16",
+      "amount": "=G16",
+      "chapter_id": "DUP-CH-05",
+      "parent_chapter_id": null,
+      "level": 1,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "TERMINACIONES"
+        ],
+        "subtotal_row_index": 12
+      },
+      "excel_row": 9
+    },
+    {
+      "row_type": "chapter",
+      "code": "DUP-CH-05.01",
+      "nat": "Capítulo",
+      "unit": "",
+      "summary": "TERMINACION DE SUPERFICIES",
+      "quantity": "=E12",
+      "unit_price": "=F12",
+      "amount": "=G12",
+      "chapter_id": "DUP-CH-05.01",
+      "parent_chapter_id": "DUP-CH-05",
+      "level": 2,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "TERMINACIONES",
+          "TERMINACION DE SUPERFICIES"
+        ],
+        "subtotal_row_index": 8
+      },
+      "excel_row": 10
+    },
+    {
+      "row_type": "line",
+      "code": "DUP-0001",
+      "nat": "Partida",
+      "unit": "m2",
+      "summary": "Pintura en muros interiores",
+      "quantity": 48.0,
+      "unit_price": null,
+      "amount": "=ROUND(E11*F11,2)",
+      "chapter_id": "DUP-CH-05.01",
+      "parent_chapter_id": "DUP-CH-05",
+      "level": 2,
+      "takeoff_key": "wall_01:paint",
+      "source_refs": [],
+      "assumptions": [
+        "Interior paint finish derived from wall net area."
+      ],
+      "metadata": {
+        "item_type": "wall_finish_paint",
+        "level_id": "level_01",
+        "line_id": "BLINE-0002",
+        "chapter_path": [
+          "TERMINACIONES",
+          "TERMINACION DE SUPERFICIES"
+        ],
+        "chapter_codes": [
+          "05",
+          "05.01"
+        ],
+        "candidate_summary": null,
+        "candidate_rationale": null,
+        "trace_metadata": {
+          "derived_from": "wall_01:net_area",
+          "context_tags": [
+            "wall",
+            "finish",
+            "paint",
+            "interior",
+            "dry_area"
+          ]
+        }
+      },
+      "excel_row": 11
+    },
+    {
+      "row_type": "subtotal",
+      "code": "",
+      "nat": "Subtotal/Cierre de capítulo",
+      "unit": "",
+      "summary": "Subtotal TERMINACION DE SUPERFICIES",
+      "quantity": 1,
+      "unit_price": "=SUM(G11)",
+      "amount": "=ROUND(E12*F12,2)",
+      "chapter_id": "DUP-CH-05.01",
+      "parent_chapter_id": "DUP-CH-05",
+      "level": 2,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "TERMINACIONES",
+          "TERMINACION DE SUPERFICIES"
+        ],
+        "source_row_indices": [
+          7
+        ],
+        "chapter_code": "DUP-CH-05.01",
+        "source_excel_rows": [
+          11
+        ]
+      },
+      "excel_row": 12
+    },
+    {
+      "row_type": "chapter",
+      "code": "DUP-CH-05.02",
+      "nat": "Capítulo",
+      "unit": "",
+      "summary": "TERMINACION DE PISOS",
+      "quantity": "=E15",
+      "unit_price": "=F15",
+      "amount": "=G15",
+      "chapter_id": "DUP-CH-05.02",
+      "parent_chapter_id": "DUP-CH-05",
+      "level": 2,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "TERMINACIONES",
+          "TERMINACION DE PISOS"
+        ],
+        "subtotal_row_index": 11
+      },
+      "excel_row": 13
+    },
+    {
+      "row_type": "line",
+      "code": "DUP-0002",
+      "nat": "Partida",
+      "unit": "m2",
+      "summary": "Terminacion de pisos",
+      "quantity": 82.0,
+      "unit_price": null,
+      "amount": "=ROUND(E14*F14,2)",
+      "chapter_id": "DUP-CH-05.02",
+      "parent_chapter_id": "DUP-CH-05",
+      "level": 2,
+      "takeoff_key": "floor_01:finish",
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "item_type": "floor_finish",
+        "level_id": "level_01",
+        "line_id": "BLINE-0003",
+        "chapter_path": [
+          "TERMINACIONES",
+          "TERMINACION DE PISOS"
+        ],
+        "chapter_codes": [
+          "05",
+          "05.02"
+        ],
+        "candidate_summary": null,
+        "candidate_rationale": null,
+        "trace_metadata": {
+          "derived_from": "level_01:floor_area",
+          "context_tags": [
+            "floor",
+            "finish",
+            "dry_area"
+          ]
+        }
+      },
+      "excel_row": 14
+    },
+    {
+      "row_type": "subtotal",
+      "code": "",
+      "nat": "Subtotal/Cierre de capítulo",
+      "unit": "",
+      "summary": "Subtotal TERMINACION DE PISOS",
+      "quantity": 1,
+      "unit_price": "=SUM(G14)",
+      "amount": "=ROUND(E15*F15,2)",
+      "chapter_id": "DUP-CH-05.02",
+      "parent_chapter_id": "DUP-CH-05",
+      "level": 2,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "TERMINACIONES",
+          "TERMINACION DE PISOS"
+        ],
+        "source_row_indices": [
+          10
+        ],
+        "chapter_code": "DUP-CH-05.02",
+        "source_excel_rows": [
+          14
+        ]
+      },
+      "excel_row": 15
+    },
+    {
+      "row_type": "subtotal",
+      "code": "",
+      "nat": "Subtotal/Cierre de capítulo",
+      "unit": "",
+      "summary": "Subtotal TERMINACIONES",
+      "quantity": 1,
+      "unit_price": "=SUM(G12,G15)",
+      "amount": "=ROUND(E16*F16,2)",
+      "chapter_id": "DUP-CH-05",
+      "parent_chapter_id": null,
+      "level": 1,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "TERMINACIONES"
+        ],
+        "source_row_indices": [
+          8,
+          11
+        ],
+        "chapter_code": "DUP-CH-05",
+        "source_excel_rows": [
+          12,
+          15
+        ]
+      },
+      "excel_row": 16
+    },
+    {
+      "row_type": "chapter",
+      "code": "DUP-CH-06",
+      "nat": "Capítulo",
+      "unit": "",
+      "summary": "CARPINTERIAS",
+      "quantity": "=E24",
+      "unit_price": "=F24",
+      "amount": "=G24",
+      "chapter_id": "DUP-CH-06",
+      "parent_chapter_id": null,
+      "level": 1,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "CARPINTERIAS"
+        ],
+        "subtotal_row_index": 20
+      },
+      "excel_row": 17
+    },
+    {
+      "row_type": "chapter",
+      "code": "DUP-CH-06.01",
+      "nat": "Capítulo",
+      "unit": "",
+      "summary": "PUERTAS",
+      "quantity": "=E20",
+      "unit_price": "=F20",
+      "amount": "=G20",
+      "chapter_id": "DUP-CH-06.01",
+      "parent_chapter_id": "DUP-CH-06",
+      "level": 2,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "CARPINTERIAS",
+          "PUERTAS"
+        ],
+        "subtotal_row_index": 16
+      },
+      "excel_row": 18
+    },
+    {
+      "row_type": "line",
+      "code": "DUP-0003",
+      "nat": "Partida",
+      "unit": "unit",
+      "summary": "Puerta de madera",
+      "quantity": 6.0,
+      "unit_price": null,
+      "amount": "=ROUND(E19*F19,2)",
+      "chapter_id": "DUP-CH-06.01",
+      "parent_chapter_id": "DUP-CH-06",
+      "level": 2,
+      "takeoff_key": "door_01:leaf",
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "item_type": "door_leaf_wood_count",
+        "level_id": "level_01",
+        "line_id": "BLINE-0004",
+        "chapter_path": [
+          "CARPINTERIAS",
+          "PUERTAS"
+        ],
+        "chapter_codes": [
+          "06",
+          "06.01"
+        ],
+        "candidate_summary": null,
+        "candidate_rationale": null,
+        "trace_metadata": {
+          "context_tags": [
+            "door",
+            "wood",
+            "leaf"
+          ]
+        }
+      },
+      "excel_row": 19
+    },
+    {
+      "row_type": "subtotal",
+      "code": "",
+      "nat": "Subtotal/Cierre de capítulo",
+      "unit": "",
+      "summary": "Subtotal PUERTAS",
+      "quantity": 1,
+      "unit_price": "=SUM(G19)",
+      "amount": "=ROUND(E20*F20,2)",
+      "chapter_id": "DUP-CH-06.01",
+      "parent_chapter_id": "DUP-CH-06",
+      "level": 2,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "CARPINTERIAS",
+          "PUERTAS"
+        ],
+        "source_row_indices": [
+          15
+        ],
+        "chapter_code": "DUP-CH-06.01",
+        "source_excel_rows": [
+          19
+        ]
+      },
+      "excel_row": 20
+    },
+    {
+      "row_type": "chapter",
+      "code": "DUP-CH-06.02",
+      "nat": "Capítulo",
+      "unit": "",
+      "summary": "VENTANAS",
+      "quantity": "=E23",
+      "unit_price": "=F23",
+      "amount": "=G23",
+      "chapter_id": "DUP-CH-06.02",
+      "parent_chapter_id": "DUP-CH-06",
+      "level": 2,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "CARPINTERIAS",
+          "VENTANAS"
+        ],
+        "subtotal_row_index": 19
+      },
+      "excel_row": 21
+    },
+    {
+      "row_type": "line",
+      "code": "V220310",
+      "nat": "Partida",
+      "unit": "m2",
+      "summary": "Sellado perimetral de ventanas",
+      "quantity": 18.5,
+      "unit_price": null,
+      "amount": "=ROUND(E22*F22,2)",
+      "chapter_id": "DUP-CH-06.02",
+      "parent_chapter_id": "DUP-CH-06",
+      "level": 2,
+      "takeoff_key": "window_01:sealant",
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "item_type": "window_sealant_area",
+        "level_id": "level_01",
+        "line_id": "BLINE-0005",
+        "chapter_path": [
+          "CARPINTERIAS",
+          "VENTANAS"
+        ],
+        "chapter_codes": [
+          "06",
+          "06.02"
+        ],
+        "candidate_summary": "Sellado perimetral de ventanas",
+        "candidate_rationale": "Clear sealant/window overlap and matching unit.",
+        "trace_metadata": {
+          "derived_from": "window_01:area",
+          "context_tags": [
+            "window",
+            "area",
+            "sealant"
+          ]
+        }
+      },
+      "excel_row": 22
+    },
+    {
+      "row_type": "subtotal",
+      "code": "",
+      "nat": "Subtotal/Cierre de capítulo",
+      "unit": "",
+      "summary": "Subtotal VENTANAS",
+      "quantity": 1,
+      "unit_price": "=SUM(G22)",
+      "amount": "=ROUND(E23*F23,2)",
+      "chapter_id": "DUP-CH-06.02",
+      "parent_chapter_id": "DUP-CH-06",
+      "level": 2,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "CARPINTERIAS",
+          "VENTANAS"
+        ],
+        "source_row_indices": [
+          18
+        ],
+        "chapter_code": "DUP-CH-06.02",
+        "source_excel_rows": [
+          22
+        ]
+      },
+      "excel_row": 23
+    },
+    {
+      "row_type": "subtotal",
+      "code": "",
+      "nat": "Subtotal/Cierre de capítulo",
+      "unit": "",
+      "summary": "Subtotal CARPINTERIAS",
+      "quantity": 1,
+      "unit_price": "=SUM(G20,G23)",
+      "amount": "=ROUND(E24*F24,2)",
+      "chapter_id": "DUP-CH-06",
+      "parent_chapter_id": null,
+      "level": 1,
+      "takeoff_key": null,
+      "source_refs": [],
+      "assumptions": [],
+      "metadata": {
+        "path": [
+          "CARPINTERIAS"
+        ],
+        "source_row_indices": [
+          16,
+          19
+        ],
+        "chapter_code": "DUP-CH-06",
+        "source_excel_rows": [
+          20,
+          23
+        ]
+      },
+      "excel_row": 24
+    }
+  ]
+}

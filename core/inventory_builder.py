@@ -30,11 +30,174 @@ _FLOOR_TOKENS = ("floor", "flor", "piso", "slab", "losa")
 _CEILING_TOKENS = ("ceiling", "clng", "cielo")
 _DOOR_TOKENS = ("door", "puert")
 _WINDOW_TOKENS = ("window", "vent", "glaz")
+_BEAM_TOKENS = ("beam", "viga")
+_COLUMN_TOKENS = ("column", "colum", "columna", "pillar", "pil")
+_SLAB_TOKENS = ("slab", "losa")
+_FOOTING_TOKENS = ("footing", "zapata", "foundation")
+_STRUCTURAL_TOKENS = ("struct", "estruct", "load", "bearing", "portant")
+_INTERIOR_TOKENS = ("interior", "int", "inside")
+_EXTERIOR_TOKENS = ("exterior", "ext", "facade", "fachada", "outside")
+_FINISH_TOKENS = ("finish", "acab", "paint", "tile", "rev")
+_CONCRETE_TOKENS = ("concrete", "conc", "horm", "rc", "reinforced concrete")
+_STEEL_TOKENS = ("steel", "acero", "metal", "stl")
+_MASONRY_TOKENS = ("masonry", "block", "brick", "cmu", "ladr", "mamp")
+_DRYWALL_TOKENS = ("drywall", "gypsum", "tablaroca", "yeso")
+_WOOD_TOKENS = ("wood", "madera", "timber")
+
+_SPACE_TYPE_TOKENS: dict[str, tuple[str, ...]] = {
+    "bathroom": ("bath", "bano", "baño", "wc", "toilet"),
+    "kitchen": ("kitchen", "cocina"),
+    "bedroom": ("bedroom", "dorm", "habit"),
+    "living_room": ("living", "estar", "sala"),
+    "corridor": ("corridor", "hall", "pasillo", "circulation"),
+    "laundry": ("laundry", "lavander", "lavado"),
+    "office": ("office", "oficina"),
+    "stair": ("stair", "escal"),
+}
 
 
 def _contains_token(value: str, tokens: tuple[str, ...]) -> bool:
     lowered = value.lower()
     return any(token in lowered for token in tokens)
+
+
+def _joined_hint_text(*values: Any) -> str:
+    return " ".join(str(value).strip() for value in values if value).lower()
+
+
+def _infer_material_hint(*values: Any) -> str | None:
+    hint_text = _joined_hint_text(*values)
+    if not hint_text:
+        return None
+    if _contains_token(hint_text, _CONCRETE_TOKENS):
+        return "concrete"
+    if _contains_token(hint_text, _STEEL_TOKENS):
+        return "steel"
+    if _contains_token(hint_text, _MASONRY_TOKENS):
+        return "masonry"
+    if _contains_token(hint_text, _DRYWALL_TOKENS):
+        return "drywall"
+    if _contains_token(hint_text, _WOOD_TOKENS):
+        return "wood"
+    return None
+
+
+def _infer_wall_system_hint(*values: Any) -> str | None:
+    hint_text = _joined_hint_text(*values)
+    if not hint_text:
+        return None
+    if _contains_token(hint_text, _DRYWALL_TOKENS):
+        return "drywall_partition"
+    if _contains_token(hint_text, _MASONRY_TOKENS):
+        return "masonry_wall"
+    if _contains_token(hint_text, _CONCRETE_TOKENS):
+        return "concrete_wall"
+    if _contains_token(hint_text, _STEEL_TOKENS) and _contains_token(hint_text, _WALL_TOKENS):
+        return "steel_stud_wall"
+    return None
+
+
+def _infer_interior_exterior_hint(*values: Any) -> str | None:
+    hint_text = _joined_hint_text(*values)
+    if not hint_text:
+        return None
+    if _contains_token(hint_text, _INTERIOR_TOKENS):
+        return "interior"
+    if _contains_token(hint_text, _EXTERIOR_TOKENS):
+        return "exterior"
+    return None
+
+
+def _infer_finish_required(*values: Any) -> bool | None:
+    hint_text = _joined_hint_text(*values)
+    if not hint_text:
+        return None
+    if _contains_token(hint_text, _FINISH_TOKENS):
+        return True
+    return None
+
+
+def _infer_load_bearing_hint(*values: Any) -> bool | None:
+    hint_text = _joined_hint_text(*values)
+    if not hint_text:
+        return None
+    if _contains_token(hint_text, _STRUCTURAL_TOKENS):
+        return True
+    return None
+
+
+def _infer_reinforcement_hint(*values: Any) -> str | None:
+    hint_text = _joined_hint_text(*values)
+    if not hint_text:
+        return None
+    if "rebar" in hint_text or "armad" in hint_text or "reinf" in hint_text or "rc" in hint_text:
+        return "reinforced"
+    return None
+
+
+def _infer_concrete_grade_hint(*values: Any) -> str | None:
+    import re
+
+    hint_text = _joined_hint_text(*values)
+    if not hint_text:
+        return None
+
+    patterns = (
+        r"\b(?:h|c)\s*[-/]?\s*(\d{2,3}(?:/\d{2})?)\b",
+        r"\bf[' ]?c\s*[-/]?\s*(\d{2,3})\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, hint_text, flags=re.IGNORECASE)
+        if match:
+            return match.group(0).upper().replace(" ", "")
+    return None
+
+
+def _infer_steel_grade_hint(*values: Any) -> str | None:
+    import re
+
+    hint_text = _joined_hint_text(*values)
+    if not hint_text:
+        return None
+
+    patterns = (
+        r"\bfy\s*[-/]?\s*(\d{3,4})\b",
+        r"\ba\s*(36|572|992)\b",
+        r"\bs\s*(275|355)\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, hint_text, flags=re.IGNORECASE)
+        if match:
+            return match.group(0).upper().replace(" ", "")
+    return None
+
+
+def _infer_structural_element_type(*values: Any) -> str | None:
+    hint_text = _joined_hint_text(*values)
+    if not hint_text:
+        return None
+    if _contains_token(hint_text, _BEAM_TOKENS):
+        return "beam"
+    if _contains_token(hint_text, _COLUMN_TOKENS):
+        return "column"
+    if _contains_token(hint_text, _SLAB_TOKENS):
+        return "slab"
+    if _contains_token(hint_text, _FOOTING_TOKENS):
+        return "footing"
+    if _contains_token(hint_text, _WALL_TOKENS) and _contains_token(hint_text, _STRUCTURAL_TOKENS):
+        return "wall"
+    return None
+
+
+def _extract_space_types(cad_facts: dict[str, Any]) -> list[str]:
+    texts = cad_facts.get("cad_facts", {}).get("texts", [])
+    detected: list[str] = []
+    for text in texts:
+        content = str(text.get("content", ""))
+        for space_type, tokens in _SPACE_TYPE_TOKENS.items():
+            if _contains_token(content, tokens):
+                detected.append(space_type)
+    return _unique_strings(detected)
 
 
 def _unique_strings(*groups: Iterable[str]) -> list[str]:
@@ -181,6 +344,11 @@ def _build_json_walls(level_id: str, cad_facts: dict[str, Any]) -> list[Wall]:
 
     walls: list[Wall] = []
     for layer, length in wall_lengths.items():
+        material_hint = _infer_material_hint(layer)
+        wall_system = _infer_wall_system_hint(layer)
+        interior_exterior_hint = _infer_interior_exterior_hint(layer)
+        finish_required = _infer_finish_required(layer)
+        structural_hint = _infer_load_bearing_hint(layer)
         walls.append(
             Wall(
                 id=f"json-wall-{layer.lower()}",
@@ -188,12 +356,132 @@ def _build_json_walls(level_id: str, cad_facts: dict[str, Any]) -> list[Wall]:
                 source="json",
                 source_layers=[layer],
                 length_m=length,
+                material_hint=material_hint,
+                wall_system=wall_system,
+                interior_exterior_hint=interior_exterior_hint,
+                finish_required=finish_required,
+                structural=structural_hint,
                 source_refs=_unique_strings(wall_refs.get(layer, [])),
-                inputs={"json_layer": layer, "json_length_m": length},
-                evidence=[f"Aggregated linework length from layer {layer}."],
+                inputs={
+                    "json_layer": layer,
+                    "json_length_m": length,
+                },
+                evidence=[
+                    f"Aggregated linework length from layer {layer}.",
+                    *(
+                        [f"Detected wall system hint '{wall_system}' from layer {layer}."]
+                        if wall_system
+                        else []
+                    ),
+                    *(
+                        [f"Detected wall material hint '{material_hint}' from layer {layer}."]
+                        if material_hint
+                        else []
+                    ),
+                ],
             )
         )
     return walls
+
+
+def _build_json_structural_elements(level_id: str, cad_facts: dict[str, Any]) -> list[StructuralElement]:
+    geometry_hints = cad_facts.get("cad_facts", {}).get("geometry_hints", [])
+    blocks = cad_facts.get("cad_facts", {}).get("blocks", [])
+    hatches = cad_facts.get("cad_facts", {}).get("hatches", [])
+
+    grouped: dict[tuple[str, str], dict[str, Any]] = {}
+
+    def ensure_group(element_type: str, layer: str, name_hint: str = "") -> dict[str, Any]:
+        key = (element_type, layer)
+        if key not in grouped:
+            hint_text = _joined_hint_text(layer, name_hint)
+            grouped[key] = {
+                "id": f"json-{element_type}-{layer.lower()}",
+                "level_id": level_id,
+                "source": "json",
+                "element_type": element_type,
+                "count": 0,
+                "length_m": None,
+                "area_m2": None,
+                "volume_m3": None,
+                "material_hint": _infer_material_hint(hint_text),
+                "orientation": "vertical" if element_type == "column" else "horizontal",
+                "load_bearing": True if element_type in {"beam", "column", "slab", "footing"} else _infer_load_bearing_hint(hint_text),
+                "reinforcement_hint": _infer_reinforcement_hint(hint_text),
+                "concrete_grade_hint": _infer_concrete_grade_hint(hint_text),
+                "steel_grade_hint": _infer_steel_grade_hint(hint_text),
+                "host_level": level_id,
+                "adjacent_elements": [],
+                "source_refs": [],
+                "assumptions": [],
+                "inputs": {"json_layer": layer, "json_name_hints": []},
+                "conflict_notes": [],
+                "evidence": [],
+            }
+        if name_hint and name_hint not in grouped[key]["inputs"]["json_name_hints"]:
+            grouped[key]["inputs"]["json_name_hints"].append(name_hint)
+        return grouped[key]
+
+    def add_numeric(group: dict[str, Any], field_name: str, value: float | None) -> None:
+        if value is None:
+            return
+        existing = group.get(field_name)
+        group[field_name] = float(value) if existing is None else float(existing) + float(value)
+
+    for hint in geometry_hints:
+        layer = str(hint.get("layer", ""))
+        name_hint = str(hint.get("name", ""))
+        entity_type = _infer_structural_element_type(layer, name_hint)
+        if not entity_type:
+            continue
+
+        group = ensure_group(entity_type, layer, name_hint)
+        add_numeric(group, "length_m", hint.get("length"))
+        add_numeric(group, "area_m2", hint.get("area"))
+        if hint.get("handle"):
+            group["source_refs"].append(f"geometry:{hint['handle']}")
+        group["evidence"].append(
+            f"Aggregated geometry hint for structural {entity_type} from layer {layer}."
+        )
+
+    for block in blocks:
+        layer = str(block.get("layer", ""))
+        block_name = str(block.get("block_name", ""))
+        element_type = _infer_structural_element_type(layer, block_name)
+        if not element_type:
+            continue
+
+        group = ensure_group(element_type, layer, block_name)
+        group["count"] += 1
+        if block.get("handle"):
+            group["source_refs"].append(f"block:{block['handle']}")
+        group["evidence"].append(
+            f"Counted explicit structural block '{block_name}' on layer {layer}."
+        )
+
+    for hatch in hatches:
+        layer = str(hatch.get("layer", ""))
+        pattern_name = str(hatch.get("pattern_name", ""))
+        element_type = _infer_structural_element_type(layer, pattern_name)
+        if element_type != "slab":
+            continue
+
+        group = ensure_group(element_type, layer, pattern_name)
+        add_numeric(group, "area_m2", hatch.get("area"))
+        if hatch.get("handle"):
+            group["source_refs"].append(f"hatch:{hatch['handle']}")
+        group["evidence"].append(
+            f"Aggregated slab hatch area from layer {layer}."
+        )
+
+    structural_elements: list[StructuralElement] = []
+    for _, payload in sorted(grouped.items(), key=lambda item: item[0]):
+        payload["count"] = max(int(payload["count"]), 1)
+        payload["source_refs"] = _unique_strings(payload["source_refs"])
+        payload["evidence"] = _unique_strings(payload["evidence"])
+        structural_elements.append(StructuralElement(**payload))
+
+    return structural_elements
 
 
 def _build_json_openings(
@@ -285,18 +573,60 @@ def build_json_inventory(
         item_prefix="json-window",
     )
     walls = _build_json_walls(level_id, cad_facts)
+    structural_elements = _build_json_structural_elements(level_id, cad_facts)
+    space_types = _extract_space_types(cad_facts)
+    structural_types = _unique_strings(
+        element.element_type for element in structural_elements if element.element_type
+    )
+    material_hints = _unique_strings(
+        [wall.material_hint for wall in walls if wall.material_hint],
+        [element.material_hint for element in structural_elements if element.material_hint],
+    )
 
     return LevelInventory(
         level_id=level_id,
         level_name=level_name,
         source="json",
-        source_refs=_unique_strings(floor_refs, ceiling_refs),
+        cad_hints={
+            "material_hints": material_hints,
+            "structural_types": structural_types,
+            "space_types": space_types,
+        },
+        source_refs=_unique_strings(
+            floor_refs,
+            ceiling_refs,
+            *(element.source_refs for element in structural_elements),
+        ),
+        space_types=space_types,
+        system_notes=[
+            *(
+                [
+                    "CAD facts suggest probable material systems: "
+                    + ", ".join(material_hints)
+                    + "."
+                ]
+                if material_hints
+                else []
+            )
+        ],
+        structural_notes=[
+            *(
+                [
+                    "Explicit structural CAD hints detected for: "
+                    + ", ".join(structural_types)
+                    + "."
+                ]
+                if structural_types
+                else []
+            )
+        ],
         inputs={"cad_summary": cad_facts.get("project")},
         floor_area_m2=floor_area_m2,
         ceiling_area_m2=ceiling_area_m2,
         walls=walls,
         doors=list(doors),
         windows=list(windows),
+        structural_elements=structural_elements,
         openings=_build_json_openings(level_id, list(doors), "door")
         + _build_json_openings(level_id, list(windows), "window"),
         notes=["Built from normalized CAD facts."],
@@ -359,9 +689,12 @@ def build_level_inventory(
         source="hybrid",
         source_image=vision_level.source_image,
         source_view=vision_level.source_view,
-        cad_hints=dict(vision_level.cad_hints),
+        cad_hints=_merge_inputs(json_level.cad_hints, vision_level.cad_hints),
         floor_area_m2=floor_area_m2,
         ceiling_area_m2=ceiling_area_m2,
+        space_types=_unique_strings(json_level.space_types, vision_level.space_types),
+        system_notes=_unique_strings(json_level.system_notes, vision_level.system_notes),
+        structural_notes=_unique_strings(json_level.structural_notes, vision_level.structural_notes),
         source_refs=_unique_strings(json_level.source_refs, vision_level.source_refs),
         assumptions=_unique_strings(json_level.assumptions, vision_level.assumptions),
         inputs=_merge_inputs(json_level.inputs, vision_level.inputs),

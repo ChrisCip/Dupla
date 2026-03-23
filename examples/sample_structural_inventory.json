@@ -1,0 +1,223 @@
+{
+  "level_id": "level_structural_demo",
+  "level_name": "Level Structural Demo",
+  "source": "hybrid",
+  "source_image": null,
+  "source_view": "plan",
+  "cad_hints": {
+    "material_hints": [
+      "concrete",
+      "masonry"
+    ],
+    "structural_types": [
+      "beam",
+      "column",
+      "slab"
+    ],
+    "space_types": [
+      "kitchen",
+      "bathroom"
+    ]
+  },
+  "floor_area_m2": 42.0,
+  "ceiling_area_m2": 42.0,
+  "space_types": [
+    "kitchen",
+    "bathroom"
+  ],
+  "system_notes": [
+    "Hybrid inventory suggests a reinforced concrete frame with masonry infill walls."
+  ],
+  "structural_notes": [
+    "Beam-column grid inferred from combined CAD and elevation evidence."
+  ],
+  "source_refs": [
+    "geometry:beam_g1",
+    "block:column_b1",
+    "hatch:slab_h1",
+    "vision:level_structural_demo"
+  ],
+  "assumptions": [
+    "Beam section depth came from elevation graphics rather than an explicit structural schedule."
+  ],
+  "inputs": {
+    "context_tags": [
+      "interior",
+      "residential"
+    ]
+  },
+  "conflict_notes": [],
+  "walls": [
+    {
+      "id": "wall_lb_01",
+      "level_id": "level_structural_demo",
+      "source": "hybrid",
+      "source_refs": [
+        "geometry:wall_g1",
+        "vision:wall_lb_01"
+      ],
+      "assumptions": [
+        "Wall was classified as load-bearing from grid continuity and alignment with columns."
+      ],
+      "inputs": {
+        "context_tags": [
+          "load_bearing",
+          "interior"
+        ]
+      },
+      "conflict_notes": [],
+      "confidence": 0.73,
+      "evidence": [
+        "CAD wall line aligns with column grid.",
+        "Vision shows thicker wall representation than partitions."
+      ],
+      "source_layers": [
+        "A-WALL-MASONRY-INT"
+      ],
+      "length_m": 6.0,
+      "height_m": 3.0,
+      "thickness_m": 0.15,
+      "area_m2": null,
+      "material_hint": "masonry",
+      "wall_system": "masonry_wall",
+      "interior_exterior_hint": "interior",
+      "finish_required": true,
+      "structural": true,
+      "openings_count": 0
+    }
+  ],
+  "openings": [],
+  "doors": [],
+  "windows": [],
+  "wet_areas": [],
+  "kitchens": [],
+  "stairs": [],
+  "fixtures": [],
+  "structural_elements": [
+    {
+      "id": "beam_demo",
+      "level_id": "level_structural_demo",
+      "source": "hybrid",
+      "source_refs": [
+        "geometry:beam_g1",
+        "vision:beam_demo"
+      ],
+      "assumptions": [
+        "Beam span was explicit in CAD, but section depth was inferred from elevation graphics."
+      ],
+      "inputs": {
+        "context_tags": [
+          "frame",
+          "primary_structure"
+        ]
+      },
+      "conflict_notes": [],
+      "confidence": 0.78,
+      "evidence": [
+        "Beam linework and elevation profile align across two bays."
+      ],
+      "element_type": "beam",
+      "count": 2,
+      "length_m": null,
+      "area_m2": null,
+      "volume_m3": null,
+      "material_hint": "concrete",
+      "section_width_m": 0.25,
+      "section_height_m": 0.45,
+      "span_m": 5.0,
+      "orientation": "horizontal",
+      "load_bearing": true,
+      "reinforcement_hint": "reinforced",
+      "concrete_grade_hint": "H25",
+      "steel_grade_hint": null,
+      "host_level": "level_structural_demo",
+      "adjacent_elements": [
+        "column_demo_a",
+        "column_demo_b"
+      ]
+    },
+    {
+      "id": "column_demo",
+      "level_id": "level_structural_demo",
+      "source": "json",
+      "source_refs": [
+        "block:column_b1",
+        "block:column_b2",
+        "block:column_b3",
+        "block:column_b4"
+      ],
+      "assumptions": [],
+      "inputs": {
+        "context_tags": [
+          "frame",
+          "vertical_support"
+        ]
+      },
+      "conflict_notes": [],
+      "confidence": null,
+      "evidence": [
+        "Four column blocks detected on layer S-COLUMN-CONC."
+      ],
+      "element_type": "column",
+      "count": 4,
+      "length_m": 12.0,
+      "area_m2": null,
+      "volume_m3": null,
+      "material_hint": "concrete",
+      "section_width_m": 0.3,
+      "section_height_m": 0.3,
+      "span_m": null,
+      "orientation": "vertical",
+      "load_bearing": true,
+      "reinforcement_hint": "reinforced",
+      "concrete_grade_hint": null,
+      "steel_grade_hint": null,
+      "host_level": "level_structural_demo",
+      "adjacent_elements": []
+    },
+    {
+      "id": "slab_demo",
+      "level_id": "level_structural_demo",
+      "source": "hybrid",
+      "source_refs": [
+        "hatch:slab_h1",
+        "vision:slab_demo"
+      ],
+      "assumptions": [
+        "Slab thickness remained a design-stage hint pending structural sheets."
+      ],
+      "inputs": {
+        "context_tags": [
+          "horizontal_structure",
+          "wet_area_zone"
+        ]
+      },
+      "conflict_notes": [],
+      "confidence": 0.74,
+      "evidence": [
+        "Continuous slab hatch is visible across the main bay."
+      ],
+      "element_type": "slab",
+      "count": 1,
+      "length_m": null,
+      "area_m2": 42.0,
+      "volume_m3": null,
+      "material_hint": "concrete",
+      "section_width_m": null,
+      "section_height_m": 0.16,
+      "span_m": null,
+      "orientation": "horizontal",
+      "load_bearing": true,
+      "reinforcement_hint": "reinforced",
+      "concrete_grade_hint": null,
+      "steel_grade_hint": null,
+      "host_level": "level_structural_demo",
+      "adjacent_elements": []
+    }
+  ],
+  "notes": [
+    "Sample structural inventory showing hybrid evidence, assumptions, and confidence.",
+    "The active path remains inventory-first: drawing understanding feeds deterministic takeoffs."
+  ],
+  "confidence": 0.8
+}

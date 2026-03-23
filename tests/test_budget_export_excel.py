@@ -1,0 +1,113 @@
+from pathlib import Path
+
+from openpyxl import load_workbook
+
+from budget.composer import compose_budget_rows
+from budget.export_excel import export_budget_workbook
+from core.schemas import BudgetCandidate, ProjectContext, QuantityTakeoff, QuantityTrace
+
+
+def _sample_export_inputs() -> tuple[ProjectContext, list[QuantityTakeoff], dict[str, list[BudgetCandidate]]]:
+    context = ProjectContext(project_id="demo_export", project_name="Demo Export Budget")
+    takeoffs = [
+        QuantityTakeoff(
+            item_key="beam_01:concrete_volume",
+            item_type="beam_concrete_volume",
+            level_id="level_01",
+            unit="m3",
+            quantity=10.0,
+            formula="beam.volume",
+            inputs={
+                "material_hint": "concrete",
+                "context_tags": ["structural", "beam", "concrete", "volume"],
+            },
+            trace=QuantityTrace(
+                source_entity_ids=["beam_01"],
+                source_entity_sources=["hybrid"],
+                metadata={
+                    "material_hint": "concrete",
+                    "context_tags": ["structural", "beam", "concrete", "volume"],
+                },
+            ),
+        ),
+        QuantityTakeoff(
+            item_key="wall_01:paint",
+            item_type="wall_finish_paint",
+            level_id="level_01",
+            unit="m2",
+            quantity=18.0,
+            formula="wall.finish",
+            inputs={"context_tags": ["wall", "finish", "paint", "interior", "dry_area"]},
+            trace=QuantityTrace(
+                source_entity_ids=["wall_01"],
+                source_entity_sources=["hybrid"],
+                metadata={"context_tags": ["wall", "finish", "paint", "interior", "dry_area"]},
+            ),
+        ),
+    ]
+    candidates = {
+        "beam_01:concrete_volume": [
+            BudgetCandidate(
+                takeoff_key="beam_01:concrete_volume",
+                bc3_code="E300100",
+                summary="Hormigon armado en vigas",
+                unit="m3",
+                score=0.81,
+                rationale="Strong match.",
+            )
+        ],
+        "wall_01:paint": [],
+    }
+    return context, takeoffs, candidates
+
+
+def test_budget_export_excel_writes_workbook_with_headers_and_formulas() -> None:
+    context, takeoffs, candidates = _sample_export_inputs()
+    _, _, rows = compose_budget_rows(context, takeoffs, candidates)
+
+    output_path = Path("tests") / "_budget_ready_test.xlsx"
+    if output_path.exists():
+        output_path.unlink()
+    try:
+        export_budget_workbook(context, rows, output_path)
+
+        workbook = load_workbook(output_path, data_only=False)
+        worksheet = workbook["Presupuesto"]
+
+        assert worksheet["A1"].value == "Demo Export Budget"
+        assert worksheet["A2"].value == "Presupuesto"
+        assert [worksheet.cell(row=3, column=index).value for index in range(1, 8)] == [
+            "Código",
+            "Nat",
+            "Ud",
+            "Resumen",
+            "CanPres",
+            "PrPres",
+            "ImpPres",
+        ]
+
+        chapter_row = None
+        detail_row = None
+        subtotal_row = None
+        for row_index in range(4, worksheet.max_row + 1):
+            nat = worksheet.cell(row=row_index, column=2).value
+            if nat == "Capítulo" and chapter_row is None:
+                chapter_row = row_index
+            elif nat == "Partida" and detail_row is None:
+                detail_row = row_index
+            elif nat == "Subtotal/Cierre de capítulo" and subtotal_row is None:
+                subtotal_row = row_index
+
+        assert chapter_row is not None
+        assert detail_row is not None
+        assert subtotal_row is not None
+
+        assert worksheet.cell(row=chapter_row, column=7).value.startswith("=G")
+        assert worksheet.cell(row=detail_row, column=6).value is None
+        assert worksheet.cell(row=detail_row, column=7).value.startswith("=ROUND(E")
+        assert worksheet.cell(row=subtotal_row, column=6).value.startswith("=SUM(")
+        assert worksheet.cell(row=subtotal_row, column=7).value.startswith("=ROUND(E")
+        workbook.close()
+    finally:
+        if output_path.exists():
+            output_path.unlink()

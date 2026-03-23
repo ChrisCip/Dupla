@@ -90,3 +90,100 @@ def test_inventory_builder_uses_vision_when_json_is_incomplete() -> None:
     assert merged.walls[0].length_m == 8.0
     assert merged.walls[0].height_m == 2.8
     assert "vision:wall_02" in merged.walls[0].source_refs
+
+
+def test_inventory_builder_merges_structural_and_material_hints() -> None:
+    cad_facts = {
+        "project": "structural.json",
+        "cad_facts": {
+            "texts": [
+                {"layer": "A-ROOM", "content": "Kitchen", "handle": "text_01"},
+            ],
+            "hatches": [
+                {
+                    "layer": "S-SLAB-CONC",
+                    "area": 30.0,
+                    "handle": "slab_h1",
+                    "pattern_name": "Concrete",
+                },
+            ],
+            "blocks": [
+                {"layer": "S-COLUMN-CONC", "block_name": "Column RC", "handle": "col_b1"},
+                {"layer": "S-COLUMN-CONC", "block_name": "Column RC", "handle": "col_b2"},
+            ],
+            "geometry_hints": [
+                {
+                    "layer": "S-BEAM-CONC",
+                    "name": "RC Beam",
+                    "length": 12.0,
+                    "handle": "beam_g1",
+                },
+                {
+                    "layer": "A-WALL-MASONRY-INT",
+                    "name": "Masonry Wall Interior",
+                    "length": 8.0,
+                    "handle": "wall_g1",
+                },
+            ],
+        },
+    }
+
+    vision_inventory = {
+        "level_id": "level_structural",
+        "level_name": "Level Structural",
+        "source": "vision",
+        "space_types": ["kitchen"],
+        "system_notes": ["Vision suggests reinforced concrete frame."],
+        "structural_notes": ["Vision detected a regular beam-column structural grid."],
+        "walls": [
+            {
+                "id": "json-wall-a-wall-masonry-int",
+                "source": "vision",
+                "source_layers": ["A-WALL-MASONRY-INT"],
+                "material_hint": "masonry",
+                "wall_system": "masonry_wall",
+                "interior_exterior_hint": "interior",
+                "finish_required": True,
+                "source_refs": ["vision:wall_01"],
+            }
+        ],
+        "structural_elements": [
+            {
+                "id": "json-beam-s-beam-conc",
+                "source": "vision",
+                "element_type": "beam",
+                "section_width_m": 0.25,
+                "section_height_m": 0.5,
+                "material_hint": "steel",
+                "reinforcement_hint": "reinforced",
+                "source_refs": ["vision:beam_01"],
+                "evidence": ["Beam depth was inferred visually from elevation graphics."],
+            }
+        ],
+    }
+
+    merged = build_level_inventory(cad_facts, vision_inventory)
+
+    assert merged.space_types == ["kitchen"]
+    assert "Vision suggests reinforced concrete frame." in merged.system_notes
+    assert any("Explicit structural CAD hints detected" in note for note in merged.structural_notes)
+    assert merged.walls[0].material_hint == "masonry"
+    assert merged.walls[0].wall_system == "masonry_wall"
+    assert merged.walls[0].interior_exterior_hint == "interior"
+    assert merged.walls[0].finish_required is True
+
+    beam = next(element for element in merged.structural_elements if element.element_type == "beam")
+    slab = next(element for element in merged.structural_elements if element.element_type == "slab")
+    column = next(element for element in merged.structural_elements if element.element_type == "column")
+
+    assert beam.length_m == 12.0
+    assert beam.section_width_m == 0.25
+    assert beam.section_height_m == 0.5
+    assert beam.material_hint == "concrete"
+    assert any("material_hint" in note for note in beam.conflict_notes)
+    assert beam.reinforcement_hint == "reinforced"
+    assert "vision:beam_01" in beam.source_refs
+    assert any("Beam depth was inferred visually" in item for item in beam.evidence)
+    assert slab.area_m2 == 30.0
+    assert slab.material_hint == "concrete"
+    assert column.count == 2

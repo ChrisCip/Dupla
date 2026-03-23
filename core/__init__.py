@@ -1,6 +1,9 @@
 from .inventory_builder import build_json_inventory, build_level_inventory
 from .schemas import (
     BudgetCandidate,
+    BudgetChapter,
+    BudgetLine,
+    BudgetRow,
     Door,
     Fixture,
     Kitchen,
@@ -78,6 +81,9 @@ __all__ = [
     "build_hybrid_inventory",
     "build_takeoffs_from_sources",
     "BudgetCandidate",
+    "BudgetChapter",
+    "BudgetLine",
+    "BudgetRow",
     "Door",
     "Fixture",
     "Kitchen",

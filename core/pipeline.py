@@ -8,6 +8,7 @@ from typing import Any, Iterable, Mapping
 
 from agents.classifier_agent import match_takeoffs_to_bc3
 from agents.quantifier_agent import quantify_inventory
+from budget.composer import compose_budget
 from core.inventory_builder import build_level_inventory
 from core.schemas import (
     BudgetCandidate,
@@ -26,9 +27,10 @@ def build_final_budget(
     takeoffs: Iterable[QuantityTakeoff],
     candidates_by_takeoff: dict[str, list[BudgetCandidate]],
 ) -> dict[str, Any]:
+    takeoff_list = list(takeoffs)
     lines = []
 
-    for takeoff in takeoffs:
+    for takeoff in takeoff_list:
         candidates = candidates_by_takeoff.get(takeoff.item_key, [])
         lines.append(
             {
@@ -37,10 +39,14 @@ def build_final_budget(
             }
         )
 
-    return {
-        "project_context": context.to_dict(),
-        "budget_lines": lines,
+    composed = compose_budget(context, takeoff_list, candidates_by_takeoff)
+    composed["budget_lines"] = lines
+    composed["takeoffs"] = [takeoff.to_dict() for takeoff in takeoff_list]
+    composed["candidates_by_takeoff"] = {
+        key: [candidate.to_dict() for candidate in value]
+        for key, value in candidates_by_takeoff.items()
     }
+    return composed
 
 
 def build_budget_from_inventory(

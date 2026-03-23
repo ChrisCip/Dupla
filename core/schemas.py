@@ -9,12 +9,21 @@ from typing import Any, Literal, Mapping
 
 InventorySource = Literal["json", "vision", "hybrid"]
 _ALLOWED_SOURCES = {"json", "vision", "hybrid"}
+BudgetRowType = Literal["chapter", "line", "subtotal"]
+_ALLOWED_BUDGET_ROW_TYPES = {"chapter", "line", "subtotal"}
 
 
 def _validate_source(source: str) -> None:
     if source not in _ALLOWED_SOURCES:
         raise ValueError(
             f"Invalid source '{source}'. Expected one of: {', '.join(sorted(_ALLOWED_SOURCES))}."
+        )
+
+
+def _validate_budget_row_type(row_type: str) -> None:
+    if row_type not in _ALLOWED_BUDGET_ROW_TYPES:
+        raise ValueError(
+            f"Invalid budget row type '{row_type}'. Expected one of: {', '.join(sorted(_ALLOWED_BUDGET_ROW_TYPES))}."
         )
 
 
@@ -59,6 +68,9 @@ class Wall(InventoryEntity):
     thickness_m: float | None = None
     area_m2: float | None = None
     material_hint: str | None = None
+    wall_system: str | None = None
+    interior_exterior_hint: str | None = None
+    finish_required: bool | None = None
     structural: bool | None = None
     openings_count: int = 0
 
@@ -141,6 +153,16 @@ class StructuralElement(InventoryEntity):
     area_m2: float | None = None
     volume_m3: float | None = None
     material_hint: str | None = None
+    section_width_m: float | None = None
+    section_height_m: float | None = None
+    span_m: float | None = None
+    orientation: str | None = None
+    load_bearing: bool | None = None
+    reinforcement_hint: str | None = None
+    concrete_grade_hint: str | None = None
+    steel_grade_hint: str | None = None
+    host_level: str | None = None
+    adjacent_elements: list[str] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)
@@ -153,6 +175,9 @@ class LevelInventory(ModelBase):
     cad_hints: dict[str, Any] = field(default_factory=dict)
     floor_area_m2: float | None = None
     ceiling_area_m2: float | None = None
+    space_types: list[str] = field(default_factory=list)
+    system_notes: list[str] = field(default_factory=list)
+    structural_notes: list[str] = field(default_factory=list)
     source_refs: list[str] = field(default_factory=list)
     assumptions: list[str] = field(default_factory=list)
     inputs: dict[str, Any] = field(default_factory=dict)
@@ -212,6 +237,60 @@ class BudgetCandidate(ModelBase):
     source: str = "keyword_match"
 
 
+@dataclass(kw_only=True)
+class BudgetChapter(ModelBase):
+    chapter_id: str
+    code: str
+    title: str
+    level: int = 1
+    parent_id: str | None = None
+    path: list[str] = field(default_factory=list)
+    child_ids: list[str] = field(default_factory=list)
+    line_keys: list[str] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class BudgetLine(ModelBase):
+    line_id: str
+    takeoff_key: str
+    chapter_id: str
+    code: str
+    nat: str = "Partida"
+    unit: str = ""
+    summary: str = ""
+    quantity: float = 0.0
+    unit_price: float | None = None
+    amount_formula: str | None = None
+    candidate_code: str | None = None
+    candidate_score: float | None = None
+    source_refs: list[str] = field(default_factory=list)
+    assumptions: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(kw_only=True)
+class BudgetRow(ModelBase):
+    row_type: BudgetRowType
+    code: str = ""
+    nat: str = ""
+    unit: str = ""
+    summary: str = ""
+    quantity: Any = None
+    unit_price: Any = None
+    amount: Any = None
+    chapter_id: str | None = None
+    parent_chapter_id: str | None = None
+    level: int = 0
+    takeoff_key: str | None = None
+    source_refs: list[str] = field(default_factory=list)
+    assumptions: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    excel_row: int | None = None
+
+    def __post_init__(self) -> None:
+        _validate_budget_row_type(self.row_type)
+
+
 def project_context_from_dict(data: Mapping[str, Any]) -> ProjectContext:
     return ProjectContext(
         project_id=data.get("project_id"),
@@ -255,6 +334,9 @@ def level_inventory_from_dict(
         cad_hints=dict(data.get("cad_hints", {})),
         floor_area_m2=data.get("floor_area_m2"),
         ceiling_area_m2=data.get("ceiling_area_m2"),
+        space_types=list(data.get("space_types", [])),
+        system_notes=list(data.get("system_notes", [])),
+        structural_notes=list(data.get("structural_notes", [])),
         source_refs=list(data.get("source_refs", [])),
         assumptions=list(data.get("assumptions", [])),
         inputs=dict(data.get("inputs", {})),

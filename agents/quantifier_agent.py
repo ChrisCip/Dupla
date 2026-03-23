@@ -142,6 +142,146 @@ def _entity_context_tags(entity: Any, *base_tags: str) -> list[str]:
     return _merge_context_tags(list(base_tags), explicit_tags)
 
 
+def _structural_length_payload(
+    element: StructuralElement,
+) -> tuple[float | None, str | None, dict[str, Any], list[str]]:
+    if element.length_m is not None:
+        return (
+            element.length_m,
+            "structural_element.length_m",
+            {"length_m": element.length_m},
+            [],
+        )
+
+    if element.element_type == "beam" and element.span_m is not None:
+        return (
+            element.span_m * max(element.count, 1),
+            "structural_element.span_m * structural_element.count",
+            {"span_m": element.span_m, "count": element.count},
+            [
+                f"Beam {element.id} total length was inferred from span_m * count because explicit total length was not provided."
+            ],
+        )
+
+    return None, None, {}, []
+
+
+def _structural_volume_payload(
+    element: StructuralElement,
+    length_quantity: float | None,
+    length_formula: str | None,
+    length_inputs: dict[str, Any],
+) -> tuple[float | None, str | None, dict[str, Any], list[str]]:
+    if element.volume_m3 is not None:
+        return (
+            element.volume_m3,
+            "structural_element.volume_m3",
+            {"volume_m3": element.volume_m3},
+            [],
+        )
+
+    if (
+        element.element_type in {"beam", "column"}
+        and length_quantity is not None
+        and element.section_width_m is not None
+        and element.section_height_m is not None
+    ):
+        return (
+            length_quantity * element.section_width_m * element.section_height_m,
+            f"{length_formula} * structural_element.section_width_m * structural_element.section_height_m",
+            {
+                **length_inputs,
+                "section_width_m": element.section_width_m,
+                "section_height_m": element.section_height_m,
+            },
+            [],
+        )
+
+    if (
+        element.element_type == "slab"
+        and element.area_m2 is not None
+        and element.section_height_m is not None
+    ):
+        return (
+            element.area_m2 * element.section_height_m,
+            "structural_element.area_m2 * structural_element.section_height_m",
+            {
+                "area_m2": element.area_m2,
+                "section_height_m": element.section_height_m,
+            },
+            [],
+        )
+
+    return None, None, {}, []
+
+
+def _structural_formwork_payload(
+    element: StructuralElement,
+    length_quantity: float | None,
+    length_inputs: dict[str, Any],
+) -> tuple[float | None, str | None, dict[str, Any], list[str]]:
+    if not _structural_requires_reinforcement_hint(element):
+        return None, None, {}, []
+
+    if (
+        element.element_type == "beam"
+        and length_quantity is not None
+        and element.section_width_m is not None
+        and element.section_height_m is not None
+    ):
+        return (
+            (2 * element.section_height_m + element.section_width_m) * length_quantity,
+            "(2 * structural_element.section_height_m + structural_element.section_width_m) * structural_length_total_m",
+            {
+                **length_inputs,
+                "structural_length_total_m": length_quantity,
+                "section_width_m": element.section_width_m,
+                "section_height_m": element.section_height_m,
+            },
+            [
+                f"Beam {element.id} formwork area hint excludes the top face and includes two sides plus soffit."
+            ],
+        )
+
+    if (
+        element.element_type == "column"
+        and length_quantity is not None
+        and element.section_width_m is not None
+        and element.section_height_m is not None
+    ):
+        return (
+            2 * (element.section_width_m + element.section_height_m) * length_quantity,
+            "2 * (structural_element.section_width_m + structural_element.section_height_m) * structural_length_total_m",
+            {
+                **length_inputs,
+                "structural_length_total_m": length_quantity,
+                "section_width_m": element.section_width_m,
+                "section_height_m": element.section_height_m,
+            },
+            [],
+        )
+
+    if element.element_type == "slab" and element.area_m2 is not None:
+        return (
+            element.area_m2,
+            "structural_element.area_m2",
+            {"area_m2": element.area_m2},
+            [
+                f"Slab {element.id} formwork area hint assumes underside formwork only."
+            ],
+        )
+
+    return None, None, {}, []
+
+
+def _structural_requires_reinforcement_hint(element: StructuralElement) -> bool:
+    if element.reinforcement_hint is not None:
+        return True
+    if element.concrete_grade_hint is not None:
+        return True
+    return (element.material_hint or "").lower() == "concrete"
+
+
 def _has_aggregated_json_count(opening: Opening) -> bool:
     return _find_input_value(opening.inputs, "json_count") is not None or any(
         ref.startswith("block:") for ref in opening.source_refs
@@ -763,6 +903,35 @@ def _fixture_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
 def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     takeoffs: list[QuantityTakeoff] = []
     for element in level.structural_elements:
+        base_context_tags = _entity_context_tags(element, "structural", element.element_type)
+        base_inputs = {
+            "element_type": element.element_type,
+            "material_hint": element.material_hint,
+            "section_width_m": element.section_width_m,
+            "section_height_m": element.section_height_m,
+            "span_m": element.span_m,
+            "load_bearing": element.load_bearing,
+            "orientation": element.orientation,
+            "reinforcement_hint": element.reinforcement_hint,
+            "concrete_grade_hint": element.concrete_grade_hint,
+            "steel_grade_hint": element.steel_grade_hint,
+            "host_level": element.host_level,
+            "adjacent_elements": list(element.adjacent_elements),
+        }
+        base_metadata = {
+            "context_tags": base_context_tags,
+            "material_hint": element.material_hint,
+            "section_width_m": element.section_width_m,
+            "section_height_m": element.section_height_m,
+            "span_m": element.span_m,
+            "load_bearing": element.load_bearing,
+            "orientation": element.orientation,
+            "reinforcement_hint": element.reinforcement_hint,
+            "concrete_grade_hint": element.concrete_grade_hint,
+            "steel_grade_hint": element.steel_grade_hint,
+            "host_level": element.host_level,
+            "adjacent_elements": list(element.adjacent_elements),
+        }
         takeoffs.append(
             _make_takeoff(
                 item_key=f"{element.id}:count",
@@ -771,34 +940,103 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 unit="unit",
                 quantity=float(element.count),
                 formula="structural_element.count",
-                inputs={"count": element.count, "element_type": element.element_type},
+                inputs={
+                    "count": element.count,
+                    **base_inputs,
+                    "context_tags": _entity_context_tags(element, "structural", element.element_type, "count"),
+                },
                 assumptions=list(element.assumptions),
                 source_refs=list(element.source_refs),
                 trace=_trace_from_entities(
                     entities=[element],
                     steps=["Read structural element count from normalized inventory."],
+                    metadata={
+                        **base_metadata,
+                        "context_tags": _entity_context_tags(
+                            element,
+                            "structural",
+                            element.element_type,
+                            "count",
+                        ),
+                    },
                 ),
             )
         )
 
-        if element.length_m is not None:
+        length_quantity, length_formula, length_inputs, length_assumptions = _structural_length_payload(element)
+        if length_quantity is not None and length_formula:
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{element.id}:length",
                     item_type="structural_length",
                     level_id=level.level_id,
                     unit="m",
-                    quantity=element.length_m,
-                    formula="structural_element.length_m",
-                    inputs={"length_m": element.length_m, "element_type": element.element_type},
-                    assumptions=list(element.assumptions),
+                    quantity=length_quantity,
+                    formula=length_formula,
+                    inputs={
+                        **length_inputs,
+                        **base_inputs,
+                        "context_tags": _entity_context_tags(
+                            element,
+                            "structural",
+                            element.element_type,
+                            "length",
+                        ),
+                    },
+                    assumptions=list(dict.fromkeys([*element.assumptions, *length_assumptions])),
                     source_refs=list(element.source_refs),
                     trace=_trace_from_entities(
                         entities=[element],
                         steps=["Read structural length from normalized inventory."],
+                        metadata={
+                            **base_metadata,
+                            "context_tags": _entity_context_tags(
+                                element,
+                                "structural",
+                                element.element_type,
+                                "length",
+                            ),
+                        },
                     ),
                 )
             )
+
+            if element.element_type != "other":
+                takeoffs.append(
+                    _make_takeoff(
+                        item_key=f"{element.id}:{element.element_type}_length",
+                        item_type=f"{element.element_type}_length",
+                        level_id=level.level_id,
+                        unit="m",
+                        quantity=length_quantity,
+                        formula=length_formula,
+                        inputs={
+                            **length_inputs,
+                            **base_inputs,
+                            "context_tags": _entity_context_tags(
+                                element,
+                                "structural",
+                                element.element_type,
+                                "length",
+                            ),
+                        },
+                        assumptions=list(dict.fromkeys([*element.assumptions, *length_assumptions])),
+                        source_refs=list(element.source_refs),
+                        trace=_trace_from_entities(
+                            entities=[element],
+                            steps=["Read typed structural length from normalized inventory."],
+                            metadata={
+                                **base_metadata,
+                                "context_tags": _entity_context_tags(
+                                    element,
+                                    "structural",
+                                    element.element_type,
+                                    "length",
+                                ),
+                            },
+                        ),
+                    )
+                )
 
         if element.area_m2 is not None:
             takeoffs.append(
@@ -809,31 +1047,273 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                     unit="m2",
                     quantity=element.area_m2,
                     formula="structural_element.area_m2",
-                    inputs={"area_m2": element.area_m2, "element_type": element.element_type},
+                    inputs={
+                        "area_m2": element.area_m2,
+                        **base_inputs,
+                        "context_tags": _entity_context_tags(
+                            element,
+                            "structural",
+                            element.element_type,
+                            "area",
+                        ),
+                    },
                     assumptions=list(element.assumptions),
                     source_refs=list(element.source_refs),
                     trace=_trace_from_entities(
                         entities=[element],
                         steps=["Read structural area from normalized inventory."],
+                        metadata={
+                            **base_metadata,
+                            "context_tags": _entity_context_tags(
+                                element,
+                                "structural",
+                                element.element_type,
+                                "area",
+                            ),
+                        },
                     ),
                 )
             )
 
-        if element.volume_m3 is not None:
+            if element.element_type != "other":
+                takeoffs.append(
+                    _make_takeoff(
+                        item_key=f"{element.id}:{element.element_type}_area",
+                        item_type=f"{element.element_type}_area",
+                        level_id=level.level_id,
+                        unit="m2",
+                        quantity=element.area_m2,
+                        formula="structural_element.area_m2",
+                        inputs={
+                            "area_m2": element.area_m2,
+                            **base_inputs,
+                            "context_tags": _entity_context_tags(
+                                element,
+                                "structural",
+                                element.element_type,
+                                "area",
+                            ),
+                        },
+                        assumptions=list(element.assumptions),
+                        source_refs=list(element.source_refs),
+                        trace=_trace_from_entities(
+                            entities=[element],
+                            steps=["Read typed structural area from normalized inventory."],
+                            metadata={
+                                **base_metadata,
+                                "context_tags": _entity_context_tags(
+                                    element,
+                                    "structural",
+                                    element.element_type,
+                                    "area",
+                                ),
+                            },
+                        ),
+                    )
+                )
+
+        volume_quantity, volume_formula, volume_inputs, volume_assumptions = _structural_volume_payload(
+            element,
+            length_quantity,
+            length_formula,
+            length_inputs,
+        )
+        if volume_quantity is not None and volume_formula:
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{element.id}:volume",
                     item_type="structural_volume",
                     level_id=level.level_id,
                     unit="m3",
-                    quantity=element.volume_m3,
-                    formula="structural_element.volume_m3",
-                    inputs={"volume_m3": element.volume_m3, "element_type": element.element_type},
-                    assumptions=list(element.assumptions),
+                    quantity=volume_quantity,
+                    formula=volume_formula,
+                    inputs={
+                        **volume_inputs,
+                        **base_inputs,
+                        "context_tags": _entity_context_tags(
+                            element,
+                            "structural",
+                            element.element_type,
+                            "volume",
+                        ),
+                    },
+                    assumptions=list(dict.fromkeys([*element.assumptions, *volume_assumptions])),
                     source_refs=list(element.source_refs),
                     trace=_trace_from_entities(
                         entities=[element],
                         steps=["Read structural volume from normalized inventory."],
+                        metadata={
+                            **base_metadata,
+                            "context_tags": _entity_context_tags(
+                                element,
+                                "structural",
+                                element.element_type,
+                                "volume",
+                            ),
+                        },
+                    ),
+                )
+            )
+
+            if element.element_type != "other":
+                takeoffs.append(
+                    _make_takeoff(
+                        item_key=f"{element.id}:{element.element_type}_volume",
+                        item_type=f"{element.element_type}_volume",
+                        level_id=level.level_id,
+                        unit="m3",
+                        quantity=volume_quantity,
+                        formula=volume_formula,
+                        inputs={
+                            **volume_inputs,
+                            **base_inputs,
+                            "context_tags": _entity_context_tags(
+                                element,
+                                "structural",
+                                element.element_type,
+                                "volume",
+                            ),
+                        },
+                        assumptions=list(dict.fromkeys([*element.assumptions, *volume_assumptions])),
+                        source_refs=list(element.source_refs),
+                        trace=_trace_from_entities(
+                            entities=[element],
+                            steps=["Read typed structural volume from normalized inventory."],
+                            metadata={
+                                **base_metadata,
+                                "context_tags": _entity_context_tags(
+                                    element,
+                                    "structural",
+                                    element.element_type,
+                                    "volume",
+                                ),
+                            },
+                        ),
+                    )
+                )
+
+        if (
+            element.element_type in {"beam", "column", "slab"}
+            and _structural_requires_reinforcement_hint(element)
+            and volume_quantity is not None
+        ):
+            concrete_context_tags = _entity_context_tags(
+                element,
+                "structural",
+                element.element_type,
+                "concrete",
+                "volume",
+            )
+            takeoffs.append(
+                _make_takeoff(
+                    item_key=f"{element.id}:concrete_volume",
+                    item_type=f"{element.element_type}_concrete_volume",
+                    level_id=level.level_id,
+                    unit="m3",
+                    quantity=volume_quantity,
+                    formula=volume_formula or "structural_element.volume_m3",
+                    inputs={
+                        **(volume_inputs or {"volume_m3": volume_quantity}),
+                        **base_inputs,
+                        "context_tags": concrete_context_tags,
+                    },
+                    assumptions=list(
+                        dict.fromkeys(
+                            [
+                                *element.assumptions,
+                                *volume_assumptions,
+                                f"{element.element_type.title()} {element.id} concrete volume was produced only because the inventory carried explicit concrete or reinforcement hints.",
+                            ]
+                        )
+                    ),
+                    source_refs=list(element.source_refs),
+                    trace=_trace_from_entities(
+                        entities=[element],
+                        steps=["Computed structural concrete volume from normalized inventory."],
+                        metadata={
+                            **base_metadata,
+                            "context_tags": concrete_context_tags,
+                        },
+                    ),
+                )
+            )
+
+        formwork_quantity, formwork_formula, formwork_inputs, formwork_assumptions = _structural_formwork_payload(
+            element,
+            length_quantity,
+            length_inputs,
+        )
+        if formwork_quantity is not None and formwork_formula:
+            formwork_context_tags = _entity_context_tags(
+                element,
+                "structural",
+                element.element_type,
+                "formwork",
+                "hint",
+            )
+            takeoffs.append(
+                _make_takeoff(
+                    item_key=f"{element.id}:formwork_area_hint",
+                    item_type=f"{element.element_type}_formwork_area_hint",
+                    level_id=level.level_id,
+                    unit="m2",
+                    quantity=formwork_quantity,
+                    formula=formwork_formula,
+                    inputs={
+                        **formwork_inputs,
+                        **base_inputs,
+                        "context_tags": formwork_context_tags,
+                    },
+                    assumptions=list(dict.fromkeys([*element.assumptions, *formwork_assumptions])),
+                    source_refs=list(element.source_refs),
+                    trace=_trace_from_entities(
+                        entities=[element],
+                        steps=["Computed structural formwork area hint from normalized inventory."],
+                        metadata={
+                            **base_metadata,
+                            "context_tags": formwork_context_tags,
+                        },
+                    ),
+                )
+            )
+
+        if element.element_type in {"beam", "column", "slab"} and _structural_requires_reinforcement_hint(element):
+            reinforcement_context_tags = _entity_context_tags(
+                element,
+                "structural",
+                element.element_type,
+                "reinforcement",
+                "hint",
+            )
+            takeoffs.append(
+                _make_takeoff(
+                    item_key=f"{element.id}:reinforcement_required_hint",
+                    item_type=f"{element.element_type}_reinforcement_required_hint",
+                    level_id=level.level_id,
+                    unit="flag",
+                    quantity=float(max(element.count, 1)),
+                    formula="structural_element.count",
+                    inputs={
+                        "count": element.count,
+                        **base_inputs,
+                        "context_tags": reinforcement_context_tags,
+                    },
+                    assumptions=list(
+                        dict.fromkeys(
+                            [
+                                *element.assumptions,
+                                f"{element.element_type.title()} {element.id} is marked as reinforcement-required only as a hint; exact rebar schedules are intentionally not computed.",
+                            ]
+                        )
+                    ),
+                    source_refs=list(element.source_refs),
+                    trace=_trace_from_entities(
+                        entities=[element],
+                        steps=["Recorded structural reinforcement-required hint from normalized inventory."],
+                        metadata={
+                            **base_metadata,
+                            "context_tags": reinforcement_context_tags,
+                        },
                     ),
                 )
             )
