@@ -23,8 +23,14 @@ def _tokenize(text: str) -> set[str]:
 
 
 def _query_text(takeoff: QuantityTakeoff) -> str:
-    trace_values = " ".join(str(value) for value in takeoff.trace.values() if value)
-    return f"{takeoff.item_key} {takeoff.source_element_type} {trace_values}"
+    trace_values = " ".join(
+        [
+            " ".join(takeoff.trace.source_entity_ids),
+            " ".join(takeoff.trace.evidence),
+            " ".join(str(value) for value in takeoff.inputs.values() if value),
+        ]
+    )
+    return f"{takeoff.item_key} {takeoff.item_type} {trace_values}"
 
 
 def rank_budget_candidates(

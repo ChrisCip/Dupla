@@ -13,3 +13,5 @@ demo_files/
 !README.md
 !TECHNICAL_DOCS.md
 !REPORTE_AVANCE_GRUPO.md
+!examples/
+!examples/*.json

@@ -1,0 +1,124 @@
+{
+  "level_id": "level_01",
+  "level_name": "Level 01",
+  "source": "hybrid",
+  "floor_area_m2": 120.0,
+  "ceiling_area_m2": 118.0,
+  "source_refs": [
+    "hatch:floor_h1",
+    "vision:level_01"
+  ],
+  "conflict_notes": [
+    "Conflict on floor_area_m2: kept JSON value 120.0, vision suggested 118.0."
+  ],
+  "walls": [
+    {
+      "id": "wall_01",
+      "level_id": "level_01",
+      "source": "hybrid",
+      "source_refs": [
+        "geometry:wall_01",
+        "vision:wall_01"
+      ],
+      "assumptions": [],
+      "inputs": {
+        "json": {
+          "json_length_m": 10.0
+        },
+        "vision": {
+          "height_basis": "annotated section marker"
+        }
+      },
+      "conflict_notes": [],
+      "confidence": 0.92,
+      "evidence": [
+        "CAD linework aggregated on A-WALL.",
+        "Vision identified matching wall in plan image."
+      ],
+      "source_layers": [
+        "A-WALL"
+      ],
+      "length_m": 10.0,
+      "height_m": 3.0,
+      "thickness_m": 0.15,
+      "area_m2": null,
+      "material_hint": "block",
+      "structural": false,
+      "openings_count": 2
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening_01",
+      "level_id": "level_01",
+      "source": "vision",
+      "source_refs": [
+        "vision:door_01"
+      ],
+      "assumptions": [],
+      "inputs": {},
+      "conflict_notes": [],
+      "confidence": 0.85,
+      "evidence": [
+        "Door swing visible in plan."
+      ],
+      "wall_id": "wall_01",
+      "opening_type": "door",
+      "count": 1,
+      "width_m": 1.0,
+      "height_m": 2.1,
+      "area_m2": null,
+      "source_layers": [
+        "A-DOOR"
+      ],
+      "related_door_id": "door_01",
+      "related_window_id": null
+    }
+  ],
+  "doors": [
+    {
+      "id": "door_01",
+      "level_id": "level_01",
+      "source": "hybrid",
+      "source_refs": [
+        "block:door_b1",
+        "vision:door_01"
+      ],
+      "assumptions": [],
+      "inputs": {
+        "json": {
+          "json_count": 1
+        },
+        "vision": {
+          "door_height_m": 2.1
+        }
+      },
+      "conflict_notes": [],
+      "confidence": 0.88,
+      "evidence": [
+        "Door block reference found in CAD.",
+        "Door opening visible in image."
+      ],
+      "source_layers": [
+        "A-DOOR"
+      ],
+      "count": 1,
+      "width_m": 1.0,
+      "height_m": 2.1,
+      "type_hint": "swing",
+      "material_hint": "wood",
+      "exterior": false,
+      "wall_id": "wall_01"
+    }
+  ],
+  "windows": [],
+  "wet_areas": [],
+  "kitchens": [],
+  "stairs": [],
+  "fixtures": [],
+  "structural_elements": [],
+  "notes": [
+    "Sample merged level inventory."
+  ],
+  "confidence": 0.9
+}

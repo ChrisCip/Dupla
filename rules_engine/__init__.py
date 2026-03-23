@@ -43,7 +43,7 @@ def explicit_derivation_rule(takeoff: QuantityTakeoff) -> list[QuantityTakeoff]:
     TODO: Replace this metadata-driven scaffold with first-class domain rules
     once finish systems, openings and assembly logic are formally modeled.
     """
-    derivations = takeoff.trace.get("derive", [])
+    derivations = takeoff.trace.metadata.get("derive", [])
     if not isinstance(derivations, list):
         return []
 
@@ -60,7 +60,14 @@ def explicit_derivation_rule(takeoff: QuantityTakeoff) -> list[QuantityTakeoff]:
                 quantity=takeoff.quantity * factor,
                 unit=unit,
                 formula=f"{takeoff.formula} * {factor}".strip(),
-                trace={**takeoff.trace, "derived_from": takeoff.item_key, "derived_label": label},
+                trace=replace(
+                    takeoff.trace,
+                    metadata={
+                        **takeoff.trace.metadata,
+                        "derived_from": takeoff.item_key,
+                        "derived_label": label,
+                    },
+                ),
             )
         )
     return expanded

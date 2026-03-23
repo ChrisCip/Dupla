@@ -1,0 +1,84 @@
+[
+  {
+    "item_key": "level_01:floor_area",
+    "item_type": "floor_area",
+    "level_id": "level_01",
+    "unit": "m2",
+    "quantity": 120.0,
+    "formula": "level.floor_area_m2",
+    "inputs": {
+      "floor_area_m2": 120.0
+    },
+    "assumptions": [],
+    "source_refs": [
+      "hatch:floor_h1",
+      "vision:level_01"
+    ],
+    "trace": {
+      "source_entity_ids": [
+        "level_01"
+      ],
+      "source_entity_sources": [
+        "hybrid"
+      ],
+      "steps": [
+        "Read explicit floor area from merged level inventory."
+      ],
+      "evidence": [],
+      "conflict_notes": [
+        "Conflict on floor_area_m2: kept JSON value 120.0, vision suggested 118.0."
+      ],
+      "metadata": {
+        "level_name": "Level 01"
+      }
+    }
+  },
+  {
+    "item_key": "wall_01:net_area",
+    "item_type": "wall_net_area",
+    "level_id": "level_01",
+    "unit": "m2",
+    "quantity": 27.9,
+    "formula": "wall.length_m * wall.height_m - openings_area_m2",
+    "inputs": {
+      "length_m": 10.0,
+      "height_m": 3.0,
+      "openings_area_m2": 2.1,
+      "opening_formulas": [
+        "opening_01(opening.width_m * opening.height_m * opening.count)"
+      ]
+    },
+    "assumptions": [],
+    "source_refs": [
+      "geometry:wall_01",
+      "vision:wall_01",
+      "vision:door_01"
+    ],
+    "trace": {
+      "source_entity_ids": [
+        "wall_01",
+        "opening_01"
+      ],
+      "source_entity_sources": [
+        "hybrid",
+        "vision"
+      ],
+      "steps": [
+        "Computed wall gross area from explicit wall data.",
+        "Subtracted linked opening areas when explicit measurements were available."
+      ],
+      "evidence": [
+        "CAD linework aggregated on A-WALL.",
+        "Vision identified matching wall in plan image.",
+        "Door swing visible in plan."
+      ],
+      "conflict_notes": [],
+      "metadata": {
+        "gross_formula": "wall.length_m * wall.height_m",
+        "opening_area_formula_parts": [
+          "opening_01(opening.width_m * opening.height_m * opening.count)"
+        ]
+      }
+    }
+  }
+]

@@ -5,16 +5,26 @@ Shared typed models for the active APS/JSON inventory pipeline.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
+
+InventorySource = Literal["json", "vision", "hybrid"]
+_ALLOWED_SOURCES = {"json", "vision", "hybrid"}
 
 
-@dataclass
+def _validate_source(source: str) -> None:
+    if source not in _ALLOWED_SOURCES:
+        raise ValueError(
+            f"Invalid source '{source}'. Expected one of: {', '.join(sorted(_ALLOWED_SOURCES))}."
+        )
+
+
+@dataclass(kw_only=True)
 class ModelBase:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ProjectContext(ModelBase):
     project_id: str | None = None
     project_name: str | None = None
@@ -25,10 +35,24 @@ class ProjectContext(ModelBase):
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass
-class Wall(ModelBase):
+@dataclass(kw_only=True)
+class InventoryEntity(ModelBase):
     id: str
     level_id: str | None = None
+    source: InventorySource = "hybrid"
+    source_refs: list[str] = field(default_factory=list)
+    assumptions: list[str] = field(default_factory=list)
+    inputs: dict[str, Any] = field(default_factory=dict)
+    conflict_notes: list[str] = field(default_factory=list)
+    confidence: float | None = None
+    evidence: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        _validate_source(self.source)
+
+
+@dataclass(kw_only=True)
+class Wall(InventoryEntity):
     source_layers: list[str] = field(default_factory=list)
     length_m: float | None = None
     height_m: float | None = None
@@ -37,14 +61,23 @@ class Wall(ModelBase):
     material_hint: str | None = None
     structural: bool | None = None
     openings_count: int = 0
-    confidence: float | None = None
-    evidence: list[str] = field(default_factory=list)
 
 
-@dataclass
-class Door(ModelBase):
-    id: str
-    level_id: str | None = None
+@dataclass(kw_only=True)
+class Opening(InventoryEntity):
+    wall_id: str | None = None
+    opening_type: str = "void"
+    count: int = 1
+    width_m: float | None = None
+    height_m: float | None = None
+    area_m2: float | None = None
+    source_layers: list[str] = field(default_factory=list)
+    related_door_id: str | None = None
+    related_window_id: str | None = None
+
+
+@dataclass(kw_only=True)
+class Door(InventoryEntity):
     source_layers: list[str] = field(default_factory=list)
     count: int = 1
     width_m: float | None = None
@@ -52,96 +85,80 @@ class Door(ModelBase):
     type_hint: str | None = None
     material_hint: str | None = None
     exterior: bool | None = None
-    confidence: float | None = None
-    evidence: list[str] = field(default_factory=list)
+    wall_id: str | None = None
 
 
-@dataclass
-class Window(ModelBase):
-    id: str
-    level_id: str | None = None
+@dataclass(kw_only=True)
+class Window(InventoryEntity):
     source_layers: list[str] = field(default_factory=list)
     count: int = 1
     width_m: float | None = None
     height_m: float | None = None
     type_hint: str | None = None
     glazing_hint: str | None = None
-    confidence: float | None = None
-    evidence: list[str] = field(default_factory=list)
+    wall_id: str | None = None
 
 
-@dataclass
-class WetArea(ModelBase):
-    id: str
-    level_id: str | None = None
+@dataclass(kw_only=True)
+class WetArea(InventoryEntity):
     kind: str = "bathroom"
     count: int = 1
     estimated_area_m2: float | None = None
     fixture_ids: list[str] = field(default_factory=list)
-    confidence: float | None = None
-    evidence: list[str] = field(default_factory=list)
 
 
-@dataclass
-class Kitchen(ModelBase):
-    id: str
-    level_id: str | None = None
+@dataclass(kw_only=True)
+class Kitchen(InventoryEntity):
     count: int = 1
     estimated_area_m2: float | None = None
     island_present: bool | None = None
     fixture_ids: list[str] = field(default_factory=list)
-    confidence: float | None = None
-    evidence: list[str] = field(default_factory=list)
 
 
-@dataclass
-class Stair(ModelBase):
-    id: str
-    level_id: str | None = None
+@dataclass(kw_only=True)
+class Stair(InventoryEntity):
     count: int = 1
     flights: int | None = None
     riser_count: int | None = None
     tread_count: int | None = None
     width_m: float | None = None
     elevation_change_m: float | None = None
-    confidence: float | None = None
-    evidence: list[str] = field(default_factory=list)
 
 
-@dataclass
-class Fixture(ModelBase):
-    id: str
-    level_id: str | None = None
+@dataclass(kw_only=True)
+class Fixture(InventoryEntity):
     fixture_type: str = "other"
     count: int = 1
     unit: str = "unit"
     location_hint: str | None = None
-    confidence: float | None = None
-    evidence: list[str] = field(default_factory=list)
 
 
-@dataclass
-class StructuralElement(ModelBase):
-    id: str
-    level_id: str | None = None
+@dataclass(kw_only=True)
+class StructuralElement(InventoryEntity):
     element_type: str = "other"
     count: int = 1
     length_m: float | None = None
     area_m2: float | None = None
     volume_m3: float | None = None
     material_hint: str | None = None
-    confidence: float | None = None
-    evidence: list[str] = field(default_factory=list)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class LevelInventory(ModelBase):
     level_id: str
     level_name: str
+    source: InventorySource = "hybrid"
     source_image: str | None = None
     source_view: str | None = None
     cad_hints: dict[str, Any] = field(default_factory=dict)
+    floor_area_m2: float | None = None
+    ceiling_area_m2: float | None = None
+    source_refs: list[str] = field(default_factory=list)
+    assumptions: list[str] = field(default_factory=list)
+    inputs: dict[str, Any] = field(default_factory=dict)
+    conflict_notes: list[str] = field(default_factory=list)
     walls: list[Wall] = field(default_factory=list)
+    openings: list[Opening] = field(default_factory=list)
     doors: list[Door] = field(default_factory=list)
     windows: list[Window] = field(default_factory=list)
     wet_areas: list[WetArea] = field(default_factory=list)
@@ -152,19 +169,39 @@ class LevelInventory(ModelBase):
     notes: list[str] = field(default_factory=list)
     confidence: float | None = None
 
+    def __post_init__(self) -> None:
+        _validate_source(self.source)
 
-@dataclass
+
+@dataclass(kw_only=True)
+class QuantityTrace(ModelBase):
+    source_entity_ids: list[str] = field(default_factory=list)
+    source_entity_sources: list[InventorySource] = field(default_factory=list)
+    steps: list[str] = field(default_factory=list)
+    evidence: list[str] = field(default_factory=list)
+    conflict_notes: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        for source in self.source_entity_sources:
+            _validate_source(source)
+
+
+@dataclass(kw_only=True)
 class QuantityTakeoff(ModelBase):
     item_key: str
-    source_element_type: str
+    item_type: str
     level_id: str | None = None
-    quantity: float = 0.0
     unit: str = ""
+    quantity: float = 0.0
     formula: str = ""
-    trace: dict[str, Any] = field(default_factory=dict)
+    inputs: dict[str, Any] = field(default_factory=dict)
+    assumptions: list[str] = field(default_factory=list)
+    source_refs: list[str] = field(default_factory=list)
+    trace: QuantityTrace = field(default_factory=QuantityTrace)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class BudgetCandidate(ModelBase):
     takeoff_key: str
     bc3_code: str
@@ -187,34 +224,54 @@ def project_context_from_dict(data: Mapping[str, Any]) -> ProjectContext:
     )
 
 
-def _list_of(model_cls: Any, values: list[Mapping[str, Any]], level_id: str) -> list[Any]:
+def _list_of(
+    model_cls: Any,
+    values: list[Mapping[str, Any]],
+    level_id: str,
+    default_source: InventorySource,
+) -> list[Any]:
     items: list[Any] = []
     for value in values:
         payload = dict(value)
         payload.setdefault("level_id", level_id)
+        payload.setdefault("source", default_source)
         items.append(model_cls(**payload))
     return items
 
 
-def level_inventory_from_dict(data: Mapping[str, Any]) -> LevelInventory:
+def level_inventory_from_dict(
+    data: Mapping[str, Any],
+    *,
+    default_source: InventorySource = "hybrid",
+) -> LevelInventory:
     level_id = str(data.get("level_id") or data.get("level_name") or "level")
+    source = data.get("source", default_source)
     return LevelInventory(
         level_id=level_id,
         level_name=str(data.get("level_name") or level_id),
+        source=source,
         source_image=data.get("source_image"),
         source_view=data.get("source_view"),
         cad_hints=dict(data.get("cad_hints", {})),
-        walls=_list_of(Wall, list(data.get("walls", [])), level_id),
-        doors=_list_of(Door, list(data.get("doors", [])), level_id),
-        windows=_list_of(Window, list(data.get("windows", [])), level_id),
-        wet_areas=_list_of(WetArea, list(data.get("wet_areas", [])), level_id),
-        kitchens=_list_of(Kitchen, list(data.get("kitchens", [])), level_id),
-        stairs=_list_of(Stair, list(data.get("stairs", [])), level_id),
-        fixtures=_list_of(Fixture, list(data.get("fixtures", [])), level_id),
+        floor_area_m2=data.get("floor_area_m2"),
+        ceiling_area_m2=data.get("ceiling_area_m2"),
+        source_refs=list(data.get("source_refs", [])),
+        assumptions=list(data.get("assumptions", [])),
+        inputs=dict(data.get("inputs", {})),
+        conflict_notes=list(data.get("conflict_notes", [])),
+        walls=_list_of(Wall, list(data.get("walls", [])), level_id, source),
+        openings=_list_of(Opening, list(data.get("openings", [])), level_id, source),
+        doors=_list_of(Door, list(data.get("doors", [])), level_id, source),
+        windows=_list_of(Window, list(data.get("windows", [])), level_id, source),
+        wet_areas=_list_of(WetArea, list(data.get("wet_areas", [])), level_id, source),
+        kitchens=_list_of(Kitchen, list(data.get("kitchens", [])), level_id, source),
+        stairs=_list_of(Stair, list(data.get("stairs", [])), level_id, source),
+        fixtures=_list_of(Fixture, list(data.get("fixtures", [])), level_id, source),
         structural_elements=_list_of(
             StructuralElement,
             list(data.get("structural_elements", [])),
             level_id,
+            source,
         ),
         notes=list(data.get("notes", [])),
         confidence=data.get("confidence"),

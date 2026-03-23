@@ -369,11 +369,27 @@ def analyze_plan(image_path: Path, cad_summary: dict[str, Any], level_name: str)
 
     payload.setdefault("level_name", level_name)
     payload.setdefault("level_id", level_name.lower().replace(" ", "_"))
+    payload.setdefault("source", "vision")
     payload.setdefault("source_image", image_path.name)
     payload.setdefault("source_view", _detect_view_type(image_path))
     payload.setdefault("cad_hints", {})
 
-    level_inventory = level_inventory_from_dict(payload)
+    for collection_name in (
+        "walls",
+        "openings",
+        "doors",
+        "windows",
+        "wet_areas",
+        "kitchens",
+        "stairs",
+        "fixtures",
+        "structural_elements",
+    ):
+        for item in payload.get(collection_name, []):
+            if isinstance(item, dict):
+                item.setdefault("source", "vision")
+
+    level_inventory = level_inventory_from_dict(payload, default_source="vision")
     result = level_inventory.to_dict()
     result["cad_cross_checks"] = _build_cross_checks(level_inventory, cad_summary)
     result["_raw_response"] = raw_text
