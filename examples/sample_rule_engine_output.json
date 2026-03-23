@@ -3,30 +3,208 @@
     {
       "item_key": "wall_10:net_area",
       "item_type": "wall_net_area",
-      "quantity": 10.0,
+      "level_id": "level_demo",
       "unit": "m2",
+      "quantity": 10.0,
       "formula": "wall.length_m * wall.height_m",
       "inputs": {
+        "length_m": 5.0,
+        "height_m": 2.0,
         "material_hint": "block",
+        "structural": null,
+        "openings_area_m2": 0.0,
+        "opening_formulas": [],
         "context_tags": [
           "wall",
           "net_area"
         ]
+      },
+      "assumptions": [
+        "Wall wall_10 net area equals gross area because no linked openings were provided."
+      ],
+      "source_refs": [
+        "geometry:wall_10"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "wall_10"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed wall gross area from explicit wall data.",
+          "Subtracted linked opening areas when explicit measurements were available."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "gross_formula": "wall.length_m * wall.height_m",
+          "opening_area_formula_parts": [],
+          "opening_deductions": [],
+          "context_tags": [
+            "wall",
+            "net_area"
+          ]
+        }
       }
     },
     {
       "item_key": "wet_20:area",
       "item_type": "wet_area_area",
-      "quantity": 12.0,
+      "level_id": "level_demo",
       "unit": "m2",
+      "quantity": 12.0,
       "formula": "wet_area.estimated_area_m2",
       "inputs": {
+        "estimated_area_m2": 12.0,
         "kind": "bathroom",
         "context_tags": [
           "wet_area",
           "bathroom",
           "area"
         ]
+      },
+      "assumptions": [],
+      "source_refs": [
+        "vision:wet_20"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "wet_20"
+        ],
+        "source_entity_sources": [
+          "vision"
+        ],
+        "steps": [
+          "Read wet area area from normalized inventory."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "wet_area",
+            "bathroom",
+            "area"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "door_30:count",
+      "item_type": "door_count",
+      "level_id": "level_demo",
+      "unit": "unit",
+      "quantity": 3.0,
+      "formula": "door.count",
+      "inputs": {
+        "count": 3,
+        "type_hint": null,
+        "material_hint": "wood",
+        "context_tags": [
+          "door"
+        ]
+      },
+      "assumptions": [],
+      "source_refs": [
+        "vision:door_30"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "door_30"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read explicit door count from normalized inventory."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "door"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "window_30:count",
+      "item_type": "window_count",
+      "level_id": "level_demo",
+      "unit": "unit",
+      "quantity": 4.0,
+      "formula": "window.count",
+      "inputs": {
+        "count": 4,
+        "type_hint": null,
+        "glazing_hint": null,
+        "context_tags": [
+          "window"
+        ]
+      },
+      "assumptions": [],
+      "source_refs": [
+        "vision:window_30"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "window_30"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read explicit window count from normalized inventory."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "window"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "window_30:area",
+      "item_type": "window_area",
+      "level_id": "level_demo",
+      "unit": "m2",
+      "quantity": 6.0,
+      "formula": "window.width_m * window.height_m * window.count",
+      "inputs": {
+        "width_m": 1.5,
+        "height_m": 1.0,
+        "count": 4,
+        "glazing_hint": null,
+        "context_tags": [
+          "window",
+          "area"
+        ]
+      },
+      "assumptions": [],
+      "source_refs": [
+        "vision:window_30"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "window_30"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed window area from width, height, and count."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "window",
+            "area"
+          ]
+        }
       }
     }
   ],
@@ -34,51 +212,239 @@
     {
       "item_key": "wall_10:net_area:wall_finish_standard:finish_plaster",
       "item_type": "wall_finish_plaster",
-      "quantity": 20.0,
+      "level_id": "level_demo",
       "unit": "m2",
+      "quantity": 20.0,
       "formula": "wall_10:net_area.quantity * 2",
+      "inputs": {
+        "length_m": 5.0,
+        "height_m": 2.0,
+        "material_hint": "block",
+        "structural": null,
+        "openings_area_m2": 0.0,
+        "opening_formulas": [],
+        "context_tags": [
+          "wall",
+          "net_area",
+          "finish",
+          "plaster"
+        ],
+        "finish_system": "plaster",
+        "faces": "both",
+        "base_quantity": 10.0,
+        "base_unit": "m2",
+        "base_item_type": "wall_net_area",
+        "derived_from": "wall_10:net_area",
+        "derivation_rule_id": "wall_finish_standard",
+        "derivation_factor": 2.0
+      },
       "assumptions": [
+        "Wall wall_10 net area equals gross area because no linked openings were provided.",
         "Default rule assumes plaster finish applies to both exposed wall faces."
       ],
+      "source_refs": [
+        "geometry:wall_10"
+      ],
       "trace": {
+        "source_entity_ids": [
+          "wall_10"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed wall gross area from explicit wall data.",
+          "Subtracted linked opening areas when explicit measurements were available.",
+          "Expanded via rule wall_finish_standard:finish_plaster using factor 2."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
         "metadata": {
+          "gross_formula": "wall.length_m * wall.height_m",
+          "opening_area_formula_parts": [],
+          "opening_deductions": [],
+          "context_tags": [
+            "wall",
+            "net_area",
+            "finish",
+            "plaster"
+          ],
           "derived_from": "wall_10:net_area",
           "derivation_rule_id": "wall_finish_standard",
-          "derivation_factor": 2.0
+          "derivation_suffix": "finish_plaster",
+          "derivation_factor": 2.0,
+          "derivation_formula": "wall_10:net_area.quantity * 2"
         }
       }
     },
     {
       "item_key": "wet_20:area:wet_area_surface_standard:waterproofing",
       "item_type": "wet_area_waterproofing",
-      "quantity": 12.0,
+      "level_id": "level_demo",
       "unit": "m2",
+      "quantity": 12.0,
       "formula": "wet_20:area.quantity * 1",
+      "inputs": {
+        "estimated_area_m2": 12.0,
+        "kind": "bathroom",
+        "context_tags": [
+          "wet_area",
+          "bathroom",
+          "area",
+          "waterproofing"
+        ],
+        "system": "waterproofing",
+        "base_quantity": 12.0,
+        "base_unit": "m2",
+        "base_item_type": "wet_area_area",
+        "derived_from": "wet_20:area",
+        "derivation_rule_id": "wet_area_surface_standard",
+        "derivation_factor": 1.0
+      },
       "assumptions": [
         "Default rule maps wet area footprint directly to waterproofing coverage."
       ],
+      "source_refs": [
+        "vision:wet_20"
+      ],
       "trace": {
+        "source_entity_ids": [
+          "wet_20"
+        ],
+        "source_entity_sources": [
+          "vision"
+        ],
+        "steps": [
+          "Read wet area area from normalized inventory.",
+          "Expanded via rule wet_area_surface_standard:waterproofing using factor 1."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
         "metadata": {
+          "context_tags": [
+            "wet_area",
+            "bathroom",
+            "area",
+            "waterproofing"
+          ],
           "derived_from": "wet_20:area",
           "derivation_rule_id": "wet_area_surface_standard",
-          "derivation_factor": 1.0
+          "derivation_suffix": "waterproofing",
+          "derivation_factor": 1.0,
+          "derivation_formula": "wet_20:area.quantity * 1"
         }
       }
     },
     {
       "item_key": "door_30:count:door_assembly_standard:hardware",
       "item_type": "door_hardware_set",
-      "quantity": 3.0,
+      "level_id": "level_demo",
       "unit": "unit",
+      "quantity": 3.0,
       "formula": "door_30:count.quantity * 1",
+      "inputs": {
+        "count": 3,
+        "type_hint": null,
+        "material_hint": "wood",
+        "context_tags": [
+          "door",
+          "hardware"
+        ],
+        "assembly": "hardware_set",
+        "base_quantity": 3.0,
+        "base_unit": "unit",
+        "base_item_type": "door_count",
+        "derived_from": "door_30:count",
+        "derivation_rule_id": "door_assembly_standard",
+        "derivation_factor": 1.0
+      },
       "assumptions": [
         "Default rule assumes one hardware set per quantified door."
       ],
+      "source_refs": [
+        "vision:door_30"
+      ],
       "trace": {
+        "source_entity_ids": [
+          "door_30"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read explicit door count from normalized inventory.",
+          "Expanded via rule door_assembly_standard:hardware using factor 1."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
         "metadata": {
+          "context_tags": [
+            "door",
+            "hardware"
+          ],
           "derived_from": "door_30:count",
           "derivation_rule_id": "door_assembly_standard",
-          "derivation_factor": 1.0
+          "derivation_suffix": "hardware",
+          "derivation_factor": 1.0,
+          "derivation_formula": "door_30:count.quantity * 1"
+        }
+      }
+    },
+    {
+      "item_key": "window_30:area:window_seal_standard:sealant",
+      "item_type": "window_sealant_area",
+      "level_id": "level_demo",
+      "unit": "m2",
+      "quantity": 6.0,
+      "formula": "window_30:area.quantity * 1",
+      "inputs": {
+        "width_m": 1.5,
+        "height_m": 1.0,
+        "count": 4,
+        "glazing_hint": null,
+        "context_tags": [
+          "window",
+          "area",
+          "sealant"
+        ],
+        "assembly": "sealant",
+        "base_quantity": 6.0,
+        "base_unit": "m2",
+        "base_item_type": "window_area",
+        "derived_from": "window_30:area",
+        "derivation_rule_id": "window_seal_standard",
+        "derivation_factor": 1.0
+      },
+      "assumptions": [
+        "Default rule maps quantified window area directly to sealant/glazing treatment area."
+      ],
+      "source_refs": [
+        "vision:window_30"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "window_30"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed window area from width, height, and count.",
+          "Expanded via rule window_seal_standard:sealant using factor 1."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "window",
+            "area",
+            "sealant"
+          ],
+          "derived_from": "window_30:area",
+          "derivation_rule_id": "window_seal_standard",
+          "derivation_suffix": "sealant",
+          "derivation_factor": 1.0,
+          "derivation_formula": "window_30:area.quantity * 1"
         }
       }
     }

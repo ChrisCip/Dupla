@@ -21,6 +21,8 @@ def test_rules_engine_expands_wall_net_area_into_finish_takeoffs() -> None:
 
     base_takeoffs = quantify_inventory([level])
     wall_net = next(takeoff for takeoff in base_takeoffs if takeoff.item_type == "wall_net_area")
+    assert wall_net.inputs["context_tags"] == ["wall", "net_area"]
+    assert wall_net.trace.metadata["context_tags"] == ["wall", "net_area"]
 
     expanded = default_rules_engine().apply(base_takeoffs)
     derived = [
@@ -32,6 +34,18 @@ def test_rules_engine_expands_wall_net_area_into_finish_takeoffs() -> None:
 
     assert derived_by_type["wall_finish_plaster"].quantity == 20.0
     assert derived_by_type["wall_finish_paint"].quantity == 20.0
+    assert derived_by_type["wall_finish_plaster"].inputs["context_tags"] == [
+        "wall",
+        "net_area",
+        "finish",
+        "plaster",
+    ]
+    assert derived_by_type["wall_finish_paint"].trace.metadata["context_tags"] == [
+        "wall",
+        "net_area",
+        "finish",
+        "paint",
+    ]
     assert all(
         takeoff.trace.metadata["derivation_rule_id"] == "wall_finish_standard"
         for takeoff in derived

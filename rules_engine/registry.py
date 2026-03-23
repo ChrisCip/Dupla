@@ -44,8 +44,6 @@ def _takeoff_material_hint(takeoff: QuantityTakeoff) -> str | None:
 def _takeoff_context_tags(takeoff: QuantityTakeoff) -> set[str]:
     tags = set(_coerce_tags(takeoff.inputs.get("context_tags")))
     tags.update(_coerce_tags(takeoff.trace.metadata.get("context_tags")))
-    tags.add(takeoff.item_type)
-    tags.update(part for part in takeoff.item_type.split("_") if part)
     return {tag.lower() for tag in tags if tag}
 
 

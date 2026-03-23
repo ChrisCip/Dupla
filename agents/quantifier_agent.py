@@ -289,6 +289,7 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             )
 
         if gross_area is not None:
+            gross_context_tags = ["wall", "gross_area"]
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{wall.id}:gross_area",
@@ -301,14 +302,17 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                         **gross_inputs,
                         "material_hint": wall.material_hint,
                         "structural": wall.structural,
-                        "context_tags": ["wall", "gross_area"],
+                        "context_tags": gross_context_tags,
                     },
                     assumptions=gross_assumptions,
                     source_refs=list(wall.source_refs),
                     trace=_trace_from_entities(
                         entities=[wall],
                         steps=["Computed gross wall area from explicit wall data."],
-                        metadata={"gross_formula": gross_formula},
+                        metadata={
+                            "gross_formula": gross_formula,
+                            "context_tags": gross_context_tags,
+                        },
                     ),
                 )
             )
@@ -353,6 +357,7 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             if known_openings_area > 0:
                 net_formula = f"{gross_formula} - openings_area_m2"
 
+            net_context_tags = ["wall", "net_area"]
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{wall.id}:net_area",
@@ -367,7 +372,7 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                         "structural": wall.structural,
                         "openings_area_m2": known_openings_area,
                         "opening_formulas": opening_formula_parts,
-                        "context_tags": ["wall", "net_area"],
+                        "context_tags": net_context_tags,
                     },
                     assumptions=net_assumptions,
                     source_refs=list(dict.fromkeys(net_source_refs)),
@@ -381,6 +386,7 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                             "gross_formula": gross_formula,
                             "opening_area_formula_parts": opening_formula_parts,
                             "opening_deductions": opening_deductions,
+                            "context_tags": net_context_tags,
                         },
                     ),
                 )
@@ -478,13 +484,14 @@ def _door_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 "count": door.count,
                 "type_hint": door.type_hint,
                 "material_hint": door.material_hint,
-                "context_tags": ["opening", "door"],
+                "context_tags": ["door"],
             },
             assumptions=list(door.assumptions),
             source_refs=list(door.source_refs),
             trace=_trace_from_entities(
                 entities=[door],
                 steps=["Read explicit door count from normalized inventory."],
+                metadata={"context_tags": ["door"]},
             ),
         )
         for door in level.doors
@@ -494,6 +501,7 @@ def _door_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
 def _window_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     takeoffs: list[QuantityTakeoff] = []
     for window in level.windows:
+        window_count_context_tags = ["window"]
         takeoffs.append(
             _make_takeoff(
                 item_key=f"{window.id}:count",
@@ -506,18 +514,20 @@ def _window_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                     "count": window.count,
                     "type_hint": window.type_hint,
                     "glazing_hint": window.glazing_hint,
-                    "context_tags": ["opening", "window"],
+                    "context_tags": window_count_context_tags,
                 },
                 assumptions=list(window.assumptions),
                 source_refs=list(window.source_refs),
                 trace=_trace_from_entities(
                     entities=[window],
                     steps=["Read explicit window count from normalized inventory."],
+                    metadata={"context_tags": window_count_context_tags},
                 ),
             )
         )
 
         if window.width_m is not None and window.height_m is not None:
+            window_area_context_tags = ["window", "area"]
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{window.id}:area",
@@ -531,13 +541,14 @@ def _window_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                         "height_m": window.height_m,
                         "count": window.count,
                         "glazing_hint": window.glazing_hint,
-                        "context_tags": ["opening", "window", "area"],
+                        "context_tags": window_area_context_tags,
                     },
                     assumptions=list(window.assumptions),
                     source_refs=list(window.source_refs),
                     trace=_trace_from_entities(
                         entities=[window],
                         steps=["Computed window area from width, height, and count."],
+                        metadata={"context_tags": window_area_context_tags},
                     ),
                 )
             )
@@ -548,6 +559,7 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     takeoffs: list[QuantityTakeoff] = []
 
     for wet_area in level.wet_areas:
+        wet_area_count_context_tags = ["wet_area", wet_area.kind, "count"]
         takeoffs.append(
             _make_takeoff(
                 item_key=f"{wet_area.id}:count",
@@ -559,17 +571,19 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 inputs={
                     "count": wet_area.count,
                     "kind": wet_area.kind,
-                    "context_tags": ["wet_area", wet_area.kind],
+                    "context_tags": wet_area_count_context_tags,
                 },
                 assumptions=list(wet_area.assumptions),
                 source_refs=list(wet_area.source_refs),
                 trace=_trace_from_entities(
                     entities=[wet_area],
                     steps=["Read wet area count from normalized inventory."],
+                    metadata={"context_tags": wet_area_count_context_tags},
                 ),
             )
         )
         if wet_area.estimated_area_m2 is not None:
+            wet_area_area_context_tags = ["wet_area", wet_area.kind, "area"]
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{wet_area.id}:area",
@@ -581,13 +595,14 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                     inputs={
                         "estimated_area_m2": wet_area.estimated_area_m2,
                         "kind": wet_area.kind,
-                        "context_tags": ["wet_area", wet_area.kind, "area"],
+                        "context_tags": wet_area_area_context_tags,
                     },
                     assumptions=list(wet_area.assumptions),
                     source_refs=list(wet_area.source_refs),
                     trace=_trace_from_entities(
                         entities=[wet_area],
                         steps=["Read wet area area from normalized inventory."],
+                        metadata={"context_tags": wet_area_area_context_tags},
                     ),
                 )
             )
