@@ -1,77 +1,50 @@
 """
-Minimal rules engine scaffold.
-
-The engine can expand a deterministic takeoff into derived items when explicit
-rules exist. The default registry is intentionally conservative.
+Deterministic rule engine for derived construction takeoffs.
 """
 
 from __future__ import annotations
 
-from dataclasses import replace
-from typing import Callable, Iterable
+from pathlib import Path
+from typing import Iterable
 
 from core.schemas import QuantityTakeoff
-
-RuleHandler = Callable[[QuantityTakeoff], list[QuantityTakeoff]]
+from .registry import RuleDefinition, RuleMatchCriteria, RuleRegistry, load_rule_registry
 
 
 class RulesEngine:
-    def __init__(self, handlers: Iterable[RuleHandler] | None = None) -> None:
-        self._handlers = list(handlers or [])
+    def __init__(self, registry: RuleRegistry | None = None) -> None:
+        self.registry = registry or RuleRegistry()
 
-    def register(self, handler: RuleHandler) -> None:
-        self._handlers.append(handler)
+    def register_rule(self, rule: RuleDefinition) -> None:
+        self.registry.rules.append(rule)
 
     def apply(self, takeoffs: Iterable[QuantityTakeoff]) -> list[QuantityTakeoff]:
         expanded: list[QuantityTakeoff] = []
+        seen_keys: set[str] = set()
+
         for takeoff in takeoffs:
-            expanded.append(takeoff)
-            for handler in self._handlers:
-                expanded.extend(handler(takeoff))
+            if takeoff.item_key not in seen_keys:
+                expanded.append(takeoff)
+                seen_keys.add(takeoff.item_key)
+
+            for derived in self.registry.derive_takeoffs(takeoff):
+                if derived.item_key in seen_keys:
+                    continue
+                expanded.append(derived)
+                seen_keys.add(derived.item_key)
+
         return expanded
 
 
-def explicit_derivation_rule(takeoff: QuantityTakeoff) -> list[QuantityTakeoff]:
-    """
-    Expand a takeoff only when explicit derivation metadata is present.
-
-    Example:
-        takeoff.trace["derive"] = [
-            {"suffix": "finish", "factor": 2.0, "unit": "m2", "label": "wall_finish"}
-        ]
-
-    TODO: Replace this metadata-driven scaffold with first-class domain rules
-    once finish systems, openings and assembly logic are formally modeled.
-    """
-    derivations = takeoff.trace.metadata.get("derive", [])
-    if not isinstance(derivations, list):
-        return []
-
-    expanded: list[QuantityTakeoff] = []
-    for derivation in derivations:
-        factor = float(derivation.get("factor", 1.0))
-        suffix = str(derivation.get("suffix", "derived"))
-        unit = str(derivation.get("unit", takeoff.unit))
-        label = str(derivation.get("label", suffix))
-        expanded.append(
-            replace(
-                takeoff,
-                item_key=f"{takeoff.item_key}:{suffix}",
-                quantity=takeoff.quantity * factor,
-                unit=unit,
-                formula=f"{takeoff.formula} * {factor}".strip(),
-                trace=replace(
-                    takeoff.trace,
-                    metadata={
-                        **takeoff.trace.metadata,
-                        "derived_from": takeoff.item_key,
-                        "derived_label": label,
-                    },
-                ),
-            )
-        )
-    return expanded
+def default_rules_engine(config_path: str | Path | None = None) -> RulesEngine:
+    return RulesEngine(load_rule_registry(config_path))
 
 
-def default_rules_engine() -> RulesEngine:
-    return RulesEngine([explicit_derivation_rule])
+__all__ = [
+    "RuleDefinition",
+    "RuleMatchCriteria",
+    "RuleRegistry",
+    "RulesEngine",
+    "default_rules_engine",
+    "load_rule_registry",
+]

@@ -56,6 +56,20 @@ def build_budget_from_inventory(
     return build_final_budget(context, expanded_takeoffs, candidates)
 
 
+def build_expanded_takeoffs_from_inventory(
+    levels: list[LevelInventory],
+    rules_engine: RulesEngine | None = None,
+) -> tuple[list[QuantityTakeoff], list[QuantityTakeoff]]:
+    """
+    Quantify inventory deterministically, then expand base takeoffs through the
+    configured rule engine.
+    """
+    engine = rules_engine or default_rules_engine()
+    base_takeoffs = quantify_inventory(levels)
+    expanded_takeoffs = engine.apply(base_takeoffs)
+    return base_takeoffs, expanded_takeoffs
+
+
 def _coerce_vision_payloads(
     vision_payloads: Iterable[LevelInventory | Mapping[str, Any]] | LevelInventory | Mapping[str, Any] | None,
 ) -> list[LevelInventory | Mapping[str, Any]]:
@@ -124,6 +138,19 @@ def build_takeoffs_from_sources(
     return hybrid_inventory, quantify_inventory(hybrid_inventory)
 
 
+def build_expanded_takeoffs_from_sources(
+    cad_facts: dict[str, Any],
+    vision_payloads: Iterable[LevelInventory | Mapping[str, Any]] | LevelInventory | Mapping[str, Any] | None,
+    rules_engine: RulesEngine | None = None,
+) -> tuple[list[LevelInventory], list[QuantityTakeoff], list[QuantityTakeoff]]:
+    hybrid_inventory = build_hybrid_inventory(cad_facts, vision_payloads)
+    base_takeoffs, expanded_takeoffs = build_expanded_takeoffs_from_inventory(
+        hybrid_inventory,
+        rules_engine=rules_engine,
+    )
+    return hybrid_inventory, base_takeoffs, expanded_takeoffs
+
+
 def build_budget_from_sources(
     context: ProjectContext,
     cad_facts: dict[str, Any],
@@ -131,12 +158,15 @@ def build_budget_from_sources(
     bc3_catalog: dict[str, Any],
     rules_engine: RulesEngine | None = None,
 ) -> dict[str, Any]:
-    hybrid_inventory, takeoffs = build_takeoffs_from_sources(cad_facts, vision_payloads)
-    engine = rules_engine or default_rules_engine()
-    expanded_takeoffs = engine.apply(takeoffs)
+    hybrid_inventory, base_takeoffs, expanded_takeoffs = build_expanded_takeoffs_from_sources(
+        cad_facts,
+        vision_payloads,
+        rules_engine=rules_engine,
+    )
     candidates = match_takeoffs_to_bc3(expanded_takeoffs, bc3_catalog)
     budget = build_final_budget(context, expanded_takeoffs, candidates)
     budget["hybrid_inventory"] = [level.to_dict() for level in hybrid_inventory]
+    budget["base_takeoffs"] = [takeoff.to_dict() for takeoff in base_takeoffs]
     return budget
 
 

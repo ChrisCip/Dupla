@@ -49,6 +49,18 @@ def build_takeoffs_from_sources(*args, **kwargs):
     return _build_takeoffs_from_sources(*args, **kwargs)
 
 
+def build_expanded_takeoffs_from_inventory(*args, **kwargs):
+    from .pipeline import build_expanded_takeoffs_from_inventory as _build_expanded_takeoffs_from_inventory
+
+    return _build_expanded_takeoffs_from_inventory(*args, **kwargs)
+
+
+def build_expanded_takeoffs_from_sources(*args, **kwargs):
+    from .pipeline import build_expanded_takeoffs_from_sources as _build_expanded_takeoffs_from_sources
+
+    return _build_expanded_takeoffs_from_sources(*args, **kwargs)
+
+
 def build_final_budget(*args, **kwargs):
     from .pipeline import build_final_budget as _build_final_budget
 
@@ -58,6 +70,8 @@ __all__ = [
     "bootstrap_pipeline_inputs",
     "build_budget_from_inventory",
     "build_budget_from_sources",
+    "build_expanded_takeoffs_from_inventory",
+    "build_expanded_takeoffs_from_sources",
     "build_final_budget",
     "build_json_inventory",
     "build_level_inventory",

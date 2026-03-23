@@ -1,0 +1,86 @@
+{
+  "base_takeoff_excerpt": [
+    {
+      "item_key": "wall_10:net_area",
+      "item_type": "wall_net_area",
+      "quantity": 10.0,
+      "unit": "m2",
+      "formula": "wall.length_m * wall.height_m",
+      "inputs": {
+        "material_hint": "block",
+        "context_tags": [
+          "wall",
+          "net_area"
+        ]
+      }
+    },
+    {
+      "item_key": "wet_20:area",
+      "item_type": "wet_area_area",
+      "quantity": 12.0,
+      "unit": "m2",
+      "formula": "wet_area.estimated_area_m2",
+      "inputs": {
+        "kind": "bathroom",
+        "context_tags": [
+          "wet_area",
+          "bathroom",
+          "area"
+        ]
+      }
+    }
+  ],
+  "derived_takeoff_excerpt": [
+    {
+      "item_key": "wall_10:net_area:wall_finish_standard:finish_plaster",
+      "item_type": "wall_finish_plaster",
+      "quantity": 20.0,
+      "unit": "m2",
+      "formula": "wall_10:net_area.quantity * 2",
+      "assumptions": [
+        "Default rule assumes plaster finish applies to both exposed wall faces."
+      ],
+      "trace": {
+        "metadata": {
+          "derived_from": "wall_10:net_area",
+          "derivation_rule_id": "wall_finish_standard",
+          "derivation_factor": 2.0
+        }
+      }
+    },
+    {
+      "item_key": "wet_20:area:wet_area_surface_standard:waterproofing",
+      "item_type": "wet_area_waterproofing",
+      "quantity": 12.0,
+      "unit": "m2",
+      "formula": "wet_20:area.quantity * 1",
+      "assumptions": [
+        "Default rule maps wet area footprint directly to waterproofing coverage."
+      ],
+      "trace": {
+        "metadata": {
+          "derived_from": "wet_20:area",
+          "derivation_rule_id": "wet_area_surface_standard",
+          "derivation_factor": 1.0
+        }
+      }
+    },
+    {
+      "item_key": "door_30:count:door_assembly_standard:hardware",
+      "item_type": "door_hardware_set",
+      "quantity": 3.0,
+      "unit": "unit",
+      "formula": "door_30:count.quantity * 1",
+      "assumptions": [
+        "Default rule assumes one hardware set per quantified door."
+      ],
+      "trace": {
+        "metadata": {
+          "derived_from": "door_30:count",
+          "derivation_rule_id": "door_assembly_standard",
+          "derivation_factor": 1.0
+        }
+      }
+    }
+  ]
+}

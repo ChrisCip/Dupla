@@ -1,0 +1,160 @@
+{
+  "rules": [
+    {
+      "id": "wall_finish_standard",
+      "description": "Expand wall net area into standard wall finish items.",
+      "match": {
+        "item_types": ["wall_net_area"],
+        "context_tags": ["wall", "net_area"]
+      },
+      "derive": [
+        {
+          "suffix": "finish_plaster",
+          "item_type": "wall_finish_plaster",
+          "unit": "m2",
+          "factor": 2.0,
+          "context_tags": ["wall", "finish", "plaster"],
+          "inputs": {
+            "finish_system": "plaster",
+            "faces": "both"
+          },
+          "assumptions": [
+            "Default rule assumes plaster finish applies to both exposed wall faces."
+          ]
+        },
+        {
+          "suffix": "finish_paint",
+          "item_type": "wall_finish_paint",
+          "unit": "m2",
+          "factor": 2.0,
+          "context_tags": ["wall", "finish", "paint"],
+          "inputs": {
+            "finish_system": "paint",
+            "faces": "both"
+          },
+          "assumptions": [
+            "Default rule assumes paint finish applies to both exposed wall faces."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wet_area_surface_standard",
+      "description": "Expand wet area footprint into waterproofing and wet finish items.",
+      "match": {
+        "item_types": ["wet_area_area"],
+        "context_tags": ["wet_area"]
+      },
+      "derive": [
+        {
+          "suffix": "waterproofing",
+          "item_type": "wet_area_waterproofing",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["wet_area", "waterproofing"],
+          "inputs": {
+            "system": "waterproofing"
+          },
+          "assumptions": [
+            "Default rule maps wet area footprint directly to waterproofing coverage."
+          ]
+        },
+        {
+          "suffix": "wet_finish",
+          "item_type": "wet_area_finish",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["wet_area", "finish"],
+          "inputs": {
+            "system": "wet_finish"
+          },
+          "assumptions": [
+            "Default rule maps wet area footprint directly to wet finish coverage."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "door_assembly_standard",
+      "description": "Expand each quantified door into frame and hardware items.",
+      "match": {
+        "item_types": ["door_count"],
+        "context_tags": ["door"]
+      },
+      "derive": [
+        {
+          "suffix": "frame",
+          "item_type": "door_frame_count",
+          "unit": "unit",
+          "factor": 1.0,
+          "context_tags": ["door", "frame"],
+          "inputs": {
+            "assembly": "frame"
+          },
+          "assumptions": [
+            "Default rule assumes one frame per quantified door."
+          ]
+        },
+        {
+          "suffix": "hardware",
+          "item_type": "door_hardware_set",
+          "unit": "unit",
+          "factor": 1.0,
+          "context_tags": ["door", "hardware"],
+          "inputs": {
+            "assembly": "hardware_set"
+          },
+          "assumptions": [
+            "Default rule assumes one hardware set per quantified door."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "window_installation_standard",
+      "description": "Expand quantified window count into installation count items.",
+      "match": {
+        "item_types": ["window_count"],
+        "context_tags": ["window"]
+      },
+      "derive": [
+        {
+          "suffix": "installation",
+          "item_type": "window_installation_count",
+          "unit": "unit",
+          "factor": 1.0,
+          "context_tags": ["window", "installation"],
+          "inputs": {
+            "assembly": "installation"
+          },
+          "assumptions": [
+            "Default rule assumes one installation item per quantified window."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "window_seal_standard",
+      "description": "Expand quantified window area into sealant/glazing treatment area.",
+      "match": {
+        "item_types": ["window_area"],
+        "context_tags": ["window", "area"]
+      },
+      "derive": [
+        {
+          "suffix": "sealant",
+          "item_type": "window_sealant_area",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["window", "sealant"],
+          "inputs": {
+            "assembly": "sealant"
+          },
+          "assumptions": [
+            "Default rule maps quantified window area directly to sealant/glazing treatment area."
+          ]
+        }
+      ]
+    }
+  ]
+}
