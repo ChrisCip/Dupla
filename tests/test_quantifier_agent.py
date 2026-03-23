@@ -87,3 +87,97 @@ def test_quantify_inventory_records_assumption_when_opening_data_is_incomplete()
         "Incomplete opening data prevented full deduction" in note
         for note in takeoff_map["wall_02:net_area"].assumptions
     )
+
+
+def test_quantify_inventory_deducts_only_one_instance_for_hybrid_aggregated_opening_size() -> None:
+    level = LevelInventory(
+        level_id="level_03",
+        level_name="Level 03",
+        walls=[
+            Wall(
+                id="wall_03",
+                source="hybrid",
+                length_m=10.0,
+                height_m=3.0,
+            )
+        ],
+        openings=[
+            Opening(
+                id="opening_hybrid",
+                source="hybrid",
+                wall_id="wall_03",
+                opening_type="door",
+                count=2,
+                width_m=1.0,
+                height_m=2.1,
+                source_refs=["block:door_b1", "block:door_b2", "vision:door_01"],
+                inputs={
+                    "json": {"json_count": 2},
+                    "vision": {"observed_instance_count": 1},
+                },
+                conflict_notes=["Conflict on count: kept JSON value 2, vision suggested 1."],
+            )
+        ],
+    )
+
+    takeoffs = quantify_inventory([level])
+    takeoff_map = {takeoff.item_key: takeoff for takeoff in takeoffs}
+    net_takeoff = takeoff_map["wall_03:net_area"]
+    deduction = net_takeoff.trace.metadata["opening_deductions"][0]
+
+    assert net_takeoff.quantity == 27.9
+    assert any(
+        "Deducted one observed instance only" in note
+        for note in net_takeoff.assumptions
+    )
+    assert deduction["multiplication_policy"] == "single_observed_instance_only"
+    assert deduction["deducted_instance_count"] == 1
+    assert deduction["aggregated_count"] == 2
+    assert deduction["dimension_source"] == "vision"
+
+
+def test_quantify_inventory_allows_count_times_size_when_homogeneity_is_explicit() -> None:
+    level = LevelInventory(
+        level_id="level_04",
+        level_name="Level 04",
+        walls=[
+            Wall(
+                id="wall_04",
+                source="hybrid",
+                length_m=10.0,
+                height_m=3.0,
+            )
+        ],
+        openings=[
+            Opening(
+                id="opening_homogeneous",
+                source="hybrid",
+                wall_id="wall_04",
+                opening_type="door",
+                count=2,
+                width_m=1.0,
+                height_m=2.1,
+                source_refs=["block:door_b1", "block:door_b2", "vision:door_01"],
+                inputs={
+                    "json": {"json_count": 2},
+                    "vision": {
+                        "observed_instance_count": 1,
+                        "homogeneous_instances": True,
+                    },
+                },
+            )
+        ],
+    )
+
+    takeoffs = quantify_inventory([level])
+    takeoff_map = {takeoff.item_key: takeoff for takeoff in takeoffs}
+    net_takeoff = takeoff_map["wall_04:net_area"]
+    deduction = net_takeoff.trace.metadata["opening_deductions"][0]
+
+    assert net_takeoff.quantity == 25.8
+    assert any(
+        "homogeneous_instances was explicitly set true" in note
+        for note in net_takeoff.assumptions
+    )
+    assert deduction["multiplication_policy"] == "count_times_size_with_explicit_homogeneity"
+    assert deduction["deducted_instance_count"] == 2

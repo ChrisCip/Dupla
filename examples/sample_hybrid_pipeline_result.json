@@ -39,6 +39,14 @@
         "count": 2,
         "width_m": 1.0,
         "height_m": 2.1,
+        "inputs": {
+          "json": {
+            "json_count": 2
+          },
+          "vision": {
+            "observed_instance_count": 1
+          }
+        },
         "conflict_notes": [
           "Conflict on count: kept JSON value 2, vision suggested 1."
         ]
@@ -56,9 +64,25 @@
     {
       "item_key": "json-wall-a-wall:net_area",
       "item_type": "wall_net_area",
-      "quantity": 25.8,
+      "quantity": 27.9,
       "unit": "m2",
-      "formula": "wall.length_m * wall.height_m - openings_area_m2"
+      "formula": "wall.length_m * wall.height_m - openings_area_m2",
+      "assumptions": [
+        "Opening json-door-1:opening count came from aggregated JSON evidence while width/height came from vision evidence. Deducted one observed instance only and did not assume all aggregated instances share the same dimensions."
+      ],
+      "trace_metadata": {
+        "opening_deductions": [
+          {
+            "opening_id": "json-door-1:opening",
+            "aggregated_count": 2,
+            "observed_instance_count": 1,
+            "deducted_instance_count": 1,
+            "per_instance_area_m2": 2.1,
+            "deducted_area_m2": 2.1,
+            "multiplication_policy": "single_observed_instance_only"
+          }
+        ]
+      }
     }
   ]
 }

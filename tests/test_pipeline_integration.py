@@ -69,5 +69,9 @@ def test_hybrid_pipeline_merges_inventory_and_quantifies_end_to_end() -> None:
     assert any("count" in note for note in level.openings[0].conflict_notes)
 
     assert takeoff_map["level_01:floor_area"].quantity == 100.0
-    assert takeoff_map["json-wall-a-wall:net_area"].quantity == 25.8
+    assert takeoff_map["json-wall-a-wall:net_area"].quantity == 27.9
     assert takeoff_map["json-wall-a-wall:net_area"].formula == "wall.length_m * wall.height_m - openings_area_m2"
+    assert any(
+        "Deducted one observed instance only" in note
+        for note in takeoff_map["json-wall-a-wall:net_area"].assumptions
+    )

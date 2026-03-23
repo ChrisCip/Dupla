@@ -76,12 +76,122 @@ def _trace_from_entities(
     )
 
 
-def _opening_area(opening: Opening) -> tuple[float | None, str | None]:
+def _find_input_value(inputs: dict[str, Any], key: str) -> Any:
+    if key in inputs:
+        return inputs[key]
+
+    for value in inputs.values():
+        if isinstance(value, dict) and key in value:
+            return value[key]
+
+    return None
+
+
+def _bool_input(inputs: dict[str, Any], key: str) -> bool:
+    value = _find_input_value(inputs, key)
+    if isinstance(value, bool):
+        return value
+    return bool(value)
+
+
+def _int_input(inputs: dict[str, Any], key: str) -> int | None:
+    value = _find_input_value(inputs, key)
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _has_aggregated_json_count(opening: Opening) -> bool:
+    return _find_input_value(opening.inputs, "json_count") is not None or any(
+        ref.startswith("block:") for ref in opening.source_refs
+    )
+
+
+def _resolve_opening_area_deduction(opening: Opening) -> dict[str, Any]:
+    assumptions = list(opening.assumptions)
+    metadata: dict[str, Any] = {
+        "opening_id": opening.id,
+        "opening_type": opening.opening_type,
+        "opening_source": opening.source,
+        "aggregated_count": max(opening.count, 1),
+        "count_source": "json_aggregated"
+        if _has_aggregated_json_count(opening) and opening.source in {"json", "hybrid"}
+        else opening.source,
+    }
+
     if opening.area_m2 is not None:
-        return opening.area_m2, "opening.area_m2"
-    if opening.width_m is not None and opening.height_m is not None:
-        return opening.width_m * opening.height_m * max(opening.count, 1), "opening.width_m * opening.height_m * opening.count"
-    return None, None
+        metadata.update(
+            {
+                "dimension_source": opening.source,
+                "deducted_instance_count": 1,
+                "multiplication_policy": "explicit_opening_area",
+            }
+        )
+        return {
+            "area_m2": opening.area_m2,
+            "formula": "opening.area_m2",
+            "assumptions": assumptions,
+            "metadata": metadata,
+        }
+
+    if opening.width_m is None or opening.height_m is None:
+        metadata["multiplication_policy"] = "missing_dimensions"
+        return {
+            "area_m2": None,
+            "formula": None,
+            "assumptions": assumptions,
+            "metadata": metadata,
+        }
+
+    per_instance_area = opening.width_m * opening.height_m
+    aggregated_count = max(opening.count, 1)
+    explicit_homogeneous = _bool_input(opening.inputs, "homogeneous_instances")
+    observed_instance_count = _int_input(opening.inputs, "observed_instance_count")
+    hybrid_aggregated_dimensions = (
+        opening.source == "hybrid"
+        and aggregated_count > 1
+        and _has_aggregated_json_count(opening)
+    )
+
+    if hybrid_aggregated_dimensions and not explicit_homogeneous:
+        deducted_instances = 1
+        policy = "single_observed_instance_only"
+        assumptions.append(
+            f"Opening {opening.id} count came from aggregated JSON evidence while width/height came from vision evidence. "
+            "Deducted one observed instance only and did not assume all aggregated instances share the same dimensions."
+        )
+        formula = "opening.width_m * opening.height_m"
+    else:
+        deducted_instances = aggregated_count
+        policy = "count_times_size"
+        formula = "opening.width_m * opening.height_m * opening.count"
+        if hybrid_aggregated_dimensions and explicit_homogeneous:
+            assumptions.append(
+                f"Opening {opening.id} deduction used count * size because homogeneous_instances was explicitly set true."
+            )
+            policy = "count_times_size_with_explicit_homogeneity"
+
+    metadata.update(
+        {
+            "dimension_source": "vision" if opening.source in {"vision", "hybrid"} else opening.source,
+            "observed_instance_count": observed_instance_count,
+            "explicit_homogeneous_instances": explicit_homogeneous,
+            "deducted_instance_count": deducted_instances,
+            "per_instance_area_m2": per_instance_area,
+            "deducted_area_m2": per_instance_area * deducted_instances,
+            "multiplication_policy": policy,
+        }
+    )
+
+    return {
+        "area_m2": per_instance_area * deducted_instances,
+        "formula": formula,
+        "assumptions": assumptions,
+        "metadata": metadata,
+    }
 
 
 def _openings_for_wall(level: LevelInventory, wall: Wall) -> list[Opening]:
@@ -201,6 +311,7 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             linked_openings = _openings_for_wall(level, wall)
             known_openings_area = 0.0
             opening_formula_parts: list[str] = []
+            opening_deductions: list[dict[str, Any]] = []
             net_assumptions = list(wall.assumptions)
             net_source_refs = list(wall.source_refs)
 
@@ -212,7 +323,11 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 incomplete_openings: list[str] = []
                 for opening in linked_openings:
                     net_source_refs.extend(opening.source_refs)
-                    opening_area, opening_formula = _opening_area(opening)
+                    deduction = _resolve_opening_area_deduction(opening)
+                    opening_area = deduction["area_m2"]
+                    opening_formula = deduction["formula"]
+                    net_assumptions.extend(deduction["assumptions"])
+                    opening_deductions.append(deduction["metadata"])
                     if opening_area is None:
                         incomplete_openings.append(opening.id)
                         continue
@@ -226,6 +341,8 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                         + ", ".join(sorted(incomplete_openings))
                         + ". Only openings with explicit area or width/height were deducted."
                     )
+
+            net_assumptions = list(dict.fromkeys(net_assumptions))
 
             net_formula = gross_formula
             if known_openings_area > 0:
@@ -255,6 +372,7 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                         metadata={
                             "gross_formula": gross_formula,
                             "opening_area_formula_parts": opening_formula_parts,
+                            "opening_deductions": opening_deductions,
                         },
                     ),
                 )
