@@ -1,0 +1,898 @@
+{
+  "base_takeoff_excerpt": [
+    {
+      "item_key": "level_v2_demo:floor_area",
+      "item_type": "floor_area",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 80.0,
+      "formula": "level.floor_area_m2",
+      "inputs": {
+        "floor_area_m2": 80.0,
+        "context_tags": [
+          "floor",
+          "area",
+          "has_wet_areas",
+          "dry_area"
+        ]
+      },
+      "assumptions": [],
+      "source_refs": [],
+      "trace": {
+        "source_entity_ids": [
+          "level_v2_demo"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read explicit floor area from merged level inventory."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "level_name": "Rule Engine V2 Demo",
+          "context_tags": [
+            "floor",
+            "area",
+            "has_wet_areas",
+            "dry_area"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "level_v2_demo:ceiling_area",
+      "item_type": "ceiling_area",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 70.0,
+      "formula": "level.ceiling_area_m2",
+      "inputs": {
+        "ceiling_area_m2": 70.0,
+        "context_tags": [
+          "ceiling",
+          "area",
+          "has_wet_areas",
+          "dry_area"
+        ]
+      },
+      "assumptions": [],
+      "source_refs": [],
+      "trace": {
+        "source_entity_ids": [
+          "level_v2_demo"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read explicit ceiling area from merged level inventory."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "level_name": "Rule Engine V2 Demo",
+          "context_tags": [
+            "ceiling",
+            "area",
+            "has_wet_areas",
+            "dry_area"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "wall_dry:net_area",
+      "item_type": "wall_net_area",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 15.0,
+      "formula": "wall.length_m * wall.height_m",
+      "inputs": {
+        "length_m": 6.0,
+        "height_m": 2.5,
+        "material_hint": "block",
+        "structural": null,
+        "openings_area_m2": 0.0,
+        "opening_formulas": [],
+        "context_tags": [
+          "wall",
+          "net_area",
+          "interior",
+          "dry_area"
+        ]
+      },
+      "assumptions": [
+        "Wall measured from normalized inventory.",
+        "Wall wall_dry net area equals gross area because no linked openings were provided."
+      ],
+      "source_refs": [
+        "geometry:wall_dry"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "wall_dry"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed wall gross area from explicit wall data.",
+          "Subtracted linked opening areas when explicit measurements were available."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "gross_formula": "wall.length_m * wall.height_m",
+          "opening_area_formula_parts": [],
+          "opening_deductions": [],
+          "context_tags": [
+            "wall",
+            "net_area",
+            "interior",
+            "dry_area"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "wall_wet:net_area",
+      "item_type": "wall_net_area",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 10.0,
+      "formula": "wall.length_m * wall.height_m",
+      "inputs": {
+        "length_m": 4.0,
+        "height_m": 2.5,
+        "material_hint": "block",
+        "structural": null,
+        "openings_area_m2": 0.0,
+        "opening_formulas": [],
+        "context_tags": [
+          "wall",
+          "net_area",
+          "interior",
+          "wet_area"
+        ]
+      },
+      "assumptions": [
+        "Wall wall_wet net area equals gross area because no linked openings were provided."
+      ],
+      "source_refs": [
+        "geometry:wall_wet"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "wall_wet"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed wall gross area from explicit wall data.",
+          "Subtracted linked opening areas when explicit measurements were available."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "gross_formula": "wall.length_m * wall.height_m",
+          "opening_area_formula_parts": [],
+          "opening_deductions": [],
+          "context_tags": [
+            "wall",
+            "net_area",
+            "interior",
+            "wet_area"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "wet_floor:area",
+      "item_type": "wet_area_area",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 12.0,
+      "formula": "wet_area.estimated_area_m2",
+      "inputs": {
+        "estimated_area_m2": 12.0,
+        "kind": "bathroom",
+        "context_tags": [
+          "wet_area",
+          "bathroom",
+          "area",
+          "floor"
+        ]
+      },
+      "assumptions": [],
+      "source_refs": [
+        "vision:wet_floor"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "wet_floor"
+        ],
+        "source_entity_sources": [
+          "vision"
+        ],
+        "steps": [
+          "Read wet area area from normalized inventory."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "wet_area",
+            "bathroom",
+            "area",
+            "floor"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "door_wood:count",
+      "item_type": "door_count",
+      "level_id": "level_v2_demo",
+      "unit": "unit",
+      "quantity": 2.0,
+      "formula": "door.count",
+      "inputs": {
+        "count": 2,
+        "type_hint": null,
+        "material_hint": "wood",
+        "context_tags": [
+          "door"
+        ]
+      },
+      "assumptions": [],
+      "source_refs": [
+        "vision:door_wood"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "door_wood"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read explicit door count from normalized inventory."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "door"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "window_main:area",
+      "item_type": "window_area",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 6.0,
+      "formula": "window.width_m * window.height_m * window.count",
+      "inputs": {
+        "width_m": 1.5,
+        "height_m": 1.0,
+        "count": 4,
+        "glazing_hint": null,
+        "context_tags": [
+          "window",
+          "area"
+        ]
+      },
+      "assumptions": [],
+      "source_refs": [
+        "vision:window_main"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "window_main"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed window area from width, height, and count."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "window",
+            "area"
+          ]
+        }
+      }
+    }
+  ],
+  "derived_takeoff_excerpt": [
+    {
+      "item_key": "wall_dry:net_area:wall_finish_interior_dry_standard:finish_paint",
+      "item_type": "wall_finish_paint",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 30.0,
+      "formula": "wall_dry:net_area.quantity * 1 * faces(2)",
+      "inputs": {
+        "length_m": 6.0,
+        "height_m": 2.5,
+        "material_hint": "block",
+        "structural": null,
+        "openings_area_m2": 0.0,
+        "opening_formulas": [],
+        "context_tags": [
+          "wall",
+          "net_area",
+          "interior",
+          "dry_area",
+          "finish",
+          "paint"
+        ],
+        "finish_system": "paint",
+        "default_faces": 2,
+        "faces_by_tag": {
+          "exterior": 1,
+          "interior": 2
+        },
+        "resolved_faces": 2,
+        "face_selector_tag": "interior",
+        "base_quantity": 15.0,
+        "base_unit": "m2",
+        "base_item_type": "wall_net_area",
+        "derived_from": "wall_dry:net_area",
+        "derivation_rule_id": "wall_finish_interior_dry_standard",
+        "derivation_strategy": "conditional_faces",
+        "derivation_factor": 1.0,
+        "priority": 40,
+        "inherited_context_tags": [
+          "wall",
+          "net_area",
+          "interior",
+          "dry_area"
+        ]
+      },
+      "assumptions": [
+        "Wall measured from normalized inventory.",
+        "Wall wall_dry net area equals gross area because no linked openings were provided.",
+        "Interior dry wall rule assumes both accessible faces receive paint after plaster preparation."
+      ],
+      "source_refs": [
+        "geometry:wall_dry"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "wall_dry"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed wall gross area from explicit wall data.",
+          "Subtracted linked opening areas when explicit measurements were available.",
+          "Expanded via rule wall_finish_interior_dry_standard:finish_paint using strategy conditional_faces."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "gross_formula": "wall.length_m * wall.height_m",
+          "opening_area_formula_parts": [],
+          "opening_deductions": [],
+          "context_tags": [
+            "wall",
+            "net_area",
+            "interior",
+            "dry_area",
+            "finish",
+            "paint"
+          ],
+          "derived_from": "wall_dry:net_area",
+          "derivation_rule_id": "wall_finish_interior_dry_standard",
+          "derivation_strategy": "conditional_faces",
+          "derivation_suffix": "finish_paint",
+          "derivation_factor": 1.0,
+          "derivation_formula": "wall_dry:net_area.quantity * 1 * faces(2)",
+          "priority": 40,
+          "override_rule_ids": [
+            "wall_finish_standard"
+          ],
+          "inherited_context_tags": [
+            "wall",
+            "net_area",
+            "interior",
+            "dry_area"
+          ],
+          "resolved_faces": 2,
+          "default_faces": 2,
+          "faces_by_tag": {
+            "exterior": 1,
+            "interior": 2
+          },
+          "face_selector_tag": "interior"
+        }
+      }
+    },
+    {
+      "item_key": "wall_wet:net_area:wall_finish_wet_area_standard:waterproofing",
+      "item_type": "wall_waterproofing",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 10.0,
+      "formula": "wall_wet:net_area.quantity * 1 * faces(1)",
+      "inputs": {
+        "length_m": 4.0,
+        "height_m": 2.5,
+        "material_hint": "block",
+        "structural": null,
+        "openings_area_m2": 0.0,
+        "opening_formulas": [],
+        "context_tags": [
+          "wall",
+          "net_area",
+          "interior",
+          "wet_area",
+          "waterproofing"
+        ],
+        "system": "wall_waterproofing",
+        "default_faces": 1,
+        "faces_by_tag": {
+          "wet_area": 1
+        },
+        "resolved_faces": 1,
+        "face_selector_tag": "wet_area",
+        "base_quantity": 10.0,
+        "base_unit": "m2",
+        "base_item_type": "wall_net_area",
+        "derived_from": "wall_wet:net_area",
+        "derivation_rule_id": "wall_finish_wet_area_standard",
+        "derivation_strategy": "conditional_faces",
+        "derivation_factor": 1.0,
+        "priority": 60,
+        "inherited_context_tags": [
+          "wall",
+          "net_area",
+          "interior",
+          "wet_area"
+        ]
+      },
+      "assumptions": [
+        "Wall wall_wet net area equals gross area because no linked openings were provided.",
+        "Wet-area wall waterproofing is applied to one wet-side face only; partial-height shower logic is intentionally out of scope."
+      ],
+      "source_refs": [
+        "geometry:wall_wet"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "wall_wet"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed wall gross area from explicit wall data.",
+          "Subtracted linked opening areas when explicit measurements were available.",
+          "Expanded via rule wall_finish_wet_area_standard:waterproofing using strategy conditional_faces."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "gross_formula": "wall.length_m * wall.height_m",
+          "opening_area_formula_parts": [],
+          "opening_deductions": [],
+          "context_tags": [
+            "wall",
+            "net_area",
+            "interior",
+            "wet_area",
+            "waterproofing"
+          ],
+          "derived_from": "wall_wet:net_area",
+          "derivation_rule_id": "wall_finish_wet_area_standard",
+          "derivation_strategy": "conditional_faces",
+          "derivation_suffix": "waterproofing",
+          "derivation_factor": 1.0,
+          "derivation_formula": "wall_wet:net_area.quantity * 1 * faces(1)",
+          "priority": 60,
+          "override_rule_ids": [
+            "wall_finish_standard",
+            "wall_finish_interior_dry_standard"
+          ],
+          "inherited_context_tags": [
+            "wall",
+            "net_area",
+            "interior",
+            "wet_area"
+          ],
+          "resolved_faces": 1,
+          "default_faces": 1,
+          "faces_by_tag": {
+            "wet_area": 1
+          },
+          "face_selector_tag": "wet_area"
+        }
+      }
+    },
+    {
+      "item_key": "level_v2_demo:floor_area:floor_finish_dry_standard:finish",
+      "item_type": "floor_finish",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 80.0,
+      "formula": "level_v2_demo:floor_area.quantity",
+      "inputs": {
+        "floor_area_m2": 80.0,
+        "context_tags": [
+          "floor",
+          "area",
+          "has_wet_areas",
+          "dry_area",
+          "finish"
+        ],
+        "system": "dry_floor_finish",
+        "base_quantity": 80.0,
+        "base_unit": "m2",
+        "base_item_type": "floor_area",
+        "derived_from": "level_v2_demo:floor_area",
+        "derivation_rule_id": "floor_finish_dry_standard",
+        "derivation_strategy": "identity",
+        "derivation_factor": 1.0,
+        "priority": 40,
+        "inherited_context_tags": [
+          "floor",
+          "area",
+          "has_wet_areas",
+          "dry_area"
+        ]
+      },
+      "assumptions": [
+        "Dry-area floor rule applies one dry floor finish layer over the quantified floor area."
+      ],
+      "source_refs": [],
+      "trace": {
+        "source_entity_ids": [
+          "level_v2_demo"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read explicit floor area from merged level inventory.",
+          "Expanded via rule floor_finish_dry_standard:finish using strategy identity."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "level_name": "Rule Engine V2 Demo",
+          "context_tags": [
+            "floor",
+            "area",
+            "has_wet_areas",
+            "dry_area",
+            "finish"
+          ],
+          "derived_from": "level_v2_demo:floor_area",
+          "derivation_rule_id": "floor_finish_dry_standard",
+          "derivation_strategy": "identity",
+          "derivation_suffix": "finish",
+          "derivation_factor": 1.0,
+          "derivation_formula": "level_v2_demo:floor_area.quantity",
+          "priority": 40,
+          "override_rule_ids": [
+            "floor_finish_standard"
+          ],
+          "inherited_context_tags": [
+            "floor",
+            "area",
+            "has_wet_areas",
+            "dry_area"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "level_v2_demo:ceiling_area:ceiling_finish_standard:finish_paint",
+      "item_type": "ceiling_finish_paint",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 70.0,
+      "formula": "level_v2_demo:ceiling_area.quantity",
+      "inputs": {
+        "ceiling_area_m2": 70.0,
+        "context_tags": [
+          "ceiling",
+          "area",
+          "has_wet_areas",
+          "dry_area",
+          "finish",
+          "paint"
+        ],
+        "system": "ceiling_paint",
+        "base_quantity": 70.0,
+        "base_unit": "m2",
+        "base_item_type": "ceiling_area",
+        "derived_from": "level_v2_demo:ceiling_area",
+        "derivation_rule_id": "ceiling_finish_standard",
+        "derivation_strategy": "identity",
+        "derivation_factor": 1.0,
+        "priority": 20,
+        "inherited_context_tags": [
+          "ceiling",
+          "area",
+          "has_wet_areas",
+          "dry_area"
+        ]
+      },
+      "assumptions": [
+        "Ceiling finish rule applies one paint finish layer to the quantified ceiling area."
+      ],
+      "source_refs": [],
+      "trace": {
+        "source_entity_ids": [
+          "level_v2_demo"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read explicit ceiling area from merged level inventory.",
+          "Expanded via rule ceiling_finish_standard:finish_paint using strategy identity."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "level_name": "Rule Engine V2 Demo",
+          "context_tags": [
+            "ceiling",
+            "area",
+            "has_wet_areas",
+            "dry_area",
+            "finish",
+            "paint"
+          ],
+          "derived_from": "level_v2_demo:ceiling_area",
+          "derivation_rule_id": "ceiling_finish_standard",
+          "derivation_strategy": "identity",
+          "derivation_suffix": "finish_paint",
+          "derivation_factor": 1.0,
+          "derivation_formula": "level_v2_demo:ceiling_area.quantity",
+          "priority": 20,
+          "override_rule_ids": [],
+          "inherited_context_tags": [
+            "ceiling",
+            "area",
+            "has_wet_areas",
+            "dry_area"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "wet_floor:area:floor_finish_wet_area_standard:waterproofing",
+      "item_type": "floor_waterproofing",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 12.0,
+      "formula": "wet_floor:area.quantity",
+      "inputs": {
+        "estimated_area_m2": 12.0,
+        "kind": "bathroom",
+        "context_tags": [
+          "wet_area",
+          "bathroom",
+          "area",
+          "floor",
+          "waterproofing"
+        ],
+        "system": "wet_floor_waterproofing",
+        "base_quantity": 12.0,
+        "base_unit": "m2",
+        "base_item_type": "wet_area_area",
+        "derived_from": "wet_floor:area",
+        "derivation_rule_id": "floor_finish_wet_area_standard",
+        "derivation_strategy": "identity",
+        "derivation_factor": 1.0,
+        "priority": 50,
+        "inherited_context_tags": [
+          "wet_area",
+          "bathroom",
+          "area",
+          "floor"
+        ]
+      },
+      "assumptions": [
+        "Wet-area floor rule applies one floor waterproofing layer to the quantified wet-area footprint."
+      ],
+      "source_refs": [
+        "vision:wet_floor"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "wet_floor"
+        ],
+        "source_entity_sources": [
+          "vision"
+        ],
+        "steps": [
+          "Read wet area area from normalized inventory.",
+          "Expanded via rule floor_finish_wet_area_standard:waterproofing using strategy identity."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "wet_area",
+            "bathroom",
+            "area",
+            "floor",
+            "waterproofing"
+          ],
+          "derived_from": "wet_floor:area",
+          "derivation_rule_id": "floor_finish_wet_area_standard",
+          "derivation_strategy": "identity",
+          "derivation_suffix": "waterproofing",
+          "derivation_factor": 1.0,
+          "derivation_formula": "wet_floor:area.quantity",
+          "priority": 50,
+          "override_rule_ids": [
+            "wet_area_surface_standard"
+          ],
+          "inherited_context_tags": [
+            "wet_area",
+            "bathroom",
+            "area",
+            "floor"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "door_wood:count:door_assembly_wood:leaf",
+      "item_type": "door_leaf_wood_count",
+      "level_id": "level_v2_demo",
+      "unit": "unit",
+      "quantity": 2.0,
+      "formula": "door_wood:count.quantity * 1",
+      "inputs": {
+        "count": 2,
+        "type_hint": null,
+        "material_hint": "wood",
+        "context_tags": [
+          "door",
+          "wood",
+          "leaf"
+        ],
+        "assembly": "door_leaf",
+        "material_context": "wood",
+        "base_quantity": 2.0,
+        "base_unit": "unit",
+        "base_item_type": "door_count",
+        "derived_from": "door_wood:count",
+        "derivation_rule_id": "door_assembly_wood",
+        "derivation_strategy": "count_multiplier",
+        "derivation_factor": 1.0,
+        "priority": 50,
+        "inherited_context_tags": [
+          "door"
+        ]
+      },
+      "assumptions": [
+        "Wood door rule assumes one wood door leaf per quantified door."
+      ],
+      "source_refs": [
+        "vision:door_wood"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "door_wood"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Read explicit door count from normalized inventory.",
+          "Expanded via rule door_assembly_wood:leaf using strategy count_multiplier."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "door",
+            "wood",
+            "leaf"
+          ],
+          "derived_from": "door_wood:count",
+          "derivation_rule_id": "door_assembly_wood",
+          "derivation_strategy": "count_multiplier",
+          "derivation_suffix": "leaf",
+          "derivation_factor": 1.0,
+          "derivation_formula": "door_wood:count.quantity * 1",
+          "priority": 50,
+          "override_rule_ids": [
+            "door_assembly_standard"
+          ],
+          "inherited_context_tags": [
+            "door"
+          ]
+        }
+      }
+    },
+    {
+      "item_key": "window_main:area:window_seal_standard:sealant",
+      "item_type": "window_sealant_area",
+      "level_id": "level_v2_demo",
+      "unit": "m2",
+      "quantity": 6.0,
+      "formula": "window_main:area.quantity * 1",
+      "inputs": {
+        "width_m": 1.5,
+        "height_m": 1.0,
+        "count": 4,
+        "glazing_hint": null,
+        "context_tags": [
+          "window",
+          "area",
+          "sealant"
+        ],
+        "assembly": "sealant",
+        "base_quantity": 6.0,
+        "base_unit": "m2",
+        "base_item_type": "window_area",
+        "derived_from": "window_main:area",
+        "derivation_rule_id": "window_seal_standard",
+        "derivation_strategy": "surface_multiplier",
+        "derivation_factor": 1.0,
+        "priority": 20,
+        "inherited_context_tags": [
+          "window",
+          "area"
+        ]
+      },
+      "assumptions": [
+        "Window seal rule maps quantified window area directly to sealant or glazing treatment area."
+      ],
+      "source_refs": [
+        "vision:window_main"
+      ],
+      "trace": {
+        "source_entity_ids": [
+          "window_main"
+        ],
+        "source_entity_sources": [
+          "hybrid"
+        ],
+        "steps": [
+          "Computed window area from width, height, and count.",
+          "Expanded via rule window_seal_standard:sealant using strategy surface_multiplier."
+        ],
+        "evidence": [],
+        "conflict_notes": [],
+        "metadata": {
+          "context_tags": [
+            "window",
+            "area",
+            "sealant"
+          ],
+          "derived_from": "window_main:area",
+          "derivation_rule_id": "window_seal_standard",
+          "derivation_strategy": "surface_multiplier",
+          "derivation_suffix": "sealant",
+          "derivation_factor": 1.0,
+          "derivation_formula": "window_main:area.quantity * 1",
+          "priority": 20,
+          "override_rule_ids": [],
+          "inherited_context_tags": [
+            "window",
+            "area"
+          ]
+        }
+      }
+    }
+  ]
+}

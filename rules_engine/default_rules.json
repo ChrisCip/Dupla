@@ -2,7 +2,9 @@
   "rules": [
     {
       "id": "wall_finish_standard",
-      "description": "Expand wall net area into standard wall finish items.",
+      "description": "Fallback generic wall finish rule when no more specific wall context is available.",
+      "priority": 10,
+      "strategy": "conditional_faces",
       "match": {
         "item_types": ["wall_net_area"],
         "context_tags": ["wall", "net_area"]
@@ -12,38 +14,223 @@
           "suffix": "finish_plaster",
           "item_type": "wall_finish_plaster",
           "unit": "m2",
-          "factor": 2.0,
+          "factor": 1.0,
           "context_tags": ["wall", "finish", "plaster"],
           "inputs": {
             "finish_system": "plaster",
-            "faces": "both"
+            "default_faces": 2,
+            "faces_by_tag": {
+              "exterior": 1,
+              "interior": 2
+            }
           },
           "assumptions": [
-            "Default rule assumes plaster finish applies to both exposed wall faces."
+            "Fallback generic wall finish assumes plaster applies to both exposed wall faces; reveals and jambs are excluded."
           ]
         },
         {
           "suffix": "finish_paint",
           "item_type": "wall_finish_paint",
           "unit": "m2",
-          "factor": 2.0,
+          "factor": 1.0,
           "context_tags": ["wall", "finish", "paint"],
           "inputs": {
             "finish_system": "paint",
-            "faces": "both"
+            "default_faces": 2,
+            "faces_by_tag": {
+              "exterior": 1,
+              "interior": 2
+            }
           },
           "assumptions": [
-            "Default rule assumes paint finish applies to both exposed wall faces."
+            "Fallback generic wall finish assumes paint applies to both exposed wall faces; reveals and jambs are excluded."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wall_finish_interior_dry_standard",
+      "description": "Interior dry-wall finish pack with more specific context than the generic wall rule.",
+      "priority": 40,
+      "override_rule_ids": ["wall_finish_standard"],
+      "strategy": "conditional_faces",
+      "match": {
+        "item_types": ["wall_net_area"],
+        "context_tags": ["wall", "net_area", "interior", "dry_area"]
+      },
+      "derive": [
+        {
+          "suffix": "finish_plaster",
+          "item_type": "wall_finish_plaster",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["wall", "interior", "dry_area", "finish", "plaster"],
+          "inputs": {
+            "finish_system": "plaster",
+            "default_faces": 2,
+            "faces_by_tag": {
+              "exterior": 1,
+              "interior": 2
+            }
+          },
+          "assumptions": [
+            "Interior dry wall rule assumes both accessible faces receive full-height plaster unless tagged otherwise."
+          ]
+        },
+        {
+          "suffix": "finish_paint",
+          "item_type": "wall_finish_paint",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["wall", "interior", "dry_area", "finish", "paint"],
+          "inputs": {
+            "finish_system": "paint",
+            "default_faces": 2,
+            "faces_by_tag": {
+              "exterior": 1,
+              "interior": 2
+            }
+          },
+          "assumptions": [
+            "Interior dry wall rule assumes both accessible faces receive paint after plaster preparation."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wall_finish_wet_area_standard",
+      "description": "Wet-area wall finish pack that supersedes generic dry wall paint/plaster outputs.",
+      "priority": 60,
+      "override_rule_ids": ["wall_finish_standard", "wall_finish_interior_dry_standard"],
+      "strategy": "conditional_faces",
+      "match": {
+        "item_types": ["wall_net_area"],
+        "context_tags": ["wall", "net_area", "wet_area"]
+      },
+      "derive": [
+        {
+          "suffix": "waterproofing",
+          "item_type": "wall_waterproofing",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["wall", "wet_area", "waterproofing"],
+          "inputs": {
+            "system": "wall_waterproofing",
+            "default_faces": 1,
+            "faces_by_tag": {
+              "wet_area": 1
+            }
+          },
+          "assumptions": [
+            "Wet-area wall waterproofing is applied to one wet-side face only; partial-height shower logic is intentionally out of scope."
+          ]
+        },
+        {
+          "suffix": "finish_tile",
+          "item_type": "wall_finish_tile",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["wall", "wet_area", "finish", "tile"],
+          "inputs": {
+            "finish_system": "tile",
+            "default_faces": 1,
+            "faces_by_tag": {
+              "wet_area": 1
+            }
+          },
+          "assumptions": [
+            "Wet-area wall finish uses one-side tile coverage only; no ceramic height calibration is applied."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "floor_finish_standard",
+      "description": "Fallback generic floor finish pack for levels without explicit dry/wet segregation.",
+      "priority": 10,
+      "strategy": "identity",
+      "match": {
+        "item_types": ["floor_area"],
+        "context_tags": ["floor", "area"],
+        "exclude_tags": ["dry_area", "has_wet_areas"]
+      },
+      "derive": [
+        {
+          "suffix": "screed",
+          "item_type": "floor_screed",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["floor", "finish", "screed"],
+          "inputs": {
+            "system": "screed"
+          },
+          "assumptions": [
+            "Fallback generic floor rule assumes one screed coverage over the quantified floor area."
+          ]
+        },
+        {
+          "suffix": "finish",
+          "item_type": "floor_finish",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["floor", "finish"],
+          "inputs": {
+            "system": "generic_floor_finish"
+          },
+          "assumptions": [
+            "Fallback generic floor rule applies one generic floor finish layer where dry/wet context is missing."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "floor_finish_dry_standard",
+      "description": "Dry-area floor finish pack with more specific context than the generic floor rule.",
+      "priority": 40,
+      "override_rule_ids": ["floor_finish_standard"],
+      "strategy": "identity",
+      "match": {
+        "item_types": ["floor_area"],
+        "context_tags": ["floor", "area", "dry_area"]
+      },
+      "derive": [
+        {
+          "suffix": "screed",
+          "item_type": "floor_screed",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["floor", "dry_area", "finish", "screed"],
+          "inputs": {
+            "system": "dry_floor_screed"
+          },
+          "assumptions": [
+            "Dry-area floor rule assumes one screed layer over the quantified dry floor area."
+          ]
+        },
+        {
+          "suffix": "finish",
+          "item_type": "floor_finish",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["floor", "dry_area", "finish"],
+          "inputs": {
+            "system": "dry_floor_finish"
+          },
+          "assumptions": [
+            "Dry-area floor rule applies one dry floor finish layer over the quantified floor area."
           ]
         }
       ]
     },
     {
       "id": "wet_area_surface_standard",
-      "description": "Expand wet area footprint into waterproofing and wet finish items.",
+      "description": "Fallback wet-area pack when no specific surface context is available.",
+      "priority": 5,
+      "strategy": "identity",
       "match": {
         "item_types": ["wet_area_area"],
-        "context_tags": ["wet_area"]
+        "context_tags": ["wet_area"],
+        "exclude_tags": ["floor", "wall", "ceiling"]
       },
       "derive": [
         {
@@ -53,10 +240,10 @@
           "factor": 1.0,
           "context_tags": ["wet_area", "waterproofing"],
           "inputs": {
-            "system": "waterproofing"
+            "system": "generic_wet_area_waterproofing"
           },
           "assumptions": [
-            "Default rule maps wet area footprint directly to waterproofing coverage."
+            "Fallback wet-area rule maps the quantified wet-area footprint directly to generic waterproofing coverage."
           ]
         },
         {
@@ -66,17 +253,96 @@
           "factor": 1.0,
           "context_tags": ["wet_area", "finish"],
           "inputs": {
-            "system": "wet_finish"
+            "system": "generic_wet_area_finish"
           },
           "assumptions": [
-            "Default rule maps wet area footprint directly to wet finish coverage."
+            "Fallback wet-area rule maps the quantified wet-area footprint directly to a generic wet finish."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "floor_finish_wet_area_standard",
+      "description": "Wet-area floor finish pack that supersedes the generic wet-area fallback.",
+      "priority": 50,
+      "override_rule_ids": ["wet_area_surface_standard"],
+      "strategy": "identity",
+      "match": {
+        "item_types": ["wet_area_area"],
+        "context_tags": ["wet_area", "area", "floor"]
+      },
+      "derive": [
+        {
+          "suffix": "waterproofing",
+          "item_type": "floor_waterproofing",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["floor", "wet_area", "waterproofing"],
+          "inputs": {
+            "system": "wet_floor_waterproofing"
+          },
+          "assumptions": [
+            "Wet-area floor rule applies one floor waterproofing layer to the quantified wet-area footprint."
+          ]
+        },
+        {
+          "suffix": "finish_tile",
+          "item_type": "floor_finish_tile",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["floor", "wet_area", "finish", "tile"],
+          "inputs": {
+            "system": "wet_floor_tile"
+          },
+          "assumptions": [
+            "Wet-area floor rule applies one tile finish layer to the quantified wet-area footprint."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ceiling_finish_standard",
+      "description": "Generic ceiling finish pack for quantified ceiling surfaces.",
+      "priority": 20,
+      "strategy": "identity",
+      "match": {
+        "item_types": ["ceiling_area"],
+        "context_tags": ["ceiling", "area"]
+      },
+      "derive": [
+        {
+          "suffix": "finish_plaster",
+          "item_type": "ceiling_finish_plaster",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["ceiling", "finish", "plaster"],
+          "inputs": {
+            "system": "ceiling_plaster"
+          },
+          "assumptions": [
+            "Ceiling finish rule applies one plaster layer to the quantified ceiling area."
+          ]
+        },
+        {
+          "suffix": "finish_paint",
+          "item_type": "ceiling_finish_paint",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["ceiling", "finish", "paint"],
+          "inputs": {
+            "system": "ceiling_paint"
+          },
+          "assumptions": [
+            "Ceiling finish rule applies one paint finish layer to the quantified ceiling area."
           ]
         }
       ]
     },
     {
       "id": "door_assembly_standard",
-      "description": "Expand each quantified door into frame and hardware items.",
+      "description": "Fallback generic door assembly pack when no more specific material context is available.",
+      "priority": 10,
+      "strategy": "count_multiplier",
       "match": {
         "item_types": ["door_count"],
         "context_tags": ["door"]
@@ -92,7 +358,7 @@
             "assembly": "frame"
           },
           "assumptions": [
-            "Default rule assumes one frame per quantified door."
+            "Fallback generic door rule assumes one frame per quantified door."
           ]
         },
         {
@@ -105,14 +371,128 @@
             "assembly": "hardware_set"
           },
           "assumptions": [
-            "Default rule assumes one hardware set per quantified door."
+            "Fallback generic door rule assumes one hardware set per quantified door."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "door_assembly_wood",
+      "description": "Wood door assembly pack overriding the generic door rule.",
+      "priority": 50,
+      "override_rule_ids": ["door_assembly_standard"],
+      "strategy": "count_multiplier",
+      "match": {
+        "item_types": ["door_count"],
+        "material_hints": ["wood"],
+        "context_tags": ["door"]
+      },
+      "derive": [
+        {
+          "suffix": "leaf",
+          "item_type": "door_leaf_wood_count",
+          "unit": "unit",
+          "factor": 1.0,
+          "context_tags": ["door", "wood", "leaf"],
+          "inputs": {
+            "assembly": "door_leaf",
+            "material_context": "wood"
+          },
+          "assumptions": [
+            "Wood door rule assumes one wood door leaf per quantified door."
+          ]
+        },
+        {
+          "suffix": "frame",
+          "item_type": "door_frame_count",
+          "unit": "unit",
+          "factor": 1.0,
+          "context_tags": ["door", "frame"],
+          "inputs": {
+            "assembly": "frame",
+            "material_context": "wood"
+          },
+          "assumptions": [
+            "Wood door rule assumes one compatible frame per quantified wood door."
+          ]
+        },
+        {
+          "suffix": "hardware",
+          "item_type": "door_hardware_set",
+          "unit": "unit",
+          "factor": 1.0,
+          "context_tags": ["door", "hardware"],
+          "inputs": {
+            "assembly": "hardware_set",
+            "material_context": "wood"
+          },
+          "assumptions": [
+            "Wood door rule assumes one hardware set per quantified wood door."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "door_assembly_metal",
+      "description": "Metal door assembly pack overriding the generic door rule.",
+      "priority": 50,
+      "override_rule_ids": ["door_assembly_standard"],
+      "strategy": "count_multiplier",
+      "match": {
+        "item_types": ["door_count"],
+        "material_hints": ["metal", "steel", "aluminum"],
+        "context_tags": ["door"]
+      },
+      "derive": [
+        {
+          "suffix": "leaf",
+          "item_type": "door_leaf_metal_count",
+          "unit": "unit",
+          "factor": 1.0,
+          "context_tags": ["door", "metal", "leaf"],
+          "inputs": {
+            "assembly": "door_leaf",
+            "material_context": "metal"
+          },
+          "assumptions": [
+            "Metal door rule assumes one metal door leaf per quantified door."
+          ]
+        },
+        {
+          "suffix": "frame",
+          "item_type": "door_frame_count",
+          "unit": "unit",
+          "factor": 1.0,
+          "context_tags": ["door", "frame"],
+          "inputs": {
+            "assembly": "frame",
+            "material_context": "metal"
+          },
+          "assumptions": [
+            "Metal door rule assumes one compatible frame per quantified metal door."
+          ]
+        },
+        {
+          "suffix": "hardware",
+          "item_type": "door_hardware_set",
+          "unit": "unit",
+          "factor": 1.0,
+          "context_tags": ["door", "hardware"],
+          "inputs": {
+            "assembly": "hardware_set",
+            "material_context": "metal"
+          },
+          "assumptions": [
+            "Metal door rule assumes one hardware set per quantified metal door."
           ]
         }
       ]
     },
     {
       "id": "window_installation_standard",
-      "description": "Expand quantified window count into installation count items.",
+      "description": "Window installation count pack for quantified windows.",
+      "priority": 20,
+      "strategy": "count_multiplier",
       "match": {
         "item_types": ["window_count"],
         "context_tags": ["window"]
@@ -128,14 +508,16 @@
             "assembly": "installation"
           },
           "assumptions": [
-            "Default rule assumes one installation item per quantified window."
+            "Window installation rule assumes one installation item per quantified window."
           ]
         }
       ]
     },
     {
       "id": "window_seal_standard",
-      "description": "Expand quantified window area into sealant/glazing treatment area.",
+      "description": "Window sealant/glazing treatment area pack for quantified window areas.",
+      "priority": 20,
+      "strategy": "surface_multiplier",
       "match": {
         "item_types": ["window_area"],
         "context_tags": ["window", "area"]
@@ -151,7 +533,7 @@
             "assembly": "sealant"
           },
           "assumptions": [
-            "Default rule maps quantified window area directly to sealant/glazing treatment area."
+            "Window seal rule maps quantified window area directly to sealant or glazing treatment area."
           ]
         }
       ]
