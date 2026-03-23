@@ -9,6 +9,7 @@ demo_files/
 *.zip
 *.bundle/
 !requirements.txt
+!requirements-legacy.txt
 !README.md
 !TECHNICAL_DOCS.md
 !REPORTE_AVANCE_GRUPO.md

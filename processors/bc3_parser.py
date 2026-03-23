@@ -1,288 +1,231 @@
 """
-Parser de archivos BC3 (FIEBDC) exportados de Presto.
+Reusable BC3 (FIEBDC) parser.
 
-El formato FIEBDC usa registros con prefijo ~LETRA|
-Registros clave:
-  ~V  Versión del formato
-  ~K  Coeficientes generales
-  ~C  Conceptos (capitulos, partidas, precios unitarios)
-  ~D  Descomposición (componentes de cada concepto)
-  ~T  Textos largos
-  ~M  Mediciones
-  ~Y  Añadidos
+The active pipeline uses BC3 files as a catalog source for candidate budget
+matching, so this module exposes a library function instead of relying on
+hardcoded local paths or ad-hoc report generation.
 """
 
+from __future__ import annotations
+
+import argparse
 import json
-import re
-from pathlib import Path
 from collections import defaultdict
-from datetime import datetime
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any
 
-BC3_PATH = Path(r"c:\Users\chris\Documents\Dupla\presto_files\CTXI0000TRM.bc3")
-OUT_DIR = Path(r"c:\Users\chris\Documents\Dupla\presto_files")
 
-print("=" * 70)
-print("PARSER BC3 (FIEBDC) - PRESTO 8.8")
-print("=" * 70)
+def _split_records(raw_text: str) -> list[str]:
+    records: list[str] = []
+    current = ""
 
-# Read file with latin-1 encoding (FIEBDC standard)
-raw = BC3_PATH.read_text(encoding="latin-1", errors="replace")
-print(f"Archivo: {BC3_PATH.name} ({len(raw):,} chars)")
+    for line in raw_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("~"):
+            if current:
+                records.append(current)
+            current = stripped
+        else:
+            current += stripped
 
-# Split into records (each starts with ~)
-# BC3 records can span multiple lines, ending at the next ~
-records: List[str] = []
-current = ""
-for line in raw.split("\n"):
-    line = line.strip()
-    if line.startswith("~"):
-        if current:
-            records.append(current)
-        current = line
-    else:
-        current += line
+    if current:
+        records.append(current)
 
-if current:
-    records.append(current)
+    return records
 
-print(f"Total registros: {len(records)}")
 
-# Classify records
-record_types: Dict[str, int] = defaultdict(int)
-for r in records:
-    if len(r) > 1:
-        record_types[r[1]] += 1  # type: ignore
+def _to_float(value: str) -> float | None:
+    cleaned = value.strip().replace(",", ".")
+    if not cleaned:
+        return None
 
-print("Tipos de registro:")
-for t, count in sorted(record_types.items()):
-    print(f"  ~{t}: {count}")
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
 
-# ============================================================
-# Parse ~C records (Conceptos)
-# Format: ~C|CODE#CODE_PARENT\CODE_PARENT|UNIT|SUMMARY|PRICE_1|DATE|TYPE|
-# ============================================================
-concepts: Dict[str, Any] = {}  # code -> {unit, summary, price, type}
 
-for r in records:
-    if not r.startswith("~C|"):
-        continue
-    
-    parts = r[3:].split("|")  # type: ignore
-    if len(parts) < 2:
-        continue
-    
-    # First field: CODE#PARENT\PARENT or CODE#
-    code_field = str(parts[0])
-    code = code_field.split("#")[0].strip()
-    parents = ""
-    if "#" in code_field:
-        parents = code_field.split("#", 1)[1]
-    
-    unit = parts[1].strip() if len(parts) > 1 else ""
-    summary = parts[2].strip() if len(parts) > 2 else ""
-    
-    # Price
-    price = 0.0
-    if len(parts) > 3 and parts[3].strip():
-        try:
-            price = float(parts[3].strip())
-        except ValueError:
-            pass
-    
-    # Date
-    date = parts[4].strip() if len(parts) > 4 else ""
-    
-    # Type
-    ctype = parts[5].strip() if len(parts) > 5 else ""
-    
-    if code:
+def _parse_concepts(records: list[str]) -> dict[str, dict[str, Any]]:
+    concepts: dict[str, dict[str, Any]] = {}
+
+    for record in records:
+        if not record.startswith("~C|"):
+            continue
+
+        parts = record[3:].split("|")
+        code_field = parts[0].strip() if parts else ""
+        if not code_field:
+            continue
+
+        code = code_field.split("#", 1)[0].strip()
+        parents = code_field.split("#", 1)[1].strip() if "#" in code_field else ""
+        unit = parts[1].strip() if len(parts) > 1 else ""
+        summary = parts[2].strip() if len(parts) > 2 else ""
+        price = _to_float(parts[3]) if len(parts) > 3 else None
+        date = parts[4].strip() if len(parts) > 4 else ""
+        concept_type = parts[5].strip() if len(parts) > 5 else ""
+
         concepts[code] = {
             "code": code,
+            "parents": parents,
             "unit": unit,
             "summary": summary,
-            "price": price,
+            "price": price if price is not None else 0.0,
             "date": date,
-            "type": ctype,
-            "parents": parents,
+            "type": concept_type,
         }
 
-print(f"\nConceptos (~C): {len(concepts)}")
+    return concepts
 
-# ============================================================
-# Parse ~D records (Descomposición / jerarquia)
-# Format: ~D|PARENT_CODE#|CHILD_CODE\FACTOR\YIELD|CHILD_CODE\...|
-# ============================================================
-hierarchy: Dict[str, List[str]] = defaultdict(list)  # parent -> [(child, factor, yield)]
 
-for r in records:
-    if not r.startswith("~D|"):
-        continue
-    
-    parts = r[3:].split("|")  # type: ignore
-    if len(parts) < 2:
-        continue
-    
-    parent = str(parts[0]).replace("#", "").strip()
-    children_raw = str(parts[1]) if len(parts) > 1 else ""
-    
-    for child_entry in children_raw.split("\\"): # type: ignore
-        child_entry = child_entry.strip()
-        if child_entry and child_entry != parent:
-            # Children can have factor and yield after backslash
-            hierarchy[parent].append(child_entry)  # type: ignore
+def _parse_hierarchy(records: list[str]) -> dict[str, list[dict[str, Any]]]:
+    hierarchy: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
-print(f"Relaciones padre-hijo (~D): {len(hierarchy)}")
+    for record in records:
+        if not record.startswith("~D|"):
+            continue
 
-# ============================================================
-# Parse ~T records (Textos largos)
-# Format: ~T|CODE#|LONG_TEXT|
-# ============================================================
-texts: Dict[str, str] = {}
+        parts = record[3:].split("|")
+        if len(parts) < 2:
+            continue
 
-for r in records:
-    if not r.startswith("~T|"):
-        continue
-    
-    parts = r[3:].split("|")  # type: ignore
-    if len(parts) < 2:
-        continue
-    
-    code = str(parts[0]).replace("#", "").strip()
-    text = str(parts[1]).strip() if len(parts) > 1 else ""
-    if code and text:
-        texts[code] = text
+        parent_code = parts[0].replace("#", "").strip()
+        tokens = [token.strip() for token in parts[1].split("\\") if token.strip()]
+        if not parent_code or not tokens:
+            continue
 
-print(f"Textos largos (~T): {len(texts)}")
+        # TODO: Expand this parser for the full FIEBDC decomposition grammar.
+        for index in range(0, len(tokens), 3):
+            child_code = tokens[index]
+            factor = _to_float(tokens[index + 1]) if index + 1 < len(tokens) else None
+            yield_value = _to_float(tokens[index + 2]) if index + 2 < len(tokens) else None
+            hierarchy[parent_code].append(
+                {
+                    "code": child_code,
+                    "factor": factor,
+                    "yield": yield_value,
+                }
+            )
 
-# ============================================================
-# Parse ~M records (Mediciones)
-# Format: ~M|PARENT#CHILD|Position|TOTAL_LINES|LINE_DATA|
-# ============================================================
-measurements: Dict[str, List[Dict[str, str]]] = defaultdict(list)
+    return hierarchy
 
-for r in records:
-    if not r.startswith("~M|"):
-        continue
-    
-    parts = r[3:].split("|")  # type: ignore
-    if len(parts) < 2:
-        continue
-    
-    codes = str(parts[0]).strip()
-    if "#" in codes:
-        parent, child = codes.split("#", 1)
-    else:
-        parent = codes
-        child = ""
-    
-    meas_data = "|".join(parts[1:])
-    measurements[parent.strip()].append({
-        "child": child.strip(),
-        "data": meas_data[:200],  # type: ignore
-    })
 
-print(f"Mediciones (~M): {len(measurements)}")
+def _parse_texts(records: list[str]) -> dict[str, str]:
+    texts: dict[str, str] = {}
 
-# ============================================================
-# Build tree and generate report
-# ============================================================
-print("\nGenerando reporte...")
+    for record in records:
+        if not record.startswith("~T|"):
+            continue
 
-# Identify chapters (concepts with children that are also concepts)
-# Root is usually "" or the project code
-root_codes = []
-for code, children in hierarchy.items():
-    if code in concepts:
-        c = concepts[code]
-        if not c["unit"]:  # Chapters typically have no unit
-            root_codes.append(code)
+        parts = record[3:].split("|")
+        if len(parts) < 2:
+            continue
 
-# Collect all items with prices
-items_with_price: List[Dict[str, Any]] = []
-for code, concept in concepts.items():
-    if float(concept.get("price", 0)) > 0 and concept.get("unit"):
-        concept["long_text"] = texts.get(code, "")
-        items_with_price.append(concept)
+        code = parts[0].replace("#", "").strip()
+        text = parts[1].strip()
+        if code and text:
+            texts[code] = text
 
-items_with_price.sort(key=lambda x: x["code"])
-print(f"Partidas con precio: {len(items_with_price)}")
+    return texts
 
-# Chapters (no unit = grouping concept)
-chapters: List[Dict[str, Any]] = []
-for code, concept in concepts.items():
-    if not concept.get("unit") and concept.get("summary"):
-        chapters.append(concept)
 
-chapters.sort(key=lambda x: x["code"])
-print(f"Capitulos/grupos: {len(chapters)}")
+def _parse_measurements(records: list[str]) -> dict[str, list[dict[str, str]]]:
+    measurements: dict[str, list[dict[str, str]]] = defaultdict(list)
 
-# ============================================================
-# Generate report
-# ============================================================
-lines = []
-lines.append("=" * 95)
-lines.append("ESTRUCTURA COMPLETA DE PRESUPUESTO PRESTO")
-lines.append(f"Archivo: {BC3_PATH.name}")
-lines.append(f"Fecha export: {datetime.now().strftime('%Y-%m-%d')}")
-lines.append(f"Conceptos totales: {len(concepts)}")
-lines.append(f"Partidas con precio: {len(items_with_price)}")
-lines.append(f"Capitulos: {len(chapters)}")
-lines.append(f"Textos largos: {len(texts)}")
-lines.append(f"Mediciones: {len(measurements)}")
-lines.append("=" * 95)
+    for record in records:
+        if not record.startswith("~M|"):
+            continue
 
-# Chapters
-lines.append(f"\n{'_' * 95}")
-lines.append("CAPITULOS / AGRUPACIONES")
-lines.append(f"{'_' * 95}")
-for ch in chapters[:50]:  # type: ignore
-    code = ch["code"]
-    children_count = len(hierarchy.get(code, []))
-    lines.append(f"  {code:<20} {ch['summary'][:60]:<60} ({children_count} hijos)")
+        parts = record[3:].split("|")
+        if not parts:
+            continue
 
-# All partidas with prices
-lines.append(f"\n{'_' * 95}")
-lines.append("TODAS LAS PARTIDAS CON PRECIOS")
-lines.append(f"{'_' * 95}")
-lines.append(f"\n  {'Codigo':<16} {'Ud':<6} {'Precio':>14} {'Descripcion'}")
-lines.append(f"  {'-'*16} {'-'*6} {'-'*14} {'-'*55}")
+        codes = parts[0].strip()
+        if "#" in codes:
+            parent, child = codes.split("#", 1)
+        else:
+            parent, child = codes, ""
 
-for item in items_with_price:
-    desc = str(item["summary"])[:55]  # type: ignore
-    lines.append(
-        f"{item['price']:>14,.2f} {desc}"  # type: ignore
+        measurements[parent.strip()].append(
+            {
+                "child": child.strip(),
+                "raw": "|".join(parts[1:]).strip(),
+            }
+        )
+
+    return measurements
+
+
+def parse_bc3(path: str) -> dict[str, Any]:
+    """
+    Parse a BC3 file into a reusable normalized structure.
+
+    Args:
+        path: Absolute or relative path to the BC3 file.
+
+    Returns:
+        Dictionary with concepts, priced items, chapters, hierarchy and texts.
+    """
+    bc3_path = Path(path)
+    raw_text = bc3_path.read_text(encoding="latin-1", errors="replace")
+    records = _split_records(raw_text)
+
+    concepts = _parse_concepts(records)
+    hierarchy = _parse_hierarchy(records)
+    texts = _parse_texts(records)
+    measurements = _parse_measurements(records)
+
+    items: list[dict[str, Any]] = []
+    chapters: list[dict[str, Any]] = []
+
+    for concept in concepts.values():
+        enriched = {
+            **concept,
+            "long_text": texts.get(concept["code"], ""),
+            "children": hierarchy.get(concept["code"], []),
+        }
+
+        if enriched["unit"] and float(enriched.get("price", 0) or 0) > 0:
+            items.append(enriched)
+        elif enriched["summary"]:
+            chapters.append(enriched)
+
+    items.sort(key=lambda item: item["code"])
+    chapters.sort(key=lambda chapter: chapter["code"])
+
+    return {
+        "file": bc3_path.name,
+        "path": str(bc3_path),
+        "record_count": len(records),
+        "concept_count": len(concepts),
+        "chapter_count": len(chapters),
+        "item_count": len(items),
+        "concepts_by_code": concepts,
+        "chapters": chapters,
+        "items": items,
+        "hierarchy": hierarchy,
+        "texts": texts,
+        "measurements": measurements,
+    }
+
+
+def _build_cli() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Parse a BC3 file into JSON.")
+    parser.add_argument("path", help="Path to the BC3 file")
+    parser.add_argument(
+        "--output",
+        help="Optional output JSON path. Prints to stdout if omitted.",
     )
-    # Add long text if available
-    lt = str(item.get("long_text", ""))
-    if lt and lt != str(item["summary"]):
-        lines.append(f"{'':>40} >> {lt[:70]}")  # type: ignore
+    return parser
 
-lines.append(f"\n{'=' * 95}")
-lines.append(f"Total partidas: {len(items_with_price)}")
-lines.append(f"{'=' * 95}")
 
-report = "\n".join(lines)
-report_path = OUT_DIR / "BC3_ESTRUCTURA_COMPLETA.txt"
-report_path.write_text(report, encoding="utf-8")
+if __name__ == "__main__":
+    args = _build_cli().parse_args()
+    parsed = parse_bc3(args.path)
+    payload = json.dumps(parsed, indent=2, ensure_ascii=False)
 
-# Save JSON
-json_data = {
-    "file": BC3_PATH.name,
-    "total_concepts": len(concepts),
-    "chapters": chapters[:100],  # type: ignore
-    "partidas": items_with_price,
-    "hierarchy": {k: v for k, v in list(hierarchy.items())[:200]},  # type: ignore
-    "texts": dict(list(texts.items())[:200]),  # type: ignore
-}
-
-json_path = OUT_DIR / "bc3_full_data.json"
-with open(json_path, "w", encoding="utf-8") as f:
-    json.dump(json_data, f, ensure_ascii=False, indent=2, default=str)
-
-print(f"\nReporte: {report_path}")
-print(f"JSON:    {json_path}")
-print(f"\nPrimeras 15 partidas:")
-for item in items_with_price[:15]:  # type: ignore
-    print(f"  {item['code']:<16} {item['unit']:<6} "  # type: ignore
-          f"${item['price']:>12,.2f}  {str(item['summary'])[:45]}")  # type: ignore
+    if args.output:
+        Path(args.output).write_text(payload, encoding="utf-8")
+        print(f"BC3 parse written to {args.output}")
+    else:
+        print(payload)

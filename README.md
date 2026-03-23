@@ -1,101 +1,133 @@
-# Dupla Hybrid CAD Analysis Pipeline 🏗️
+# Dupla
 
-Un sistema de análisis integral de presupuestos de obra que fusiona la extracción de datos nativos de CAD (AutoCAD/Civil 3D) con Inteligencia Artificial (GPT-4o) para generar presupuestos detallados, detección de interferencias (clashes) y cálculos automáticos basados en modelos constructivos.
+Dupla now uses an APS/Autodesk JSON-first budgeting pipeline. The official execution path no longer depends on AutoCAD COM automation.
 
-## Funcionalidades Principales
+## Official Architecture
 
-1. **Lectura de Catálogos (BC3 y XLS):** Parsea bases de datos estándar de la industria (FIEBDC/BC3 de Presto) y presupuestos históricos en Excel para usarlos como fuente de aprendizaje de precios y partidas.
-2. **Análisis Nativo de CAD (COM):** Se conecta directamente a la instancia activa de Civil 3D/AutoCAD y extrae dimensiones geométricas reales (áreas, longitudes, conteos) de miles de entidades clasificadas por capa.
-3. **Detección de Clashes Híbrida:**
-   - *Nativa:* Analiza intersecciones de *bounding boxes* entre disciplinas (Ej: Estructura vs Arquitectura).
-   - *Visual (IA):* Analiza planos renderizados (PDF/PNG) mediante GPT-4o Vision para identificar conflictos lógicos.
-4. **Presupuestación Asistida por IA:** Genera un presupuesto segmentado en 9 capítulos constructivos cruzando las mediciones nativas del CAD con las partidas del BC3, utilizando GPT-4o para el *matching* inteligente y estimación algorítmica.
+```text
+APS / Autodesk JSON + plan images
+    -> normalized CAD facts
+    -> normalized building inventory
+    -> deterministic quantity takeoff
+    -> rules engine expansion
+    -> BC3 candidate matching
+    -> final budget output
+```
 
-## Arquitectura del Proyecto
+## Design Principles
+
+- COM/AutoCAD automation is legacy only and is kept under [`_legacy`](/C:/Users/chris/Documents/Dupla/_legacy).
+- Active modules stay project-agnostic. The production path does not assume Torre Giualca floor heights, apartment counts, fixed NPT tables, or hardcoded discipline mappings.
+- Vision output is inventory-first, not Presto-discipline-first.
+- Quantification is deterministic and every quantity carries a traceable formula.
+
+## Active Modules
 
 ```text
 Dupla/
-│
-├── learning_input/          # 📥 Carpeta de aprendizaje: coloca aquí tus .bc3 y .xlsx
-├── analysis_output/         # 📤 Resultados del análisis: presupuestos y reportes
-│   └── dump/                # 💾 Carpeta de volcado: JSONs intermedios de diagnóstico
-├── vision_output/           # 📸 Datos visuales: imágenes renderizadas para OCR/Clash
-│   └── pdf_pages/           # 📄 Páginas PDF convertidas a PNG
-│
-├── run_full_analysis.py     # 🚀 Script Principal: Ejecuta el pipeline integral
-├── cad_automation/          # ⚙️ Módulo core de automatización COM
-│   ├── config.py            # Reglas de mapeo de capas (Discipline/Entity)
-│   ├── models.py            # Clases de datos (BoundingBox, LayerStats)
-│   └── engine.py            # Motor de conexión COM con AutoCAD
-└── .env                     # 🔑 Contiene la clave de OpenAI (OPENAI_API_KEY)
+├── agents/
+│   ├── classifier_agent.py      # Deterministic BC3 candidate ranking
+│   ├── quantifier_agent.py      # Deterministic quantity takeoff formulas
+│   └── vision_agent.py          # Plan image -> normalized building inventory
+├── aps_integration/
+│   ├── aps_auth.py
+│   ├── model_derivative.py      # APS/Model Derivative extraction helpers
+│   └── oss_manager.py
+├── core/
+│   ├── pipeline.py              # Helper orchestration for the active path
+│   └── schemas.py               # Shared typed models
+├── processors/
+│   ├── bc3_parser.py            # parse_bc3(path) reusable library function
+│   └── json_processor.py        # Autodesk JSON -> normalized CAD facts
+├── rules_engine/
+│   └── __init__.py              # Minimal rule-expansion scaffold
+├── tests/
+│   ├── test_bc3_parser.py
+│   └── test_quantifier_agent.py
+├── requirements.txt             # Default APS/JSON-first dependencies
+├── requirements-legacy.txt      # Optional legacy COM/CAD extras
+└── _legacy/                     # Legacy COM and historical experiments
 ```
 
-## Requisitos Previos
+## Install
 
-- **Python 3.9+** instalado en tu sistema.
-- **AutoCAD o Civil 3D** instalado (versiones 2021-2025 probadas). Debe estar **abierto y ejecutándose** durante el análisis.
-- Una **clave de API de OpenAI** (con acceso a `gpt-4o`).
-
-### Instalación de Dependencias
-
-Ejecuta en tu terminal el siguiente comando para instalar las librerías necesarias:
+Default install for the active pipeline:
 
 ```powershell
-pip install pywin32 openai python-dotenv openpyxl
+pip install -r requirements.txt
 ```
 
-Configura tu archivo `.env` en la raíz del proyecto (`Dupla/.env`):
-```text
-OPENAI_API_KEY=tu_clave_api_sk_aqui...
-```
-
-## Guía de Uso Rápido
-
-### 1. Preparar el Entorno
-Abre **Civil 3D o AutoCAD** y carga el plano `.dwg` que deseas analizar (por ejemplo, el modelo completo de la torre). Asegúrate de no tener ningún comando activo en el CAD (presiona `ESC` un par de veces).
-
-### 2. Alimentar el Sistema (Aprendizaje)
-Copia tus bases de datos a la carpeta `learning_input/`. El sistema aprenderá de ellos:
-- Archivos **BC3** (Exportados desde Presto).
-- Archivos **XLS o XLSX** (Presupuestos en Excel).
-
-### 3. Ejecutar el Pipeline
-Abre una terminal en la carpeta raíz (`Dupla/`) y ejecuta:
+Optional legacy install if you need to run old COM-based tooling:
 
 ```powershell
-python run_full_analysis.py
+pip install -r requirements-legacy.txt
 ```
 
-### 4. ¿Qué ocurre durante la ejecución?
-El pipeline (que puede tardar entre 5 y 15 minutos dependiendo del tamaño del CAD) ejecuta 5 fases consecutivas:
-- **[Fase 1] Lectura:** Parsea el BC3 (cientos de partidas) y los presupuestos Excel.
-- **[Fase 2] Análisis DWG:** Iteración profunda sobre el objeto COM extrayendo propiedades geométricas de todas las capas.
-- **[Fase 3] Clashes:** Detección de interferencias físicas (Bounding Box) y análisis de visión si hay planos disponibles.
-- **[Fase 4] IA Presupuestaria:** Solicita a GPT-4o que asigne códigos Presto a las cantidades CAD, dividido en 9 módulos lógicos (tierras, estructura, arquitectura, sanitarias, etc.).
-- **[Fase 5] Consolidación:** Agrupa la data y genera los *outputs*.
+## Core Usage
 
-### 5. Revisar los Resultados
-Ve a la carpeta `analysis_output/`. Encontrarás:
-- `ANALISIS_INTEGRAL_YYYYMMDD_HHMMSS.txt`: El reporte exhaustivo y legible para humanos con todos los cálculos y *clashes*.
-- `ANALISIS_INTEGRAL_YYYYMMDD_HHMMSS.json`: Versión estructurada para exportación o bases de datos posteriores.
-- `DWG_ANALYSIS_YYYYMMDD_HHMMSS.txt`: Desglose puramente técnico de lo encontrado en el CAD (sin precios).
+### 1. Normalize Autodesk JSON facts
 
-## Mapeo de Capas (Cad Automation)
-El éxito del matching depende de cómo estén nombradas las capas en el `.dwg`. El archivo `cad_automation/config.py` define los prefijos principales:
-- `A-*`: Arquitectura (Muros, Pisos, Puertas)
-- `S-*`: Estructura (Columnas, Vigas, Losas)
-- `E-*`: Eléctrico
-- `P-*`: Plomería/Sanitarios
+```powershell
+python processors/json_processor.py resultados_model_derivative.json --output resumen_procesado.json
+```
 
-## Solución de Problemas (Troubleshooting)
+This produces a reusable fact payload with:
 
-**Error `(-2147352567, 'Exception occurred.')` o `Failed to get the Document object`:**
-Esto sucede si AutoCAD bloquea el puerto COM. 
-- *Solución:* Ve a la ventana de AutoCAD, presiona `ESC` tres veces para asegurarte de que no haya ningún cuadro de diálogo ni comando a medias, y vuelve a ejecutar el script.
+- layers
+- texts
+- dimensions
+- hatches
+- blocks
+- geometry hints
 
-**Las partidas no se asignan correctamente:**
-- Revisa que en el `learning_input/` el archivo BC3 contenga los precios correctos (`~C|...`). 
-- Verifica que el modelo de AutoCAD esté dibujado en unidades de **Metros**.
+### 2. Analyze plan images into normalized inventory
 
----
-*Desarrollado para la estimación y optimización integral de proyectos constructivos.*
+Use [`agents/vision_agent.py`](/C:/Users/chris/Documents/Dupla/agents/vision_agent.py) or import `analyze_plan(...)` / `run_full_vision_analysis(...)`.
+
+The primary output is a `LevelInventory`-shaped JSON object containing:
+
+- walls
+- doors
+- windows
+- wet areas
+- kitchens
+- stairs
+- fixtures
+- structural elements
+
+### 3. Parse BC3 catalogs
+
+```powershell
+python processors/bc3_parser.py data\catalog.bc3 --output data\catalog.json
+```
+
+Or import `parse_bc3(path)` directly.
+
+### 4. Quantify and build budget candidates
+
+```python
+from core import ProjectContext, build_budget_from_inventory
+from processors import parse_bc3
+from core.schemas import level_inventory_from_dict
+import json
+
+with open("vision_inventory_result.json", "r", encoding="utf-8") as handle:
+    level_payload = json.load(handle)
+
+level_inventory = level_inventory_from_dict(level_payload)
+catalog = parse_bc3("data/catalog.bc3")
+
+context = ProjectContext(
+    project_name="Example project",
+    source_json_path="resultados_model_derivative.json",
+    bc3_path="data/catalog.bc3",
+)
+
+budget = build_budget_from_inventory(context, [level_inventory], catalog)
+```
+
+## Notes
+
+- [`TECHNICAL_DOCS.md`](/C:/Users/chris/Documents/Dupla/TECHNICAL_DOCS.md) documents the active APS/JSON-first modules.
+- [`README_NUEVOS_CAMBIOS.md`](/C:/Users/chris/Documents/Dupla/README_NUEVOS_CAMBIOS.md) summarizes the migration.
+- [`_legacy/README_LEGACY_COM.md`](/C:/Users/chris/Documents/Dupla/_legacy/README_LEGACY_COM.md) captures the retired COM assumptions and legacy execution notes.
