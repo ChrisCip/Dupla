@@ -31,6 +31,24 @@ def build_budget_from_inventory(*args, **kwargs):
     return _build_budget_from_inventory(*args, **kwargs)
 
 
+def build_budget_from_sources(*args, **kwargs):
+    from .pipeline import build_budget_from_sources as _build_budget_from_sources
+
+    return _build_budget_from_sources(*args, **kwargs)
+
+
+def build_hybrid_inventory(*args, **kwargs):
+    from .pipeline import build_hybrid_inventory as _build_hybrid_inventory
+
+    return _build_hybrid_inventory(*args, **kwargs)
+
+
+def build_takeoffs_from_sources(*args, **kwargs):
+    from .pipeline import build_takeoffs_from_sources as _build_takeoffs_from_sources
+
+    return _build_takeoffs_from_sources(*args, **kwargs)
+
+
 def build_final_budget(*args, **kwargs):
     from .pipeline import build_final_budget as _build_final_budget
 
@@ -39,9 +57,12 @@ def build_final_budget(*args, **kwargs):
 __all__ = [
     "bootstrap_pipeline_inputs",
     "build_budget_from_inventory",
+    "build_budget_from_sources",
     "build_final_budget",
     "build_json_inventory",
     "build_level_inventory",
+    "build_hybrid_inventory",
+    "build_takeoffs_from_sources",
     "BudgetCandidate",
     "Door",
     "Fixture",

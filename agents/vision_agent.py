@@ -84,17 +84,53 @@ Rules:
 3. Use null for unknown dimensions instead of assuming defaults.
 4. Keep evidence short and concrete.
 5. Prefer conservative counts when visibility is ambiguous.
+6. This is an inventory task, not a budget task.
+7. Set top-level and entity `source` to `vision`.
+8. Use `source_refs`, `assumptions`, `inputs`, and `conflict_notes` explicitly. Use empty arrays/objects when there is nothing to report.
 
 Use this schema:
 {
   "level_id": "string",
   "level_name": "string",
+  "source": "vision",
   "source_view": "plan|elevation|site|unknown",
+  "floor_area_m2": null,
+  "ceiling_area_m2": null,
+  "source_refs": ["string"],
+  "assumptions": ["string"],
+  "inputs": {"key": "value"},
+  "conflict_notes": ["string"],
   "notes": ["string"],
   "confidence": 0.0,
+  "openings": [
+    {
+      "id": "string",
+      "source": "vision",
+      "source_refs": ["string"],
+      "assumptions": ["string"],
+      "inputs": {"key": "value"},
+      "conflict_notes": ["string"],
+      "wall_id": null,
+      "opening_type": "door|window|void|other",
+      "count": 1,
+      "width_m": null,
+      "height_m": null,
+      "area_m2": null,
+      "source_layers": ["string"],
+      "related_door_id": null,
+      "related_window_id": null,
+      "confidence": 0.0,
+      "evidence": ["string"]
+    }
+  ],
   "walls": [
     {
       "id": "string",
+      "source": "vision",
+      "source_refs": ["string"],
+      "assumptions": ["string"],
+      "inputs": {"key": "value"},
+      "conflict_notes": ["string"],
       "source_layers": ["string"],
       "length_m": 0.0,
       "height_m": null,
@@ -110,6 +146,11 @@ Use this schema:
   "doors": [
     {
       "id": "string",
+      "source": "vision",
+      "source_refs": ["string"],
+      "assumptions": ["string"],
+      "inputs": {"key": "value"},
+      "conflict_notes": ["string"],
       "source_layers": ["string"],
       "count": 1,
       "width_m": null,
@@ -124,6 +165,11 @@ Use this schema:
   "windows": [
     {
       "id": "string",
+      "source": "vision",
+      "source_refs": ["string"],
+      "assumptions": ["string"],
+      "inputs": {"key": "value"},
+      "conflict_notes": ["string"],
       "source_layers": ["string"],
       "count": 1,
       "width_m": null,
@@ -137,6 +183,11 @@ Use this schema:
   "wet_areas": [
     {
       "id": "string",
+      "source": "vision",
+      "source_refs": ["string"],
+      "assumptions": ["string"],
+      "inputs": {"key": "value"},
+      "conflict_notes": ["string"],
       "kind": "bathroom|laundry|service",
       "count": 1,
       "estimated_area_m2": null,
@@ -148,6 +199,11 @@ Use this schema:
   "kitchens": [
     {
       "id": "string",
+      "source": "vision",
+      "source_refs": ["string"],
+      "assumptions": ["string"],
+      "inputs": {"key": "value"},
+      "conflict_notes": ["string"],
       "count": 1,
       "estimated_area_m2": null,
       "island_present": null,
@@ -159,6 +215,11 @@ Use this schema:
   "stairs": [
     {
       "id": "string",
+      "source": "vision",
+      "source_refs": ["string"],
+      "assumptions": ["string"],
+      "inputs": {"key": "value"},
+      "conflict_notes": ["string"],
       "count": 1,
       "flights": null,
       "riser_count": null,
@@ -172,6 +233,11 @@ Use this schema:
   "fixtures": [
     {
       "id": "string",
+      "source": "vision",
+      "source_refs": ["string"],
+      "assumptions": ["string"],
+      "inputs": {"key": "value"},
+      "conflict_notes": ["string"],
       "fixture_type": "sink|toilet|shower|basin|switch|outlet|other",
       "count": 1,
       "unit": "unit",
@@ -183,6 +249,11 @@ Use this schema:
   "structural_elements": [
     {
       "id": "string",
+      "source": "vision",
+      "source_refs": ["string"],
+      "assumptions": ["string"],
+      "inputs": {"key": "value"},
+      "conflict_notes": ["string"],
       "element_type": "column|beam|slab|footing|wall|other",
       "count": 1,
       "length_m": null,
@@ -262,7 +333,9 @@ Level name: {level_name}
 View type hint: {_detect_view_type(image_path)}
 
 Focus on:
+- floor area and ceiling area when they are explicitly visible or strongly supported by CAD hints
 - walls and wall systems
+- openings tied to walls whenever visible
 - doors
 - windows
 - wet areas

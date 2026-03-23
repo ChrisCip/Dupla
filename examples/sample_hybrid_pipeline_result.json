@@ -1,0 +1,64 @@
+{
+  "active_path": "normalized CAD facts + vision inventory -> build_level_inventory(...) -> quantify_inventory(...)",
+  "cad_facts_summary": {
+    "project": "sample.json",
+    "floor_hatches_detected": 1,
+    "door_blocks_detected": 2,
+    "wall_geometry_segments": 1
+  },
+  "vision_payload_summary": {
+    "level_id": "level_01",
+    "source": "vision",
+    "floor_area_m2": 95.0,
+    "walls": 1,
+    "doors": 1,
+    "openings": 1
+  },
+  "hybrid_inventory_excerpt": {
+    "level_id": "level_01",
+    "source": "hybrid",
+    "floor_area_m2": 100.0,
+    "conflict_notes": [
+      "Conflict on floor_area_m2: kept JSON value 100.0, vision suggested 95.0."
+    ],
+    "walls": [
+      {
+        "id": "json-wall-a-wall",
+        "source": "hybrid",
+        "length_m": 10.0,
+        "height_m": 3.0,
+        "conflict_notes": [
+          "Conflict on length_m: kept JSON value 10.0, vision suggested 9.0."
+        ]
+      }
+    ],
+    "openings": [
+      {
+        "id": "json-door-1:opening",
+        "source": "hybrid",
+        "count": 2,
+        "width_m": 1.0,
+        "height_m": 2.1,
+        "conflict_notes": [
+          "Conflict on count: kept JSON value 2, vision suggested 1."
+        ]
+      }
+    ]
+  },
+  "quantity_takeoff_excerpt": [
+    {
+      "item_key": "level_01:floor_area",
+      "item_type": "floor_area",
+      "quantity": 100.0,
+      "unit": "m2",
+      "formula": "level.floor_area_m2"
+    },
+    {
+      "item_key": "json-wall-a-wall:net_area",
+      "item_type": "wall_net_area",
+      "quantity": 25.8,
+      "unit": "m2",
+      "formula": "wall.length_m * wall.height_m - openings_area_m2"
+    }
+  ]
+}
