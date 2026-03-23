@@ -104,7 +104,7 @@ def _int_input(inputs: dict[str, Any], key: str) -> int | None:
         return None
 
 
-def _coerce_context_tags(value: Any) -> list[str]:
+def _coerce_tags(value: Any) -> list[str]:
     if value is None:
         return []
     if isinstance(value, str):
@@ -114,7 +114,7 @@ def _coerce_context_tags(value: Any) -> list[str]:
     return [str(value)]
 
 
-def _dedupe_context_tags(values: Iterable[str]) -> list[str]:
+def _dedupe_tags(values: Iterable[str]) -> list[str]:
     seen: set[str] = set()
     result: list[str] = []
     for value in values:
@@ -128,17 +128,18 @@ def _dedupe_context_tags(values: Iterable[str]) -> list[str]:
     return result
 
 
-def _merge_context_tags(*values: Any) -> list[str]:
+def _merge_context_tags(base_tags: Any, *sources: Any) -> list[str]:
     merged: list[str] = []
-    for value in values:
-        merged.extend(_coerce_context_tags(value))
-    return _dedupe_context_tags(merged)
+    merged.extend(_coerce_tags(base_tags))
+    for source in sources:
+        merged.extend(_coerce_tags(source))
+    return _dedupe_tags(merged)
 
 
 def _entity_context_tags(entity: Any, *base_tags: str) -> list[str]:
     entity_inputs = getattr(entity, "inputs", {})
     explicit_tags = entity_inputs.get("context_tags", []) if isinstance(entity_inputs, dict) else []
-    return _merge_context_tags(base_tags, explicit_tags)
+    return _merge_context_tags(list(base_tags), explicit_tags)
 
 
 def _has_aggregated_json_count(opening: Opening) -> bool:
