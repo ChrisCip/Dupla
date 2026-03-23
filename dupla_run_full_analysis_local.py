@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 # ========= CONFIG: EDIT THIS SECTION =========
@@ -48,6 +49,12 @@ TRANSLATION_VIEWS = ("2d",)  # Add "3d" only when a workflow explicitly needs it
 TRANSLATION_TIMEOUT_SECONDS = 3600
 POLL_INTERVAL_SECONDS = 10
 MAX_PROPERTY_WAIT_SECONDS = 3600
+FAILED_MANIFEST_GRACE_POLLS = 3
+FAILED_MANIFEST_GRACE_SLEEP_SECONDS = 20
+
+# Autodesk OSS upload naming
+UPLOAD_OBJECT_NAME = None  # Set a string to override the uploaded Autodesk object name
+AUTO_UNIQUE_OBJECT_NAME = True
 
 # Outputs
 OUTPUTS_DIR = r"C:\Users\chris\Downloads\archivos dupla\dwg"
@@ -107,10 +114,28 @@ def ensure_normalized_cad_facts(
     translation_timeout_seconds: int = TRANSLATION_TIMEOUT_SECONDS,
     poll_interval_seconds: int = POLL_INTERVAL_SECONDS,
     max_property_wait_seconds: int = MAX_PROPERTY_WAIT_SECONDS,
+    failed_manifest_grace_polls: int = FAILED_MANIFEST_GRACE_POLLS,
+    failed_manifest_grace_sleep_seconds: int = FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
+    upload_object_name: str | None = UPLOAD_OBJECT_NAME,
+    auto_unique_object_name: bool = AUTO_UNIQUE_OBJECT_NAME,
 ):
     token = get_aps_token()
     create_bucket(token, bucket_name)
-    object_name = upload_file_to_bucket(token, bucket_name, str(dwg_path))
+    unique_suffix = None
+    if auto_unique_object_name:
+        unique_suffix = datetime.now().strftime("%Y%m%d_%H%M%S")
+        print(
+            f"[APS] AUTO_UNIQUE_OBJECT_NAME enabled. Uploading with timestamp suffix: "
+            f"{unique_suffix}"
+        )
+
+    object_name = upload_file_to_bucket(
+        token,
+        bucket_name,
+        str(dwg_path),
+        object_name=upload_object_name,
+        unique_suffix=unique_suffix,
+    )
     if not object_name:
         raise RuntimeError("DWG upload to Autodesk failed.")
 
@@ -122,6 +147,8 @@ def ensure_normalized_cad_facts(
         translation_timeout_seconds=translation_timeout_seconds,
         poll_interval_seconds=poll_interval_seconds,
         max_property_wait_seconds=max_property_wait_seconds,
+        failed_manifest_grace_polls=failed_manifest_grace_polls,
+        failed_manifest_grace_sleep_seconds=failed_manifest_grace_sleep_seconds,
     )
     raw_json_path = outputs_dir / f"{dwg_path.stem}.autodesk_raw.json"
     raw_json_path.write_text(json.dumps(raw_data, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -130,7 +157,7 @@ def ensure_normalized_cad_facts(
     normalized_json_path = outputs_dir / f"{dwg_path.stem}.normalized.json"
     normalized_json_path.write_text(json.dumps(normalized, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    return normalized, raw_json_path, normalized_json_path
+    return normalized, raw_json_path, normalized_json_path, object_name
 
 
 def resolve_pages_dir(outputs_dir: Path) -> Path:
@@ -159,7 +186,7 @@ def main() -> None:
     bucket_name = BUCKET_NAME or APS_BUCKET_NAME
 
     print("\n=== 1) APS / Autodesk extraction ===")
-    cad_facts, raw_json_path, normalized_json_path = ensure_normalized_cad_facts(
+    cad_facts, raw_json_path, normalized_json_path, uploaded_object_name = ensure_normalized_cad_facts(
         dwg_path=dwg_path,
         outputs_dir=outputs_dir,
         bucket_name=bucket_name,
@@ -167,6 +194,10 @@ def main() -> None:
         translation_timeout_seconds=TRANSLATION_TIMEOUT_SECONDS,
         poll_interval_seconds=POLL_INTERVAL_SECONDS,
         max_property_wait_seconds=MAX_PROPERTY_WAIT_SECONDS,
+        failed_manifest_grace_polls=FAILED_MANIFEST_GRACE_POLLS,
+        failed_manifest_grace_sleep_seconds=FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
+        upload_object_name=UPLOAD_OBJECT_NAME,
+        auto_unique_object_name=AUTO_UNIQUE_OBJECT_NAME,
     )
 
     print("\n=== 2) Resolve vision pages ===")
@@ -205,10 +236,15 @@ def main() -> None:
             "raw_autodesk_json": str(raw_json_path),
             "normalized_json": str(normalized_json_path),
             "vision_pages_dir": str(pages_dir),
+            "uploaded_object_name": uploaded_object_name,
+            "upload_object_name_override": UPLOAD_OBJECT_NAME,
+            "auto_unique_object_name": AUTO_UNIQUE_OBJECT_NAME,
             "translation_views": list(TRANSLATION_VIEWS),
             "translation_timeout_seconds": TRANSLATION_TIMEOUT_SECONDS,
             "poll_interval_seconds": POLL_INTERVAL_SECONDS,
             "max_property_wait_seconds": MAX_PROPERTY_WAIT_SECONDS,
+            "failed_manifest_grace_polls": FAILED_MANIFEST_GRACE_POLLS,
+            "failed_manifest_grace_sleep_seconds": FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
         },
     )
 
@@ -239,10 +275,15 @@ def main() -> None:
         "budget_excel": str(workbook_path),
         "pages_dir": str(pages_dir),
         "vision_pages_count": len(page_paths),
+        "uploaded_object_name": uploaded_object_name,
+        "upload_object_name_override": UPLOAD_OBJECT_NAME,
+        "auto_unique_object_name": AUTO_UNIQUE_OBJECT_NAME,
         "translation_views": list(TRANSLATION_VIEWS),
         "translation_timeout_seconds": TRANSLATION_TIMEOUT_SECONDS,
         "poll_interval_seconds": POLL_INTERVAL_SECONDS,
         "max_property_wait_seconds": MAX_PROPERTY_WAIT_SECONDS,
+        "failed_manifest_grace_polls": FAILED_MANIFEST_GRACE_POLLS,
+        "failed_manifest_grace_sleep_seconds": FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
         "hybrid_levels": len(budget.get("hybrid_inventory", [])),
         "base_takeoffs": len(budget.get("base_takeoffs", [])),
         "expanded_takeoffs": len(budget.get("takeoffs", [])),

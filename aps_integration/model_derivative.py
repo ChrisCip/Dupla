@@ -25,6 +25,8 @@ DEFAULT_VIEWS = ("2d",)
 DEFAULT_TRANSLATION_TIMEOUT_SECONDS = 3600
 DEFAULT_POLL_INTERVAL_SECONDS = 10
 DEFAULT_MAX_PROPERTY_WAIT_SECONDS = 3600
+DEFAULT_FAILED_MANIFEST_GRACE_POLLS = 3
+DEFAULT_FAILED_MANIFEST_GRACE_SLEEP_SECONDS = 20
 REQUEST_TIMEOUT_SECONDS = 60
 
 
@@ -78,6 +80,49 @@ def _manifest_roles(manifest: dict | None) -> set[str]:
         if role:
             roles.add(str(role).lower())
     return roles
+
+
+def _node_markers(node: dict | None) -> list[str]:
+    if not isinstance(node, dict):
+        return []
+    markers: list[str] = []
+    for key in ("role", "type", "mime", "name", "urn"):
+        value = node.get(key)
+        if value:
+            markers.append(str(value).lower())
+    return markers
+
+
+def _is_property_database_node(node: dict | None) -> bool:
+    markers = _node_markers(node)
+    return any(
+        "autodesk.cloudplatform.propertydatabase" in marker
+        or "propertydatabase" in marker
+        or "autodesk-db" in marker
+        for marker in markers
+    )
+
+
+def inspect_manifest_derivatives(manifest: dict | None) -> dict[str, object]:
+    status, progress = _manifest_status_and_progress(manifest)
+    property_database_statuses: list[str] = []
+    for node in _iter_manifest_nodes(manifest):
+        if _is_property_database_node(node):
+            property_database_statuses.append(
+                str(node.get("status") or "unknown").lower()
+            )
+
+    return {
+        "manifest_status": status,
+        "manifest_progress": progress,
+        "manifest_failed": status == "failed",
+        "roles": sorted(_manifest_roles(manifest)),
+        "property_database_exists": bool(property_database_statuses),
+        "property_database_success": any(
+            node_status == "success" for node_status in property_database_statuses
+        ),
+        "property_database_statuses": property_database_statuses,
+    }
 
 
 def _manifest_satisfies_views(manifest: dict | None, views: Iterable[str]) -> bool:
@@ -183,6 +228,8 @@ def wait_for_translation(
     urn: str,
     timeout: int = DEFAULT_TRANSLATION_TIMEOUT_SECONDS,
     poll_interval_seconds: int = DEFAULT_POLL_INTERVAL_SECONDS,
+    failed_manifest_grace_polls: int = 0,
+    failed_manifest_grace_sleep_seconds: int = DEFAULT_FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
 ) -> str:
     """
     Poll the manifest until translation succeeds, fails, or times out.
@@ -192,22 +239,39 @@ def wait_for_translation(
     """
     print(
         f"[MODEL DERIVATIVE] Waiting for translation | "
-        f"URN={_short_urn(urn)} | timeout={timeout}s | poll={poll_interval_seconds}s"
+        f"URN={_short_urn(urn)} | timeout={timeout}s | poll={poll_interval_seconds}s | "
+        f"failed_manifest_grace_polls={failed_manifest_grace_polls}"
     )
     start = time.monotonic()
     sleep_seconds = max(int(poll_interval_seconds), 1)
+    grace_polls_remaining = max(int(failed_manifest_grace_polls), 0)
+    grace_sleep_seconds = max(int(failed_manifest_grace_sleep_seconds), 1)
 
     while True:
         elapsed = int(time.monotonic() - start)
         manifest = get_manifest(token, urn)
-        status, progress = _manifest_status_and_progress(manifest)
+        manifest_info = inspect_manifest_derivatives(manifest)
+        status = str(manifest_info["manifest_status"])
+        progress = str(manifest_info["manifest_progress"])
         print(
-            f"   URN={_short_urn(urn)} | status={status} | progress={progress} | elapsed={elapsed}s"
+            f"   URN={_short_urn(urn)} | status={status} | progress={progress} | "
+            f"property_database_success={manifest_info['property_database_success']} | "
+            f"elapsed={elapsed}s"
         )
 
         if status == "success":
             return "success"
         if status == "failed":
+            if grace_polls_remaining > 0:
+                print(
+                    f"[WARN] Failed manifest seen for URN={_short_urn(urn)} but grace is active. "
+                    f"Assuming Autodesk may still be surfacing a stale failed manifest. "
+                    f"Remaining grace polls: {grace_polls_remaining}."
+                )
+                grace_polls_remaining -= 1
+                remaining = max(timeout - elapsed, 1)
+                time.sleep(min(grace_sleep_seconds, remaining))
+                continue
             print(f"[ERROR] Translation failed for URN={_short_urn(urn)}: {manifest}")
             return "failed"
         if elapsed >= timeout:
@@ -220,6 +284,95 @@ def wait_for_translation(
         remaining = max(timeout - elapsed, 1)
         time.sleep(min(sleep_seconds, remaining))
         sleep_seconds = min(max(int(poll_interval_seconds), 1), sleep_seconds + 2, 30)
+
+
+def _filter_requested_views(views_payload: list[dict], normalized_views: list[str]) -> list[dict]:
+    requested_view_set = set(normalized_views)
+    filtered_views = [
+        view
+        for view in views_payload
+        if str(view.get("role", "")).lower() in requested_view_set
+    ]
+    if filtered_views:
+        print(
+            f"[MODEL DERIVATIVE] Using {len(filtered_views)} filtered views "
+            f"matching requested roles {normalized_views}."
+        )
+        return filtered_views
+
+    print(
+        "[WARN] No view role matched the requested set exactly. "
+        "Proceeding with all available views."
+    )
+    return views_payload
+
+
+def _extract_view_results(
+    token: str,
+    urn: str,
+    views_payload: list[dict],
+    normalized_views: list[str],
+    *,
+    max_property_wait_seconds: int,
+    poll_interval_seconds: int,
+) -> tuple[list[dict], int]:
+    extracted_views: list[dict] = []
+    successful_view_count = 0
+    filtered_views = _filter_requested_views(views_payload, normalized_views)
+
+    for view in filtered_views:
+        guid = view.get("guid", "")
+        view_name = view.get("name", "Unknown")
+        role = view.get("role", "")
+        print(f"\n--- Processing view: {view_name} ({role}) | guid={guid[:8]}... ---")
+        try:
+            properties = get_all_properties(
+                token,
+                urn,
+                guid,
+                max_wait_seconds=max_property_wait_seconds,
+                poll_interval_seconds=poll_interval_seconds,
+            )
+            collection = properties.get("data", {}).get("collection", [])
+            extracted_views.append(
+                {
+                    "name": view_name,
+                    "guid": guid,
+                    "role": role,
+                    "object_count": len(collection),
+                    "objects": collection,
+                }
+            )
+            successful_view_count += 1
+        except Exception as exc:
+            print(f"[WARN] Failed extracting view {view_name}: {exc}")
+            extracted_views.append(
+                {
+                    "name": view_name,
+                    "guid": guid,
+                    "role": role,
+                    "error": str(exc),
+                }
+            )
+
+    return extracted_views, successful_view_count
+
+
+def _build_failed_translation_message(
+    *,
+    urn: str,
+    manifest_strategy: str,
+    property_database_exists: bool,
+    property_database_success: bool,
+    salvage_attempted: bool,
+) -> str:
+    return (
+        f"Translation failed for URN={urn}. "
+        f"manifest_strategy={manifest_strategy}. "
+        f"property_database_exists={property_database_exists}. "
+        f"property_database_success={property_database_success}. "
+        f"salvage_attempted={salvage_attempted}."
+    )
 
 
 def get_model_views(token: str, urn: str) -> list[dict]:
@@ -365,6 +518,8 @@ def extract_dwg_data(
     translation_timeout_seconds: int = DEFAULT_TRANSLATION_TIMEOUT_SECONDS,
     poll_interval_seconds: int = DEFAULT_POLL_INTERVAL_SECONDS,
     max_property_wait_seconds: int = DEFAULT_MAX_PROPERTY_WAIT_SECONDS,
+    failed_manifest_grace_polls: int = DEFAULT_FAILED_MANIFEST_GRACE_POLLS,
+    failed_manifest_grace_sleep_seconds: int = DEFAULT_FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
 ) -> dict:
     """
     Full pipeline: translate a DWG and extract all available properties.
@@ -382,75 +537,140 @@ def extract_dwg_data(
     print(f"Views: {normalized_views}")
     print(f"Translation timeout: {translation_timeout_seconds}s")
     print(f"Property timeout: {max_property_wait_seconds}s")
+    print(f"Failed-manifest grace polls: {failed_manifest_grace_polls}")
+    print(f"Failed-manifest grace sleep: {failed_manifest_grace_sleep_seconds}s")
     print(f"{'=' * 60}")
 
     manifest = get_manifest(token, urn)
-    manifest_status, manifest_progress = _manifest_status_and_progress(manifest)
+    manifest_info = inspect_manifest_derivatives(manifest)
+    manifest_status = str(manifest_info["manifest_status"])
+    manifest_progress = str(manifest_info["manifest_progress"])
     manifest_reused = False
     should_submit_translation = True
+    translation_submitted = False
+    resubmitted_after_failed_manifest = False
+    manifest_strategy = "fresh_submission"
 
     if manifest is None:
         print(f"[MODEL DERIVATIVE] No existing manifest found | URN={_short_urn(urn)}")
     else:
-        roles = sorted(_manifest_roles(manifest))
         print(
             f"[MODEL DERIVATIVE] Existing manifest found | URN={_short_urn(urn)} | "
-            f"status={manifest_status} | progress={manifest_progress} | roles={roles}"
+            f"status={manifest_status} | progress={manifest_progress} | "
+            f"roles={manifest_info['roles']} | "
+            f"property_database_exists={manifest_info['property_database_exists']} | "
+            f"property_database_success={manifest_info['property_database_success']}"
         )
         if manifest_status == "success" and _manifest_satisfies_views(manifest, normalized_views):
             manifest_reused = True
             should_submit_translation = False
+            manifest_strategy = "reused_success_manifest"
             print("[MODEL DERIVATIVE] Reusing successful manifest for requested views.")
         elif manifest_status in {"inprogress", "pending"}:
             manifest_reused = True
             should_submit_translation = False
+            manifest_strategy = "reused_in_progress_manifest"
             print("[MODEL DERIVATIVE] Reusing in-progress manifest and continuing to poll.")
         elif manifest_status == "success":
+            manifest_strategy = "resubmitted_for_view_mismatch"
             print(
                 "[MODEL DERIVATIVE] Existing manifest does not clearly cover the requested views. "
                 "Submitting a new translation job."
             )
         elif manifest_status == "failed":
+            manifest_strategy = "resubmitted_after_failed_manifest"
+            resubmitted_after_failed_manifest = True
             print("[MODEL DERIVATIVE] Existing manifest failed previously. Resubmitting translation.")
 
     if should_submit_translation:
         translate_to_svf2(token, urn, views=normalized_views)
+        translation_submitted = True
 
-    if not (manifest_reused and manifest_status == "success" and _manifest_satisfies_views(manifest, normalized_views)):
+    status = manifest_status
+    if not (
+        manifest_reused
+        and manifest_status == "success"
+        and _manifest_satisfies_views(manifest, normalized_views)
+    ):
         status = wait_for_translation(
             token,
             urn,
             timeout=translation_timeout_seconds,
             poll_interval_seconds=poll_interval_seconds,
+            failed_manifest_grace_polls=(
+                failed_manifest_grace_polls if resubmitted_after_failed_manifest else 0
+            ),
+            failed_manifest_grace_sleep_seconds=failed_manifest_grace_sleep_seconds,
         )
         if status == "timeout":
             raise TimeoutError(
                 f"Translation did not finish within {translation_timeout_seconds}s for URN={urn}. "
+                f"manifest_strategy={manifest_strategy}. "
                 "Autodesk may still be processing the file remotely. Re-run later to reuse the same manifest."
             )
-        if status != "success":
-            raise RuntimeError(f"Translation failed with status '{status}' for URN={urn}.")
 
-    views_payload = get_model_views(token, urn)
-    if not views_payload:
-        raise RuntimeError(f"No views were found for translated model URN={urn}.")
+    latest_manifest = get_manifest(token, urn)
+    latest_manifest_info = inspect_manifest_derivatives(latest_manifest)
+    print(
+        f"[MODEL DERIVATIVE] Final manifest snapshot | URN={_short_urn(urn)} | "
+        f"status={latest_manifest_info['manifest_status']} | "
+        f"progress={latest_manifest_info['manifest_progress']} | "
+        f"property_database_exists={latest_manifest_info['property_database_exists']} | "
+        f"property_database_success={latest_manifest_info['property_database_success']}"
+    )
 
-    requested_view_set = set(normalized_views)
-    filtered_views = [
-        view
-        for view in views_payload
-        if str(view.get("role", "")).lower() in requested_view_set
-    ]
-    if filtered_views:
+    salvage_attempted = False
+    salvage_succeeded = False
+    views_results: list[dict] | None = None
+    successful_view_count = 0
+
+    if status != "success" and bool(latest_manifest_info["property_database_success"]):
+        salvage_attempted = True
         print(
-            f"[MODEL DERIVATIVE] Using {len(filtered_views)} filtered views "
-            f"matching requested roles {normalized_views}."
+            f"[WARN] Manifest is not successful but PropertyDatabase is ready | "
+            f"URN={_short_urn(urn)}. Attempting metadata/property salvage."
         )
-        views_payload = filtered_views
-    else:
-        print(
-            "[WARN] No view role matched the requested set exactly. "
-            "Proceeding with all available views."
+        try:
+            views_payload = get_model_views(token, urn)
+            if views_payload:
+                views_results, successful_view_count = _extract_view_results(
+                    token,
+                    urn,
+                    views_payload,
+                    normalized_views,
+                    max_property_wait_seconds=max_property_wait_seconds,
+                    poll_interval_seconds=poll_interval_seconds,
+                )
+                salvage_succeeded = successful_view_count > 0
+        except Exception as exc:
+            print(f"[WARN] Salvage attempt failed for URN={_short_urn(urn)}: {exc}")
+
+    if status != "success" and not salvage_succeeded:
+        raise RuntimeError(
+            _build_failed_translation_message(
+                urn=urn,
+                manifest_strategy=manifest_strategy,
+                property_database_exists=bool(
+                    latest_manifest_info["property_database_exists"]
+                ),
+                property_database_success=bool(
+                    latest_manifest_info["property_database_success"]
+                ),
+                salvage_attempted=salvage_attempted,
+            )
+        )
+
+    if views_results is None:
+        views_payload = get_model_views(token, urn)
+        if not views_payload:
+            raise RuntimeError(f"No views were found for translated model URN={urn}.")
+        views_results, successful_view_count = _extract_view_results(
+            token,
+            urn,
+            views_payload,
+            normalized_views,
+            max_property_wait_seconds=max_property_wait_seconds,
+            poll_interval_seconds=poll_interval_seconds,
         )
 
     all_results = {
@@ -458,48 +678,26 @@ def extract_dwg_data(
         "object_name": object_name,
         "views_requested": normalized_views,
         "manifest_reused": manifest_reused,
-        "views": [],
+        "manifest_strategy": manifest_strategy,
+        "translation_submitted": translation_submitted,
+        "resubmitted_after_failed_manifest": resubmitted_after_failed_manifest,
+        "manifest_status": str(latest_manifest_info["manifest_status"]),
+        "manifest_progress": str(latest_manifest_info["manifest_progress"]),
+        "property_database_exists": bool(latest_manifest_info["property_database_exists"]),
+        "property_database_success": bool(
+            latest_manifest_info["property_database_success"]
+        ),
+        "salvage_attempted": salvage_attempted,
+        "salvage_succeeded": salvage_succeeded,
+        "views": views_results,
     }
-
-    for view in views_payload:
-        guid = view.get("guid", "")
-        view_name = view.get("name", "Unknown")
-        role = view.get("role", "")
-        print(f"\n--- Processing view: {view_name} ({role}) | guid={guid[:8]}... ---")
-        try:
-            properties = get_all_properties(
-                token,
-                urn,
-                guid,
-                max_wait_seconds=max_property_wait_seconds,
-                poll_interval_seconds=poll_interval_seconds,
-            )
-            collection = properties.get("data", {}).get("collection", [])
-            all_results["views"].append(
-                {
-                    "name": view_name,
-                    "guid": guid,
-                    "role": role,
-                    "object_count": len(collection),
-                    "objects": collection,
-                }
-            )
-        except Exception as exc:
-            print(f"[WARN] Failed extracting view {view_name}: {exc}")
-            all_results["views"].append(
-                {
-                    "name": view_name,
-                    "guid": guid,
-                    "role": role,
-                    "error": str(exc),
-                }
-            )
 
     total_objects = sum(view.get("object_count", 0) for view in all_results["views"])
     print(f"\n{'=' * 60}")
     print(
         f"MODEL DERIVATIVE EXTRACTION COMPLETE | "
-        f"URN={_short_urn(urn)} | objects={total_objects} | views={len(all_results['views'])}"
+        f"URN={_short_urn(urn)} | objects={total_objects} | views={len(all_results['views'])} | "
+        f"successful_views={successful_view_count} | salvage_attempted={salvage_attempted}"
     )
     print(f"{'=' * 60}")
     return all_results
