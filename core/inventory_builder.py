@@ -310,6 +310,11 @@ def _merge_entities(
     return merged
 
 
+# Layers that look like floor layers but are actually annotation/marker layers
+# (e.g. floor-level-marker arrows). Exclude them from area sums.
+_FLOOR_EXCLUDE_TOKENS = ("levl", "level", "marker", "nivel", "dims", "anno")
+
+
 def _sum_hatch_area(cad_facts: dict[str, Any], tokens: tuple[str, ...]) -> tuple[float | None, list[str]]:
     hatches = cad_facts.get("cad_facts", {}).get("hatches", [])
     total = 0.0
@@ -318,6 +323,8 @@ def _sum_hatch_area(cad_facts: dict[str, Any], tokens: tuple[str, ...]) -> tuple
         layer = str(hatch.get("layer", ""))
         area = hatch.get("area")
         if area is None or not _contains_token(layer, tokens):
+            continue
+        if _contains_token(layer, _FLOOR_EXCLUDE_TOKENS):
             continue
         total += float(area)
         refs.append(f"hatch:{hatch.get('handle') or layer}")

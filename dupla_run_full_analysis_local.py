@@ -36,10 +36,10 @@ PROJECT_NAME = "Proyecto Demo"
 PROJECT_ID = "demo_001"
 
 # Input files
-DWG_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\CADPLANTADIMENSIONADA.dwg"
-PDF_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\ACAD-04-PLANTA DIMENSIONADA-Model-04-DIMENSIONADA.pdf"          # Used only if USE_PDF = True
+DWG_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\TGIU\8- ACAD-PLANOS GIUALCA I - RV7 - EXP.039-025.dwg SOLO IMPRESION.dwg"
+PDF_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\TGIU\Binder1.pdf"   # Used only if USE_PDF = True
 IMAGES_DIR = r"./inputs/rendered_pages"   # Used only if USE_PDF = False
-BC3_PATH = r"./data/catalog.bc3"          # Optional: can be blank ""
+BC3_PATH = r"./data/TGIU.bc3"             # Optional: can be blank ""
 
 # Visual stage selection
 USE_PDF = True  # True = render PDF pages; False = use IMAGES_DIR directly
@@ -165,7 +165,7 @@ def resolve_pages_dir(outputs_dir: Path) -> Path:
         pdf_path = (REPO_ROOT / PDF_PATH).resolve()
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
-        rendered_dir = outputs_dir / "rendered_pages"
+        rendered_dir = outputs_dir / "rendered_pages" / pdf_path.stem
         render_pdf_to_images(pdf_path, rendered_dir)
         return rendered_dir
 

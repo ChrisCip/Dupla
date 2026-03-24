@@ -17,6 +17,11 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
+# Autodesk Model Derivative returns all numeric property values as strings with
+# unit suffixes, e.g. '0.075 m', '3.839 m', '0.124 m2', '180.000 deg'.
+# This regex extracts the leading number so float() can parse it.
+_NUMERIC_UNIT_RE = re.compile(r"^[-+]?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?")
+
 
 def _load_collection(data: Any) -> list[dict[str, Any]]:
     collection: list[dict[str, Any]] = []
@@ -81,15 +86,7 @@ def _extract_text_content(properties: dict[str, Any]) -> str:
 
 
 def _extract_measurement(properties: dict[str, Any]) -> float | None:
-    for key in ("Measurement", "Measurement Value"):
-        value = _find_property(properties, key)
-        if value is None:
-            continue
-        try:
-            return float(str(value).replace(",", "."))
-        except ValueError:
-            continue
-    return None
+    return _extract_numeric(properties, "Measurement", "Measurement Value")
 
 
 def _extract_bbox(properties: dict[str, Any]) -> dict[str, Any]:
@@ -113,10 +110,18 @@ def _extract_numeric(properties: dict[str, Any], *candidate_keys: str) -> float 
         value = _find_property(properties, candidate_key)
         if value is None:
             continue
+        raw = str(value).replace(",", ".").strip()
         try:
-            return float(str(value).replace(",", "."))
+            return float(raw)
         except ValueError:
-            continue
+            # Property value is a string with a unit suffix (e.g. '0.075 m',
+            # '3.839 m', '180.000 deg'). Strip the suffix and retry.
+            match = _NUMERIC_UNIT_RE.match(raw)
+            if match:
+                try:
+                    return float(match.group())
+                except ValueError:
+                    pass
     return None
 
 

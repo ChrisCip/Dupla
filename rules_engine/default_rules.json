@@ -537,6 +537,152 @@
           ]
         }
       ]
+    },
+    {
+      "id": "wall_length_finish_standard",
+      "description": "Fallback wall finish pack derived from linear wall measurement when height data is unavailable. Assumes 2.80m floor-to-ceiling height and two plastered/painted faces.",
+      "priority": 5,
+      "strategy": "surface_multiplier",
+      "match": {
+        "item_types": ["wall_length"]
+      },
+      "derive": [
+        {
+          "suffix": "finish_plaster",
+          "item_type": "wall_finish_plaster",
+          "unit": "m2",
+          "factor": 5.6,
+          "context_tags": ["wall", "finish", "plaster"],
+          "assumptions": [
+            "Wall height of 2.80m assumed (standard residential floor-to-ceiling). Both faces included: factor = 2.80m x 2 faces = 5.60 m2/m."
+          ]
+        },
+        {
+          "suffix": "finish_paint",
+          "item_type": "wall_finish_paint",
+          "unit": "m2",
+          "factor": 5.6,
+          "context_tags": ["wall", "finish", "paint"],
+          "assumptions": [
+            "Wall height of 2.80m assumed (standard residential floor-to-ceiling). Both faces included: factor = 2.80m x 2 faces = 5.60 m2/m."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "beam_length_concrete_standard",
+      "description": "Fallback beam concrete volume and formwork pack derived from beam length. Assumes 0.30m x 0.50m rectangular cross-section.",
+      "priority": 5,
+      "strategy": "surface_multiplier",
+      "match": {
+        "item_types": ["beam_length"]
+      },
+      "derive": [
+        {
+          "suffix": "concrete_volume",
+          "item_type": "beam_concrete_volume",
+          "unit": "m3",
+          "factor": 0.15,
+          "context_tags": ["beam", "concrete"],
+          "assumptions": [
+            "Default beam cross-section 0.30m x 0.50m assumed. Concrete volume = length x 0.15m2."
+          ]
+        },
+        {
+          "suffix": "formwork",
+          "item_type": "beam_formwork_area_hint",
+          "unit": "m2",
+          "factor": 1.30,
+          "context_tags": ["beam", "formwork"],
+          "assumptions": [
+            "Default beam section 0.30m x 0.50m. Formwork = soffit (0.30m) + 2 sides (2 x 0.50m) = 1.30m2/m. Top face excluded."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "structural_count_column_standard",
+      "description": "Fallback concrete and formwork pack for detected column elements. Assumes 0.40m x 0.40m section and 2.80m floor height per element.",
+      "priority": 5,
+      "strategy": "count_multiplier",
+      "match": {
+        "item_types": ["structural_count"],
+        "context_tags": ["column"]
+      },
+      "derive": [
+        {
+          "suffix": "concrete_volume",
+          "item_type": "column_concrete_volume",
+          "unit": "m3",
+          "factor": 0.448,
+          "context_tags": ["column", "concrete"],
+          "assumptions": [
+            "Default column section 0.40m x 0.40m x 2.80m floor height = 0.448m3 per column element."
+          ]
+        },
+        {
+          "suffix": "formwork",
+          "item_type": "column_formwork_area_hint",
+          "unit": "m2",
+          "factor": 4.48,
+          "context_tags": ["column", "formwork"],
+          "assumptions": [
+            "Default column perimeter 4 x 0.40m x 2.80m floor height = 4.48m2 per column element."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wet_area_count_standard",
+      "description": "Fallback wet-area waterproofing and finish pack derived from wet-area count. Assumes 5.0m2 average per wet area.",
+      "priority": 5,
+      "strategy": "count_multiplier",
+      "match": {
+        "item_types": ["wet_area_count"]
+      },
+      "derive": [
+        {
+          "suffix": "waterproofing",
+          "item_type": "wet_area_waterproofing",
+          "unit": "m2",
+          "factor": 5.0,
+          "context_tags": ["wet_area", "waterproofing"],
+          "assumptions": [
+            "Average wet area of 5.0m2 per bathroom assumed. Waterproofing applied to floor and lower wall sections."
+          ]
+        },
+        {
+          "suffix": "finish",
+          "item_type": "wet_area_finish",
+          "unit": "m2",
+          "factor": 5.0,
+          "context_tags": ["wet_area", "finish"],
+          "assumptions": [
+            "Average wet area of 5.0m2 per bathroom assumed. Tile finish applied to floor and partial walls."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kitchen_count_standard",
+      "description": "Fallback waterproofing pack for kitchen areas derived from kitchen count. Assumes 4.0m2 average waterproofed floor area per kitchen.",
+      "priority": 5,
+      "strategy": "count_multiplier",
+      "match": {
+        "item_types": ["kitchen_count"]
+      },
+      "derive": [
+        {
+          "suffix": "waterproofing",
+          "item_type": "wet_area_waterproofing",
+          "unit": "m2",
+          "factor": 4.0,
+          "context_tags": ["kitchen", "waterproofing"],
+          "assumptions": [
+            "Average kitchen waterproofed floor area of 4.0m2 assumed per kitchen unit."
+          ]
+        }
+      ]
     }
   ]
 }
