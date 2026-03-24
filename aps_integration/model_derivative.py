@@ -416,17 +416,21 @@ def _extract_view_results(
 def _build_failed_translation_message(
     *,
     urn: str,
+    object_name: str,
     manifest_strategy: str,
     property_database_exists: bool,
     property_database_success: bool,
     salvage_attempted: bool,
+    token_refresh_happened: bool,
 ) -> str:
     return (
         f"Translation failed for URN={urn}. "
+        f"object_name={object_name}. "
         f"manifest_strategy={manifest_strategy}. "
         f"property_database_exists={property_database_exists}. "
         f"property_database_success={property_database_success}. "
-        f"salvage_attempted={salvage_attempted}."
+        f"salvage_attempted={salvage_attempted}. "
+        f"token_refresh_happened={token_refresh_happened}."
     )
 
 
@@ -586,6 +590,15 @@ def extract_dwg_data(
 
     The budgeting workflow defaults to 2D-only translation because large DWGs
     are much faster and cheaper to process that way.
+
+    Token refresh flow:
+        The token can be passed as a plain string or a mutable dict.
+        When passed as a dict, any mid-run refresh is visible to the caller::
+
+            token_state = {"access_token": get_aps_token(), "refresh_count": 0}
+            result = extract_dwg_data(token_state, bucket_key, object_name)
+            # If the token expired mid-run, token_state["access_token"] now
+            # holds the refreshed token and result["token_refresh_count"] > 0.
     """
     token_state = _coerce_token_state(token)
     normalized_views = _normalize_views(views)
@@ -710,6 +723,7 @@ def extract_dwg_data(
         raise RuntimeError(
             _build_failed_translation_message(
                 urn=urn,
+                object_name=object_name,
                 manifest_strategy=manifest_strategy,
                 property_database_exists=bool(
                     latest_manifest_info["property_database_exists"]
@@ -718,6 +732,7 @@ def extract_dwg_data(
                     latest_manifest_info["property_database_success"]
                 ),
                 salvage_attempted=salvage_attempted,
+                token_refresh_happened=int(token_state["refresh_count"]) > 0,
             )
         )
 

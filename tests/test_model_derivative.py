@@ -385,6 +385,65 @@ def test_extract_dwg_data_failed_error_includes_manifest_and_salvage_flags() -> 
     assert "manifest_strategy=resubmitted_after_failed_manifest" in message
     assert "property_database_exists=False" in message
     assert "salvage_attempted=False" in message
+    assert "object_name=failed_file.dwg" in message
+    assert "token_refresh_happened=False" in message
+
+
+def test_extract_dwg_data_refreshed_token_reused_across_later_calls() -> None:
+    """A token refresh during the initial manifest fetch is propagated to all later calls."""
+    original_get_manifest = md.get_manifest
+    original_translate = md.translate_to_svf2
+    original_views = md.get_model_views
+    original_properties = md.get_all_properties
+
+    tokens_seen_in_properties: list[str] = []
+
+    def fake_get_manifest(token: dict, urn: str) -> dict:
+        # Simulate a 401 mid-poll by mutating the shared token_state dict the
+        # same way _request_with_token_refresh does.
+        if isinstance(token, dict) and token.get("access_token") == "expired-token":
+            token["access_token"] = "fresh-token"
+            token["refresh_count"] = int(token.get("refresh_count", 0)) + 1
+        return {
+            "status": "success",
+            "progress": "complete",
+            "derivatives": [{"role": "2d"}],
+        }
+
+    def fake_get_all_properties(token, urn, guid, **kwargs):  # type: ignore[no-untyped-def]
+        tok = token.get("access_token") if isinstance(token, dict) else str(token)
+        tokens_seen_in_properties.append(str(tok))
+        return {"data": {"collection": [{"objectid": 1}]}}
+
+    md.get_manifest = fake_get_manifest  # type: ignore[assignment]
+    md.translate_to_svf2 = lambda *args, **kwargs: {"result": "submitted"}  # type: ignore[assignment]
+    md.get_model_views = lambda token, urn: [  # type: ignore[assignment]
+        {"guid": "guid-2d", "name": "Plan", "role": "2d"}
+    ]
+    md.get_all_properties = fake_get_all_properties  # type: ignore[assignment]
+
+    token_state = {"access_token": "expired-token", "refresh_count": 0}
+    try:
+        result = md.extract_dwg_data(
+            token_state,
+            "bucket",
+            "sample.dwg",
+            views=("2d",),
+            translation_timeout_seconds=30,
+            poll_interval_seconds=1,
+            max_property_wait_seconds=30,
+        )
+    finally:
+        md.get_manifest = original_get_manifest
+        md.translate_to_svf2 = original_translate
+        md.get_model_views = original_views
+        md.get_all_properties = original_properties
+
+    assert token_state["access_token"] == "fresh-token"
+    assert token_state["refresh_count"] == 1
+    assert result["token_refresh_count"] == 1
+    # Property fetch must have used the refreshed token, not the expired one.
+    assert tokens_seen_in_properties == ["fresh-token"]
 
 
 def test_extract_dwg_data_timeout_message_is_clear() -> None:
