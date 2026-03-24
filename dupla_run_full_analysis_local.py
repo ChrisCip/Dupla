@@ -36,7 +36,7 @@ PROJECT_NAME = "Proyecto Demo"
 PROJECT_ID = "demo_001"
 
 # Input files
-DWG_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\ACAD-04-PLANTA DIMENSIONADA-Model.dwg"
+DWG_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\CADPLANTADIMENSIONADA.dwg"
 PDF_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\ACAD-04-PLANTA DIMENSIONADA-Model-04-DIMENSIONADA.pdf"          # Used only if USE_PDF = True
 IMAGES_DIR = r"./inputs/rendered_pages"   # Used only if USE_PDF = False
 BC3_PATH = r"./data/catalog.bc3"          # Optional: can be blank ""

@@ -92,6 +92,45 @@ def test_wait_for_translation_honors_failed_manifest_grace() -> None:
     assert status == "success"
 
 
+def test_wait_for_translation_refreshes_token_on_401_and_reuses_it() -> None:
+    original_get = md.requests.get
+    original_get_aps_token = md.get_aps_token
+    original_sleep = md.time.sleep
+
+    calls: list[str] = []
+    responses = iter(
+        [
+            _FakeResponse(401, text="Unauthorized"),
+            _FakeResponse(200, {"status": "success", "progress": "complete"}),
+        ]
+    )
+
+    def fake_get(url, headers, timeout):  # type: ignore[no-untyped-def]
+        calls.append(headers["Authorization"])
+        return next(responses)
+
+    md.requests.get = fake_get
+    md.get_aps_token = lambda: "fresh-token"  # type: ignore[assignment]
+    md.time.sleep = lambda seconds: None  # type: ignore[assignment]
+    token_state = {"access_token": "expired-token"}
+    try:
+        status = md.wait_for_translation(
+            token_state,
+            "urn:demo",
+            timeout=120,
+            poll_interval_seconds=1,
+        )
+    finally:
+        md.requests.get = original_get
+        md.get_aps_token = original_get_aps_token
+        md.time.sleep = original_sleep
+
+    assert status == "success"
+    assert token_state["access_token"] == "fresh-token"
+    assert token_state["refresh_count"] == 1
+    assert calls == ["Bearer expired-token", "Bearer fresh-token"]
+
+
 def test_inspect_manifest_derivatives_detects_property_database_success() -> None:
     manifest = {
         "status": "failed",
@@ -111,6 +150,46 @@ def test_inspect_manifest_derivatives_detects_property_database_success() -> Non
     assert info["property_database_exists"] is True
     assert info["property_database_success"] is True
     assert "success" in info["property_database_statuses"]
+
+
+def test_get_all_properties_refreshes_token_on_401_then_succeeds() -> None:
+    original_get = md.requests.get
+    original_get_aps_token = md.get_aps_token
+
+    calls: list[str] = []
+    responses = iter(
+        [
+            _FakeResponse(401, text="Unauthorized"),
+            _FakeResponse(
+                200,
+                {"data": {"collection": [{"objectid": 1}, {"objectid": 2}]}},
+            ),
+        ]
+    )
+
+    def fake_get(url, headers, timeout):  # type: ignore[no-untyped-def]
+        calls.append(headers["Authorization"])
+        return next(responses)
+
+    md.requests.get = fake_get
+    md.get_aps_token = lambda: "fresh-token"  # type: ignore[assignment]
+    token_state = {"access_token": "expired-token"}
+    try:
+        data = md.get_all_properties(
+            token_state,
+            "urn:demo",
+            "guid-demo",
+            max_wait_seconds=10,
+            poll_interval_seconds=1,
+        )
+    finally:
+        md.requests.get = original_get
+        md.get_aps_token = original_get_aps_token
+
+    assert token_state["access_token"] == "fresh-token"
+    assert token_state["refresh_count"] == 1
+    assert len(data["data"]["collection"]) == 2
+    assert calls == ["Bearer expired-token", "Bearer fresh-token"]
 
 
 def test_get_all_properties_uses_elapsed_timeout() -> None:

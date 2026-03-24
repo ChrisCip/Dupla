@@ -16,6 +16,8 @@ from collections.abc import Iterable
 import requests
 from dotenv import load_dotenv
 
+from aps_integration.aps_auth import get_aps_token
+
 load_dotenv()
 
 BASE_URL = "https://developer.api.autodesk.com"
@@ -35,6 +37,58 @@ def _get_headers(token: str) -> dict[str, str]:
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
+
+
+def _coerce_token_state(token: str | dict[str, object]) -> dict[str, object]:
+    if isinstance(token, dict):
+        if "access_token" not in token:
+            token["access_token"] = str(token.get("token") or "")
+        token["refresh_count"] = int(token.get("refresh_count", 0))
+        return token
+    return {"access_token": token, "refresh_count": 0}
+
+
+def _request_with_token_refresh(
+    method: str,
+    url: str,
+    token: str | dict[str, object],
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: int = REQUEST_TIMEOUT_SECONDS,
+    **request_kwargs,
+) -> requests.Response:
+    token_state = _coerce_token_state(token)
+    request_method = getattr(requests, method.lower())
+
+    def do_request() -> requests.Response:
+        resolved_headers = dict(headers or {})
+        resolved_headers.update(_get_headers(str(token_state["access_token"])))
+        return request_method(
+            url,
+            headers=resolved_headers,
+            timeout=timeout,
+            **request_kwargs,
+        )
+
+    response = do_request()
+    if response.status_code != 401:
+        return response
+
+    print(
+        f"[AUTH] APS token expired during {method.upper()} request. "
+        "Refreshing token and retrying once."
+    )
+    token_state["access_token"] = get_aps_token()
+    token_state["refresh_count"] = int(token_state.get("refresh_count", 0)) + 1
+    retry_response = do_request()
+    if retry_response.status_code == 401:
+        print("[AUTH] Retry after token refresh still returned 401.")
+    else:
+        print(
+            f"[AUTH] Retry after token refresh succeeded with status "
+            f"{retry_response.status_code}."
+        )
+    return retry_response
 
 
 def _normalize_views(views: Iterable[str] | None) -> list[str]:
@@ -133,12 +187,12 @@ def _manifest_satisfies_views(manifest: dict | None, views: Iterable[str]) -> bo
     return requested.issubset(roles)
 
 
-def get_manifest(token: str, urn: str) -> dict | None:
+def get_manifest(token: str | dict[str, object], urn: str) -> dict | None:
     url = f"{MD_URL}/{urn}/manifest"
-    response = requests.get(
+    response = _request_with_token_refresh(
+        "get",
         url,
-        headers=_get_headers(token),
-        timeout=REQUEST_TIMEOUT_SECONDS,
+        token,
     )
     if response.status_code == 404:
         return None
@@ -155,7 +209,7 @@ def urn_from_object_id(bucket_key: str, object_name: str) -> str:
 
 
 def translate_to_svf2(
-    token: str,
+    token: str | dict[str, object],
     urn: str,
     max_retries: int = 3,
     views: Iterable[str] = DEFAULT_VIEWS,
@@ -186,11 +240,11 @@ def translate_to_svf2(
 
     last_response: requests.Response | None = None
     for attempt in range(1, max_retries + 1):
-        response = requests.post(
+        response = _request_with_token_refresh(
+            "post",
             url,
+            token,
             json=payload,
-            headers=_get_headers(token),
-            timeout=REQUEST_TIMEOUT_SECONDS,
         )
         last_response = response
 
@@ -224,7 +278,7 @@ def translate_to_svf2(
 
 
 def wait_for_translation(
-    token: str,
+    token: str | dict[str, object],
     urn: str,
     timeout: int = DEFAULT_TRANSLATION_TIMEOUT_SECONDS,
     poll_interval_seconds: int = DEFAULT_POLL_INTERVAL_SECONDS,
@@ -242,6 +296,7 @@ def wait_for_translation(
         f"URN={_short_urn(urn)} | timeout={timeout}s | poll={poll_interval_seconds}s | "
         f"failed_manifest_grace_polls={failed_manifest_grace_polls}"
     )
+    token_state = _coerce_token_state(token)
     start = time.monotonic()
     sleep_seconds = max(int(poll_interval_seconds), 1)
     grace_polls_remaining = max(int(failed_manifest_grace_polls), 0)
@@ -249,14 +304,14 @@ def wait_for_translation(
 
     while True:
         elapsed = int(time.monotonic() - start)
-        manifest = get_manifest(token, urn)
+        manifest = get_manifest(token_state, urn)
         manifest_info = inspect_manifest_derivatives(manifest)
         status = str(manifest_info["manifest_status"])
         progress = str(manifest_info["manifest_progress"])
         print(
             f"   URN={_short_urn(urn)} | status={status} | progress={progress} | "
             f"property_database_success={manifest_info['property_database_success']} | "
-            f"elapsed={elapsed}s"
+            f"elapsed={elapsed}s | token_refreshes={token_state['refresh_count']}"
         )
 
         if status == "success":
@@ -308,7 +363,7 @@ def _filter_requested_views(views_payload: list[dict], normalized_views: list[st
 
 
 def _extract_view_results(
-    token: str,
+    token: str | dict[str, object],
     urn: str,
     views_payload: list[dict],
     normalized_views: list[str],
@@ -375,17 +430,17 @@ def _build_failed_translation_message(
     )
 
 
-def get_model_views(token: str, urn: str) -> list[dict]:
+def get_model_views(token: str | dict[str, object], urn: str) -> list[dict]:
     """
     Get model views (metadata). Each view includes the GUID needed to request
     properties.
     """
     print(f"\n[MODEL DERIVATIVE] Fetching model views | URN={_short_urn(urn)}")
     url = f"{MD_URL}/{urn}/metadata"
-    response = requests.get(
+    response = _request_with_token_refresh(
+        "get",
         url,
-        headers=_get_headers(token),
-        timeout=REQUEST_TIMEOUT_SECONDS,
+        token,
     )
     response.raise_for_status()
     data = response.json()
@@ -399,7 +454,7 @@ def get_model_views(token: str, urn: str) -> list[dict]:
     return views
 
 
-def get_model_tree(token: str, urn: str, guid: str) -> dict:
+def get_model_tree(token: str | dict[str, object], urn: str, guid: str) -> dict:
     """
     Get the hierarchical object tree for a model view.
     """
@@ -408,10 +463,10 @@ def get_model_tree(token: str, urn: str, guid: str) -> dict:
     )
     url = f"{MD_URL}/{urn}/metadata/{guid}"
     for _ in range(30):
-        response = requests.get(
+        response = _request_with_token_refresh(
+            "get",
             url,
-            headers=_get_headers(token),
-            timeout=REQUEST_TIMEOUT_SECONDS,
+            token,
         )
         if response.status_code == 200:
             return response.json()
@@ -426,7 +481,7 @@ def get_model_tree(token: str, urn: str, guid: str) -> dict:
 
 
 def get_all_properties(
-    token: str,
+    token: str | dict[str, object],
     urn: str,
     guid: str,
     max_wait_seconds: int = DEFAULT_MAX_PROPERTY_WAIT_SECONDS,
@@ -449,10 +504,10 @@ def get_all_properties(
 
     while True:
         elapsed = int(time.monotonic() - start)
-        response = requests.get(
+        response = _request_with_token_refresh(
+            "get",
             url,
-            headers=_get_headers(token),
-            timeout=REQUEST_TIMEOUT_SECONDS,
+            token,
         )
 
         if response.status_code == 200:
@@ -486,7 +541,12 @@ def get_all_properties(
         response.raise_for_status()
 
 
-def query_specific_properties(token: str, urn: str, guid: str, object_ids: list[int]) -> dict:
+def query_specific_properties(
+    token: str | dict[str, object],
+    urn: str,
+    guid: str,
+    object_ids: list[int],
+) -> dict:
     """
     Query properties for a specific object ID list.
     """
@@ -499,18 +559,18 @@ def query_specific_properties(token: str, urn: str, guid: str, object_ids: list[
         "pagination": {"limit": len(object_ids)},
         "query": {"$in": ["objectid"] + object_ids},
     }
-    response = requests.post(
+    response = _request_with_token_refresh(
+        "post",
         url,
+        token,
         json=payload,
-        headers=_get_headers(token),
-        timeout=REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
     return response.json()
 
 
 def extract_dwg_data(
-    token: str,
+    token: str | dict[str, object],
     bucket_key: str,
     object_name: str,
     *,
@@ -527,6 +587,7 @@ def extract_dwg_data(
     The budgeting workflow defaults to 2D-only translation because large DWGs
     are much faster and cheaper to process that way.
     """
+    token_state = _coerce_token_state(token)
     normalized_views = _normalize_views(views)
     urn = urn_from_object_id(bucket_key, object_name)
     print(f"\n{'=' * 60}")
@@ -541,7 +602,7 @@ def extract_dwg_data(
     print(f"Failed-manifest grace sleep: {failed_manifest_grace_sleep_seconds}s")
     print(f"{'=' * 60}")
 
-    manifest = get_manifest(token, urn)
+    manifest = get_manifest(token_state, urn)
     manifest_info = inspect_manifest_derivatives(manifest)
     manifest_status = str(manifest_info["manifest_status"])
     manifest_progress = str(manifest_info["manifest_progress"])
@@ -583,7 +644,7 @@ def extract_dwg_data(
             print("[MODEL DERIVATIVE] Existing manifest failed previously. Resubmitting translation.")
 
     if should_submit_translation:
-        translate_to_svf2(token, urn, views=normalized_views)
+        translate_to_svf2(token_state, urn, views=normalized_views)
         translation_submitted = True
 
     status = manifest_status
@@ -593,7 +654,7 @@ def extract_dwg_data(
         and _manifest_satisfies_views(manifest, normalized_views)
     ):
         status = wait_for_translation(
-            token,
+            token_state,
             urn,
             timeout=translation_timeout_seconds,
             poll_interval_seconds=poll_interval_seconds,
@@ -609,7 +670,7 @@ def extract_dwg_data(
                 "Autodesk may still be processing the file remotely. Re-run later to reuse the same manifest."
             )
 
-    latest_manifest = get_manifest(token, urn)
+    latest_manifest = get_manifest(token_state, urn)
     latest_manifest_info = inspect_manifest_derivatives(latest_manifest)
     print(
         f"[MODEL DERIVATIVE] Final manifest snapshot | URN={_short_urn(urn)} | "
@@ -631,10 +692,10 @@ def extract_dwg_data(
             f"URN={_short_urn(urn)}. Attempting metadata/property salvage."
         )
         try:
-            views_payload = get_model_views(token, urn)
+            views_payload = get_model_views(token_state, urn)
             if views_payload:
                 views_results, successful_view_count = _extract_view_results(
-                    token,
+                    token_state,
                     urn,
                     views_payload,
                     normalized_views,
@@ -661,11 +722,11 @@ def extract_dwg_data(
         )
 
     if views_results is None:
-        views_payload = get_model_views(token, urn)
+        views_payload = get_model_views(token_state, urn)
         if not views_payload:
             raise RuntimeError(f"No views were found for translated model URN={urn}.")
         views_results, successful_view_count = _extract_view_results(
-            token,
+            token_state,
             urn,
             views_payload,
             normalized_views,
@@ -687,6 +748,7 @@ def extract_dwg_data(
         "property_database_success": bool(
             latest_manifest_info["property_database_success"]
         ),
+        "token_refresh_count": int(token_state["refresh_count"]),
         "salvage_attempted": salvage_attempted,
         "salvage_succeeded": salvage_succeeded,
         "views": views_results,
