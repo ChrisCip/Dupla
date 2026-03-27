@@ -1,7 +1,11 @@
 import json
 from pathlib import Path
 
-j = json.loads(Path(r"c:\Users\chris\Documents\Dupla\analysis_output\ANALISIS_INTEGRAL_20260223_114107.json").read_text(encoding="utf-8"))
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+files = sorted((PROJECT_ROOT / "analysis_output").glob("ANALISIS_INTEGRAL_*.json"))
+if not files:
+    raise FileNotFoundError("No se encontraron archivos ANALISIS_INTEGRAL_*.json en analysis_output")
+j = json.loads(files[-1].read_text(encoding="utf-8"))
 
 print(f"Project: {j['project']}")
 print(f"DWG Entities: {j['dwg_entities']:,}")

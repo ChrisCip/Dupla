@@ -5,6 +5,7 @@ Sube un DWG, lo traduce a SVF2, y extrae todas las propiedades.
 import os
 import re
 import json
+from pathlib import Path
 from aps_integration.aps_auth import get_aps_token
 from aps_integration.oss_manager import APS_BUCKET_NAME, upload_file_to_bucket, create_bucket
 from aps_integration.model_derivative import extract_dwg_data
@@ -17,7 +18,9 @@ def main():
     print("\n--- 1. PREPARANDO ARCHIVOS ---")
     create_bucket(token, APS_BUCKET_NAME)
 
-    test_file = r"C:\Users\chris\Downloads\8- ACAD-PLANOS GIUALCA I - RV7 - EXP.039-025.dwg SOLO IMPRESION.dwg"
+    project_root = Path(__file__).resolve().parents[1]
+    dwg_candidates = sorted(project_root.glob("*.dwg"))
+    test_file = os.getenv("DUPLA_TEST_DWG", str(dwg_candidates[0] if dwg_candidates else ""))
     if not os.path.exists(test_file):
         print(f"[ERROR] No se encontró el archivo: {test_file}")
         return

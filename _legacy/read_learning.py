@@ -3,7 +3,8 @@ import json, openpyxl
 from pathlib import Path
 from collections import defaultdict
 
-DUMP = Path(r"c:\Users\chris\Documents\Dupla\analysis_output\dump")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DUMP = PROJECT_ROOT / "analysis_output" / "dump"
 DUMP.mkdir(parents=True, exist_ok=True)
 
 # ============================================================
@@ -14,7 +15,7 @@ print("READING PRES.xlsx")
 print("=" * 70)
 
 wb = openpyxl.load_workbook(
-    r"c:\Users\chris\Documents\Dupla\learning_input\PRES.xlsx",
+    PROJECT_ROOT / "learning_input" / "PRES.xlsx",
     read_only=True, data_only=True
 )
 
@@ -46,7 +47,7 @@ print(f"\n{'=' * 70}")
 print("READING TGIU.bc3")
 print("=" * 70)
 
-raw = Path(r"c:\Users\chris\Documents\Dupla\learning_input\TGIU.bc3").read_text(
+raw = (PROJECT_ROOT / "learning_input" / "TGIU.bc3").read_text(
     encoding="latin-1", errors="replace"
 )
 print(f"Size: {len(raw):,} chars")

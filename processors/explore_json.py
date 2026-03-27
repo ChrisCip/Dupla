@@ -4,8 +4,10 @@ Finds sample objects of each type to understand where data lives.
 """
 import json
 import sys
+from pathlib import Path
 
-json_path = r"c:\Users\chris\Documents\Dupla\resultados_model_derivative.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+json_path = str(PROJECT_ROOT / "resultados_model_derivative.json")
 
 print(f"Loading {json_path}...")
 with open(json_path, 'r', encoding='utf-8') as f:

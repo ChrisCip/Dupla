@@ -1,104 +1,88 @@
 import os
-
 import requests
-from dotenv import load_dotenv
-
+from pathlib import Path
 from aps_integration.aps_auth import get_aps_token
+from dotenv import load_dotenv
 
 load_dotenv()
 
-APS_BUCKET_NAME = os.getenv("APS_BUCKET_NAME", "dupla_dwg_bucket_test_01")
-# Autodesk bucket names must be globally unique and lowercase.
+APS_BUCKET_NAME = os.getenv("APS_BUCKET_NAME", "dupla_dwg_bucket_test_01") 
+# Los nombres de bucket deben ser unicos a nivel global en Autodesk y en minusculas.
 
 BASE_URL = "https://developer.api.autodesk.com/oss/v2"
 
-
-def build_object_name(file_path, object_name=None, unique_suffix=None):
-    """
-    Resolve the Autodesk OSS object name for an upload.
-
-    Args:
-        file_path: Local file path being uploaded.
-        object_name: Optional explicit Autodesk object name override.
-        unique_suffix: Optional suffix appended before the extension. This is
-            useful when we want a fresh URN for retry-safe large-file runs.
-    """
-    resolved_name = object_name or os.path.basename(file_path)
-    if not unique_suffix:
-        return resolved_name
-
-    stem, extension = os.path.splitext(resolved_name)
-    normalized_suffix = str(unique_suffix).strip().replace(" ", "_")
-    return f"{stem}_{normalized_suffix}{extension}"
-
-
 def create_bucket(token, bucket_name):
     """
-    Create an Autodesk bucket if it does not already exist.
+    Crea un bucket (contenedor de archivos) en los servidores de Autodesk.
     """
     print(f"Verificando/Creando bucket '{bucket_name}'...")
     url = f"{BASE_URL}/buckets"
+    
     headers = {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
     }
+    
     payload = {
         "bucketKey": bucket_name,
-        "policyKey": "transient",
+        "policyKey": "transient" # transient: los archivos se borran solitos a las 24 horas (ideal para esta API)
     }
-
+    
     response = requests.post(url, json=payload, headers=headers)
+    
     if response.status_code == 200:
-        print("[OK] Bucket creado exitosamente.")
+        print("[OK] Bucket creado existosamente.")
     elif response.status_code == 409:
         print("[INFO] El bucket ya existe. Podemos usarlo.")
     else:
         print(f"[ERROR] Error al crear bucket: {response.status_code} - {response.text}")
         response.raise_for_status()
 
-
-def upload_file_to_bucket(
-    token,
-    bucket_name,
-    file_path,
-    object_name=None,
-    unique_suffix=None,
-):
+def upload_file_to_bucket(token, bucket_name, file_path, object_name=None):
     """
-    Upload a local file to Autodesk OSS using a signed write URL.
+    Sube un archivo local al bucket de Autodesk usando Signed URLs 
+    (El endpoint directo estandar está deprecado por Autodesk).
     """
-    object_name = build_object_name(
-        file_path,
-        object_name=object_name,
-        unique_suffix=unique_suffix,
-    )
+    if not object_name:
+        object_name = os.path.basename(file_path)
+        
     print(f"Preparando subida para '{object_name}'...")
-
+    
+    # 1. Obtener URL firmada de escritura
     upload_url = generate_signed_url(token, bucket_name, object_name, access="write")
+    
+    # 2. Subir directamente el binario a S3 a traves de la URL firmada
     print(f"Subiendo '{object_name}' al bucket '{bucket_name}'...")
     try:
-        with open(file_path, "rb") as handle:
-            file_data = handle.read()
-
+        with open(file_path, 'rb') as f:
+            file_data = f.read()
+            
         response = requests.put(upload_url, data=file_data)
         response.raise_for_status()
-        print("[OK] Archivo subido con exito.")
+            
+        print("[OK] Archivo subido con éxito!")
         return object_name
+            
     except FileNotFoundError:
         print(f"[ERROR] El archivo no existe en la ruta: {file_path}")
         return None
 
-
 def generate_signed_url(token, bucket_name, object_name, access="read"):
     """
-    Generate a temporary signed Autodesk OSS URL.
+    Genera una URL temporal (Signed URL) para descargar un archivo.
+    access='read'  -> Para que AutoCAD pueda descargar nuestro DWG
+    access='write' -> Para que AutoCAD pueda subir 'resultados.json'
     """
     print(f"Generando URL firmada para '{object_name}' ({access})...")
     url = f"{BASE_URL}/buckets/{bucket_name}/objects/{object_name}/signed"
+    
     headers = {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
     }
+    
+    # Si pedimos permisos de escritura (para subir un archivo nuevo),
+    # OSS requiere obligatoriamente que singleUse sea True para esta operación
     payload = {
         "minutesExpiration": 60,
     }
@@ -106,26 +90,31 @@ def generate_signed_url(token, bucket_name, object_name, access="read"):
         payload["singleUse"] = True
     elif access == "readWrite":
         payload["singleUse"] = False
-
-    response = requests.post(f"{url}?access={access}", json=payload, headers=headers)
+        
+    url_con_access = f"{url}?access={access}"
+    response = requests.post(url_con_access, json=payload, headers=headers)
+    
     try:
         response.raise_for_status()
-    except requests.exceptions.HTTPError:
+    except requests.exceptions.HTTPError as e:
         print("Error en Signed URL:", response.text)
         raise
-
+        
     signed_url = response.json().get("signedUrl")
-    print("[OK] URL firmada generada con exito.")
+    print("[OK] URL firmada generada con éxito.")
     return signed_url
 
 
 if __name__ == "__main__":
     token = get_aps_token()
     create_bucket(token, APS_BUCKET_NAME)
-
-    test_file = r"C:\Users\chris\Downloads\8- ACAD-PLANOS GIUALCA I - RV7 - EXP.039-025.dwg SOLO IMPRESION.dwg"
+    
+    # Intenta subir un archivo de prueba desde variable de entorno o desde el proyecto.
+    project_root = Path(__file__).resolve().parents[1]
+    dwg_candidates = sorted(project_root.glob("*.dwg"))
+    test_file = os.getenv("DUPLA_TEST_DWG", str(dwg_candidates[0] if dwg_candidates else ""))
     object_name = os.path.basename(test_file)
     if os.path.exists(test_file):
         upload_file_to_bucket(token, APS_BUCKET_NAME, test_file)
         url = generate_signed_url(token, APS_BUCKET_NAME, object_name)
-        print(f"URL de acceso temporal: {url}")
+        print(f"URL de Acceso Temporal: {url}")

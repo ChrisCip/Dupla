@@ -11,16 +11,21 @@ import sys, os, json, base64
 from pathlib import Path
 from datetime import datetime
 
-sys.path.insert(0, r"c:\Users\chris\Documents\Dupla")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
-load_dotenv(r"c:\Users\chris\Documents\Dupla\.env")
+load_dotenv(PROJECT_ROOT / ".env")
 
 from openai import OpenAI
 import fitz  # PyMuPDF
 
-PDF_PATH = Path(r"c:\Users\chris\Documents\Dupla\vision_output\pdfs\8- ACAD-PLANOS GIUALCA I - RV7 - EXP.039-025.dwg SOLO IMPRESION.pdf")
-OUTPUT_DIR = Path(r"c:\Users\chris\Documents\Dupla\vision_output")
+OUTPUT_DIR = PROJECT_ROOT / "vision_output"
+pdf_dir = OUTPUT_DIR / "pdfs"
+pdf_candidates = sorted(pdf_dir.glob("*.pdf"))
+PDF_PATH = Path(os.getenv("DUPLA_PDF_PATH", str(pdf_candidates[0] if pdf_candidates else "")))
+if not PDF_PATH.exists():
+    raise FileNotFoundError("No se encontró PDF para OCR. Define DUPLA_PDF_PATH o coloca un PDF en vision_output/pdfs")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ============================================================
@@ -63,8 +68,7 @@ print("\n[2/3] Analizando paginas con GPT-4o (OCR + Vision)...")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Leer datos COM para contexto
-com_data = open(r"c:\Users\chris\Documents\Dupla\dwg_deep_analysis.txt",
-                "r", encoding="utf-8").read()
+com_data = (PROJECT_ROOT / "dwg_deep_analysis.txt").read_text(encoding="utf-8")
 # Resumen corto del COM para no exceder tokens
 com_summary = com_data[:2000]
 

@@ -14,16 +14,17 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 
-sys.path.insert(0, r"c:\Users\chris\Documents\Dupla")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
-load_dotenv(r"c:\Users\chris\Documents\Dupla\.env")
+load_dotenv(PROJECT_ROOT / ".env")
 
 from openai import OpenAI
 from cad_automation.config import classify_layer
 from cad_automation.models import BoundingBox, ClashSeverity
 
-OUTPUT_DIR = Path(r"c:\Users\chris\Documents\Dupla\vision_output")
+OUTPUT_DIR = PROJECT_ROOT / "vision_output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 print("=" * 70)

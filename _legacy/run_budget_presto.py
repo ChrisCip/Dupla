@@ -12,12 +12,13 @@ import sys, os, json, re
 from pathlib import Path
 from datetime import datetime
 
-sys.path.insert(0, r"c:\Users\chris\Documents\Dupla")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 from dotenv import load_dotenv
-load_dotenv(r"c:\Users\chris\Documents\Dupla\.env")
+load_dotenv(PROJECT_ROOT / ".env")
 from openai import OpenAI
 
-OUTPUT_DIR = Path(r"c:\Users\chris\Documents\Dupla\vision_output")
+OUTPUT_DIR = PROJECT_ROOT / "vision_output"
 
 print("=" * 70)
 print("PRESUPUESTO FINAL: BC3 + DWG + GPT-4o")
@@ -28,8 +29,7 @@ print("=" * 70)
 # Cargar datos BC3
 # ============================================================
 bc3_data = json.loads(
-    Path(r"c:\Users\chris\Documents\Dupla\presto_files\bc3_full_data.json")
-    .read_text(encoding="utf-8")
+    (PROJECT_ROOT / "presto_files" / "bc3_full_data.json").read_text(encoding="utf-8")
 )
 
 # Preparar resumen de BC3 para GPT-4o (limitado a tokens razonables)
@@ -58,7 +58,7 @@ for p in partidas:
 # ============================================================
 # Cargar datos DWG
 # ============================================================
-dwg_data = Path(r"c:\Users\chris\Documents\Dupla\dwg_deep_analysis.txt").read_text(encoding="utf-8")
+dwg_data = (PROJECT_ROOT / "dwg_deep_analysis.txt").read_text(encoding="utf-8")
 print(f"[DWG] {len(dwg_data)} chars de datos")
 
 # ============================================================

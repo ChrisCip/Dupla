@@ -1,37 +1,65 @@
-"""Test: Verificar API key OpenAI y hacer un analisis de prueba."""
-import sys, os
-sys.path.insert(0, r"c:\Users\chris\Documents\Dupla")
+"""Script manual para validar OpenAI con datos CAD de ejemplo.
+
+No define tests de pytest y no debe ejecutar nada al importarse.
+"""
+
+import os
+from pathlib import Path
 
 from dotenv import load_dotenv
-load_dotenv(r"c:\Users\chris\Documents\Dupla\.env")
 
-from openai import OpenAI
+__test__ = False
 
-api_key = os.getenv("OPENAI_API_KEY")
-print(f"API Key: {api_key[:15]}...{api_key[-8:]}")
 
-client = OpenAI(api_key=api_key)
+def _mask_secret(secret: str) -> str:
+    if len(secret) <= 10:
+        return "*" * len(secret)
+    return f"{secret[:7]}...{secret[-4:]}"
 
-# Test simple: enviar los datos COM como texto y pedir partidas
-com_data = open(r"c:\Users\chris\Documents\Dupla\dwg_deep_analysis.txt", "r", encoding="utf-8").read()
 
-print("\n[TEST] Enviando datos COM a GPT-4o para generar partidas...")
-print("(sin imagen, solo datos textuales del CAD)")
+def main(
+    input_path: Path | None = None,
+    output_path: Path | None = None,
+    env_path: Path | None = None,
+) -> Path:
+    """Ejecuta una prueba manual de presupuesto con OpenAI."""
+    from openai import OpenAI
 
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[
-        {
-            "role": "system",
-            "content": (
-                "Eres un ingeniero presupuestista experto. "
-                "Analiza los datos de un archivo CAD y genera un "
-                "presupuesto por partidas constructivas en formato JSON."
-            ),
-        },
-        {
-            "role": "user",
-            "content": f"""Analiza estos datos extraidos de un archivo DWG de un proyecto de edificacion.
+    project_root = Path(__file__).resolve().parent.parent
+    env_file = env_path or (project_root / ".env")
+    load_dotenv(env_file)
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError(f"No se encontro OPENAI_API_KEY en {env_file}")
+
+    input_file = input_path or (Path(__file__).resolve().parent / "dwg_deep_analysis.txt")
+    if not input_file.exists():
+        raise FileNotFoundError(f"No se encontro el archivo de entrada: {input_file}")
+
+    output_file = output_path or (Path(__file__).resolve().parent / "budget_test_result.txt")
+
+    print(f"API Key: {_mask_secret(api_key)}")
+    client = OpenAI(api_key=api_key)
+    com_data = input_file.read_text(encoding="utf-8")
+
+    print("\n[TEST] Enviando datos COM a GPT-4o para generar partidas...")
+    print("(sin imagen, solo datos textuales del CAD)")
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Eres un ingeniero presupuestista experto. "
+                    "Analiza los datos de un archivo CAD y genera un "
+                    "presupuesto por partidas constructivas en formato JSON."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"""Analiza estos datos extraidos de un archivo DWG de un proyecto de edificacion.
 Los datos son de un plano arquitectonico con 28,568 entidades, unidades en Metros.
 
 DATOS DEL CAD:
@@ -53,21 +81,22 @@ Genera un presupuesto por PARTIDAS con esta estructura JSON:
   ],
   "total_items": 0,
   "observations": "observaciones generales"
-}}"""
-        },
-    ],
-    max_tokens=4096,
-    temperature=0.1,
-)
+}}""",
+            },
+        ],
+        max_tokens=4096,
+        temperature=0.1,
+    )
 
-result = response.choices[0].message.content
+    result = response.choices[0].message.content
+    output_file.write_text(result, encoding="utf-8")
 
-# Guardar resultado
-output_path = r"c:\Users\chris\Documents\Dupla\budget_test_result.txt"
-with open(output_path, "w", encoding="utf-8") as f:
-    f.write(result)
+    print(f"\nResultado guardado: {output_file}")
+    print(f"Tokens usados: {response.usage.total_tokens}")
+    print("\nPrimeras 500 chars del resultado:")
+    print(result[:500])
+    return output_file
 
-print(f"\nResultado guardado: {output_path}")
-print(f"Tokens usados: {response.usage.total_tokens}")
-print(f"\nPrimeras 500 chars del resultado:")
-print(result[:500])
+
+if __name__ == "__main__":
+    main()

@@ -11,14 +11,15 @@ import sys, os, json, base64, re
 from pathlib import Path
 from datetime import datetime
 
-sys.path.insert(0, r"c:\Users\chris\Documents\Dupla")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
-load_dotenv(r"c:\Users\chris\Documents\Dupla\.env")
+load_dotenv(PROJECT_ROOT / ".env")
 
 from openai import OpenAI
 
-OUTPUT_DIR = Path(r"c:\Users\chris\Documents\Dupla\vision_output")
+OUTPUT_DIR = PROJECT_ROOT / "vision_output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ============================================================
@@ -29,8 +30,7 @@ print("PIPELINE: PRESUPUESTO POR PARTIDAS CON GPT-4o")
 print(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print("=" * 70)
 
-com_data = open(r"c:\Users\chris\Documents\Dupla\dwg_deep_analysis.txt",
-                "r", encoding="utf-8").read()
+com_data = (PROJECT_ROOT / "dwg_deep_analysis.txt").read_text(encoding="utf-8")
 print(f"\n[1/3] Datos COM cargados ({len(com_data)} chars)")
 
 # ============================================================

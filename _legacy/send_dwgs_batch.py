@@ -16,8 +16,9 @@ from aps_integration.model_derivative import extract_dwg_data
 # ============================================================
 # CONFIGURACIÓN
 # ============================================================
-DWG_FOLDER = r"C:\Users\chris\Downloads\archivos dupla\dwg"
-OUTPUT_FOLDER = r"C:\Users\chris\Documents\Dupla\api_results"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DWG_FOLDER = Path(os.getenv("DUPLA_DWG_FOLDER", str(PROJECT_ROOT)))
+OUTPUT_FOLDER = Path(os.getenv("DUPLA_OUTPUT_FOLDER", str(PROJECT_ROOT / "api_results")))
 
 
 def safe_name(filename: str) -> str:
@@ -60,15 +61,18 @@ def process_dwg(token: str, dwg_path: str, output_dir: Path) -> None:
 
 def main():
     # Crear carpeta de salida
-    output_dir = Path(OUTPUT_FOLDER)
+    output_dir = OUTPUT_FOLDER
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Buscar todos los DWG en la carpeta
-    dwg_folder = Path(DWG_FOLDER)
+    dwg_folder = DWG_FOLDER
+    if not dwg_folder.exists():
+        print(f"[ERROR] La carpeta DWG no existe: {dwg_folder}")
+        return
     dwg_files = sorted(dwg_folder.glob("*.dwg"))
 
     if not dwg_files:
-        print(f"[ERROR] No se encontraron archivos .dwg en: {DWG_FOLDER}")
+        print(f"[ERROR] No se encontraron archivos .dwg en: {dwg_folder}")
         return
 
     print(f"Encontrados {len(dwg_files)} archivos DWG:")
@@ -78,6 +82,9 @@ def main():
     # Autenticarse una sola vez
     print("\n--- AUTENTICANDO CON AUTODESK APS ---")
     token = get_aps_token()
+    if not token:
+        print("[ERROR] No se pudo obtener token de Autodesk APS.")
+        return
     print("[OK] Token obtenido")
 
     # Crear bucket (si no existe)
@@ -92,7 +99,7 @@ def main():
             continue
 
     print(f"\n{'='*70}")
-    print(f"COMPLETADO - Resultados en: {OUTPUT_FOLDER}")
+    print(f"COMPLETADO - Resultados en: {output_dir}")
     print(f"{'='*70}")
 
 

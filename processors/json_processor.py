@@ -1,315 +1,392 @@
-"""
-Processor for Autodesk Model Derivative JSON payloads.
-
-The active output of this module is a normalized fact set that downstream
-modules can use to build inventory, quantify deterministically, and match
-budget candidates. It intentionally stops before project-specific discipline
-mapping or final budget generation.
-"""
-
-from __future__ import annotations
-
-import argparse
 import json
 import os
 import re
-from collections import Counter, defaultdict
-from pathlib import Path
-from typing import Any, Iterable
+from collections import defaultdict
+from typing import Any, Dict
 
-# Autodesk Model Derivative returns all numeric property values as strings with
-# unit suffixes, e.g. '0.075 m', '3.839 m', '0.124 m2', '180.000 deg'.
-# This regex extracts the leading number so float() can parse it.
-_NUMERIC_UNIT_RE = re.compile(r"^[-+]?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?")
+FEET_TO_M = 0.3048
+INCH_TO_M = 0.0254
+SQFT_TO_M2 = 0.09290304
+
+# Mapping AIA to the 21 real budget disciplines of Dupla
+AIA_TO_DISCIPLINE = {
+    "A-WALL": "Muros y Divisiones",
+    "S-COLS": "Hormigón Armado",
+    "S-BEAM": "Hormigón Armado",
+    "S-FNDN": "Hormigón Armado",
+    "S-SLAB": "Hormigón Armado",
+    "A-FLOR": "Terminación de Pisos",
+    "A-DOOR": "Puertas",
+    "A-GLAZ": "Ventanas",
+    "A-WIND": "Ventanas",
+    "A-ROOF": "Terminación de Superficies",
+    "A-CLNG": "Terminación de Superficies",
+    "A-FIN": "Revestimientos",
+    "A-STRS": "Terminación de Escaleras",
+    "P-SANR": "Aparatos Sanitarios",
+    "P-PIPE": "Sistema de Agua Potable",
+    "P-DWV": "Drenaje de Aguas Negras",
+    "E-POWR": "Instalación Eléctrica",
+    "E-LITE": "Instalación Eléctrica",
+    "E-FDR": "Alimentadores Eléctricos",
+    "E-GENR": "Sistema de Generación",
+    "M-FIRE": "Sistema Contra Incendios",
+    "F-PROT": "Sistema Contra Incendios",
+    "C-TOPO": "Movimiento de Tierra",
+    "A-PNT": "Pintura",
+    "A-EQPM-KITCH": "Cocina"
+}
+
+def get_discipline(layer_name):
+    if not layer_name:
+        return "Misceláneos"
+    layer_name = str(layer_name).upper()
+    
+    # Check prefixes
+    for prefix, disc in AIA_TO_DISCIPLINE.items():
+        if layer_name.startswith(prefix):
+            return disc
+            
+    # Fallbacks based on common terms
+    if "MEDICION" in layer_name:
+        return "Misceláneos"  # Capa utility
+    
+    return "Misceláneos"
 
 
-def _load_collection(data: Any) -> list[dict[str, Any]]:
-    collection: list[dict[str, Any]] = []
+def _extract_first_number(value: Any):
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    txt = str(value).strip().replace(",", "")
+    match = re.search(r"[-+]?\d*\.?\d+", txt)
+    if not match:
+        return None
+    try:
+        return float(match.group(0))
+    except ValueError:
+        return None
 
+
+def _length_to_meters(value: Any):
+    num = _extract_first_number(value)
+    if num is None:
+        return None
+
+    src = str(value).lower() if value is not None else ""
+    if "feet" in src or "foot" in src or " ft" in src or src.endswith("ft"):
+        return round(num * FEET_TO_M, 4)
+    if "inch" in src or " in" in src or src.endswith("in"):
+        return round(num * INCH_TO_M, 4)
+    if "mm" in src:
+        return round(num / 1000.0, 4)
+    if "cm" in src:
+        return round(num / 100.0, 4)
+    # Default: asumir metros cuando no se especifica unidad.
+    return round(num, 4)
+
+
+def _area_to_m2(value: Any, source_key: str = ""):
+    num = _extract_first_number(value)
+    if num is None:
+        return None
+
+    src = f"{str(value).lower()} {str(source_key).lower()}"
+    if (
+        "sq ft" in src
+        or "square feet" in src
+        or "ft2" in src
+        or "ft^2" in src
+        or "(sq ft)" in src
+    ):
+        return round(num * SQFT_TO_M2, 4)
+    # Default: asumir m2 cuando no se especifica unidad.
+    return round(num, 4)
+
+def process_autodesk_json(json_path):
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        
+    collection = []
     if isinstance(data, dict):
         if "views" in data:
             for view in data.get("views", []):
-                if isinstance(view, dict):
-                    collection.extend(view.get("objects", []))
-        elif "data" in data and isinstance(data["data"], dict):
-            collection = list(data["data"].get("collection", []))
+                collection.extend(view.get("objects", []))
+        elif "data" in data and "collection" in data["data"]:
+            collection = data["data"]["collection"]
     elif isinstance(data, list):
-        collection = list(data)
-
-    return [item for item in collection if isinstance(item, dict)]
-
-
-def _iter_property_maps(properties: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
-    for section_name, section_value in properties.items():
-        if isinstance(section_value, dict):
-            yield section_name, section_value
-
-
-def _find_property(properties: dict[str, Any], *needle_parts: str) -> Any:
-    normalized_needles = tuple(part.lower() for part in needle_parts if part)
-
-    for _, section in _iter_property_maps(properties):
-        for key, value in section.items():
-            normalized_key = key.strip().lower()
-            if all(part in normalized_key for part in normalized_needles):
-                return value
-    return None
-
-
-def _extract_layer(properties: dict[str, Any]) -> str:
-    layer_value = _find_property(properties, "layer")
-    return str(layer_value).strip() if layer_value else "UNKNOWN"
-
-
-def _extract_entity_type(obj: dict[str, Any], properties: dict[str, Any]) -> str:
-    general = properties.get("General", {})
-    if isinstance(general, dict):
-        for key, value in general.items():
-            if key.strip().lower() == "name" and value:
-                return str(value).strip()
-
-    fallback_name = str(obj.get("name", "")).strip()
-    return fallback_name or "Entity"
-
-
-def _extract_handle(properties: dict[str, Any]) -> str:
-    handle = _find_property(properties, "handle")
-    return str(handle).strip() if handle else ""
-
-
-def _extract_text_content(properties: dict[str, Any]) -> str:
-    for key in ("Contents", "Text", "Value"):
-        value = _find_property(properties, key)
-        if value:
-            return str(value).strip()
-    return ""
-
-
-def _extract_measurement(properties: dict[str, Any]) -> float | None:
-    return _extract_numeric(properties, "Measurement", "Measurement Value")
-
-
-def _extract_bbox(properties: dict[str, Any]) -> dict[str, Any]:
-    minimum = _find_property(properties, "min")
-    maximum = _find_property(properties, "max")
-    if minimum is None and maximum is None:
-        extents = _find_property(properties, "extents")
-        if isinstance(extents, dict):
-            return extents
-        return {}
-    return {"min": minimum, "max": maximum}
-
-
-def _extract_block_name(obj: dict[str, Any]) -> str:
-    name = str(obj.get("name", "")).strip()
-    return re.sub(r"\s*\[[0-9A-Fa-f]+\]\s*$", "", name).strip()
-
-
-def _extract_numeric(properties: dict[str, Any], *candidate_keys: str) -> float | None:
-    for candidate_key in candidate_keys:
-        value = _find_property(properties, candidate_key)
-        if value is None:
-            continue
-        raw = str(value).replace(",", ".").strip()
-        try:
-            return float(raw)
-        except ValueError:
-            # Property value is a string with a unit suffix (e.g. '0.075 m',
-            # '3.839 m', '180.000 deg'). Strip the suffix and retry.
-            match = _NUMERIC_UNIT_RE.match(raw)
-            if match:
-                try:
-                    return float(match.group())
-                except ValueError:
-                    pass
-    return None
-
-
-def _geometry_hint_record(
-    obj: dict[str, Any],
-    layer: str,
-    entity_type: str,
-    properties: dict[str, Any],
-) -> dict[str, Any]:
-    return {
-        "layer": layer,
-        "entity_type": entity_type,
-        "name": str(obj.get("name", "")).strip(),
-        "handle": _extract_handle(properties),
-        "length": _extract_numeric(properties, "Length", "Perimeter"),
-        "area": _extract_numeric(properties, "Area"),
-        "radius": _extract_numeric(properties, "Radius"),
-        "bbox": _extract_bbox(properties),
-    }
-
-
-def process_autodesk_json(json_path: str) -> dict[str, Any]:
-    """
-    Convert Autodesk JSON into normalized CAD facts.
-
-    The returned payload is designed for inventory construction, not direct
-    budget discipline assignment.
-    """
-    with open(json_path, "r", encoding="utf-8") as handle:
-        data = json.load(handle)
-
-    collection = _load_collection(data)
-    layer_summary: dict[str, dict[str, Any]] = {}
-    layer_metrics: dict[str, dict[str, Any]] = defaultdict(
-        lambda: {
-            "object_count": 0,
-            "entity_types": Counter(),
-            "sample_names": [],
-            "handles": [],
-        }
-    )
-
-    texts: list[dict[str, Any]] = []
-    dimensions: list[dict[str, Any]] = []
-    hatches: list[dict[str, Any]] = []
-    blocks: list[dict[str, Any]] = []
-    geometry_hints: list[dict[str, Any]] = []
-    level_markers: list[dict[str, Any]] = []
-
+        collection = data
+        
+    layer_summary_out = {}
+    usable_data_hatches = []
+    usable_data_texts = []
+    usable_data_dims = []
+    usable_data_blocks = []
+    discipline_summary_out: Any = defaultdict(lambda: {"layers": set(), "what_json_gives": "", "what_needs_vision": ""})
+    
+    layer_counts: Any = defaultdict(lambda: {"object_count": 0, "types": defaultdict(int), "discipline": "", "budget_relevant": False, "notes": ""})
+    
     for obj in collection:
-        properties = obj.get("properties", {})
-        if not isinstance(properties, dict):
-            continue
+        name = str(obj.get("name", ""))
+        props = obj.get("properties", {})
+        
+        # 1. Obteniendo el Layer
+        layer = None
+        for category, cat_props in props.items():
+            if isinstance(cat_props, dict):
+                for k, v in cat_props.items():
+                    if "layer" in k.lower():
+                        layer = v
+                        break
+            if layer: break
+            
+        if not layer:
+            layer = "UNKNOWN"
+            
+        # 2. Obteniendo el Type real desde properties > General > "Name "
+        #    El campo "Name " (con espacio al final) contiene el tipo real del objeto
+        #    Eg: "Hatch", "Block Reference", "Rotated Dimension", "Text", "MText", "Line"
+        general = props.get("General", {})
+        entity_type_raw = None
+        for key in general:
+            if key.strip().lower() == "name":
+                entity_type_raw = str(general[key]).strip()
+                break
+        
+        # Mapear el tipo real a categorías usables
+        obj_type = "Entity"
+        if entity_type_raw:
+            etr_lower = entity_type_raw.lower()
+            if etr_lower == "line":
+                obj_type = "Line"
+            elif etr_lower == "polyline" or etr_lower == "lwpolyline":
+                obj_type = "Polyline"
+            elif etr_lower == "hatch":
+                obj_type = "Hatch"
+            elif etr_lower == "text":
+                obj_type = "Text"
+            elif etr_lower == "mtext":
+                obj_type = "MText"
+            elif "dimension" in etr_lower:
+                # Cubre "Rotated Dimension", "Aligned Dimension", etc.
+                obj_type = "Dimension"
+            elif etr_lower == "block reference":
+                obj_type = "Block Reference"
+            elif etr_lower == "arc":
+                obj_type = "Arc"
+            elif etr_lower == "circle":
+                obj_type = "Circle"
+            elif etr_lower == "spline":
+                obj_type = "Spline"
+            elif etr_lower == "solid":
+                obj_type = "Solid"
+            else:
+                obj_type = entity_type_raw  # Guardar tipo original si no matchea
+        else:
+            # Fallback: intentar detectar desde obj["name"] (caso legacy)
+            name_lower = name.lower()
+            if "line" in name_lower and "polyline" not in name_lower:
+                obj_type = "Line"
+            elif "polyline" in name_lower:
+                obj_type = "Polyline"
+            elif "hatch" in name_lower:
+                obj_type = "Hatch"
+            elif "text" in name_lower and "mtext" not in name_lower:
+                obj_type = "Text"
+            elif "mtext" in name_lower:
+                obj_type = "MText"
+            elif "dimension" in name_lower:
+                obj_type = "Dimension"
+            elif "block reference" in name_lower or "insert" in name_lower:
+                obj_type = "Block Reference"
+            
+        # 3. Contando métricas
+        layer_summary = layer_counts[layer]
+        layer_summary["object_count"] += 1
+        layer_summary["types"][obj_type] += 1
+        disc = get_discipline(layer)
+        layer_summary["discipline"] = disc
+        
+        # 4. Extrayendo data útil (usable_data)
+        if obj_type == "Hatch":
+            area_raw = None
+            area_key = ""
+            geometry = props.get("Geometry", {})
+            if "Area" in geometry:
+                area_raw = geometry["Area"]
+                area_key = "Area"
+            elif "Area (sq ft)" in geometry:
+                area_raw = geometry["Area (sq ft)"]
+                area_key = "Area (sq ft)"
 
-        layer = _extract_layer(properties)
-        entity_type = _extract_entity_type(obj, properties)
-        entity_type_normalized = entity_type.lower()
-
-        metrics = layer_metrics[layer]
-        metrics["object_count"] += 1
-        metrics["entity_types"][entity_type] += 1
-
-        sample_names = metrics["sample_names"]
-        obj_name = str(obj.get("name", "")).strip()
-        if obj_name and len(sample_names) < 5 and obj_name not in sample_names:
-            sample_names.append(obj_name)
-
-        handle = _extract_handle(properties)
-        if handle and len(metrics["handles"]) < 5:
-            metrics["handles"].append(handle)
-
-        if "text" in entity_type_normalized:
-            content = _extract_text_content(properties)
-            text_record = {
+            area_m2 = _area_to_m2(area_raw, area_key)
+            if area_m2 is not None:
+                pattern_info = props.get("Pattern", {})
+                usable_data_hatches.append({
+                    "layer": layer,
+                    "area": area_m2,
+                    "area_raw": area_raw,
+                    "area_unit": "m2",
+                    "pattern_name": pattern_info.get("Pattern name", ""),
+                    "fill_type": pattern_info.get("Fill type", "")
+                })
+                layer_summary["budget_relevant"] = True
+                
+        elif obj_type in ["Text", "MText"]:
+            text_val = ""
+            # El contenido del texto está en properties > Text > Contents
+            text_section = props.get("Text", {})
+            if "Contents" in text_section:
+                text_val = text_section["Contents"]
+            
+            # Fallback: buscar en todas las categorías
+            if not text_val:
+                for p_dict in props.values():
+                    if isinstance(p_dict, dict):
+                        if "Contents" in p_dict:
+                            text_val = p_dict["Contents"]
+                            break
+                        elif "Value" in p_dict:
+                            text_val = p_dict["Value"]
+                            break
+            
+            usable_data_texts.append({
                 "layer": layer,
-                "entity_type": entity_type,
-                "handle": handle,
-                "content": content,
-                "bbox": _extract_bbox(properties),
-            }
-            texts.append(text_record)
-            if re.search(r"\b(nivel|level|npt|elev|elevation)\b", content, flags=re.IGNORECASE):
-                level_markers.append(text_record)
-
-        elif "dimension" in entity_type_normalized:
-            dimensions.append(
-                {
+                "type": obj_type,
+                "text": text_val if text_val else "(sin contenido visible)",
+                "style": text_section.get("Style", "")
+            })
+            if text_val:
+                layer_summary["budget_relevant"] = True
+                
+        elif obj_type == "Dimension":
+            # No filtrar por layer — extraer de CUALQUIER layer
+            measurement = None
+            dim_type = entity_type_raw if entity_type_raw else "Dimension"
+            text_section = props.get("Text", {})
+            if "Measurement" in text_section:
+                measurement = text_section["Measurement"]
+            
+            # Fallback
+            if measurement is None:
+                for p_dict in props.values():
+                    if isinstance(p_dict, dict):
+                        if "Measurement" in p_dict:
+                            measurement = p_dict["Measurement"]
+                            break
+                        elif "Measurement Value" in p_dict:
+                            measurement = p_dict["Measurement Value"]
+                            break
+            
+            if measurement is not None:
+                measurement_m = _length_to_meters(measurement)
+                usable_data_dims.append({
                     "layer": layer,
-                    "entity_type": entity_type,
-                    "handle": handle,
-                    "measurement": _extract_measurement(properties),
-                    "text": _extract_text_content(properties),
-                    "bbox": _extract_bbox(properties),
-                }
-            )
+                    "measurement": measurement_m if measurement_m is not None else measurement,
+                    "measurement_raw": measurement,
+                    "measurement_unit": "m" if measurement_m is not None else "",
+                    "dim_type": dim_type,
+                    "dim_style": props.get("Misc", {}).get("Dim style", "")
+                })
+                layer_summary["budget_relevant"] = True
+                
+        elif obj_type == "Block Reference":
+            # El nombre del bloque está en obj["name"], limpiar el sufijo hex [XXXXXX]
+            block_name = re.sub(r'\s*\[[0-9A-Fa-f]+\]\s*$', '', name).strip()
+            usable_data_blocks.append({
+                "layer": layer,
+                "block_name": block_name,
+                "handle": general.get("Handle", "")
+            })
+            layer_summary["budget_relevant"] = True
 
-        elif "hatch" in entity_type_normalized:
-            hatches.append(
-                {
-                    "layer": layer,
-                    "entity_type": entity_type,
-                    "handle": handle,
-                    "area": _extract_numeric(properties, "Area"),
-                    "pattern_name": _find_property(properties, "Pattern name") or "",
-                    "fill_type": _find_property(properties, "Fill type") or "",
-                    "bbox": _extract_bbox(properties),
-                }
-            )
-
-        elif "block reference" in entity_type_normalized or "insert" in entity_type_normalized:
-            blocks.append(
-                {
-                    "layer": layer,
-                    "entity_type": entity_type,
-                    "handle": handle,
-                    "block_name": _extract_block_name(obj),
-                    "bbox": _extract_bbox(properties),
-                }
-            )
-
-        if entity_type_normalized in {
-            "line",
-            "polyline",
-            "lwpolyline",
-            "arc",
-            "circle",
-            "ellipse",
-            "spline",
-            "solid",
-        }:
-            geometry_hints.append(_geometry_hint_record(obj, layer, entity_type, properties))
-
-    for layer, metrics in layer_metrics.items():
-        layer_summary[layer] = {
-            "object_count": metrics["object_count"],
-            "entity_types": dict(metrics["entity_types"]),
-            "sample_names": metrics["sample_names"],
-            "handles": metrics["handles"],
+    # 5. Generar notas analíticas honestas y formatear resultados
+    for l, ls in layer_counts.items():
+        lines = ls["types"].get("Line", 0)
+        polylines = ls["types"].get("Polyline", 0)
+        
+        if (lines + polylines) > 0 and (lines + polylines) > ls["object_count"] * 0.7:
+            ls["notes"] = f"{lines + polylines} segmentos (Lines/Polylines) — NO es longitud del elemento. Inútil para sumar metros constructivos."
+            if not ls["budget_relevant"]:
+                ls["budget_relevant"] = False
+        elif ls["types"].get("Hatch", 0) > 0 and ls["budget_relevant"]:
+            ls["notes"] = "Hatches con área detectada. Útil directamente para cálculo de superficies/volúmenes."
+        elif ls["types"].get("Block Reference", 0) > 0:
+            ls["notes"] = "Block References nativos. Podría servir para conteo si un bloque = un elemento constructivo real."
+        elif l == "00-MEDICION":
+            ls["notes"] = "Layer de control. Contiene proyecciones de medidas reales extraíbles del measurement property."
+        else:
+            ls["notes"] = "Información gráfica dispersa mayormente visual, debe pasar por Vision AI para semántica."
+            
+        layer_summary_out[l] = {
+            "object_count": ls["object_count"],
+            "types": dict(ls["types"]),
+            "discipline": ls["discipline"],
+            "budget_relevant": ls["budget_relevant"],
+            "notes": ls["notes"]
         }
+        
+        # Mapping Discipline Summary
+        disc_str = str(ls.get("discipline", "Misceláneos"))
+        disc_sum = discipline_summary_out[disc_str]
+        disc_sum["layers"].add(l)
+        
+        if ls["discipline"] == "Hormigón Armado":
+            disc_sum["what_json_gives"] = "Áreas de sección vía Hatches en columnas o zapatas."
+            disc_sum["what_needs_vision"] = "Ubicación 3D, alturas de piso a piso, vigas, longitudes de colado."
+        elif ls["discipline"] == "Muros y Divisiones":
+            disc_sum["what_json_gives"] = "Solo miles de líneas paralelas que componen el dibujo del muro."
+            disc_sum["what_needs_vision"] = "Largo constructivo real (metros lineales de muro) e identificar tipo de block."
+        elif ls["discipline"] in ["Puertas", "Ventanas", "Aparatos Sanitarios"]:
+            disc_sum["what_json_gives"] = "Algunos Textos u ocasionalmente Block References útiles."
+            disc_sum["what_needs_vision"] = "Conteo certero para evitar sumar líneas de símbolo en vez de elementos."
+        else:
+            if not disc_sum["what_json_gives"]:
+                disc_sum["what_json_gives"] = "Anotaciones de texto y fragmentos CAD."
+                disc_sum["what_needs_vision"] = "Identificación en plano de planta (Visual Analysis)."
 
-    block_frequency = Counter(
-        block["block_name"] for block in blocks if block.get("block_name")
-    ).most_common(25)
-
-    dimension_scale_hints = [
-        item
-        for item in dimensions
-        if isinstance(item.get("measurement"), (int, float))
-    ][:25]
-
+    # Convert sets to lists para que sea serializable
+    final_discipline_summary = {}
+    for disc_k, disc_v in discipline_summary_out.items():
+        final_discipline_summary[disc_k] = {
+            "layers": list(disc_v["layers"]),
+            "what_json_gives": str(disc_v.get("what_json_gives", "")),
+            "what_needs_vision": str(disc_v.get("what_needs_vision", ""))
+        }
+        
     return {
         "project": os.path.basename(json_path),
         "total_objects": len(collection),
-        "cad_facts": {
-            "layers": layer_summary,
-            "texts": texts,
-            "dimensions": dimensions,
-            "hatches": hatches,
-            "blocks": blocks,
-            "geometry_hints": geometry_hints,
+        "layer_summary": layer_summary_out,
+        "usable_data": {
+            "hatches_with_area": usable_data_hatches,
+            "texts": usable_data_texts,
+            "dimensions": usable_data_dims,
+            "block_references": usable_data_blocks
         },
-        "inventory_hints": {
-            "level_markers": level_markers[:25],
-            "scale_dimensions": dimension_scale_hints,
-            "block_frequency": [
-                {"block_name": name, "count": count} for name, count in block_frequency
-            ],
-            "layer_names": sorted(layer_summary.keys()),
-        },
+        "discipline_summary": final_discipline_summary,
+        "gaps_for_vision_ai": [
+            "Conteo real de puertas (JSON solo tiene líneas del símbolo)",
+            "Dimensiones de muros (largo real, no segmentos)",
+            "Alturas de entrepiso",
+            "Especificaciones de materiales no anotadas en texto"
+        ]
     }
 
-
-def _build_cli() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Normalize Autodesk JSON facts.")
-    parser.add_argument("json_path", help="Path to the Autodesk JSON file")
-    parser.add_argument(
-        "--output",
-        help="Optional output path. Defaults to <input>.normalized.json",
-    )
-    return parser
-
-
 if __name__ == "__main__":
-    args = _build_cli().parse_args()
-    result = process_autodesk_json(args.json_path)
-    output_path = args.output or f"{Path(args.json_path).stem}.normalized.json"
-
-    with open(output_path, "w", encoding="utf-8") as out:
-        json.dump(result, out, indent=2, ensure_ascii=False)
-
-    print(f"Normalized CAD facts written to {output_path}")
+    import sys
+    # Prueba del script con el JSON que tenemos en la raíz del proyecto
+    json_file = "../resultados_model_derivative.json" if os.path.exists("../resultados_model_derivative.json") else "resultados_model_derivative.json"
+    if os.path.exists(json_file):
+        print(f"Analizando {json_file}...")
+        res = process_autodesk_json(json_file)
+        
+        out_file = "resumen_procesado.json"
+        with open(out_file, "w", encoding="utf-8") as out:
+            json.dump(res, out, indent=2, ensure_ascii=False)
+            
+        print(f"✅ Análisis completado. Se procesaron {res['total_objects']} objetos.")
+        print(f"Resultados guardados en: {out_file}")
+    else:
+        print(f"❌ Error: No se encontró el archivo {json_file}")
