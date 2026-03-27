@@ -8,13 +8,14 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 
-sys.path.insert(0, r"c:\Users\chris\Documents\Dupla")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 from dotenv import load_dotenv
-load_dotenv(r"c:\Users\chris\Documents\Dupla\.env")
+load_dotenv(PROJECT_ROOT / ".env")
 from openai import OpenAI
 
-DUMP_DIR = Path(r"c:\Users\chris\Documents\Dupla\analysis_output\dump")
-OUTPUT_DIR = Path(r"c:\Users\chris\Documents\Dupla\analysis_output")
+DUMP_DIR = PROJECT_ROOT / "analysis_output" / "dump"
+OUTPUT_DIR = PROJECT_ROOT / "analysis_output"
 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 

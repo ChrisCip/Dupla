@@ -1,25 +1,35 @@
 import os
 import requests
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Cargar variables de entorno
-load_dotenv()
-
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 AUTH_URL = "https://developer.api.autodesk.com/authentication/v2/token"
+
+
+def _load_project_env() -> Path:
+    """Carga el .env desde la raiz del proyecto y devuelve su ruta esperada."""
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    load_dotenv(dotenv_path=env_path)
+    return env_path
 
 def get_aps_token():
     """
     Obtiene un token de acceso (2-Legged OAuth) de Autodesk Platform Services.
     """
-    if not CLIENT_ID or not CLIENT_SECRET:
-        raise ValueError("Faltan configurar CLIENT_ID o CLIENT_SECRET en el archivo .env")
+    env_path = _load_project_env()
+    client_id = os.getenv("CLIENT_ID") or os.getenv("APS_CLIENT_ID")
+    client_secret = os.getenv("CLIENT_SECRET") or os.getenv("APS_CLIENT_SECRET")
+
+    if not client_id or not client_secret:
+        raise ValueError(
+            "Faltan credenciales APS. Configura CLIENT_ID y CLIENT_SECRET "
+            f"(o APS_CLIENT_ID y APS_CLIENT_SECRET) en {env_path}"
+        )
 
     # Los scopes definen los permisos. Para Design Automation y OSS necesitamos estos:
     payload = {
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET,
+        'client_id': client_id,
+        'client_secret': client_secret,
         'grant_type': 'client_credentials',
         'scope': 'data:read data:write data:create bucket:create bucket:read code:all viewables:read'
     }

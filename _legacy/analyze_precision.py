@@ -2,14 +2,15 @@ import json, os, glob
 from pathlib import Path
 
 # Load BC3 dump
-dump_dir = Path(r"c:\Users\chris\Documents\Dupla\analysis_output\dump")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+dump_dir = PROJECT_ROOT / "analysis_output" / "dump"
 bc3_partidas = json.loads((dump_dir / "partidas_bc3.json").read_text(encoding="utf-8"))
 
 # Create a dictionary for quick lookup of BC3 data
 bc3_dict = {p["code"]: p for p in bc3_partidas}
 
 # Load latest output JSON
-files = glob.glob(r"c:\Users\chris\Documents\Dupla\analysis_output\ANALISIS_INTEGRAL_*.json")
+files = glob.glob(str(PROJECT_ROOT / "analysis_output" / "ANALISIS_INTEGRAL_*.json"))
 latest = max(files, key=os.path.getctime)
 output_data = json.loads(Path(latest).read_text(encoding="utf-8"))
 

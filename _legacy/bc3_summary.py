@@ -1,9 +1,11 @@
 """Quick summary of BC3 parse results."""
 import json
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 data = json.loads(
-    open(r"c:\Users\chris\Documents\Dupla\presto_files\bc3_full_data.json",
-         "r", encoding="utf-8").read()
+    (PROJECT_ROOT / "presto_files" / "bc3_full_data.json").read_text(encoding="utf-8")
 )
 
 print(f"Total concepts: {data['total_concepts']}")

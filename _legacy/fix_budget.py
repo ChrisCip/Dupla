@@ -3,7 +3,8 @@ import json, re
 from pathlib import Path
 from datetime import datetime
 
-OUTPUT_DIR = Path(r"c:\Users\chris\Documents\Dupla\vision_output")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+OUTPUT_DIR = PROJECT_ROOT / "vision_output"
 
 raw = (OUTPUT_DIR / "gpt4o_budget_raw.txt").read_text(encoding="utf-8")
 print(f"Raw length: {len(raw)} chars")

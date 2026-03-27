@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
 
-dump = Path(r"c:\Users\chris\Documents\Dupla\analysis_output\dump")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+dump = PROJECT_ROOT / "analysis_output" / "dump"
 
 # BC3
 partidas = json.loads((dump / "bc3_partidas.json").read_text(encoding="utf-8"))

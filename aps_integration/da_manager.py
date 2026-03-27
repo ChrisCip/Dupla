@@ -110,11 +110,17 @@ def setup_activity(token):
                 "description": "El JSON resultante con las mediciones",
                 "required": True,
                 "localName": "resultados.json" # El C# escribe en este archivo local
+            },
+            "outputAreasJson": {
+                "verb": "put",
+                "description": "JSON enfocado en el analisis de areas",
+                "required": False,
+                "localName": "resultados_areas.json"
             }
         },
         "engine": ENGINE_ID,
         "appbundles": [f"{CLIENT_ID}.{APPBUNDLE_NAME}+dev"],
-        "description": "Extrae polilineas y bloques a JSON.",
+        "description": "Extrae polilineas, bloques y superficies a JSON.",
         "settings": {
             "script": {
                 "value": script
@@ -143,7 +149,7 @@ def setup_activity(token):
     print(f"[OK] Activity '{ACTIVITY_NAME}+dev' publicada y lista para usar.")
 
 
-def run_workitem(token, input_dwg_url, output_json_url):
+def run_workitem(token, input_dwg_url, output_json_url, output_areas_json_url=None):
     """
     El WorkItem es la orden de trabajo final. Envía un DWG a ejecutarse bajo nuestra Activity.
     """
@@ -162,6 +168,12 @@ def run_workitem(token, input_dwg_url, output_json_url):
             }
         }
     }
+
+    if output_areas_json_url:
+        payload["arguments"]["outputAreasJson"] = {
+            "verb": "put",
+            "url": output_areas_json_url
+        }
     
     response = requests.post(url, json=payload, headers=_get_headers(token))
     try:

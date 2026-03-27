@@ -1,5 +1,9 @@
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 import json
-b = json.loads(open(r'c:\Users\chris\Documents\Dupla\vision_output\PRESUPUESTO_FINAL.json','r',encoding='utf-8').read())
+b = json.loads((PROJECT_ROOT / "vision_output" / "PRESUPUESTO_FINAL.json").read_text(encoding="utf-8"))
 print(f'Project: {b["project"]}')
 print(f'Chapters: {len(b["chapters"])}')
 gt = 0

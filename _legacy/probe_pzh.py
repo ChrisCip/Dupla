@@ -1,6 +1,9 @@
 """Probe PZH - output to file for full reading."""
-path = r"c:\Users\chris\Documents\Dupla\presto_files\CTXI0000TRM.pzh"
-out = r"c:\Users\chris\Documents\Dupla\pzh_probe_result.txt"
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+path = PROJECT_ROOT / "presto_files" / "CTXI0000TRM.pzh"
+out = PROJECT_ROOT / "pzh_probe_result.txt"
 
 with open(path, "rb") as f:
     data = f.read()

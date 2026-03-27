@@ -11,12 +11,13 @@ from datetime import datetime
 from collections import defaultdict
 from typing import Dict, List, Any, TypedDict, Optional
 
-sys.path.insert(0, r"c:\Users\chris\Documents\Dupla")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 from dotenv import load_dotenv
-load_dotenv(r"c:\Users\chris\Documents\Dupla\.env")
+load_dotenv(PROJECT_ROOT / ".env")
 from openai import OpenAI
 
-OUTPUT_DIR = Path(r"c:\Users\chris\Documents\Dupla\vision_output")
+OUTPUT_DIR = PROJECT_ROOT / "vision_output"
 
 print("=" * 70)
 print("PRESUPUESTO DETALLADO POR CAPITULOS")
@@ -27,8 +28,7 @@ print("=" * 70)
 # 1. Cargar BC3 completo
 # ============================================================
 bc3 = json.loads(
-    Path(r"c:\Users\chris\Documents\Dupla\presto_files\bc3_full_data.json")
-    .read_text(encoding="utf-8")
+    (PROJECT_ROOT / "presto_files" / "bc3_full_data.json").read_text(encoding="utf-8")
 )
 partidas = bc3["partidas"]
 chapters_raw = bc3["chapters"]
@@ -148,7 +148,7 @@ for gid, group in groups.items():
 # ============================================================
 # 3. DWG data
 # ============================================================
-dwg_data = Path(r"c:\Users\chris\Documents\Dupla\dwg_deep_analysis.txt").read_text(encoding="utf-8")
+dwg_data = (PROJECT_ROOT / "dwg_deep_analysis.txt").read_text(encoding="utf-8")
 
 # ============================================================
 # 4. GPT-4o por capitulo

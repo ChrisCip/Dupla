@@ -1,8 +1,10 @@
 import json, os, glob
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 # find latest json file
-files = glob.glob(r"c:\Users\chris\Documents\Dupla\analysis_output\ANALISIS_INTEGRAL_*.json")
+files = glob.glob(str(PROJECT_ROOT / "analysis_output" / "ANALISIS_INTEGRAL_*.json"))
 latest = max(files, key=os.path.getctime)
 
 j = json.loads(Path(latest).read_text(encoding="utf-8"))

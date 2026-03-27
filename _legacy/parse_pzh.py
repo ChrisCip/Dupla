@@ -7,9 +7,10 @@ precios, y jerarquia de capitulos/partidas.
 import struct
 from pathlib import Path
 
-path = r"c:\Users\chris\Documents\Dupla\presto_files\CTXI0000TRM.pzh"
-out_path = r"c:\Users\chris\Documents\Dupla\presto_files\pzh_budget_structure.txt"
-json_path = r"c:\Users\chris\Documents\Dupla\presto_files\pzh_budget.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+path = PROJECT_ROOT / "presto_files" / "CTXI0000TRM.pzh"
+out_path = PROJECT_ROOT / "presto_files" / "pzh_budget_structure.txt"
+json_path = PROJECT_ROOT / "presto_files" / "pzh_budget.json"
 
 with open(path, "rb") as f:
     data = f.read()

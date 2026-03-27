@@ -17,16 +17,17 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict, Counter
 
-sys.path.insert(0, r"c:\Users\chris\Documents\Dupla")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 from dotenv import load_dotenv
-load_dotenv(r"c:\Users\chris\Documents\Dupla\.env")
+load_dotenv(PROJECT_ROOT / ".env")
 from openai import OpenAI
 from cad_automation.config import classify_layer
 
-LEARNING_DIR = Path(r"c:\Users\chris\Documents\Dupla\learning_input")
-OUTPUT_DIR = Path(r"c:\Users\chris\Documents\Dupla\analysis_output")
+LEARNING_DIR = PROJECT_ROOT / "learning_input"
+OUTPUT_DIR = PROJECT_ROOT / "analysis_output"
 DUMP_DIR = OUTPUT_DIR / "dump"
-PDF_DIR = Path(r"c:\Users\chris\Documents\Dupla\vision_output\pdf_pages")
+PDF_DIR = PROJECT_ROOT / "vision_output" / "pdf_pages"
 DUMP_DIR.mkdir(parents=True, exist_ok=True)
 
 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -97,7 +98,7 @@ def parse_bc3(filepath):
     chapters = [c for c in concepts.values() if not c["unit"] and c["summary"]]
     return partidas, chapters, hierarchy, texts
 
-bc3_files = list(LEARNING_DIR.glob("*.bc3")) + list(Path(r"c:\Users\chris\Documents\Dupla\presto_files").glob("*.bc3"))
+bc3_files = list(LEARNING_DIR.glob("*.bc3")) + list((PROJECT_ROOT / "presto_files").glob("*.bc3"))
 all_partidas = []
 all_chapters = []
 all_hierarchy = {}

@@ -6,6 +6,7 @@ demo_files/
 *.txt
 *.log
 *.json
+!analysis_output/aps_test/*.json
 *.zip
 *.bundle/
 !requirements.txt

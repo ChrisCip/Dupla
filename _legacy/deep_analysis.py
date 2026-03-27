@@ -15,8 +15,10 @@ import sys
 import time
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
 
-sys.path.insert(0, r"c:\Users\chris\Documents\Dupla")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 from cad_automation.config import classify_layer
 
 # ============================================================
@@ -204,7 +206,7 @@ lines.append("=" * 90)
 report = "\n".join(lines)
 
 # Guardar
-output_path = r"c:\Users\chris\Documents\Dupla\dwg_deep_analysis.txt"
+output_path = str(PROJECT_ROOT / "dwg_deep_analysis.txt")
 with open(output_path, "w", encoding="utf-8") as f:
     f.write(report)
 
