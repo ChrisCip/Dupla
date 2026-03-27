@@ -4,6 +4,7 @@ Excel export for composed Dupla budget rows.
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Mapping
 
@@ -50,6 +51,32 @@ def _write_value(cell, value: object) -> None:
         return
     if value is None:
         cell.value = None
+
+
+def _fallback_output_path(output: Path, attempt: int) -> Path:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    suffix = "" if attempt == 1 else f"_{attempt:02d}"
+    return output.with_name(f"{output.stem}_{timestamp}{suffix}{output.suffix}")
+
+
+def _save_workbook(workbook: Workbook, output: Path, *, max_fallback_attempts: int = 20) -> Path:
+    try:
+        workbook.save(output)
+        return output
+    except PermissionError as exc:
+        last_error = exc
+        for attempt in range(1, max_fallback_attempts + 1):
+            fallback_output = _fallback_output_path(output, attempt)
+            try:
+                workbook.save(fallback_output)
+                return fallback_output
+            except PermissionError as fallback_exc:
+                last_error = fallback_exc
+
+    raise PermissionError(
+        f"Could not save workbook to '{output}' or any fallback filename in '{output.parent}'. "
+        "Close the workbook if it is open, or verify write permissions for the directory."
+    ) from last_error
 
 
 def export_budget_workbook(
@@ -127,5 +154,4 @@ def export_budget_workbook(
 
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    workbook.save(output)
-    return output
+    return _save_workbook(workbook, output)

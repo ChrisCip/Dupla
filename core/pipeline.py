@@ -26,6 +26,8 @@ def build_final_budget(
     context: ProjectContext,
     takeoffs: Iterable[QuantityTakeoff],
     candidates_by_takeoff: dict[str, list[BudgetCandidate]],
+    *,
+    bc3_catalog: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     takeoff_list = list(takeoffs)
     lines = []
@@ -39,7 +41,7 @@ def build_final_budget(
             }
         )
 
-    composed = compose_budget(context, takeoff_list, candidates_by_takeoff)
+    composed = compose_budget(context, takeoff_list, candidates_by_takeoff, bc3_catalog=bc3_catalog)
     composed["budget_lines"] = lines
     composed["takeoffs"] = [takeoff.to_dict() for takeoff in takeoff_list]
     composed["candidates_by_takeoff"] = {
@@ -59,7 +61,7 @@ def build_budget_from_inventory(
     base_takeoffs = quantify_inventory(levels)
     expanded_takeoffs = engine.apply(base_takeoffs)
     candidates = match_takeoffs_to_bc3(expanded_takeoffs, bc3_catalog)
-    return build_final_budget(context, expanded_takeoffs, candidates)
+    return build_final_budget(context, expanded_takeoffs, candidates, bc3_catalog=bc3_catalog)
 
 
 def build_expanded_takeoffs_from_inventory(
@@ -170,7 +172,7 @@ def build_budget_from_sources(
         rules_engine=rules_engine,
     )
     candidates = match_takeoffs_to_bc3(expanded_takeoffs, bc3_catalog)
-    budget = build_final_budget(context, expanded_takeoffs, candidates)
+    budget = build_final_budget(context, expanded_takeoffs, candidates, bc3_catalog=bc3_catalog)
     budget["hybrid_inventory"] = [level.to_dict() for level in hybrid_inventory]
     budget["base_takeoffs"] = [takeoff.to_dict() for takeoff in base_takeoffs]
     return budget

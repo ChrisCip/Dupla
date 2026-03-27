@@ -226,6 +226,8 @@ def _scalar_merge(
     json_value: Any,
     vision_value: Any,
     conflict_notes: list[str],
+    *,
+    prefer_vision: bool = False,
 ) -> Any:
     if json_value is None:
         return vision_value
@@ -234,15 +236,27 @@ def _scalar_merge(
     if json_value == vision_value:
         return json_value
 
+    if prefer_vision:
+        conflict_notes.append(
+            f"Conflict on {field_name}: kept Vision value {vision_value!r}, JSON suggested {json_value!r}."
+        )
+        return vision_value
+
     conflict_notes.append(
         f"Conflict on {field_name}: kept JSON value {json_value!r}, vision suggested {vision_value!r}."
     )
     return json_value
 
 
-def _merge_entity(json_entity: EntityT, vision_entity: EntityT) -> EntityT:
+def _merge_entity(
+    json_entity: EntityT,
+    vision_entity: EntityT,
+    *,
+    vision_preferred_fields: frozenset[str] | None = None,
+) -> EntityT:
     payload: dict[str, Any] = {}
     conflict_notes = _unique_strings(json_entity.conflict_notes, vision_entity.conflict_notes)
+    _vision_fields = vision_preferred_fields or frozenset()
 
     for field_def in fields(json_entity):
         name = field_def.name
@@ -264,7 +278,10 @@ def _merge_entity(json_entity: EntityT, vision_entity: EntityT) -> EntityT:
         elif isinstance(json_value, dict) and isinstance(vision_value, dict):
             payload[name] = _merge_inputs(json_value, vision_value)
         else:
-            payload[name] = _scalar_merge(name, json_value, vision_value, conflict_notes)
+            payload[name] = _scalar_merge(
+                name, json_value, vision_value, conflict_notes,
+                prefer_vision=(name in _vision_fields),
+            )
 
     payload["conflict_notes"] = _unique_strings(conflict_notes)
     return type(json_entity)(**payload)
@@ -286,6 +303,8 @@ def _entity_signature(entity: InventoryEntity) -> tuple[Any, ...]:
 def _merge_entities(
     json_entities: list[EntityT],
     vision_entities: list[EntityT],
+    *,
+    vision_preferred_fields: frozenset[str] | None = None,
 ) -> list[EntityT]:
     merged: list[EntityT] = []
     unmatched_vision = vision_entities.copy()
@@ -304,7 +323,7 @@ def _merge_entities(
             continue
 
         unmatched_vision.remove(match)
-        merged.append(_merge_entity(json_entity, match))
+        merged.append(_merge_entity(json_entity, match, vision_preferred_fields=vision_preferred_fields))
 
     merged.extend(unmatched_vision)
     return merged
@@ -677,11 +696,15 @@ def build_level_inventory(
         return json_level
 
     conflict_notes = _unique_strings(json_level.conflict_notes, vision_level.conflict_notes)
-    floor_area_m2 = _merge_level_scalar(
+
+    # floor_area_m2: prefer Vision — JSON sources only have annotation hatches (not real floor
+    # areas) while Vision reads actual room polygons. JSON is used as fallback when Vision is None.
+    floor_area_m2 = _scalar_merge(
         "floor_area_m2",
         json_level.floor_area_m2,
         vision_level.floor_area_m2,
         conflict_notes,
+        prefer_vision=True,
     )
     ceiling_area_m2 = _merge_level_scalar(
         "ceiling_area_m2",
@@ -706,7 +729,13 @@ def build_level_inventory(
         assumptions=_unique_strings(json_level.assumptions, vision_level.assumptions),
         inputs=_merge_inputs(json_level.inputs, vision_level.inputs),
         conflict_notes=conflict_notes,
-        walls=_merge_entities(json_level.walls, vision_level.walls),
+        # Walls: prefer Vision for area_m2 — JSON walls have only length_m from linework,
+        # never area_m2; Vision can estimate area from visible plan polygons.
+        walls=_merge_entities(
+            json_level.walls,
+            vision_level.walls,
+            vision_preferred_fields=frozenset({"area_m2"}),
+        ),
         openings=_merge_entities(json_level.openings, vision_level.openings),
         doors=_merge_entities(json_level.doors, vision_level.doors),
         windows=_merge_entities(json_level.windows, vision_level.windows),

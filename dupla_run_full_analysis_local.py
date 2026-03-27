@@ -260,11 +260,16 @@ def main() -> None:
 
     print("\n=== 6) Export Excel ===")
     workbook_path = outputs_dir / f"{OUTPUT_NAME}.xlsx"
-    export_budget_workbook(
+    saved_workbook_path = export_budget_workbook(
         context=context,
         rows=budget["rows"],
         output_path=workbook_path,
     )
+    if saved_workbook_path != workbook_path:
+        print(
+            "[Excel] Requested workbook path was not writable. "
+            f"Saved to alternate file: {saved_workbook_path}"
+        )
 
     summary = {
         "dwg": str(dwg_path),
@@ -272,7 +277,7 @@ def main() -> None:
         "normalized_json": str(normalized_json_path),
         "vision_inventory_json": str(vision_json_path),
         "budget_json": str(budget_json_path),
-        "budget_excel": str(workbook_path),
+        "budget_excel": str(saved_workbook_path),
         "pages_dir": str(pages_dir),
         "vision_pages_count": len(page_paths),
         "uploaded_object_name": uploaded_object_name,

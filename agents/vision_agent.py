@@ -1,9 +1,12 @@
 """
 Vision agent for normalized building inventory extraction.
 
-This module treats images as an inventory source, not as a direct budget
-discipline generator. The goal is to infer structured building elements that
-the deterministic quantifier and rule engine can process later.
+Two-step approach:
+1. GPT-4o Vision returns a simple flat count of visible elements.
+2. Python adapter converts that simple inventory to the full LevelInventory schema.
+
+This avoids asking GPT-4o to fill a complex 15-field schema, which causes it to
+return mostly null/empty data. The simpler prompt produces useful counts.
 """
 
 from __future__ import annotations
@@ -76,212 +79,33 @@ def _extract_json(text: str) -> dict[str, Any]:
     return {"raw_text": text, "parse_error": True}
 
 
-SYSTEM_PROMPT = """You extract normalized building inventory from plan images.
+# ---------------------------------------------------------------------------
+# Step 1: Simple prompt — GPT-4o counts visible elements
+# ---------------------------------------------------------------------------
 
-Rules:
-1. Return only valid JSON. No markdown.
-2. Do not output budget chapters, BC3 codes, Presto disciplines, or project-specific calibrations.
-3. Use null for unknown dimensions instead of assuming defaults.
-4. Keep evidence short and concrete.
-5. Prefer conservative counts when visibility is ambiguous.
-6. This is an inventory task, not a budget task.
-7. Set top-level and entity `source` to `vision`.
-8. Use `source_refs`, `assumptions`, `inputs`, and `conflict_notes` explicitly. Use empty arrays/objects when there is nothing to report.
-9. When you infer probable materials, structural roles, or load-bearing behavior from visible patterns, mark them as hints and record uncertainty in `assumptions`, `inputs`, and `confidence`.
-10. Never express uncertain structural interpretation as a hard fact without an assumption note.
+_SIMPLE_SYSTEM_PROMPT = """You are a building quantity surveyor analyzing architectural plan images.
 
-Use this schema:
-{
-  "level_id": "string",
-  "level_name": "string",
-  "source": "vision",
-  "source_view": "plan|elevation|site|unknown",
-  "floor_area_m2": null,
-  "ceiling_area_m2": null,
-  "space_types": ["bathroom|kitchen|bedroom|living_room|corridor|laundry|office|stair|other"],
-  "system_notes": ["string"],
-  "structural_notes": ["string"],
-  "source_refs": ["string"],
-  "assumptions": ["string"],
-  "inputs": {"key": "value"},
-  "conflict_notes": ["string"],
-  "notes": ["string"],
-  "confidence": 0.0,
-  "openings": [
-    {
-      "id": "string",
-      "source": "vision",
-      "source_refs": ["string"],
-      "assumptions": ["string"],
-      "inputs": {"key": "value"},
-      "conflict_notes": ["string"],
-      "wall_id": null,
-      "opening_type": "door|window|void|other",
-      "count": 1,
-      "width_m": null,
-      "height_m": null,
-      "area_m2": null,
-      "source_layers": ["string"],
-      "related_door_id": null,
-      "related_window_id": null,
-      "confidence": 0.0,
-      "evidence": ["string"]
-    }
-  ],
+Count and list ALL visible building elements concisely.
+Return ONLY valid JSON — no markdown, no explanation, no text before or after.
+Use null for values you cannot determine from the image.
+Only report what is clearly visible; do not invent counts."""
+
+_SIMPLE_SCHEMA_HINT = """{
+  "floor_area_m2": <number or null>,
   "walls": [
-    {
-      "id": "string",
-      "source": "vision",
-      "source_refs": ["string"],
-      "assumptions": ["string"],
-      "inputs": {"key": "value"},
-      "conflict_notes": ["string"],
-      "source_layers": ["string"],
-      "length_m": 0.0,
-      "height_m": null,
-      "thickness_m": null,
-      "area_m2": null,
-      "material_hint": null,
-      "wall_system": null,
-      "interior_exterior_hint": null,
-      "finish_required": null,
-      "structural": null,
-      "openings_count": 0,
-      "confidence": 0.0,
-      "evidence": ["string"]
-    }
+    {"material": "masonry|concrete|drywall|wood|other",
+     "location": "interior|exterior|unknown",
+     "estimated_length_m": <number or null>,
+     "estimated_area_m2": <number or null>,
+     "height_m": <number or null>}
   ],
-  "doors": [
-    {
-      "id": "string",
-      "source": "vision",
-      "source_refs": ["string"],
-      "assumptions": ["string"],
-      "inputs": {"key": "value"},
-      "conflict_notes": ["string"],
-      "source_layers": ["string"],
-      "count": 1,
-      "width_m": null,
-      "height_m": null,
-      "type_hint": null,
-      "material_hint": null,
-      "exterior": null,
-      "confidence": 0.0,
-      "evidence": ["string"]
-    }
-  ],
-  "windows": [
-    {
-      "id": "string",
-      "source": "vision",
-      "source_refs": ["string"],
-      "assumptions": ["string"],
-      "inputs": {"key": "value"},
-      "conflict_notes": ["string"],
-      "source_layers": ["string"],
-      "count": 1,
-      "width_m": null,
-      "height_m": null,
-      "type_hint": null,
-      "glazing_hint": null,
-      "confidence": 0.0,
-      "evidence": ["string"]
-    }
-  ],
-  "wet_areas": [
-    {
-      "id": "string",
-      "source": "vision",
-      "source_refs": ["string"],
-      "assumptions": ["string"],
-      "inputs": {"key": "value"},
-      "conflict_notes": ["string"],
-      "kind": "bathroom|laundry|service",
-      "count": 1,
-      "estimated_area_m2": null,
-      "fixture_ids": [],
-      "confidence": 0.0,
-      "evidence": ["string"]
-    }
-  ],
-  "kitchens": [
-    {
-      "id": "string",
-      "source": "vision",
-      "source_refs": ["string"],
-      "assumptions": ["string"],
-      "inputs": {"key": "value"},
-      "conflict_notes": ["string"],
-      "count": 1,
-      "estimated_area_m2": null,
-      "island_present": null,
-      "fixture_ids": [],
-      "confidence": 0.0,
-      "evidence": ["string"]
-    }
-  ],
-  "stairs": [
-    {
-      "id": "string",
-      "source": "vision",
-      "source_refs": ["string"],
-      "assumptions": ["string"],
-      "inputs": {"key": "value"},
-      "conflict_notes": ["string"],
-      "count": 1,
-      "flights": null,
-      "riser_count": null,
-      "tread_count": null,
-      "width_m": null,
-      "elevation_change_m": null,
-      "confidence": 0.0,
-      "evidence": ["string"]
-    }
-  ],
-  "fixtures": [
-    {
-      "id": "string",
-      "source": "vision",
-      "source_refs": ["string"],
-      "assumptions": ["string"],
-      "inputs": {"key": "value"},
-      "conflict_notes": ["string"],
-      "fixture_type": "sink|toilet|shower|basin|switch|outlet|other",
-      "count": 1,
-      "unit": "unit",
-      "location_hint": null,
-      "confidence": 0.0,
-      "evidence": ["string"]
-    }
-  ],
-  "structural_elements": [
-    {
-      "id": "string",
-      "source": "vision",
-      "source_refs": ["string"],
-      "assumptions": ["string"],
-      "inputs": {"key": "value"},
-      "conflict_notes": ["string"],
-      "element_type": "column|beam|slab|footing|wall|other",
-      "count": 1,
-      "length_m": null,
-      "area_m2": null,
-      "volume_m3": null,
-      "material_hint": null,
-      "section_width_m": null,
-      "section_height_m": null,
-      "span_m": null,
-      "orientation": null,
-      "load_bearing": null,
-      "reinforcement_hint": null,
-      "concrete_grade_hint": null,
-      "steel_grade_hint": null,
-      "host_level": null,
-      "adjacent_elements": [],
-      "confidence": 0.0,
-      "evidence": ["string"]
-    }
-  ]
+  "doors": [{"type": "interior|exterior|garage|main_entry|service|other", "count": <integer>, "width_m": <number or null>}],
+  "windows": [{"type": "sliding|fixed|casement|jalousie|other", "count": <integer>, "width_m": <number or null>}],
+  "wet_areas": [{"kind": "bathroom|laundry|service_bath", "count": <integer>, "area_m2": <number or null>}],
+  "kitchens": [{"count": <integer>, "area_m2": <number or null>}],
+  "stairs": [{"count": <integer>, "flights": <integer or null>, "width_m": <number or null>}],
+  "structural_elements": [{"type": "column|beam|slab|footing|shear_wall", "count": <integer or null>, "area_m2": <number or null>}],
+  "fixtures": [{"type": "sink|toilet|shower|bathtub|outlet|switch|luminaire|panel|pump|other", "count": <integer>}]
 }"""
 
 
@@ -340,42 +164,233 @@ def format_cad_facts_for_prompt(cad_summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _build_user_prompt(
+def _build_simple_user_prompt(
     image_path: Path,
     level_name: str,
     cad_summary: dict[str, Any],
 ) -> str:
-    return f"""Analyze this drawing image and extract a normalized building inventory.
+    view_type = _detect_view_type(image_path)
+    cad_hints = format_cad_facts_for_prompt(cad_summary)
+    return f"""Analyze this {view_type} image for level: {level_name}
 
-Level name: {level_name}
-View type hint: {_detect_view_type(image_path)}
+CAD layer hints (use to cross-check your counts):
+{cad_hints}
 
-Focus on:
-- floor area and ceiling area when they are explicitly visible or strongly supported by CAD hints
-- walls and wall systems
-- load-bearing walls and probable interior/exterior placement when visible
-- openings tied to walls whenever visible
-- doors
-- windows
-- wet areas
-- kitchens
-- stairs
-- fixtures
-- structural elements such as beams, columns, slabs, and footings
-- probable construction materials and structural patterns visible in plan or elevation
+Count ALL visible building elements. Group same-type elements together.
+Each wall group (interior masonry, exterior concrete, etc.) = one entry.
+Each door type (interior, exterior, etc.) = one entry with total count.
+Each window type = one entry with total count.
 
-When structural interpretation is uncertain:
-- keep the element or hint if it is useful
-- lower confidence
-- add an assumption explaining why it is uncertain
-- avoid exact grades or reinforcement schedules unless the source is explicit
+Return this exact JSON structure:
+{_SIMPLE_SCHEMA_HINT}"""
 
-Only include dimensions when they are directly visible in the image or supported by the CAD hints below.
-Avoid project-specific defaults such as assumed floor heights, fixed bathroom counts, or tower calibration tables.
 
-CAD hints:
-{format_cad_facts_for_prompt(cad_summary)}
-"""
+# ---------------------------------------------------------------------------
+# Step 2: Python adapter — simple dict → LevelInventory-compatible dict
+# ---------------------------------------------------------------------------
+
+def _simple_to_level_inventory(
+    simple: dict[str, Any],
+    level_name: str,
+    level_id: str,
+    image_name: str,
+) -> dict[str, Any]:
+    """Convert GPT-4o simple inventory output to a LevelInventory-compatible dict."""
+
+    walls: list[dict[str, Any]] = []
+    for i, w in enumerate(simple.get("walls") or [], 1):
+        walls.append(
+            {
+                "id": f"vis-wall-{i:02d}",
+                "source": "vision",
+                "source_layers": [],
+                "source_refs": [f"vision:{image_name}:wall_{i}"],
+                "assumptions": ["Dimensions estimated from visible plan scale."],
+                "inputs": {"raw": w},
+                "conflict_notes": [],
+                "length_m": w.get("estimated_length_m"),
+                "height_m": w.get("height_m"),
+                "area_m2": w.get("estimated_area_m2"),
+                "material_hint": w.get("material"),
+                "interior_exterior_hint": (
+                    w.get("location") if w.get("location") in {"interior", "exterior"} else None
+                ),
+                "confidence": 0.65,
+                "evidence": [
+                    f"Identified from plan image: material={w.get('material')}, "
+                    f"location={w.get('location')}."
+                ],
+            }
+        )
+
+    doors: list[dict[str, Any]] = []
+    for i, d in enumerate(simple.get("doors") or [], 1):
+        count = d.get("count")
+        doors.append(
+            {
+                "id": f"vis-door-{i:02d}",
+                "source": "vision",
+                "source_layers": [],
+                "source_refs": [f"vision:{image_name}:door_{i}"],
+                "assumptions": [],
+                "inputs": {"raw": d},
+                "conflict_notes": [],
+                "count": int(count) if count is not None else 1,
+                "width_m": d.get("width_m"),
+                "type_hint": d.get("type"),
+                "confidence": 0.70,
+                "evidence": [
+                    f"Counted from plan image: type={d.get('type')}, count={d.get('count')}."
+                ],
+            }
+        )
+
+    windows: list[dict[str, Any]] = []
+    for i, w in enumerate(simple.get("windows") or [], 1):
+        count = w.get("count")
+        windows.append(
+            {
+                "id": f"vis-window-{i:02d}",
+                "source": "vision",
+                "source_layers": [],
+                "source_refs": [f"vision:{image_name}:window_{i}"],
+                "assumptions": [],
+                "inputs": {"raw": w},
+                "conflict_notes": [],
+                "count": int(count) if count is not None else 1,
+                "width_m": w.get("width_m"),
+                "type_hint": w.get("type"),
+                "confidence": 0.70,
+                "evidence": [
+                    f"Counted from plan image: type={w.get('type')}, count={w.get('count')}."
+                ],
+            }
+        )
+
+    wet_areas: list[dict[str, Any]] = []
+    for i, a in enumerate(simple.get("wet_areas") or [], 1):
+        count = a.get("count")
+        wet_areas.append(
+            {
+                "id": f"vis-wetarea-{i:02d}",
+                "source": "vision",
+                "source_layers": [],
+                "source_refs": [f"vision:{image_name}:wetarea_{i}"],
+                "assumptions": [],
+                "inputs": {"raw": a},
+                "conflict_notes": [],
+                "kind": a.get("kind") or "bathroom",
+                "count": int(count) if count is not None else 1,
+                "estimated_area_m2": a.get("area_m2"),
+                "confidence": 0.65,
+                "evidence": [
+                    f"Identified from plan image: kind={a.get('kind')}, count={a.get('count')}."
+                ],
+            }
+        )
+
+    kitchens: list[dict[str, Any]] = []
+    for i, k in enumerate(simple.get("kitchens") or [], 1):
+        count = k.get("count")
+        kitchens.append(
+            {
+                "id": f"vis-kitchen-{i:02d}",
+                "source": "vision",
+                "source_layers": [],
+                "source_refs": [f"vision:{image_name}:kitchen_{i}"],
+                "assumptions": [],
+                "inputs": {"raw": k},
+                "conflict_notes": [],
+                "count": int(count) if count is not None else 1,
+                "estimated_area_m2": k.get("area_m2"),
+                "confidence": 0.65,
+                "evidence": ["Kitchen identified from plan image."],
+            }
+        )
+
+    stairs: list[dict[str, Any]] = []
+    for i, s in enumerate(simple.get("stairs") or [], 1):
+        count = s.get("count")
+        stairs.append(
+            {
+                "id": f"vis-stair-{i:02d}",
+                "source": "vision",
+                "source_layers": [],
+                "source_refs": [f"vision:{image_name}:stair_{i}"],
+                "assumptions": [],
+                "inputs": {"raw": s},
+                "conflict_notes": [],
+                "count": int(count) if count is not None else 1,
+                "flights": s.get("flights"),
+                "width_m": s.get("width_m"),
+                "confidence": 0.70,
+                "evidence": ["Stair identified from plan image."],
+            }
+        )
+
+    structural_elements: list[dict[str, Any]] = []
+    for i, e in enumerate(simple.get("structural_elements") or [], 1):
+        etype = e.get("type") or "other"
+        raw_count = e.get("count")
+        structural_elements.append(
+            {
+                "id": f"vis-{etype}-{i:02d}",
+                "source": "vision",
+                "source_layers": [],
+                "source_refs": [f"vision:{image_name}:{etype}_{i}"],
+                "assumptions": [],
+                "inputs": {"raw": e},
+                "conflict_notes": [],
+                "element_type": etype,
+                "count": int(raw_count) if raw_count is not None else 1,
+                "area_m2": e.get("area_m2"),
+                "length_m": e.get("length_m"),
+                "confidence": 0.60,
+                "evidence": [f"Identified from plan image: type={etype}."],
+            }
+        )
+
+    fixtures: list[dict[str, Any]] = []
+    for i, f_item in enumerate(simple.get("fixtures") or [], 1):
+        count = f_item.get("count")
+        fixtures.append(
+            {
+                "id": f"vis-fixture-{i:02d}",
+                "source": "vision",
+                "source_layers": [],
+                "source_refs": [f"vision:{image_name}:fixture_{i}"],
+                "assumptions": [],
+                "inputs": {"raw": f_item},
+                "conflict_notes": [],
+                "fixture_type": f_item.get("type") or "other",
+                "count": int(count) if count is not None else 1,
+                "unit": "unit",
+                "confidence": 0.65,
+                "evidence": [f"Counted from plan image: type={f_item.get('type')}."],
+            }
+        )
+
+    return {
+        "level_id": level_id,
+        "level_name": level_name,
+        "source": "vision",
+        "source_image": image_name,
+        "floor_area_m2": simple.get("floor_area_m2"),
+        "walls": walls,
+        "doors": doors,
+        "windows": windows,
+        "wet_areas": wet_areas,
+        "kitchens": kitchens,
+        "stairs": stairs,
+        "structural_elements": structural_elements,
+        "fixtures": fixtures,
+        "openings": [],
+        "conflict_notes": [],
+        "source_refs": [f"vision:{image_name}"],
+        "assumptions": ["Quantities estimated from visual plan analysis."],
+        "inputs": {"image": image_name},
+        "notes": ["Simple vision extraction — Python-adapted to LevelInventory schema."],
+    }
 
 
 def _build_cross_checks(level_inventory: LevelInventory, cad_summary: dict[str, Any]) -> list[dict[str, Any]]:
@@ -429,16 +444,17 @@ def analyze_plan(image_path: Path, cad_summary: dict[str, Any], level_name: str)
     extension = image_path.suffix.lower().replace(".", "")
     mime = f"image/{extension}" if extension in {"png", "jpg", "jpeg", "webp"} else "image/png"
 
+    # Step 1: Ask GPT-4o to return a simple flat inventory
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": _SIMPLE_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": [
                     {
                         "type": "text",
-                        "text": _build_user_prompt(image_path, level_name, cad_summary),
+                        "text": _build_simple_user_prompt(image_path, level_name, cad_summary),
                     },
                     {
                         "type": "image_url",
@@ -450,13 +466,14 @@ def analyze_plan(image_path: Path, cad_summary: dict[str, Any], level_name: str)
                 ],
             },
         ],
-        max_tokens=4096,
+        max_tokens=2048,
         temperature=0.1,
     )
 
     raw_text = response.choices[0].message.content or ""
-    payload = _extract_json(raw_text)
-    if payload.get("parse_error"):
+    simple_payload = _extract_json(raw_text)
+
+    if simple_payload.get("parse_error"):
         return {
             "parse_error": True,
             "raw_text": raw_text,
@@ -466,32 +483,15 @@ def analyze_plan(image_path: Path, cad_summary: dict[str, Any], level_name: str)
             },
         }
 
-    payload.setdefault("level_name", level_name)
-    payload.setdefault("level_id", level_name.lower().replace(" ", "_"))
-    payload.setdefault("source", "vision")
-    payload.setdefault("source_image", image_path.name)
-    payload.setdefault("source_view", _detect_view_type(image_path))
-    payload.setdefault("cad_hints", {})
+    # Step 2: Python adapter converts simple dict → full LevelInventory dict
+    level_id = level_name.lower().replace(" ", "_")
+    adapted = _simple_to_level_inventory(simple_payload, level_name, level_id, image_path.name)
 
-    for collection_name in (
-        "walls",
-        "openings",
-        "doors",
-        "windows",
-        "wet_areas",
-        "kitchens",
-        "stairs",
-        "fixtures",
-        "structural_elements",
-    ):
-        for item in payload.get(collection_name, []):
-            if isinstance(item, dict):
-                item.setdefault("source", "vision")
-
-    level_inventory = level_inventory_from_dict(payload, default_source="vision")
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
     result = level_inventory.to_dict()
     result["cad_cross_checks"] = _build_cross_checks(level_inventory, cad_summary)
     result["_raw_response"] = raw_text
+    result["_simple_payload"] = simple_payload
     result["_metadata"] = {
         "file": image_path.name,
         "timestamp": datetime.now().isoformat(),

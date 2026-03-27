@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from openpyxl import load_workbook
+from openpyxl.workbook.workbook import Workbook as OpenpyxlWorkbook
 
 from budget.composer import compose_budget_rows
 from budget.export_excel import export_budget_workbook
@@ -111,3 +112,48 @@ def test_budget_export_excel_writes_workbook_with_headers_and_formulas() -> None
     finally:
         if output_path.exists():
             output_path.unlink()
+
+
+def test_budget_export_excel_falls_back_to_new_filename_when_target_is_locked(monkeypatch) -> None:
+    context, takeoffs, candidates = _sample_export_inputs()
+    _, _, rows = compose_budget_rows(context, takeoffs, candidates)
+
+    requested_output = Path("tests") / "_budget_ready_locked_test.xlsx"
+    original_save = OpenpyxlWorkbook.save
+    save_calls: list[Path] = []
+
+    if requested_output.exists():
+        requested_output.unlink()
+    for fallback_path in requested_output.parent.glob(f"{requested_output.stem}_*.xlsx"):
+        fallback_path.unlink()
+
+    def flaky_save(self, filename) -> None:
+        path = Path(filename)
+        save_calls.append(path)
+        if path == requested_output:
+            raise PermissionError("File is locked")
+        return original_save(self, filename)
+
+    monkeypatch.setattr(OpenpyxlWorkbook, "save", flaky_save)
+
+    try:
+        actual_output = export_budget_workbook(context, rows, requested_output)
+
+        assert actual_output != requested_output
+        assert actual_output.exists()
+        assert actual_output.parent == requested_output.parent
+        assert actual_output.suffix == ".xlsx"
+        assert actual_output.stem.startswith(f"{requested_output.stem}_")
+        assert save_calls[0] == requested_output
+        assert save_calls[-1] == actual_output
+
+        workbook = load_workbook(actual_output, data_only=False)
+        try:
+            assert workbook["Presupuesto"]["A1"].value == "Demo Export Budget"
+        finally:
+            workbook.close()
+    finally:
+        if requested_output.exists():
+            requested_output.unlink()
+        for fallback_path in requested_output.parent.glob(f"{requested_output.stem}_*.xlsx"):
+            fallback_path.unlink()

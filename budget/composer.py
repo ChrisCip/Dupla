@@ -4,6 +4,7 @@ Budget composition layer for workbook-ready budget rows.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
@@ -24,6 +25,39 @@ from .chapter_rules import (
 )
 
 DATA_START_ROW = 4
+
+
+def _extract_unit_price(
+    candidate: BudgetCandidate | None,
+    bc3_catalog: dict[str, Any] | None,
+) -> float | None:
+    """Extract unit price from a BC3 candidate.
+
+    Checks candidate.rationale first (GPT-4o classifier stores JSON there),
+    then falls back to a direct BC3 catalog lookup by code.
+    """
+    if candidate is None:
+        return None
+
+    # GPT-4o classifier stores: rationale='{"unit_price": 12345.00, "match_type": "exacto"}'
+    rationale = getattr(candidate, "rationale", "") or ""
+    if rationale.startswith("{"):
+        try:
+            data = json.loads(rationale)
+            price = data.get("unit_price")
+            if price:
+                return float(price)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            pass
+
+    # Fallback: look up price in BC3 catalog by code
+    if bc3_catalog and candidate.bc3_code:
+        concept = bc3_catalog.get("concepts_by_code", {}).get(candidate.bc3_code, {})
+        price = concept.get("price")
+        if price:
+            return float(price)
+
+    return None
 
 
 @dataclass
@@ -289,6 +323,8 @@ def compose_budget_rows(
     context: ProjectContext,
     takeoffs: Iterable[QuantityTakeoff],
     candidates_by_takeoff: dict[str, list[BudgetCandidate]],
+    *,
+    bc3_catalog: dict[str, Any] | None = None,
 ) -> tuple[list[BudgetChapter], list[BudgetLine], list[BudgetRow]]:
     takeoff_list = list(takeoffs)
     derived_from_keys = {
@@ -360,7 +396,7 @@ def compose_budget_rows(
             unit=prepared.takeoff.unit,
             summary=prepared.summary,
             quantity=prepared.takeoff.quantity,
-            unit_price=None,
+            unit_price=_extract_unit_price(prepared.candidate, bc3_catalog),
             candidate_code=prepared.candidate.bc3_code if prepared.candidate else None,
             candidate_score=prepared.candidate.score if prepared.candidate else None,
             source_refs=list(prepared.takeoff.source_refs),
@@ -397,8 +433,12 @@ def compose_budget(
     context: ProjectContext,
     takeoffs: Iterable[QuantityTakeoff],
     candidates_by_takeoff: dict[str, list[BudgetCandidate]],
+    *,
+    bc3_catalog: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    chapters, lines, rows = compose_budget_rows(context, takeoffs, candidates_by_takeoff)
+    chapters, lines, rows = compose_budget_rows(
+        context, takeoffs, candidates_by_takeoff, bc3_catalog=bc3_catalog
+    )
     return {
         "project_context": context.to_dict(),
         "chapters": [chapter.to_dict() for chapter in chapters],
