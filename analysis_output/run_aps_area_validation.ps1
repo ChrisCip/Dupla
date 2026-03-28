@@ -349,7 +349,7 @@ function Wait-WorkItem {
     while ($true) {
         $state = Invoke-ApsJson -Method "Get" -Url "$BaseDaUrl/workitems/$WorkItemId" -Headers $Headers
         Write-Host ("   Estado actual: {0}" -f $state.status)
-        if ($state.status -in @("success", "failed", "cancelled", "failedDownload", "failedUpload", "failedInstructions")) {
+        if ($state.status -in @("success", "failed", "cancelled", "failedDownload", "failedUpload", "failedInstructions", "failedLimitProcessingTime")) {
             return $state
         }
         Start-Sleep -Seconds 3

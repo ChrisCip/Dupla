@@ -82,8 +82,8 @@ namespace DuplaExtractor
 
         private sealed class ProgressTracker
         {
-            private const int TopLevelLogInterval = 250;
-            private const int BlockEntityLogInterval = 1000;
+            private const int TopLevelLogInterval = 1000;
+            private const int BlockEntityLogInterval = 100000;
 
             private readonly Editor _editor;
             private readonly DateTime _startedUtc = DateTime.UtcNow;
@@ -612,15 +612,22 @@ namespace DuplaExtractor
             perimeter = 0.0;
             source = "";
 
-            if (!TryGetLegacyPolyline2dVertices(tr, polyline2d, out List<(double X, double Y)> points))
+            try
+            {
+                if (!TryGetLegacyPolyline2dVertices(tr, polyline2d, out List<(double X, double Y)> points))
+                {
+                    return false;
+                }
+
+                area = ComputePolygonArea(points);
+                perimeter = ComputePolylineLength(points, true);
+                source = "polyline2d-legacy-shoelace-xy";
+                return IsFinitePositive(area) && IsFinite(perimeter);
+            }
+            catch
             {
                 return false;
             }
-
-            area = ComputePolygonArea(points);
-            perimeter = ComputePolylineLength(points, true);
-            source = "polyline2d-legacy-shoelace-xy";
-            return IsFinitePositive(area) && IsFinite(perimeter);
         }
 
         private static bool TryComputePolyline3dMetrics(
@@ -671,15 +678,22 @@ namespace DuplaExtractor
             perimeter = 0.0;
             source = "";
 
-            if (!TryGetLegacyPolyline3dVertices(tr, polyline3d, out List<(double X, double Y)> points))
+            try
+            {
+                if (!TryGetLegacyPolyline3dVertices(tr, polyline3d, out List<(double X, double Y)> points))
+                {
+                    return false;
+                }
+
+                area = ComputePolygonArea(points);
+                perimeter = ComputePolylineLength(points, true);
+                source = "polyline3d-legacy-shoelace-xy";
+                return IsFinitePositive(area) && IsFinite(perimeter);
+            }
+            catch
             {
                 return false;
             }
-
-            area = ComputePolygonArea(points);
-            perimeter = ComputePolylineLength(points, true);
-            source = "polyline3d-legacy-shoelace-xy";
-            return IsFinitePositive(area) && IsFinite(perimeter);
         }
 
         private static bool TryGetPolyline2dVertices(
@@ -715,15 +729,22 @@ namespace DuplaExtractor
         {
             points = new List<(double X, double Y)>();
 
-            foreach (ObjectId vertexId in polyline2d)
+            try
             {
-                var vertex = tr.GetObject(vertexId, OpenMode.ForRead) as Vertex2d;
-                if (vertex == null)
+                foreach (ObjectId vertexId in polyline2d)
                 {
-                    continue;
-                }
+                    var vertex = tr.GetObject(vertexId, OpenMode.ForRead) as Vertex2d;
+                    if (vertex == null)
+                    {
+                        continue;
+                    }
 
-                points.Add((vertex.Position.X, vertex.Position.Y));
+                    points.Add((vertex.Position.X, vertex.Position.Y));
+                }
+            }
+            catch
+            {
+                return false;
             }
 
             return points.Count >= 3;
@@ -762,15 +783,22 @@ namespace DuplaExtractor
         {
             points = new List<(double X, double Y)>();
 
-            foreach (ObjectId vertexId in polyline3d)
+            try
             {
-                var vertex = tr.GetObject(vertexId, OpenMode.ForRead) as PolylineVertex3d;
-                if (vertex == null)
+                foreach (ObjectId vertexId in polyline3d)
                 {
-                    continue;
-                }
+                    var vertex = tr.GetObject(vertexId, OpenMode.ForRead) as PolylineVertex3d;
+                    if (vertex == null)
+                    {
+                        continue;
+                    }
 
-                points.Add((vertex.Position.X, vertex.Position.Y));
+                    points.Add((vertex.Position.X, vertex.Position.Y));
+                }
+            }
+            catch
+            {
+                return false;
             }
 
             return points.Count >= 3;
