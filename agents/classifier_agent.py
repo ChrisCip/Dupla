@@ -19,6 +19,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 from core.schemas import BudgetCandidate, QuantityTakeoff
+from knowledge.bc3_embeddings import EmbeddingIndex, build_query_from_takeoff, search_bc3
+from knowledge.training_data import TrainingPair, generate_few_shot_examples
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -196,9 +198,37 @@ def _normalize_text(text: str) -> str:
     return unicodedata.normalize("NFKD", text.lower()).encode("ascii", "ignore").decode("ascii")
 
 
-def _filter_bc3_for_chapter(bc3_catalog: dict[str, Any], tokens: set[str]) -> list[dict[str, Any]]:
-    """Return BC3 items whose summary/long_text matches any chapter token."""
+def _filter_bc3_for_chapter(
+    bc3_catalog: dict[str, Any],
+    tokens: set[str],
+    *,
+    takeoffs: list[QuantityTakeoff] | None = None,
+    embedding_index: EmbeddingIndex | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Return BC3 items relevant for the chapter.
+
+    If an embeddings index is available, use semantic search against each takeoff
+    query; otherwise use chapter token overlap fallback.
+    """
     items = bc3_catalog.get("items", [])
+    if embedding_index is not None and takeoffs:
+        items_by_code = {str(item.get("code", "")): item for item in items}
+        scored_by_code: dict[str, float] = {}
+        for takeoff in takeoffs:
+            query = build_query_from_takeoff(takeoff)
+            for match in search_bc3(query, embedding_index, top_k=15):
+                code = str(match.get("code", ""))
+                if not code or code not in items_by_code:
+                    continue
+                score = float(match.get("score") or 0.0)
+                if code not in scored_by_code or score > scored_by_code[code]:
+                    scored_by_code[code] = score
+
+        ranked_codes = sorted(scored_by_code, key=scored_by_code.get, reverse=True)
+        if ranked_codes:
+            return [items_by_code[code] for code in ranked_codes]
+
     result: list[dict[str, Any]] = []
     for item in items:
         text = _normalize_text(
@@ -258,6 +288,7 @@ def _gpt4o_classify_chapter(
     chapter_code: str,
     chapter_desc: str,
     client: "OpenAI",
+    few_shot_examples: str = "",
 ) -> dict[str, BudgetCandidate]:
     """One GPT-4o call per chapter — assign best BC3 code to each takeoff."""
     if not takeoffs or not bc3_items:
@@ -283,18 +314,19 @@ def _gpt4o_classify_chapter(
 
     prompt = (
         f"Eres un presupuestista dominicano senior. Capitulo: {chapter_desc}\n\n"
-        f"PARTIDAS A CLASIFICAR:\n[\n"
+        + (few_shot_examples + "\n\n" if few_shot_examples else "")
+        + "PARTIDAS A CLASIFICAR:\n[\n"
         + ",\n".join(takeoff_lines)
         + "\n]\n\n"
-        f"CATALOGO BC3 (precios en RD$):\n[\n"
+        + "CATALOGO BC3 (precios en RD$):\n[\n"
         + ",\n".join(bc3_lines)
         + "\n]\n\n"
-        "Asigna el codigo BC3 mas apropiado a cada partida.\n"
-        "- Solo asigna si hay un match razonable (misma disciplina y unidad compatible).\n"
-        "- unit_price es el precio del catalogo BC3.\n"
-        "- match_type: exacto | aproximado | estimado\n\n"
-        'Devuelve SOLO un JSON array (sin texto adicional):\n'
-        '[{"takeoff_key":"<key>","bc3_code":"<code>","unit_price":<price>,"match_type":"exacto|aproximado|estimado"}]'
+        + "Asigna el codigo BC3 mas apropiado a cada partida.\n"
+        + "- Solo asigna si hay un match razonable (misma disciplina y unidad compatible).\n"
+        + "- unit_price es el precio del catalogo BC3.\n"
+        + "- match_type: exacto | aproximado | estimado\n\n"
+        + 'Devuelve SOLO un JSON array (sin texto adicional):\n'
+        + '[{"takeoff_key":"<key>","bc3_code":"<code>","unit_price":<price>,"match_type":"exacto|aproximado|estimado"}]'
     )
 
     try:
@@ -364,6 +396,9 @@ def _match_with_gpt4o(
     takeoffs: list[QuantityTakeoff],
     bc3_catalog: dict[str, Any],
     client: "OpenAI",
+    *,
+    embedding_index: EmbeddingIndex | None = None,
+    training_pairs: list[TrainingPair] | None = None,
 ) -> dict[str, list[BudgetCandidate]]:
     """Classify all takeoffs via GPT-4o, grouped by chapter."""
     # Group takeoffs by chapter
@@ -376,18 +411,26 @@ def _match_with_gpt4o(
 
     for chapter_code, chapter_takeoffs in sorted(chapter_groups.items()):
         chapter_info = _CHAPTERS[chapter_code]
-        bc3_subset = _filter_bc3_for_chapter(bc3_catalog, chapter_info["tokens"])
+        bc3_subset = _filter_bc3_for_chapter(
+            bc3_catalog,
+            chapter_info["tokens"],
+            takeoffs=chapter_takeoffs,
+            embedding_index=embedding_index,
+        )
 
         if not bc3_subset:
             # No matching BC3 items for this chapter — leave empty (composer uses DUP code)
             continue
 
+        category_hint = chapter_info["title"].split(" ")[0].lower()
+        few_shot = generate_few_shot_examples(training_pairs or [], category_hint)
         matches = _gpt4o_classify_chapter(
             chapter_takeoffs,
             bc3_subset,
             chapter_code,
             chapter_info["desc"],
             client,
+            few_shot_examples=few_shot,
         )
 
         for key, candidate in matches.items():
@@ -465,6 +508,9 @@ def match_takeoffs_to_bc3(
     takeoffs: Iterable[QuantityTakeoff],
     bc3_catalog: dict[str, Any],
     top_k: int = 3,
+    *,
+    embedding_index: EmbeddingIndex | None = None,
+    training_pairs: list[TrainingPair] | None = None,
 ) -> dict[str, list[BudgetCandidate]]:
     """
     Assign BC3 candidates to each takeoff.
@@ -479,7 +525,13 @@ def match_takeoffs_to_bc3(
         if api_key:
             try:
                 client = OpenAI(api_key=api_key)
-                return _match_with_gpt4o(takeoff_list, bc3_catalog, client)
+                return _match_with_gpt4o(
+                    takeoff_list,
+                    bc3_catalog,
+                    client,
+                    embedding_index=embedding_index,
+                    training_pairs=training_pairs,
+                )
             except Exception:
                 pass  # Fall through to token overlap
 

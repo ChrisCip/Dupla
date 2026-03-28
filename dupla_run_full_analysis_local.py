@@ -31,6 +31,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from openpyxl import Workbook
+
 # ========= CONFIG: EDIT THIS SECTION =========
 PROJECT_NAME = "Proyecto Demo"
 PROJECT_ID = "demo_001"
@@ -75,6 +77,8 @@ from agents.vision_agent import run_full_vision_analysis
 from budget.export_excel import export_budget_workbook
 from core.pipeline import build_budget_from_sources
 from core.schemas import ProjectContext
+from knowledge.bc3_embeddings import load_or_build_embeddings
+from knowledge.training_data import extract_training_pairs
 from processors.bc3_parser import parse_bc3
 from processors.json_processor import process_autodesk_json
 
@@ -175,6 +179,53 @@ def resolve_pages_dir(outputs_dir: Path) -> Path:
     return images_dir
 
 
+def save_for_review(budget: dict[str, object], output_dir: Path) -> Path:
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Revision"
+    headers = [
+        "Código",
+        "Nat",
+        "Ud",
+        "Resumen",
+        "CanPres",
+        "PrPres",
+        "ImpPres",
+        "Corrección Código",
+        "Corrección Cantidad",
+        "Corrección Unidad",
+        "Tipo Corrección",
+        "Notas Revisor",
+    ]
+    worksheet.append(headers)
+    for row in budget.get("rows", []):
+        if not isinstance(row, dict):
+            continue
+        worksheet.append(
+            [
+                row.get("code", ""),
+                row.get("nat", ""),
+                row.get("unit", ""),
+                row.get("summary", ""),
+                row.get("quantity", ""),
+                row.get("unit_price", ""),
+                row.get("amount", ""),
+                "",
+                "",
+                "",
+                "",
+                "",
+            ]
+        )
+
+    for column in ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"):
+        worksheet.column_dimensions[column].width = 22 if column == "D" else 15
+
+    review_path = output_dir / "dupla_budget_for_review.xlsx"
+    workbook.save(review_path)
+    return review_path
+
+
 def main() -> None:
     outputs_dir = (REPO_ROOT / OUTPUTS_DIR).resolve()
     outputs_dir.mkdir(parents=True, exist_ok=True)
@@ -218,6 +269,10 @@ def main() -> None:
         bc3_catalog = parse_bc3(str(bc3_path))
         bc3_path_value = str(bc3_path)
 
+    xlsx_training_path = (REPO_ROOT / "data" / "PRES.xlsx").resolve()
+    training_pairs = extract_training_pairs(xlsx_training_path) if xlsx_training_path.exists() else []
+    embedding_index = load_or_build_embeddings(bc3_catalog) if bc3_catalog.get("items") else None
+
     print("\n=== 5) Build technical budget output ===")
     page_paths = sorted(
         str(path)
@@ -245,6 +300,7 @@ def main() -> None:
             "max_property_wait_seconds": MAX_PROPERTY_WAIT_SECONDS,
             "failed_manifest_grace_polls": FAILED_MANIFEST_GRACE_POLLS,
             "failed_manifest_grace_sleep_seconds": FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
+            "xlsx_path": str(xlsx_training_path) if xlsx_training_path.exists() else None,
         },
     )
 
@@ -253,6 +309,8 @@ def main() -> None:
         cad_facts=cad_facts,
         vision_payloads=vision_results,
         bc3_catalog=bc3_catalog,
+        embedding_index=embedding_index,
+        training_pairs=training_pairs,
     )
 
     budget_json_path = outputs_dir / "dupla_full_budget_output.json"
@@ -270,6 +328,7 @@ def main() -> None:
             "[Excel] Requested workbook path was not writable. "
             f"Saved to alternate file: {saved_workbook_path}"
         )
+    review_workbook_path = save_for_review(budget, outputs_dir)
 
     summary = {
         "dwg": str(dwg_path),
@@ -278,6 +337,7 @@ def main() -> None:
         "vision_inventory_json": str(vision_json_path),
         "budget_json": str(budget_json_path),
         "budget_excel": str(saved_workbook_path),
+        "budget_review_excel": str(review_workbook_path),
         "pages_dir": str(pages_dir),
         "vision_pages_count": len(page_paths),
         "uploaded_object_name": uploaded_object_name,

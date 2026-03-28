@@ -4,6 +4,7 @@ Pipeline helpers for the active APS/JSON-first architecture.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from agents.classifier_agent import match_takeoffs_to_bc3
@@ -17,6 +18,8 @@ from core.schemas import (
     QuantityTakeoff,
     level_inventory_from_dict,
 )
+from knowledge.bc3_embeddings import load_or_build_embeddings
+from knowledge.training_data import extract_training_pairs
 from processors.bc3_parser import parse_bc3
 from processors.json_processor import process_autodesk_json
 from rules_engine import RulesEngine, default_rules_engine
@@ -56,11 +59,19 @@ def build_budget_from_inventory(
     levels: list[LevelInventory],
     bc3_catalog: dict[str, Any],
     rules_engine: RulesEngine | None = None,
+    *,
+    embedding_index: Any | None = None,
+    training_pairs: list[Any] | None = None,
 ) -> dict[str, Any]:
     engine = rules_engine or default_rules_engine()
     base_takeoffs = quantify_inventory(levels)
     expanded_takeoffs = engine.apply(base_takeoffs)
-    candidates = match_takeoffs_to_bc3(expanded_takeoffs, bc3_catalog)
+    candidates = match_takeoffs_to_bc3(
+        expanded_takeoffs,
+        bc3_catalog,
+        embedding_index=embedding_index,
+        training_pairs=training_pairs,
+    )
     return build_final_budget(context, expanded_takeoffs, candidates, bc3_catalog=bc3_catalog)
 
 
@@ -165,13 +176,21 @@ def build_budget_from_sources(
     vision_payloads: Iterable[LevelInventory | Mapping[str, Any]] | LevelInventory | Mapping[str, Any] | None,
     bc3_catalog: dict[str, Any],
     rules_engine: RulesEngine | None = None,
+    *,
+    embedding_index: Any | None = None,
+    training_pairs: list[Any] | None = None,
 ) -> dict[str, Any]:
     hybrid_inventory, base_takeoffs, expanded_takeoffs = build_expanded_takeoffs_from_sources(
         cad_facts,
         vision_payloads,
         rules_engine=rules_engine,
     )
-    candidates = match_takeoffs_to_bc3(expanded_takeoffs, bc3_catalog)
+    candidates = match_takeoffs_to_bc3(
+        expanded_takeoffs,
+        bc3_catalog,
+        embedding_index=embedding_index,
+        training_pairs=training_pairs,
+    )
     budget = build_final_budget(context, expanded_takeoffs, candidates, bc3_catalog=bc3_catalog)
     budget["hybrid_inventory"] = [level.to_dict() for level in hybrid_inventory]
     budget["base_takeoffs"] = [takeoff.to_dict() for takeoff in base_takeoffs]
@@ -187,8 +206,29 @@ def bootstrap_pipeline_inputs(context: ProjectContext) -> dict[str, Any]:
     """
     cad_facts = process_autodesk_json(context.source_json_path) if context.source_json_path else {}
     bc3_catalog = parse_bc3(context.bc3_path) if context.bc3_path else {}
+    embeddings = None
+    if bc3_catalog.get("items"):
+        try:
+            embeddings = load_or_build_embeddings(bc3_catalog)
+        except Exception:
+            embeddings = None
+
+    xlsx_path = context.metadata.get("xlsx_path") if context.metadata else None
+    if not xlsx_path:
+        default_xlsx = Path(__file__).resolve().parent.parent / "data" / "PRES.xlsx"
+        if default_xlsx.exists():
+            xlsx_path = str(default_xlsx)
+    training_pairs = []
+    if xlsx_path:
+        try:
+            training_pairs = extract_training_pairs(xlsx_path)
+        except Exception:
+            training_pairs = []
+
     return {
         "project_context": context.to_dict(),
         "cad_facts": cad_facts,
         "bc3_catalog": bc3_catalog,
+        "bc3_embeddings": embeddings,
+        "training_pairs": training_pairs,
     }
