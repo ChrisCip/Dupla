@@ -10,6 +10,7 @@ from .bc3_embeddings import (
     search_bc3,
 )
 from .feedback_store import Correction, FeedbackStore, apply_corrections_to_rules
+from .pres_expansion import inject_pres_reference_candidates, synthetic_takeoffs_from_pres
 from .training_data import (
     LevelTemplate,
     TrainingPair,
@@ -30,6 +31,8 @@ __all__ = [
     "extract_level_templates",
     "extract_training_pairs",
     "generate_few_shot_examples",
+    "inject_pres_reference_candidates",
     "load_or_build_embeddings",
     "search_bc3",
+    "synthetic_takeoffs_from_pres",
 ]

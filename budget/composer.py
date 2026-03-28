@@ -97,6 +97,9 @@ def _budgetable_takeoff(
     if takeoff.unit.lower() == "flag":
         return False
 
+    if item_type == "pres_reference_line":
+        return True
+
     if item_type in {
         "structural_count",
         "structural_length",
@@ -104,11 +107,7 @@ def _budgetable_takeoff(
         "structural_volume",
         "wall_length",
         "wall_gross_area",
-        "kitchen_count",
-        "kitchen_area",
         "wet_area_count",
-        "stair_count",
-        "fixture_count",
     }:
         return False
 
@@ -127,6 +126,15 @@ def _budgetable_takeoff(
             token in item_type
             for token in ("concrete_volume", "volume", "area", "formwork_area_hint")
         ) and not item_type.endswith(("_length", "_count"))
+
+    if item_type.startswith("footing_"):
+        return any(
+            token in item_type
+            for token in ("concrete_volume", "volume", "area", "formwork_area_hint")
+        ) and not item_type.endswith(("_length", "_count"))
+
+    if item_type in {"stair_count", "fixture_count", "kitchen_count", "kitchen_area"}:
+        return True
 
     if item_type.startswith("wall_"):
         return item_type in {

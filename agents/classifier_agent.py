@@ -20,6 +20,7 @@ from pathlib import Path
 
 from core.schemas import BudgetCandidate, QuantityTakeoff
 from knowledge.bc3_embeddings import EmbeddingIndex, build_query_from_takeoff, search_bc3
+from knowledge.pres_expansion import inject_pres_reference_candidates
 from knowledge.training_data import TrainingPair, generate_few_shot_examples
 
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -519,24 +520,33 @@ def match_takeoffs_to_bc3(
     Fallback: deterministic token-overlap ranking.
     """
     takeoff_list = list(takeoffs)
+    non_pres = [t for t in takeoff_list if t.item_type != "pres_reference_line"]
+    result: dict[str, list[BudgetCandidate]] = {}
 
     if HAS_OPENAI and bc3_catalog.get("items"):
         api_key = os.getenv("OPENAI_API_KEY")
-        if api_key:
+        if api_key and non_pres:
             try:
                 client = OpenAI(api_key=api_key)
-                return _match_with_gpt4o(
-                    takeoff_list,
+                result = _match_with_gpt4o(
+                    non_pres,
                     bc3_catalog,
                     client,
                     embedding_index=embedding_index,
                     training_pairs=training_pairs,
                 )
             except Exception:
-                pass  # Fall through to token overlap
+                result = {}
 
-    # Fallback: token overlap
-    return {
-        takeoff.item_key: rank_budget_candidates(takeoff, bc3_catalog, top_k=top_k)
-        for takeoff in takeoff_list
-    }
+    if not result and non_pres:
+        result = {
+            takeoff.item_key: rank_budget_candidates(takeoff, bc3_catalog, top_k=top_k)
+            for takeoff in non_pres
+        }
+    elif non_pres:
+        for takeoff in non_pres:
+            if takeoff.item_key not in result:
+                result[takeoff.item_key] = rank_budget_candidates(takeoff, bc3_catalog, top_k=top_k)
+
+    inject_pres_reference_candidates(takeoff_list, result, bc3_catalog)
+    return result

@@ -75,10 +75,86 @@ def chapter_path_for_takeoff(takeoff: QuantityTakeoff) -> list[ChapterSegment]:
     item_type = takeoff.item_type.lower()
     tags = _takeoff_tags(takeoff)
 
+    if item_type == "pres_reference_line":
+        disc = str(takeoff.inputs.get("pres_discipline", "") or "").upper()
+        if "HORMIGON" in disc or "HORMIG" in disc:
+            return [
+                ChapterSegment("01", "ESTRUCTURA"),
+                ChapterSegment("01.01", "HORMIGON ARMADO"),
+            ]
+        if "ACERO" in disc or "REFUERZO" in disc:
+            return [
+                ChapterSegment("01", "ESTRUCTURA"),
+                ChapterSegment("01.03", "ACERO DE REFUERZO"),
+            ]
+        if "MURO" in disc or "DIVISION" in disc:
+            return [
+                ChapterSegment("02", "ALBANILERIA"),
+                ChapterSegment("02.01", "MUROS Y DIVISIONES"),
+            ]
+        if "SUPERFICIE" in disc or "PANET" in disc or "PAÑET" in disc or "FRAGU" in disc:
+            return [
+                ChapterSegment("05", "TERMINACIONES"),
+                ChapterSegment("05.01", "TERMINACION DE SUPERFICIES"),
+            ]
+        if "PISO" in disc or "PISOS" in disc:
+            return [
+                ChapterSegment("05", "TERMINACIONES"),
+                ChapterSegment("05.02", "TERMINACION DE PISOS"),
+            ]
+        if "PUERTA" in disc:
+            return [
+                ChapterSegment("06", "CARPINTERIAS"),
+                ChapterSegment("06.01", "PUERTAS"),
+            ]
+        if "PINTURA" in disc:
+            return [
+                ChapterSegment("05", "TERMINACIONES"),
+                ChapterSegment("05.05", "PINTURA"),
+            ]
+        if "ELECTRIC" in disc or "ELECTR" in disc:
+            return [
+                ChapterSegment("08", "INSTALACIONES"),
+                ChapterSegment("08.01", "ELECTRICAS"),
+            ]
+        if "SANIT" in disc or "PLOMER" in disc:
+            return [
+                ChapterSegment("08", "INSTALACIONES"),
+                ChapterSegment("08.02", "SANITARIAS"),
+            ]
+        if "ESCAL" in disc:
+            return [
+                ChapterSegment("05", "TERMINACIONES"),
+                ChapterSegment("05.06", "ESCALERAS"),
+            ]
+        short = disc[:40].strip() or "PARTIDAS PRES"
+        return [
+            ChapterSegment("07", "REFERENCIA PRESUPUESTO REAL"),
+            ChapterSegment("07.01", short),
+        ]
+
     if item_type.endswith("_waterproofing") or "waterproofing" in tags:
         return [
             ChapterSegment("04", "IMPERMEABILIZACION"),
             ChapterSegment("04.01", "TERMINACIONES HUMEDAS"),
+        ]
+
+    if item_type in {"stair_count"}:
+        return [
+            ChapterSegment("05", "TERMINACIONES"),
+            ChapterSegment("05.06", "ESCALERAS"),
+        ]
+
+    if item_type in {"fixture_count"}:
+        return [
+            ChapterSegment("08", "INSTALACIONES"),
+            ChapterSegment("08.01", "ELECTRICAS"),
+        ]
+
+    if item_type in {"kitchen_count", "kitchen_area"}:
+        return [
+            ChapterSegment("05", "TERMINACIONES"),
+            ChapterSegment("05.04", "COCINAS Y AREAS HUMEDAS"),
         ]
 
     if item_type.startswith(("beam_", "column_", "slab_", "structural_")):
@@ -274,6 +350,9 @@ def build_budget_summary(
         return candidate.summary.strip() or takeoff.item_type.replace("_", " ").strip()
 
     item_type = takeoff.item_type.lower()
+    if item_type == "pres_reference_line":
+        summary = str(takeoff.inputs.get("pres_summary", "") or "").strip()
+        return summary or takeoff.item_key
     if item_type.startswith(("beam_", "column_", "slab_", "structural_")):
         return _structural_summary(takeoff)
     if item_type.startswith("wall_"):

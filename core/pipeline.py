@@ -19,10 +19,31 @@ from core.schemas import (
     level_inventory_from_dict,
 )
 from knowledge.bc3_embeddings import load_or_build_embeddings
+from knowledge.pres_expansion import synthetic_takeoffs_from_pres
 from knowledge.training_data import extract_training_pairs
 from processors.bc3_parser import parse_bc3
 from processors.json_processor import process_autodesk_json
 from rules_engine import RulesEngine, default_rules_engine
+
+
+def merge_pres_template_takeoffs(
+    levels: list[LevelInventory],
+    takeoffs: list[QuantityTakeoff],
+    training_pairs: list[Any] | None,
+    *,
+    enabled: bool = True,
+    max_per_level: int = 250,
+) -> list[QuantityTakeoff]:
+    if not enabled or not training_pairs:
+        return takeoffs
+    extra = synthetic_takeoffs_from_pres(levels, training_pairs, max_per_level=max_per_level)
+    seen = {t.item_key for t in takeoffs}
+    merged = list(takeoffs)
+    for item in extra:
+        if item.item_key not in seen:
+            merged.append(item)
+            seen.add(item.item_key)
+    return merged
 
 
 def build_final_budget(
@@ -66,6 +87,13 @@ def build_budget_from_inventory(
     engine = rules_engine or default_rules_engine()
     base_takeoffs = quantify_inventory(levels)
     expanded_takeoffs = engine.apply(base_takeoffs)
+    expanded_takeoffs = merge_pres_template_takeoffs(
+        levels,
+        expanded_takeoffs,
+        training_pairs,
+        enabled=bool(training_pairs),
+        max_per_level=250,
+    )
     candidates = match_takeoffs_to_bc3(
         expanded_takeoffs,
         bc3_catalog,
@@ -184,6 +212,13 @@ def build_budget_from_sources(
         cad_facts,
         vision_payloads,
         rules_engine=rules_engine,
+    )
+    expanded_takeoffs = merge_pres_template_takeoffs(
+        hybrid_inventory,
+        expanded_takeoffs,
+        training_pairs,
+        enabled=bool(training_pairs),
+        max_per_level=250,
     )
     candidates = match_takeoffs_to_bc3(
         expanded_takeoffs,
