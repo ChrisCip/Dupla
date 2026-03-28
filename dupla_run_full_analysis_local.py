@@ -34,14 +34,15 @@ from pathlib import Path
 from openpyxl import Workbook
 
 # ========= CONFIG: EDIT THIS SECTION =========
-PROJECT_NAME = "Proyecto Demo"
-PROJECT_ID = "demo_001"
+PROJECT_NAME = "Torre Giualca I"
+PROJECT_ID = "torre_giualca_i"
 
 # Input files
 DWG_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\TGIU\8- ACAD-PLANOS GIUALCA I - RV7 - EXP.039-025.dwg SOLO IMPRESION.dwg"
 PDF_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\TGIU\Binder1.pdf"   # Used only if USE_PDF = True
 IMAGES_DIR = r"./inputs/rendered_pages"   # Used only if USE_PDF = False
 BC3_PATH = r"./data/TGIU.bc3"             # Optional: can be blank ""
+XLSX_TRAINING_PATH = r"./data/PRES.xlsx"
 
 # Visual stage selection
 USE_PDF = True  # True = render PDF pages; False = use IMAGES_DIR directly
@@ -170,7 +171,8 @@ def resolve_pages_dir(outputs_dir: Path) -> Path:
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
         rendered_dir = outputs_dir / "rendered_pages" / pdf_path.stem
-        render_pdf_to_images(pdf_path, rendered_dir)
+        image_paths = render_pdf_to_images(pdf_path, rendered_dir)
+        print(f"[Vision] Rendered {len(image_paths)} pages from PDF: {pdf_path}")
         return rendered_dir
 
     images_dir = (REPO_ROOT / IMAGES_DIR).resolve()
@@ -269,9 +271,21 @@ def main() -> None:
         bc3_catalog = parse_bc3(str(bc3_path))
         bc3_path_value = str(bc3_path)
 
-    xlsx_training_path = (REPO_ROOT / "data" / "PRES.xlsx").resolve()
+    xlsx_training_path = (REPO_ROOT / XLSX_TRAINING_PATH).resolve()
     training_pairs = extract_training_pairs(xlsx_training_path) if xlsx_training_path.exists() else []
+    if xlsx_training_path.exists():
+        print(f"[Training] Loaded {len(training_pairs)} training pairs from: {xlsx_training_path}")
+    else:
+        print(f"[Training] XLSX training file not found: {xlsx_training_path}")
+
     embedding_index = load_or_build_embeddings(bc3_catalog) if bc3_catalog.get("items") else None
+    if embedding_index is not None:
+        print(
+            "[Embeddings] Ready BC3 semantic index: "
+            f"{len(embedding_index.metadata)} items, model={embedding_index.model}"
+        )
+    else:
+        print("[Embeddings] Skipped (BC3 catalog empty).")
 
     print("\n=== 5) Build technical budget output ===")
     page_paths = sorted(
@@ -279,6 +293,7 @@ def main() -> None:
         for path in pages_dir.iterdir()
         if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
     )
+    print(f"[Vision] Using {len(page_paths)} rendered pages for analysis.")
 
     context = ProjectContext(
         project_id=PROJECT_ID,

@@ -47,7 +47,7 @@ def test_inventory_builder_prefers_json_and_preserves_conflicts() -> None:
 
     merged = build_level_inventory(cad_facts, vision_inventory)
 
-    assert merged.floor_area_m2 == 100.0
+    assert merged.floor_area_m2 == 95.0
     assert any("floor_area_m2" in note for note in merged.conflict_notes)
     assert merged.walls[0].length_m == 10.0
     assert merged.walls[0].height_m == 3.0

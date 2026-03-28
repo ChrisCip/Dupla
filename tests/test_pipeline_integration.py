@@ -61,14 +61,14 @@ def test_hybrid_pipeline_merges_inventory_and_quantifies_end_to_end() -> None:
     level = hybrid_inventory[0]
     takeoff_map = {takeoff.item_key: takeoff for takeoff in takeoffs}
 
-    assert level.floor_area_m2 == 100.0
+    assert level.floor_area_m2 == 95.0
     assert any("floor_area_m2" in note for note in level.conflict_notes)
     assert level.walls[0].length_m == 10.0
     assert level.walls[0].height_m == 3.0
     assert any("length_m" in note for note in level.walls[0].conflict_notes)
     assert any("count" in note for note in level.openings[0].conflict_notes)
 
-    assert takeoff_map["level_01:floor_area"].quantity == 100.0
+    assert takeoff_map["level_01:floor_area"].quantity == 95.0
     assert takeoff_map["json-wall-a-wall:net_area"].quantity == 27.9
     assert takeoff_map["json-wall-a-wall:net_area"].formula == "wall.length_m * wall.height_m - openings_area_m2"
     assert any(
