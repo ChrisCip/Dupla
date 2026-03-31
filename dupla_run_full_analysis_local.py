@@ -8,25 +8,26 @@ Edit the CONFIG section and run:
 Recommended location:
 - Save this file in the ROOT of your Dupla repo
 
-What it does:
-1. Upload DWG to Autodesk APS
-2. Extract raw Autodesk JSON
-3. Normalize CAD facts
-4. Use PDF or image pages for vision
-5. Build hybrid inventory
-6. Quantify + rules + BC3 candidates
-7. Compose budget
-8. Export workbook-ready Excel
+Pipeline stages (each tracked with timing and error capture):
+1. APS extraction — upload DWG, translate, normalize CAD facts
+2. Vision pages — render PDF or locate image directory
+3. Vision analysis — GPT-4o vision per page → inventory dicts
+4. Knowledge inputs — BC3 catalog, training pairs, embeddings
+5. Budget core — hybrid inventory → takeoffs → BC3 match → compose
+6. Excel export — styled workbook + reviewer sheet
 
 Notes:
 - Requires the Dupla repo dependencies installed
 - Requires .env with Autodesk + OpenAI keys
 - If USE_PDF = True, it requires PyMuPDF for PDF rendering
+- Pipeline report saved to outputs as pipeline_report.json
+- Full debug log saved to outputs as dupla_debug.log
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -79,13 +80,21 @@ from aps_integration.model_derivative import extract_dwg_data
 from aps_integration.oss_manager import APS_BUCKET_NAME, create_bucket, upload_file_to_bucket
 from agents.vision_agent import run_full_vision_analysis
 from budget.export_excel import export_budget_workbook
+from core.logging_config import setup_logging
 from core.pipeline import build_budget_from_sources
 from core.schemas import ProjectContext
+from core.stage import PipelineRunner
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.training_data import extract_training_pairs
 from processors.bc3_parser import parse_bc3
 from processors.json_processor import process_autodesk_json
 
+logger = logging.getLogger("dupla.runner")
+
+
+# ---------------------------------------------------------------------------
+# Stage functions — each returns its output (or a tuple for metrics)
+# ---------------------------------------------------------------------------
 
 def render_pdf_to_images(pdf_path: Path, output_dir: Path, dpi: int = 200) -> list[Path]:
     try:
@@ -113,159 +122,104 @@ def render_pdf_to_images(pdf_path: Path, output_dir: Path, dpi: int = 200) -> li
     return image_paths
 
 
-def ensure_normalized_cad_facts(
+def stage_aps_extraction(
     dwg_path: Path,
     outputs_dir: Path,
     bucket_name: str,
-    *,
-    translation_views: tuple[str, ...] = TRANSLATION_VIEWS,
-    translation_timeout_seconds: int = TRANSLATION_TIMEOUT_SECONDS,
-    poll_interval_seconds: int = POLL_INTERVAL_SECONDS,
-    max_property_wait_seconds: int = MAX_PROPERTY_WAIT_SECONDS,
-    failed_manifest_grace_polls: int = FAILED_MANIFEST_GRACE_POLLS,
-    failed_manifest_grace_sleep_seconds: int = FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
-    upload_object_name: str | None = UPLOAD_OBJECT_NAME,
-    auto_unique_object_name: bool = AUTO_UNIQUE_OBJECT_NAME,
-):
+) -> dict:
+    """Stage 1: Upload DWG to APS, extract and normalize CAD facts."""
     token = get_aps_token()
     create_bucket(token, bucket_name)
+
     unique_suffix = None
-    if auto_unique_object_name:
+    if AUTO_UNIQUE_OBJECT_NAME:
         unique_suffix = datetime.now().strftime("%Y%m%d_%H%M%S")
-        print(
-            f"[APS] AUTO_UNIQUE_OBJECT_NAME enabled. Uploading with timestamp suffix: "
-            f"{unique_suffix}"
-        )
+        logger.debug("Auto-unique upload suffix: %s", unique_suffix)
 
     object_name = upload_file_to_bucket(
         token,
         bucket_name,
         str(dwg_path),
-        object_name=upload_object_name,
+        object_name=UPLOAD_OBJECT_NAME,
         unique_suffix=unique_suffix,
     )
     if not object_name:
         raise RuntimeError("DWG upload to Autodesk failed.")
+    logger.info("DWG uploaded as %r to bucket %r", object_name, bucket_name)
 
     raw_data = extract_dwg_data(
         token,
         bucket_name,
         object_name,
-        views=translation_views,
-        translation_timeout_seconds=translation_timeout_seconds,
-        poll_interval_seconds=poll_interval_seconds,
-        max_property_wait_seconds=max_property_wait_seconds,
-        failed_manifest_grace_polls=failed_manifest_grace_polls,
-        failed_manifest_grace_sleep_seconds=failed_manifest_grace_sleep_seconds,
+        views=TRANSLATION_VIEWS,
+        translation_timeout_seconds=TRANSLATION_TIMEOUT_SECONDS,
+        poll_interval_seconds=POLL_INTERVAL_SECONDS,
+        max_property_wait_seconds=MAX_PROPERTY_WAIT_SECONDS,
+        failed_manifest_grace_polls=FAILED_MANIFEST_GRACE_POLLS,
+        failed_manifest_grace_sleep_seconds=FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
     )
     raw_json_path = outputs_dir / f"{dwg_path.stem}.autodesk_raw.json"
     raw_json_path.write_text(json.dumps(raw_data, indent=2, ensure_ascii=False), encoding="utf-8")
+    logger.info("Raw Autodesk JSON saved: %s", raw_json_path)
 
     normalized = process_autodesk_json(str(raw_json_path))
     normalized_json_path = outputs_dir / f"{dwg_path.stem}.normalized.json"
     normalized_json_path.write_text(json.dumps(normalized, indent=2, ensure_ascii=False), encoding="utf-8")
+    logger.info("Normalized CAD facts saved: %s (%d keys)", normalized_json_path, len(normalized))
 
-    return normalized, raw_json_path, normalized_json_path, object_name
+    return {
+        "cad_facts": normalized,
+        "raw_json_path": raw_json_path,
+        "normalized_json_path": normalized_json_path,
+        "uploaded_object_name": object_name,
+    }
 
 
-def resolve_pages_dir(outputs_dir: Path) -> Path:
+def stage_resolve_pages(outputs_dir: Path) -> dict:
+    """Stage 2: Render PDF pages or locate existing images directory."""
     if USE_PDF:
         pdf_path = (REPO_ROOT / PDF_PATH).resolve()
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
         rendered_dir = outputs_dir / "rendered_pages" / pdf_path.stem
         image_paths = render_pdf_to_images(pdf_path, rendered_dir)
-        print(f"[Vision] Rendered {len(image_paths)} pages from PDF: {pdf_path}")
-        return rendered_dir
+        logger.info("Rendered %d pages from PDF: %s", len(image_paths), pdf_path.name)
+        return {"pages_dir": rendered_dir, "page_count": len(image_paths), "source": "pdf"}
 
     images_dir = (REPO_ROOT / IMAGES_DIR).resolve()
     if not images_dir.exists():
         raise FileNotFoundError(f"Images directory not found: {images_dir}")
-    return images_dir
+    count = sum(1 for p in images_dir.iterdir() if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"})
+    logger.info("Using existing images directory: %s (%d images)", images_dir, count)
+    return {"pages_dir": images_dir, "page_count": count, "source": "directory"}
 
 
-def save_for_review(budget: dict[str, object], output_dir: Path) -> Path:
-    workbook = Workbook()
-    worksheet = workbook.active
-    worksheet.title = "Revision"
-    headers = [
-        "Código",
-        "Nat",
-        "Ud",
-        "Resumen",
-        "CanPres",
-        "PrPres",
-        "ImpPres",
-        "Corrección Código",
-        "Corrección Cantidad",
-        "Corrección Unidad",
-        "Tipo Corrección",
-        "Notas Revisor",
-    ]
-    worksheet.append(headers)
-    for row in budget.get("rows", []):
-        if not isinstance(row, dict):
-            continue
-        worksheet.append(
-            [
-                row.get("code", ""),
-                row.get("nat", ""),
-                row.get("unit", ""),
-                row.get("summary", ""),
-                row.get("quantity", ""),
-                row.get("unit_price", ""),
-                row.get("amount", ""),
-                "",
-                "",
-                "",
-                "",
-                "",
-            ]
-        )
-
-    for column in ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"):
-        worksheet.column_dimensions[column].width = 22 if column == "D" else 15
-
-    review_path = output_dir / "dupla_budget_for_review.xlsx"
-    workbook.save(review_path)
-    return review_path
-
-
-def main() -> None:
-    outputs_dir = (REPO_ROOT / OUTPUTS_DIR).resolve()
-    outputs_dir.mkdir(parents=True, exist_ok=True)
-
-    dwg_path = (REPO_ROOT / DWG_PATH).resolve()
-    if not dwg_path.exists():
-        raise FileNotFoundError(f"DWG file not found: {dwg_path}")
-
-    bucket_name = BUCKET_NAME or APS_BUCKET_NAME
-
-    print("\n=== 1) APS / Autodesk extraction ===")
-    cad_facts, raw_json_path, normalized_json_path, uploaded_object_name = ensure_normalized_cad_facts(
-        dwg_path=dwg_path,
-        outputs_dir=outputs_dir,
-        bucket_name=bucket_name,
-        translation_views=TRANSLATION_VIEWS,
-        translation_timeout_seconds=TRANSLATION_TIMEOUT_SECONDS,
-        poll_interval_seconds=POLL_INTERVAL_SECONDS,
-        max_property_wait_seconds=MAX_PROPERTY_WAIT_SECONDS,
-        failed_manifest_grace_polls=FAILED_MANIFEST_GRACE_POLLS,
-        failed_manifest_grace_sleep_seconds=FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
-        upload_object_name=UPLOAD_OBJECT_NAME,
-        auto_unique_object_name=AUTO_UNIQUE_OBJECT_NAME,
-    )
-
-    print("\n=== 2) Resolve vision pages ===")
-    pages_dir = resolve_pages_dir(outputs_dir)
-
-    print("\n=== 3) Vision analysis ===")
+def stage_vision_analysis(pages_dir: Path, cad_facts: dict, outputs_dir: Path) -> dict:
+    """Stage 3: Run GPT-4o vision analysis on each page."""
     vision_results = run_full_vision_analysis(str(pages_dir), cad_facts)
+
     vision_json_path = outputs_dir / "vision_inventory_results.json"
     vision_json_path.write_text(json.dumps(vision_results, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print("\n=== 4) Optional BC3 ===")
-    bc3_catalog = {}
+    error_count = sum(1 for r in vision_results if isinstance(r, dict) and "error" in r)
+    ok_count = len(vision_results) - error_count
+    logger.info("Vision analysis: %d pages OK, %d errors", ok_count, error_count)
+    if error_count:
+        for r in vision_results:
+            if isinstance(r, dict) and "error" in r:
+                logger.warning("Vision error on %s: %s", r.get("file", "?"), r.get("error"))
+
+    return {
+        "vision_results": vision_results,
+        "vision_json_path": vision_json_path,
+        "pages_ok": ok_count,
+        "pages_with_errors": error_count,
+    }
+
+
+def stage_knowledge_inputs(outputs_dir: Path) -> dict:
+    """Stage 4: Load BC3 catalog, training pairs, and build embeddings."""
+    bc3_catalog: dict = {}
     bc3_path_value = None
     if BC3_PATH:
         bc3_path = (REPO_ROOT / BC3_PATH).resolve()
@@ -273,39 +227,66 @@ def main() -> None:
             raise FileNotFoundError(f"BC3 file not found: {bc3_path}")
         bc3_catalog = parse_bc3(str(bc3_path))
         bc3_path_value = str(bc3_path)
+        logger.info("BC3 catalog loaded: %d items from %s", len(bc3_catalog.get("items", [])), bc3_path.name)
+    else:
+        logger.info("BC3 catalog: skipped (no BC3_PATH configured)")
 
     xlsx_training_path = (REPO_ROOT / XLSX_TRAINING_PATH).resolve()
-    training_pairs = extract_training_pairs(xlsx_training_path) if xlsx_training_path.exists() else []
+    training_pairs = []
     if xlsx_training_path.exists():
-        print(f"[Training] Loaded {len(training_pairs)} training pairs from: {xlsx_training_path}")
+        training_pairs = extract_training_pairs(xlsx_training_path)
+        logger.info("Training pairs loaded: %d from %s", len(training_pairs), xlsx_training_path.name)
     else:
-        print(f"[Training] XLSX training file not found: {xlsx_training_path}")
+        logger.warning("XLSX training file not found: %s", xlsx_training_path)
 
-    embedding_index = load_or_build_embeddings(bc3_catalog) if bc3_catalog.get("items") else None
-    if embedding_index is not None:
-        print(
-            "[Embeddings] Ready BC3 semantic index: "
-            f"{len(embedding_index.metadata)} items, model={embedding_index.model}"
+    embedding_index = None
+    if bc3_catalog.get("items"):
+        embedding_index = load_or_build_embeddings(bc3_catalog)
+        logger.info(
+            "Embeddings ready: %d items, model=%s",
+            len(embedding_index.metadata), embedding_index.model,
         )
     else:
-        print("[Embeddings] Skipped (BC3 catalog empty).")
+        logger.info("Embeddings skipped (BC3 catalog empty)")
 
-    print("\n=== 5) Build technical budget output ===")
+    return {
+        "bc3_catalog": bc3_catalog,
+        "bc3_path_value": bc3_path_value,
+        "training_pairs": training_pairs,
+        "embedding_index": embedding_index,
+        "xlsx_training_path": str(xlsx_training_path) if xlsx_training_path.exists() else None,
+    }
+
+
+def stage_build_budget(
+    cad_facts: dict,
+    vision_results: list,
+    bc3_catalog: dict,
+    embedding_index,
+    training_pairs: list,
+    raw_json_path: Path,
+    normalized_json_path: Path,
+    uploaded_object_name: str,
+    pages_dir: Path,
+    xlsx_path: str | None,
+    outputs_dir: Path,
+) -> dict:
+    """Stage 5: Build hybrid inventory, quantify, match BC3, compose budget."""
     page_paths = sorted(
         str(path)
         for path in pages_dir.iterdir()
         if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
     )
-    print(f"[Vision] Using {len(page_paths)} rendered pages for analysis.")
+    logger.info("Building budget with %d rendered pages", len(page_paths))
 
     context = ProjectContext(
         project_id=PROJECT_ID,
         project_name=PROJECT_NAME,
         source_json_path=str(raw_json_path),
         plan_image_paths=page_paths,
-        bc3_path=bc3_path_value,
+        bc3_path=str(bc3_catalog.get("_source_path", "")) if bc3_catalog else None,
         metadata={
-            "dwg_path": str(dwg_path),
+            "dwg_path": str((REPO_ROOT / DWG_PATH).resolve()),
             "raw_autodesk_json": str(raw_json_path),
             "normalized_json": str(normalized_json_path),
             "vision_pages_dir": str(pages_dir),
@@ -318,7 +299,7 @@ def main() -> None:
             "max_property_wait_seconds": MAX_PROPERTY_WAIT_SECONDS,
             "failed_manifest_grace_polls": FAILED_MANIFEST_GRACE_POLLS,
             "failed_manifest_grace_sleep_seconds": FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
-            "xlsx_path": str(xlsx_training_path) if xlsx_training_path.exists() else None,
+            "xlsx_path": xlsx_path,
             "pres_template_takeoffs": PRES_TEMPLATE_TAKEOFFS,
         },
     )
@@ -334,8 +315,22 @@ def main() -> None:
 
     budget_json_path = outputs_dir / "dupla_full_budget_output.json"
     budget_json_path.write_text(json.dumps(budget, indent=2, ensure_ascii=False), encoding="utf-8")
+    logger.info("Budget JSON saved: %s", budget_json_path)
 
-    print("\n=== 6) Export Excel ===")
+    return {
+        "budget": budget,
+        "context": context,
+        "budget_json_path": budget_json_path,
+        "page_paths": page_paths,
+    }
+
+
+def stage_excel_export(
+    context: ProjectContext,
+    budget: dict,
+    outputs_dir: Path,
+) -> dict:
+    """Stage 6: Export styled Excel workbook + reviewer sheet."""
     workbook_path = outputs_dir / f"{OUTPUT_NAME}.xlsx"
     saved_workbook_path = export_budget_workbook(
         context=context,
@@ -343,31 +338,154 @@ def main() -> None:
         output_path=workbook_path,
     )
     if saved_workbook_path != workbook_path:
-        print(
-            "[Excel] Requested workbook path was not writable. "
-            f"Saved to alternate file: {saved_workbook_path}"
+        logger.warning(
+            "Workbook path was not writable, saved to alternate: %s", saved_workbook_path
         )
-    review_workbook_path = save_for_review(budget, outputs_dir)
 
+    review_workbook_path = _save_for_review(budget, outputs_dir)
+    logger.info("Excel export done: %s + reviewer: %s", saved_workbook_path, review_workbook_path)
+
+    return {
+        "saved_workbook_path": saved_workbook_path,
+        "review_workbook_path": review_workbook_path,
+    }
+
+
+def _save_for_review(budget: dict, output_dir: Path) -> Path:
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Revision"
+    headers = [
+        "Código", "Nat", "Ud", "Resumen", "CanPres", "PrPres", "ImpPres",
+        "Corrección Código", "Corrección Cantidad", "Corrección Unidad",
+        "Tipo Corrección", "Notas Revisor",
+    ]
+    worksheet.append(headers)
+    for row in budget.get("rows", []):
+        if not isinstance(row, dict):
+            continue
+        worksheet.append([
+            row.get("code", ""), row.get("nat", ""), row.get("unit", ""),
+            row.get("summary", ""), row.get("quantity", ""),
+            row.get("unit_price", ""), row.get("amount", ""),
+            "", "", "", "", "",
+        ])
+
+    for column in ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"):
+        worksheet.column_dimensions[column].width = 22 if column == "D" else 15
+
+    review_path = output_dir / "dupla_budget_for_review.xlsx"
+    workbook.save(review_path)
+    return review_path
+
+
+# ---------------------------------------------------------------------------
+# Main — orchestrate via PipelineRunner
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    outputs_dir = (REPO_ROOT / OUTPUTS_DIR).resolve()
+    outputs_dir.mkdir(parents=True, exist_ok=True)
+
+    setup_logging(
+        console_level=logging.INFO,
+        log_file=outputs_dir / "dupla_debug.log",
+    )
+    logger.info("Dupla pipeline starting — project: %s", PROJECT_NAME)
+
+    dwg_path = (REPO_ROOT / DWG_PATH).resolve()
+    if not dwg_path.exists():
+        raise FileNotFoundError(f"DWG file not found: {dwg_path}")
+
+    bucket_name = BUCKET_NAME or APS_BUCKET_NAME
+    runner = PipelineRunner("dupla_full_analysis")
+
+    # --- Stage 1: APS extraction ---
+    s1 = runner.run_stage("aps_extraction", stage_aps_extraction, dwg_path, outputs_dir, bucket_name)
+    if not s1.ok:
+        _finish(runner, outputs_dir)
+        return
+    aps = s1.output
+    runner.add_metrics("aps_extraction", {"cad_fact_keys": len(aps["cad_facts"])})
+
+    # --- Stage 2: Resolve vision pages ---
+    s2 = runner.run_stage("vision_pages", stage_resolve_pages, outputs_dir)
+    if not s2.ok:
+        _finish(runner, outputs_dir)
+        return
+    runner.add_metrics("vision_pages", {"page_count": s2.output["page_count"], "source": s2.output["source"]})
+
+    # --- Stage 3: Vision analysis ---
+    s3 = runner.run_stage(
+        "vision_analysis",
+        stage_vision_analysis, s2.output["pages_dir"], aps["cad_facts"], outputs_dir,
+    )
+    if not s3.ok:
+        _finish(runner, outputs_dir)
+        return
+    runner.add_metrics("vision_analysis", {
+        "pages_ok": s3.output["pages_ok"],
+        "pages_with_errors": s3.output["pages_with_errors"],
+    })
+
+    # --- Stage 4: Knowledge inputs (BC3 + training + embeddings) ---
+    s4 = runner.run_stage("knowledge_inputs", stage_knowledge_inputs, outputs_dir)
+    if not s4.ok:
+        _finish(runner, outputs_dir)
+        return
+    runner.add_metrics("knowledge_inputs", {
+        "bc3_items": len(s4.output["bc3_catalog"].get("items", [])),
+        "training_pairs": len(s4.output["training_pairs"]),
+        "has_embeddings": s4.output["embedding_index"] is not None,
+    })
+
+    # --- Stage 5: Build budget ---
+    s5 = runner.run_stage(
+        "build_budget",
+        stage_build_budget,
+        aps["cad_facts"],
+        s3.output["vision_results"],
+        s4.output["bc3_catalog"],
+        s4.output["embedding_index"],
+        s4.output["training_pairs"],
+        aps["raw_json_path"],
+        aps["normalized_json_path"],
+        aps["uploaded_object_name"],
+        s2.output["pages_dir"],
+        s4.output["xlsx_training_path"],
+        outputs_dir,
+    )
+    if not s5.ok:
+        _finish(runner, outputs_dir)
+        return
+    budget = s5.output["budget"]
+    runner.add_metrics("build_budget", {
+        "hybrid_levels": len(budget.get("hybrid_inventory", [])),
+        "base_takeoffs": len(budget.get("base_takeoffs", [])),
+        "expanded_takeoffs": len(budget.get("takeoffs", [])),
+        "budget_rows": len(budget.get("rows", [])),
+        "budget_lines": len(budget.get("lines", [])),
+        "chapters": len(budget.get("chapters", [])),
+    })
+
+    # --- Stage 6: Excel export ---
+    s6 = runner.run_stage("excel_export", stage_excel_export, s5.output["context"], budget, outputs_dir)
+    if not s6.ok:
+        _finish(runner, outputs_dir)
+        return
+
+    # --- Final summary ---
     summary = {
         "dwg": str(dwg_path),
-        "raw_autodesk_json": str(raw_json_path),
-        "normalized_json": str(normalized_json_path),
-        "vision_inventory_json": str(vision_json_path),
-        "budget_json": str(budget_json_path),
-        "budget_excel": str(saved_workbook_path),
-        "budget_review_excel": str(review_workbook_path),
-        "pages_dir": str(pages_dir),
-        "vision_pages_count": len(page_paths),
-        "uploaded_object_name": uploaded_object_name,
-        "upload_object_name_override": UPLOAD_OBJECT_NAME,
-        "auto_unique_object_name": AUTO_UNIQUE_OBJECT_NAME,
-        "translation_views": list(TRANSLATION_VIEWS),
-        "translation_timeout_seconds": TRANSLATION_TIMEOUT_SECONDS,
-        "poll_interval_seconds": POLL_INTERVAL_SECONDS,
-        "max_property_wait_seconds": MAX_PROPERTY_WAIT_SECONDS,
-        "failed_manifest_grace_polls": FAILED_MANIFEST_GRACE_POLLS,
-        "failed_manifest_grace_sleep_seconds": FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
+        "raw_autodesk_json": str(aps["raw_json_path"]),
+        "normalized_json": str(aps["normalized_json_path"]),
+        "vision_inventory_json": str(s3.output["vision_json_path"]),
+        "budget_json": str(s5.output["budget_json_path"]),
+        "budget_excel": str(s6.output["saved_workbook_path"]),
+        "budget_review_excel": str(s6.output["review_workbook_path"]),
+        "pages_dir": str(s2.output["pages_dir"]),
+        "vision_pages_count": len(s5.output["page_paths"]),
+        "uploaded_object_name": aps["uploaded_object_name"],
         "hybrid_levels": len(budget.get("hybrid_inventory", [])),
         "base_takeoffs": len(budget.get("base_takeoffs", [])),
         "expanded_takeoffs": len(budget.get("takeoffs", [])),
@@ -379,8 +497,33 @@ def main() -> None:
     summary_path = outputs_dir / "run_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print("\n=== DONE ===")
-    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    _finish(runner, outputs_dir, summary)
+
+
+def _finish(runner: PipelineRunner, outputs_dir: Path, summary: dict | None = None) -> None:
+    report = runner.report(summary=summary or {})
+    report_path = report.save(outputs_dir / "pipeline_report.json")
+
+    logger.info("=" * 60)
+    logger.info("Pipeline finished: %s", report.final_status.upper())
+    logger.info("Total duration: %.1fs", report.total_duration_seconds)
+    for stage in report.stages:
+        status_icon = {
+            "success": "OK", "warning": "WARN", "error": "FAIL", "skipped": "SKIP"
+        }.get(stage["status"], "?")
+        logger.info(
+            "  [%4s] %-20s  %.2fs  %s",
+            status_icon,
+            stage["stage_name"],
+            stage["duration_seconds"],
+            ", ".join(stage["errors"][:1]) if stage["errors"] else "",
+        )
+    logger.info("Report saved: %s", report_path)
+    logger.info("Debug log: %s", outputs_dir / "dupla_debug.log")
+    logger.info("=" * 60)
+
+    if report.final_status == "error":
+        logger.error("Pipeline failed — check pipeline_report.json and dupla_debug.log for details")
 
 
 if __name__ == "__main__":

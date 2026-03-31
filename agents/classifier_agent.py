@@ -10,6 +10,7 @@ Fallback path (no OpenAI API key): deterministic token-overlap ranking.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import unicodedata
@@ -24,6 +25,8 @@ from knowledge.pres_expansion import inject_pres_reference_candidates
 from knowledge.training_data import TrainingPair, generate_few_shot_examples
 
 load_dotenv(Path(__file__).parent.parent / ".env")
+
+logger = logging.getLogger("dupla.classifier")
 
 try:
     from openai import OpenAI
@@ -345,6 +348,10 @@ def _gpt4o_classify_chapter(
         )
         raw = resp.choices[0].message.content or ""
     except Exception:
+        logger.warning(
+            "GPT-4o call failed for chapter %s (%d takeoffs)",
+            chapter_code, len(takeoffs), exc_info=True,
+        )
         return {}
 
     matches = _extract_json_list(raw)
@@ -536,6 +543,10 @@ def match_takeoffs_to_bc3(
                     training_pairs=training_pairs,
                 )
             except Exception:
+                logger.warning(
+                    "GPT-4o matching failed for %d takeoffs, falling back to token overlap",
+                    len(non_pres), exc_info=True,
+                )
                 result = {}
 
     if not result and non_pres:

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +24,8 @@ from dotenv import load_dotenv
 from core.schemas import LevelInventory, level_inventory_from_dict
 
 load_dotenv(Path(__file__).parent.parent / ".env")
+
+logger = logging.getLogger("dupla.vision")
 
 try:
     from openai import OpenAI
@@ -511,6 +514,7 @@ def run_full_vision_analysis(pages_dir: str, cad_summary: dict[str, Any]) -> lis
         try:
             results.append(analyze_plan(image_path, cad_summary, level_name))
         except Exception as exc:  # pragma: no cover - depends on external API/runtime
+            logger.warning("Vision failed for %s: %s", image_path.name, exc, exc_info=True)
             results.append({"error": str(exc), "file": image_path.name})
 
     return results

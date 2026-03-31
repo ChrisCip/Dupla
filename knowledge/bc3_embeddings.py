@@ -4,6 +4,7 @@ In-memory semantic embeddings index for BC3 catalog search.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -15,6 +16,8 @@ from typing import Any, Callable
 import numpy as np
 
 from core.schemas import QuantityTakeoff
+
+logger = logging.getLogger("dupla.embeddings")
 
 try:
     from openai import OpenAI

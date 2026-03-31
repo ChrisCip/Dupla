@@ -5,9 +5,12 @@ Budget composition layer for workbook-ready budget rows.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from collections import Counter
 from typing import Any, Iterable
+
+logger = logging.getLogger("dupla.composer")
 
 from core.schemas import (
     BudgetCandidate,
@@ -529,9 +532,19 @@ def compose_budget(
         derived_from_keys=derived_from_keys,
         concrete_volume_prefixes=concrete_volume_prefixes,
     )
+    logger.info(
+        "Budget diagnostics: %d total takeoffs, %d budgetable, %d excluded",
+        diagnostics["takeoffs_total"],
+        diagnostics["takeoffs_budgetable"],
+        diagnostics["takeoffs_excluded"],
+    )
+    if diagnostics["excluded_by_reason"]:
+        logger.debug("Exclusion reasons: %s", diagnostics["excluded_by_reason"])
+
     chapters, lines, rows = compose_budget_rows(
         context, takeoff_list, candidates_by_takeoff, bc3_catalog=bc3_catalog
     )
+    logger.info("Budget composed: %d chapters, %d lines, %d rows", len(chapters), len(lines), len(rows))
     return {
         "project_context": context.to_dict(),
         "chapters": [chapter.to_dict() for chapter in chapters],

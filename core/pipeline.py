@@ -4,6 +4,7 @@ Pipeline helpers for the active APS/JSON-first architecture.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -24,6 +25,8 @@ from knowledge.training_data import extract_training_pairs
 from processors.bc3_parser import parse_bc3
 from processors.json_processor import process_autodesk_json
 from rules_engine import RulesEngine, default_rules_engine
+
+logger = logging.getLogger("dupla.pipeline")
 
 
 def merge_pres_template_takeoffs(
@@ -149,6 +152,7 @@ def build_hybrid_inventory(
     coerced_payloads = _coerce_vision_payloads(vision_payloads)
     if not coerced_payloads:
         fallback_name = str(cad_facts.get("project") or "level_01")
+        logger.info("No vision payloads — building CAD-only inventory for %r", fallback_name)
         return [
             build_level_inventory(
                 cad_facts,
@@ -158,10 +162,18 @@ def build_hybrid_inventory(
             )
         ]
 
+    error_count = 0
     hybrid_levels: list[LevelInventory] = []
     for index, payload in enumerate(coerced_payloads, start=1):
         if isinstance(payload, LevelInventory):
             vision_level = payload
+        elif isinstance(payload, Mapping) and "error" in payload:
+            error_count += 1
+            logger.warning(
+                "Vision payload %d contains error, skipping: %s",
+                index, payload.get("error"),
+            )
+            continue
         else:
             payload_dict = dict(payload)
             payload_dict.setdefault("level_id", f"level_{index:02d}")
@@ -177,6 +189,10 @@ def build_hybrid_inventory(
             )
         )
 
+    logger.info(
+        "Hybrid inventory built: %d levels (%d vision errors skipped)",
+        len(hybrid_levels), error_count,
+    )
     return hybrid_levels
 
 
@@ -215,11 +231,17 @@ def build_budget_from_sources(
     embedding_index: Any | None = None,
     training_pairs: list[Any] | None = None,
 ) -> dict[str, Any]:
+    logger.info("build_budget_from_sources: starting hybrid inventory + takeoffs")
     hybrid_inventory, base_takeoffs, expanded_takeoffs = build_expanded_takeoffs_from_sources(
         cad_facts,
         vision_payloads,
         rules_engine=rules_engine,
     )
+    logger.info(
+        "Takeoffs: %d base -> %d expanded (rules applied)",
+        len(base_takeoffs), len(expanded_takeoffs),
+    )
+
     expanded_takeoffs = merge_pres_template_takeoffs(
         hybrid_inventory,
         expanded_takeoffs,
@@ -228,15 +250,27 @@ def build_budget_from_sources(
         max_per_level=int(context.metadata.get("pres_max_per_level", 250)),
         fallback_unmatched=bool(context.metadata.get("pres_fallback_unmatched", True)),
     )
+    logger.info("After PRES merge: %d takeoffs", len(expanded_takeoffs))
+
+    logger.info("Matching %d takeoffs to BC3 catalog", len(expanded_takeoffs))
     candidates = match_takeoffs_to_bc3(
         expanded_takeoffs,
         bc3_catalog,
         embedding_index=embedding_index,
         training_pairs=training_pairs,
     )
+    logger.info("BC3 candidates matched for %d takeoff keys", len(candidates))
+
     budget = build_final_budget(context, expanded_takeoffs, candidates, bc3_catalog=bc3_catalog)
     budget["hybrid_inventory"] = [level.to_dict() for level in hybrid_inventory]
     budget["base_takeoffs"] = [takeoff.to_dict() for takeoff in base_takeoffs]
+
+    logger.info(
+        "Budget built: %d chapters, %d lines, %d rows",
+        len(budget.get("chapters", [])),
+        len(budget.get("lines", [])),
+        len(budget.get("rows", [])),
+    )
     return budget
 
 
@@ -248,12 +282,18 @@ def bootstrap_pipeline_inputs(context: ProjectContext) -> dict[str, Any]:
     run independently or mocked in tests.
     """
     cad_facts = process_autodesk_json(context.source_json_path) if context.source_json_path else {}
+    logger.info("CAD facts loaded: %d keys", len(cad_facts))
+
     bc3_catalog = parse_bc3(context.bc3_path) if context.bc3_path else {}
+    logger.info("BC3 catalog: %d items", len(bc3_catalog.get("items", [])))
+
     embeddings = None
     if bc3_catalog.get("items"):
         try:
             embeddings = load_or_build_embeddings(bc3_catalog)
+            logger.info("Embeddings built: %d vectors", len(getattr(embeddings, "metadata", [])))
         except Exception:
+            logger.warning("Failed to build BC3 embeddings, continuing without them", exc_info=True)
             embeddings = None
 
     xlsx_path = context.metadata.get("xlsx_path") if context.metadata else None
@@ -261,11 +301,13 @@ def bootstrap_pipeline_inputs(context: ProjectContext) -> dict[str, Any]:
         default_xlsx = Path(__file__).resolve().parent.parent / "data" / "PRES.xlsx"
         if default_xlsx.exists():
             xlsx_path = str(default_xlsx)
-    training_pairs = []
+    training_pairs: list[Any] = []
     if xlsx_path:
         try:
             training_pairs = extract_training_pairs(xlsx_path)
+            logger.info("Training pairs loaded: %d from %s", len(training_pairs), xlsx_path)
         except Exception:
+            logger.warning("Failed to load training pairs from %s", xlsx_path, exc_info=True)
             training_pairs = []
 
     return {
