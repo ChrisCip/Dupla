@@ -31,12 +31,18 @@ def merge_pres_template_takeoffs(
     takeoffs: list[QuantityTakeoff],
     training_pairs: list[Any] | None,
     *,
-    enabled: bool = True,
+    pres_template_takeoffs: bool = False,
     max_per_level: int = 250,
+    fallback_unmatched: bool = True,
 ) -> list[QuantityTakeoff]:
-    if not enabled or not training_pairs:
+    if not pres_template_takeoffs or not training_pairs:
         return takeoffs
-    extra = synthetic_takeoffs_from_pres(levels, training_pairs, max_per_level=max_per_level)
+    extra = synthetic_takeoffs_from_pres(
+        levels,
+        training_pairs,
+        max_per_level=max_per_level,
+        fallback_unmatched=fallback_unmatched,
+    )
     seen = {t.item_key for t in takeoffs}
     merged = list(takeoffs)
     for item in extra:
@@ -91,8 +97,9 @@ def build_budget_from_inventory(
         levels,
         expanded_takeoffs,
         training_pairs,
-        enabled=bool(training_pairs),
-        max_per_level=250,
+        pres_template_takeoffs=bool(context.metadata.get("pres_template_takeoffs", False)),
+        max_per_level=int(context.metadata.get("pres_max_per_level", 250)),
+        fallback_unmatched=bool(context.metadata.get("pres_fallback_unmatched", True)),
     )
     candidates = match_takeoffs_to_bc3(
         expanded_takeoffs,
@@ -217,8 +224,9 @@ def build_budget_from_sources(
         hybrid_inventory,
         expanded_takeoffs,
         training_pairs,
-        enabled=bool(training_pairs),
-        max_per_level=250,
+        pres_template_takeoffs=bool(context.metadata.get("pres_template_takeoffs", False)),
+        max_per_level=int(context.metadata.get("pres_max_per_level", 250)),
+        fallback_unmatched=bool(context.metadata.get("pres_fallback_unmatched", True)),
     )
     candidates = match_takeoffs_to_bc3(
         expanded_takeoffs,

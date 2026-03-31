@@ -124,6 +124,8 @@ def test_budget_composer_returns_serializable_budget_payload() -> None:
     composed = compose_budget(context, takeoffs, candidates)
 
     assert composed["project_context"]["project_name"] == "Demo Budget"
+    assert "budget_diagnostics" in composed
+    assert composed["budget_diagnostics"]["takeoffs_budgetable"] >= 1
     assert composed["rows"]
     assert composed["lines"]
     assert any(row["nat"] == "Capítulo" for row in composed["rows"])

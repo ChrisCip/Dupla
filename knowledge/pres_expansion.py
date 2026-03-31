@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import defaultdict
 from typing import Any
 
 from core.schemas import BudgetCandidate, LevelInventory, QuantityTakeoff, QuantityTrace
@@ -19,6 +20,10 @@ from .training_data import TrainingPair
 def _level_index_from_string(text: str) -> int | None:
     lowered = text.lower()
     match = re.search(r"nivel\s*(\d+)", lowered)
+    if match:
+        return int(match.group(1))
+    # Vision/hybrid fallback: level_01, level_5 → índice de piso
+    match = re.search(r"\blevel_(\d+)\b", lowered)
     if match:
         return int(match.group(1))
     match = re.search(r"page_(\d+)", lowered)
@@ -62,16 +67,99 @@ def _split_context(input_context: str) -> tuple[str, str]:
     return level, discipline
 
 
+def _richest_pres_template_pairs(training_pairs: list[TrainingPair]) -> tuple[str, list[TrainingPair]]:
+    """
+    El capítulo de PRES con más partidas (prioriza textos que contienen 'nivel' + dígito).
+    Sirve como plantilla cuando un nivel híbrido no empareja con ningún texto del PRES.
+    """
+    by_level: dict[str, list[TrainingPair]] = defaultdict(list)
+    for pair in training_pairs:
+        ctx_level, _ = _split_context(pair.input_context)
+        key = ctx_level.strip().lower()
+        by_level[key].append(pair)
+
+    if not by_level:
+        return "", []
+
+    nivel_candidates = [
+        (k, v) for k, v in by_level.items() if re.search(r"nivel\s*\d+", k, re.IGNORECASE)
+    ]
+    if nivel_candidates:
+        winner_key, winner_pairs = max(nivel_candidates, key=lambda item: len(item[1]))
+    else:
+        winner_key, winner_pairs = max(by_level.items(), key=lambda item: len(item[1]))
+
+    ordered = sorted(winner_pairs, key=lambda p: (p.output_bc3_code, p.output_description))
+    return winner_key, ordered
+
+
+def _append_pres_synthetic_lines(
+    inv: LevelInventory,
+    level_pairs: list[TrainingPair],
+    *,
+    max_per_level: int,
+    key_prefix: str,
+    fallback_note: str | None,
+) -> list[QuantityTakeoff]:
+    out: list[QuantityTakeoff] = []
+    level_pairs = sorted(level_pairs, key=lambda p: (p.output_bc3_code, p.output_description))
+    for idx, pair in enumerate(level_pairs[:max_per_level]):
+        ctx_level, disc = _split_context(pair.input_context)
+        code = pair.output_bc3_code.strip()
+        if not code:
+            continue
+        item_key = f"{inv.level_id}:{key_prefix}:{code}:{idx}"
+        assumptions = [
+            f"Linea de referencia desde presupuesto real ({pair.source}) para calibracion."
+        ]
+        if fallback_note:
+            assumptions.append(fallback_note)
+        meta: dict[str, Any] = {
+            "pres_expansion": True,
+            "pres_level": ctx_level,
+            "pres_discipline": disc,
+            "pres_unit_price": float(pair.output_price),
+        }
+        if fallback_note:
+            meta["pres_fallback_template"] = True
+        out.append(
+            QuantityTakeoff(
+                item_key=item_key,
+                item_type="pres_reference_line",
+                level_id=inv.level_id,
+                unit=pair.output_unit or "",
+                quantity=float(pair.output_quantity),
+                formula="pres.xlsx plantilla (referencia)",
+                inputs={
+                    "pres_bc3_code": code,
+                    "pres_summary": pair.output_description,
+                    "pres_context": pair.input_context,
+                    "pres_discipline": disc,
+                    "pres_fallback": bool(fallback_note),
+                },
+                assumptions=assumptions,
+                source_refs=[pair.source],
+                trace=QuantityTrace(
+                    evidence=[pair.output_description],
+                    metadata=meta,
+                ),
+            )
+        )
+    return out
+
+
 def synthetic_takeoffs_from_pres(
     levels: list[LevelInventory],
     training_pairs: list[TrainingPair],
     *,
     max_per_level: int = 250,
+    fallback_unmatched: bool = True,
 ) -> list[QuantityTakeoff]:
     if not levels or not training_pairs:
         return []
 
     extra: list[QuantityTakeoff] = []
+    matched_level_ids: set[str] = set()
     for inv in levels:
         level_pairs: list[TrainingPair] = []
         for pair in training_pairs:
@@ -79,42 +167,38 @@ def synthetic_takeoffs_from_pres(
             if _pres_level_matches_hybrid(ctx_level, inv.level_name, inv.level_id):
                 level_pairs.append(pair)
 
-        level_pairs.sort(key=lambda p: (p.output_bc3_code, p.output_description))
-        for idx, pair in enumerate(level_pairs[:max_per_level]):
-            ctx_level, disc = _split_context(pair.input_context)
-            code = pair.output_bc3_code.strip()
-            if not code:
-                continue
-            item_key = f"{inv.level_id}:pres:{code}:{idx}"
-            extra.append(
-                QuantityTakeoff(
-                    item_key=item_key,
-                    item_type="pres_reference_line",
-                    level_id=inv.level_id,
-                    unit=pair.output_unit or "",
-                    quantity=float(pair.output_quantity),
-                    formula="pres.xlsx plantilla (referencia)",
-                    inputs={
-                        "pres_bc3_code": code,
-                        "pres_summary": pair.output_description,
-                        "pres_context": pair.input_context,
-                        "pres_discipline": disc,
-                    },
-                    assumptions=[
-                        f"Linea de referencia desde presupuesto real ({pair.source}) para calibracion."
-                    ],
-                    source_refs=[pair.source],
-                    trace=QuantityTrace(
-                        evidence=[pair.output_description],
-                        metadata={
-                            "pres_expansion": True,
-                            "pres_level": ctx_level,
-                            "pres_discipline": disc,
-                            "pres_unit_price": float(pair.output_price),
-                        },
-                    ),
-                )
+        if level_pairs:
+            matched_level_ids.add(inv.level_id)
+        extra.extend(
+            _append_pres_synthetic_lines(
+                inv,
+                level_pairs,
+                max_per_level=max_per_level,
+                key_prefix="pres",
+                fallback_note=None,
             )
+        )
+
+    if fallback_unmatched:
+        template_key, template_pairs = _richest_pres_template_pairs(training_pairs)
+        if template_pairs:
+            note = (
+                f"Plantilla PRES de respaldo: capítulo '{template_key}' "
+                "(nivel híbrido sin match directo al texto del PRES)."
+            )
+            for inv in levels:
+                if inv.level_id in matched_level_ids:
+                    continue
+                extra.extend(
+                    _append_pres_synthetic_lines(
+                        inv,
+                        template_pairs,
+                        max_per_level=max_per_level,
+                        key_prefix="pres_fb",
+                        fallback_note=note,
+                    )
+                )
+
     return extra
 
 

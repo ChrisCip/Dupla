@@ -75,6 +75,18 @@ def chapter_path_for_takeoff(takeoff: QuantityTakeoff) -> list[ChapterSegment]:
     item_type = takeoff.item_type.lower()
     tags = _takeoff_tags(takeoff)
 
+    if item_type == "wall_length":
+        return [
+            ChapterSegment("02", "ALBANILERIA"),
+            ChapterSegment("02.01", "MUROS Y DIVISIONES"),
+        ]
+
+    if item_type == "structural_area":
+        return [
+            ChapterSegment("01", "ESTRUCTURA"),
+            ChapterSegment("01.04", "SUPERFICIES ESTRUCTURALES"),
+        ]
+
     if item_type == "pres_reference_line":
         disc = str(takeoff.inputs.get("pres_discipline", "") or "").upper()
         if "HORMIGON" in disc or "HORMIG" in disc:
@@ -282,6 +294,10 @@ def _wall_summary(takeoff: QuantityTakeoff) -> str:
         return "Muro o division"
     if item_type == "wall_net_area":
         return "Muro o division"
+    if item_type == "wall_area":
+        return "Superficie de muros"
+    if item_type == "wall_length":
+        return "Longitud de muros (ml)"
     return "Trabajo en muros"
 
 
@@ -353,6 +369,9 @@ def build_budget_summary(
     if item_type == "pres_reference_line":
         summary = str(takeoff.inputs.get("pres_summary", "") or "").strip()
         return summary or takeoff.item_key
+    if item_type == "structural_area":
+        return "Superficie estructural (referencia)"
+
     if item_type.startswith(("beam_", "column_", "slab_", "structural_")):
         return _structural_summary(takeoff)
     if item_type.startswith("wall_"):

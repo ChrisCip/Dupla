@@ -38,11 +38,14 @@ PROJECT_NAME = "Torre Giualca I"
 PROJECT_ID = "torre_giualca_i"
 
 # Input files
-DWG_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\TGIU\8- ACAD-PLANOS GIUALCA I - RV7 - EXP.039-025.dwg SOLO IMPRESION.dwg"
-PDF_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\TGIU\Binder1.pdf"   # Used only if USE_PDF = True
+DWG_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\2- PLANTAS ARQUITECTONICAS.dwg"
+PDF_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\prueba dupla pdf\prueba dupla full.pdf"   # Used only if USE_PDF = True
 IMAGES_DIR = r"./inputs/rendered_pages"   # Used only if USE_PDF = False
 BC3_PATH = r"./data/TGIU.bc3"             # Optional: can be blank ""
 XLSX_TRAINING_PATH = r"./data/PRES.xlsx"
+# PRES.xlsx still feeds few-shot examples for BC3 matching when present.
+# Set True only to clone PRES rows into takeoffs (calibration); default is measured takeoffs only.
+PRES_TEMPLATE_TAKEOFFS = False
 
 # Visual stage selection
 USE_PDF = True  # True = render PDF pages; False = use IMAGES_DIR directly
@@ -316,6 +319,7 @@ def main() -> None:
             "failed_manifest_grace_polls": FAILED_MANIFEST_GRACE_POLLS,
             "failed_manifest_grace_sleep_seconds": FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
             "xlsx_path": str(xlsx_training_path) if xlsx_training_path.exists() else None,
+            "pres_template_takeoffs": PRES_TEMPLATE_TAKEOFFS,
         },
     )
 

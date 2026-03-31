@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from collections import Counter
 from typing import Any, Iterable
 
 from core.schemas import (
@@ -86,81 +87,165 @@ def _takeoff_prefix(item_key: str) -> str:
     return item_key.rsplit(":", 1)[0] if ":" in item_key else item_key
 
 
-def _budgetable_takeoff(
+def budget_filter_sets(takeoff_list: list[QuantityTakeoff]) -> tuple[set[str], set[str]]:
+    derived_from_keys = {
+        derived_from
+        for takeoff in takeoff_list
+        for derived_from in [_derived_from_key(takeoff)]
+        if derived_from
+    }
+    concrete_volume_prefixes = {
+        _takeoff_prefix(takeoff.item_key)
+        for takeoff in takeoff_list
+        if takeoff.item_type.lower().endswith("_concrete_volume")
+    }
+    return derived_from_keys, concrete_volume_prefixes
+
+
+def _budget_inclusive_flag(context: ProjectContext | None) -> bool:
+    if context is None:
+        return True
+    return bool(context.metadata.get("budget_inclusive", True))
+
+
+def takeoff_budget_eligibility(
     takeoff: QuantityTakeoff,
     *,
     derived_from_keys: set[str],
     concrete_volume_prefixes: set[str],
-) -> bool:
+    budget_inclusive: bool = True,
+) -> tuple[bool, str]:
+    """Whether this takeoff becomes a budget line, and a short reason if not."""
     item_type = takeoff.item_type.lower()
 
     if takeoff.unit.lower() == "flag":
-        return False
+        return False, "unit_flag"
 
     if item_type == "pres_reference_line":
-        return True
+        return True, ""
 
-    if item_type in {
+    always_skip = {
         "structural_count",
         "structural_length",
-        "structural_area",
         "structural_volume",
-        "wall_length",
         "wall_gross_area",
         "wet_area_count",
-    }:
-        return False
+    }
+    if not budget_inclusive:
+        always_skip = always_skip | {"wall_length", "structural_area"}
+
+    if item_type in always_skip:
+        return False, "type_excluded"
 
     if item_type.endswith("reinforcement_required_hint"):
-        return False
+        return False, "reinforcement_hint"
 
     if takeoff.item_key in derived_from_keys:
-        return False
+        return False, "derived_child"
 
     if item_type.endswith("_volume") and not item_type.endswith("_concrete_volume"):
         if _takeoff_prefix(takeoff.item_key) in concrete_volume_prefixes:
-            return False
+            return False, "duplicate_non_concrete_volume"
 
     if item_type.startswith(("beam_", "column_", "slab_")):
-        return any(
+        ok = any(
             token in item_type
             for token in ("concrete_volume", "volume", "area", "formwork_area_hint")
         ) and not item_type.endswith(("_length", "_count"))
+        return (True, "") if ok else (False, "structural_subtype_excluded")
 
     if item_type.startswith("footing_"):
-        return any(
+        ok = any(
             token in item_type
             for token in ("concrete_volume", "volume", "area", "formwork_area_hint")
         ) and not item_type.endswith(("_length", "_count"))
+        return (True, "") if ok else (False, "footing_subtype_excluded")
 
     if item_type in {"stair_count", "fixture_count", "kitchen_count", "kitchen_area"}:
-        return True
+        return True, ""
 
     if item_type.startswith("wall_"):
-        return item_type in {
+        allowed = {
             "wall_net_area",
             "wall_volume",
             "wall_waterproofing",
             "wall_finish_paint",
             "wall_finish_plaster",
         }
+        if budget_inclusive:
+            allowed |= {"wall_length", "wall_area"}
+        ok = item_type in allowed
+        return (True, "") if ok else (False, "wall_subtype_excluded")
 
     if item_type.startswith("floor_"):
-        return item_type in {"floor_area", "floor_finish", "floor_waterproofing"}
+        ok = item_type in {"floor_area", "floor_finish", "floor_waterproofing"}
+        return (True, "") if ok else (False, "floor_subtype_excluded")
 
     if item_type.startswith("ceiling_"):
-        return item_type in {"ceiling_area", "ceiling_finish_paint"}
+        ok = item_type in {"ceiling_area", "ceiling_finish_paint"}
+        return (True, "") if ok else (False, "ceiling_subtype_excluded")
 
     if item_type.startswith("door_"):
-        return True
+        return True, ""
 
     if item_type.startswith("window_"):
-        return True
+        return True, ""
 
     if item_type.startswith("wet_area_"):
-        return item_type != "wet_area_count"
+        ok = item_type != "wet_area_count"
+        return (True, "") if ok else (False, "wet_area_count")
 
-    return False
+    return False, "unmapped_item_type"
+
+
+def _budgetable_takeoff(
+    takeoff: QuantityTakeoff,
+    *,
+    derived_from_keys: set[str],
+    concrete_volume_prefixes: set[str],
+    budget_inclusive: bool = True,
+) -> bool:
+    ok, _reason = takeoff_budget_eligibility(
+        takeoff,
+        derived_from_keys=derived_from_keys,
+        concrete_volume_prefixes=concrete_volume_prefixes,
+        budget_inclusive=budget_inclusive,
+    )
+    return ok
+
+
+def build_budget_takeoff_diagnostics(
+    context: ProjectContext,
+    takeoffs: Iterable[QuantityTakeoff],
+    *,
+    derived_from_keys: set[str],
+    concrete_volume_prefixes: set[str],
+) -> dict[str, Any]:
+    inclusive = _budget_inclusive_flag(context)
+    takeoff_list = list(takeoffs)
+    budgetable = 0
+    reasons: Counter[str] = Counter()
+    types_excluded: Counter[str] = Counter()
+    for takeoff in takeoff_list:
+        ok, reason = takeoff_budget_eligibility(
+            takeoff,
+            derived_from_keys=derived_from_keys,
+            concrete_volume_prefixes=concrete_volume_prefixes,
+            budget_inclusive=inclusive,
+        )
+        if ok:
+            budgetable += 1
+        else:
+            reasons[reason] += 1
+            types_excluded[takeoff.item_type] += 1
+    return {
+        "takeoffs_total": len(takeoff_list),
+        "takeoffs_budgetable": budgetable,
+        "takeoffs_excluded": len(takeoff_list) - budgetable,
+        "budget_inclusive": inclusive,
+        "excluded_by_reason": dict(reasons),
+        "excluded_top_item_types": dict(types_excluded.most_common(25)),
+    }
 
 
 def _sort_key(prepared: _PreparedLine) -> tuple[Any, ...]:
@@ -335,17 +420,8 @@ def compose_budget_rows(
     bc3_catalog: dict[str, Any] | None = None,
 ) -> tuple[list[BudgetChapter], list[BudgetLine], list[BudgetRow]]:
     takeoff_list = list(takeoffs)
-    derived_from_keys = {
-        derived_from
-        for takeoff in takeoff_list
-        for derived_from in [_derived_from_key(takeoff)]
-        if derived_from
-    }
-    concrete_volume_prefixes = {
-        _takeoff_prefix(takeoff.item_key)
-        for takeoff in takeoff_list
-        if takeoff.item_type.lower().endswith("_concrete_volume")
-    }
+    derived_from_keys, concrete_volume_prefixes = budget_filter_sets(takeoff_list)
+    inclusive = _budget_inclusive_flag(context)
 
     prepared_lines: list[_PreparedLine] = []
     for takeoff in takeoff_list:
@@ -353,6 +429,7 @@ def compose_budget_rows(
             takeoff,
             derived_from_keys=derived_from_keys,
             concrete_volume_prefixes=concrete_volume_prefixes,
+            budget_inclusive=inclusive,
         ):
             continue
 
@@ -444,12 +521,21 @@ def compose_budget(
     *,
     bc3_catalog: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    takeoff_list = list(takeoffs)
+    derived_from_keys, concrete_volume_prefixes = budget_filter_sets(takeoff_list)
+    diagnostics = build_budget_takeoff_diagnostics(
+        context,
+        takeoff_list,
+        derived_from_keys=derived_from_keys,
+        concrete_volume_prefixes=concrete_volume_prefixes,
+    )
     chapters, lines, rows = compose_budget_rows(
-        context, takeoffs, candidates_by_takeoff, bc3_catalog=bc3_catalog
+        context, takeoff_list, candidates_by_takeoff, bc3_catalog=bc3_catalog
     )
     return {
         "project_context": context.to_dict(),
         "chapters": [chapter.to_dict() for chapter in chapters],
         "lines": [line.to_dict() for line in lines],
         "rows": [row.to_dict() for row in rows],
+        "budget_diagnostics": diagnostics,
     }
