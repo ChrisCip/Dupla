@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -13,13 +14,13 @@ class GroupKind(str, Enum):
 class ArchitectureItem(BaseModel):
     id: UUID
     descripcion: str = Field(..., min_length=1)
-    capitulo: str | None = None
-    partida: str | None = None
-    unidad: str | None = None
-    cantidad: float | None = Field(default=None, ge=0)
-    precio_unitario: float | None = Field(default=None, ge=0)
-    subtotal: float | None = Field(default=None, ge=0)
-    notas: str | None = None
+    capitulo: Optional[str] = None
+    partida: Optional[str] = None
+    unidad: Optional[str] = None
+    cantidad: Optional[float] = Field(default=None, ge=0)
+    precio_unitario: Optional[float] = Field(default=None, ge=0)
+    subtotal: Optional[float] = Field(default=None, ge=0)
+    notas: Optional[str] = None
 
 
 class ArchitectureGroup(BaseModel):
@@ -32,14 +33,14 @@ class ArchitectureGroup(BaseModel):
 
 class MaterialRow(BaseModel):
     id: UUID
-    categoria: str | None = None
+    categoria: Optional[str] = None
     descripcion: str = Field(..., min_length=1)
-    unidad: str | None = None
-    cantidad_estimada: float | None = Field(default=None, ge=0)
-    desperdicio_porcentaje: float | None = Field(default=None, ge=0, le=100)
-    cantidad_total: float | None = Field(default=None, ge=0)
-    costo_estimado: float | None = Field(default=None, ge=0)
-    proveedor_sugerido: str | None = None
+    unidad: Optional[str] = None
+    cantidad_estimada: Optional[float] = Field(default=None, ge=0)
+    desperdicio_porcentaje: Optional[float] = Field(default=None, ge=0, le=100)
+    cantidad_total: Optional[float] = Field(default=None, ge=0)
+    costo_estimado: Optional[float] = Field(default=None, ge=0)
+    proveedor_sugerido: Optional[str] = None
 
 
 class ArchitectureDocumentPayload(BaseModel):
@@ -55,4 +56,4 @@ class ArchitectureDocumentPayload(BaseModel):
 class ArchitectureDataResponse(BaseModel):
     project_uuid: UUID
     document: ArchitectureDocumentPayload
-    updated_at: str | None = None
+    updated_at: Optional[str] = None

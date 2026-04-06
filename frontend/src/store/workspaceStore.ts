@@ -2,10 +2,13 @@ import { create } from 'zustand'
 
 import { apiFetch } from '../api/client'
 import { debounce } from '../lib/debounce'
+import { materialCantidadTotal } from '../lib/materialTotals'
 import { architecturePayloadSchema, type ArchitecturePayload } from '../schemas/architecture'
 import { useAuthStore } from './authStore'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+
+type MaterialRow = ArchitecturePayload['materiales'][number]
 
 type WorkspaceState = {
   projectUuid: string | null
@@ -22,6 +25,9 @@ type WorkspaceState = {
     itemId: string,
     patch: Partial<ArchitecturePayload['groups'][number]['items'][number]>,
   ) => void
+  addMaterial: () => void
+  updateMaterial: (materialId: string, patch: Partial<MaterialRow>) => void
+  removeMaterial: (materialId: string) => void
   reset: () => void
 }
 
@@ -47,7 +53,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const res = await apiFetch(`/api/projects/${projectUuid}/architecture`, { token })
     if (!res.ok) throw new Error('No se pudo cargar el proyecto')
     const body = (await res.json()) as {
-      document: ArchitecturePayload
+      document: { groups?: ArchitecturePayload['groups']; materiales?: ArchitecturePayload['materiales'] }
       updated_at?: string | null
     }
     const merged: ArchitecturePayload = {
@@ -127,6 +133,45 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             }
           : g,
       ),
+    }
+    get().setData(next)
+  },
+  addMaterial: () => {
+    const data = get().data
+    const row: MaterialRow = {
+      id: crypto.randomUUID(),
+      descripcion: 'Nuevo material',
+      cantidad_estimada: 0,
+      desperdicio_porcentaje: 0,
+      cantidad_total: materialCantidadTotal(0, 0),
+    }
+    const next: ArchitecturePayload = {
+      ...data,
+      materiales: [...data.materiales, row],
+    }
+    get().setData(next)
+  },
+  updateMaterial: (materialId, patch) => {
+    const data = get().data
+    const next: ArchitecturePayload = {
+      ...data,
+      materiales: data.materiales.map((m) => {
+        if (m.id !== materialId) return m
+        const merged: MaterialRow = { ...m, ...patch }
+        merged.cantidad_total = materialCantidadTotal(
+          merged.cantidad_estimada,
+          merged.desperdicio_porcentaje,
+        )
+        return merged
+      }),
+    }
+    get().setData(next)
+  },
+  removeMaterial: (materialId) => {
+    const data = get().data
+    const next: ArchitecturePayload = {
+      ...data,
+      materiales: data.materiales.filter((m) => m.id !== materialId),
     }
     get().setData(next)
   },

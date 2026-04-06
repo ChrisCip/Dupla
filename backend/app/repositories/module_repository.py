@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +14,6 @@ class ModuleRepository:
         result = await self._session.execute(select(Module).order_by(Module.id))
         return list(result.scalars().all())
 
-    async def get_by_id(self, module_id: int) -> Module | None:
+    async def get_by_id(self, module_id: int) -> Optional[Module]:
         result = await self._session.execute(select(Module).where(Module.id == module_id))
         return result.scalar_one_or_none()

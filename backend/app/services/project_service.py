@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional, Tuple
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -41,7 +42,14 @@ class ProjectService:
             created_by=user.id,
         )
 
-    async def get_architecture(self, user: User, project_uuid: UUID) -> tuple[dict, datetime | None]:
+    async def get_project(self, user: User, project_uuid: UUID) -> Project:
+        await self.ensure_architecture_access(user)
+        project = await self._projects.get_by_uuid(project_uuid)
+        if project is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+        return project
+
+    async def get_architecture(self, user: User, project_uuid: UUID) -> Tuple[dict, Optional[datetime]]:
         await self.ensure_architecture_access(user)
         project = await self._projects.get_by_uuid(project_uuid)
         if project is None:

@@ -4,13 +4,32 @@
   --color-primary: #c10d12;
   --color-ink: #1a1a1a;
   --color-muted: #666666;
+  --color-surface: #fafafa;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-border-strong: rgba(0, 0, 0, 0.15);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
   --font-sans: ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--color-surface);
   color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+@layer components {
+  .du-input {
+    @apply w-full rounded-md border border-black/15 bg-white px-3 py-2 text-sm text-ink outline-none transition-colors;
+  }
+  .du-input:focus-visible {
+    @apply border-primary ring-2 ring-primary/20;
+  }
+  .du-label {
+    @apply block text-sm font-medium text-ink;
+  }
+  .du-meta {
+    @apply text-xs text-muted;
+  }
 }

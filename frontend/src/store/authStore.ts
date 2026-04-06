@@ -9,7 +9,8 @@ type AuthState = {
   token: string | null
   email: string | null
   role: Role | null
-  setSession: (token: string, email: string, role: Role) => void
+  userUuid: string | null
+  setSession: (token: string, email: string, role: Role, userUuid: string) => void
   logout: () => void
   login: (email: string, password: string) => Promise<void>
 }
@@ -20,8 +21,9 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       email: null,
       role: null,
-      setSession: (token, email, role) => set({ token, email, role }),
-      logout: () => set({ token: null, email: null, role: null }),
+      userUuid: null,
+      setSession: (token, email, role, userUuid) => set({ token, email, role, userUuid }),
+      logout: () => set({ token: null, email: null, role: null, userUuid: null }),
       login: async (email, password) => {
         const body = new URLSearchParams()
         body.set('username', email)
@@ -43,6 +45,7 @@ export const useAuthStore = create<AuthState>()(
           token: data.access_token,
           email: profile.email,
           role: profile.role,
+          userUuid: profile.uuid,
         })
       },
     }),

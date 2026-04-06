@@ -1,11 +1,12 @@
 import json
+from typing import Any, Optional, Union
 
 import redis.asyncio as redis
 
 from app.config import get_settings
 
 
-async def cache_get_json(key: str) -> dict | list | None:
+async def cache_get_json(key: str) -> Optional[Union[dict[str, Any], list[Any]]]:
     settings = get_settings()
     client = redis.from_url(settings.redis_url, decode_responses=True)
     try:
@@ -19,7 +20,7 @@ async def cache_get_json(key: str) -> dict | list | None:
         await client.aclose()
 
 
-async def cache_set_json(key: str, value: dict | list, ttl_seconds: int) -> None:
+async def cache_set_json(key: str, value: Union[dict[str, Any], list[Any]], ttl_seconds: int) -> None:
     settings = get_settings()
     client = redis.from_url(settings.redis_url, decode_responses=True)
     try:

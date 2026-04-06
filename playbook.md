@@ -1,12 +1,13 @@
 # Playbook de Ejecución: Plataforma Grupo Dupla - Módulo Arquitectura
 
-## 1. Arquitectura General y Stack Recomendado
-Dado el requerimiento de una experiencia tipo "Excel moderno" y gestión de roles, la arquitectura debe priorizar la reactividad en el cliente y la flexibilidad estructural en la base de datos.
+## 1. Arquitectura General y Stack
+Dado el requerimiento de una experiencia tipo "Excel moderno" y gestión de roles, la arquitectura prioriza la reactividad en el cliente y la flexibilidad estructural en la base de datos.
 
-* **Frontend:** Next.js (App Router) + TailwindCSS + **TanStack Table** (o Glide Data Grid / Handsontable para manejo de datos masivos estilo Excel) + Zustand (manejo de estado local de los pliegos antes de guardar) + React Hook Form con Zod.
-* **Backend:** Node.js (NestJS o Express/Fastify) o Go + Prisma ORM o Drizzle.
-* **Base de Datos:** PostgreSQL. Crucial por su soporte robusto para campos `JSONB`, ideal para almacenar las filas dinámicas de "Pliegos" y "Materiales" sin tener que crear esquemas altamente normalizados y rígidos que rompan la flexibilidad del formato tipo Excel.
-* **Despliegue:** Dockerizado, ideal para montar en tu VPS privado.
+* **Frontend:** **Vite** + **React** + **React Router** + **TailwindCSS** + **Zustand** (estado local de pliegos antes de guardar) + **React Hook Form** con **Zod**. Para grillas tipo Excel: **TanStack Table** (headless), Glide Data Grid o Handsontable si el volumen de celdas lo exige.
+* **Backend:** **FastAPI** + **SQLAlchemy** (async) + **Alembic** + **Pydantic**.
+* **Base de Datos:** **PostgreSQL** (`JSONB` para filas dinámicas de Pliegos y Materiales).
+* **Caché / sesiones:** **Redis** (según configuración del proyecto).
+* **Despliegue:** Docker Compose (frontend en Nginx, API en Uvicorn); adaptable a VPS.
 
 ---
 
@@ -103,25 +104,27 @@ Cada fila en la interfaz de "Pliegos" debe representar un objeto en este array.
 ## 3. Playbook del Backend (APIs y Lógica)
 
 ### Middleware y Seguridad
-1.  **Auth Guard:** Validar JWT.
-2.  **Master Guard:** Middleware específico que rechace cualquier request a `POST /api/users` o `POST /api/modules/assign` si el rol del token no es `MASTER`.
-3.  **Module Access Guard:** Antes de cargar un proyecto, verificar si el usuario tiene acceso al módulo 1 (Arquitectura).
+1.  **Dependencias FastAPI:** Validar JWT en rutas protegidas.
+2.  **Master-only:** Rechazar requests a creación de usuarios o asignación de módulos si el token no es `MASTER`.
+3.  **Acceso al módulo:** Antes de operar en un proyecto de Arquitectura, comprobar que el usuario tiene el módulo correspondiente.
 
-### Endpoints Críticos
-* `POST /api/projects`: Crea el registro en `Projects` y una entrada vacía en `ProjectArchitectureData`.
-* `GET /api/projects/:id/architecture`: Retorna los JSONB de pliegos y materiales.
-* `PUT /api/projects/:id/architecture`: Sobrescribe o actualiza (usando `jsonb_set` en Postgres) los arrays completos o filas específicas.
+### Endpoints Críticos (patrón)
+* Crear proyecto y datos de arquitectura vacíos.
+* `GET` del payload de arquitectura (pliegos / materiales en JSONB).
+* `PUT`/`PATCH` para persistir (payload completo o deltas según diseño de la API).
 
-**Estrategia de Guardado:** Implementar **Optimistic UI** en el frontend y hacer *debounced autosaves* (ej: cada 3 segundos después del último teclazo) usando llamadas `PATCH` con las diferencias (deltas), o enviando el array completo si el payload es manejable.
+**Estrategia de Guardado:** **Optimistic UI** en el cliente y *debounced autosave* (p. ej. 2–3 s tras la última edición) vía `PATCH` o `PUT` según exponga el backend.
+
+Documentación interactiva: `GET /docs` (Swagger) en el servicio FastAPI.
 
 ---
 
 ## 4. Playbook del Frontend (La Experiencia "Excel")
 
-El éxito del proyecto recae en no hacer formularios de validación tediosos, sino grillas de datos interactables.
+El éxito del proyecto recae en no hacer formularios de validación tediosos, sino grillas de datos interactables. La app es una **SPA** (Vite): rutas con **React Router**, no rutas de servidor.
 
 ### Componente: Data Grid (El reemplazo del Excel)
-Usa **TanStack Table** por su modo *headless*. Te permite construir la tabla de HTML y manejar estados complejos (ordenamiento, filtrado, edición inline).
+Una librería *headless* (p. ej. **TanStack Table**) encaja bien: controlas el HTML y estados complejos (ordenamiento, filtrado, edición inline). Alternativas: tablas controladas a mano o grids especializados si el volumen lo exige.
 
 1.  **Edición Inline (Cell Editing):**
     * Cada celda (ej: "Cantidad", "Precio") es un componente `input` estilizado para parecer texto plano hasta que recibe foco.
@@ -142,4 +145,4 @@ Usa **TanStack Table** por su modo *headless*. Te permite construir la tabla de 
     * El usuario entra, ve los Tabs.
     * Se dirige a "Pliegos". Carga el JSONB desde el backend.
     * Comienza a tipear directamente en la grilla. El sistema muestra un indicador de "Guardando..." y "Guardado" en la esquina superior (Autosave).
-    * Si un cálculo matemático de materiales se cruza con pliegos, el estado global de React propaga el cambio en la vista inmediatamente.
+    * Si un cálculo de materiales se cruza con pliegos, el estado en Zustand/React propaga el cambio en la vista al instante.

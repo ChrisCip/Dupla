@@ -3,12 +3,19 @@ from pathlib import Path
 from uuid import UUID
 
 from fpdf import FPDF
-from openpyxl import Workbook
+from fpdf.enums import XPos
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.user import User
+from app.services.pliego_template_fill import (
+    fill_pliego_workbook,
+    resolve_pliego_template_path,
+    suggested_pliego_xlsx_filename,
+    workbook_to_bytes,
+)
 from app.services.project_service import ProjectService
 
 settings = get_settings()
@@ -78,7 +85,7 @@ class ExportService:
         pdf.set_font("Helvetica", size=10)
         for g in payload.get("groups", []):
             pdf.set_font("Helvetica", "B", 11)
-            pdf.multi_cell(0, 7, f"{g.get('title', '')} ({g.get('kind', '')})")
+            pdf.multi_cell(0, 7, f"{g.get('title', '')} ({g.get('kind', '')})", new_x=XPos.LMARGIN)
             pdf.set_font("Helvetica", size=9)
             for it in g.get("items", []):
                 line = (
@@ -86,38 +93,29 @@ class ExportService:
                     f"{it.get('unidad', '')} | {it.get('cantidad', '')} | "
                     f"{it.get('precio_unitario', '')} | {it.get('subtotal', '')}"
                 )
-                pdf.multi_cell(0, 6, line)
+                pdf.multi_cell(0, 6, line, new_x=XPos.LMARGIN)
             pdf.ln(2)
         out = pdf.output()
         if isinstance(out, (bytes, bytearray)):
             return bytes(out)
         return str(out).encode("latin-1", errors="replace")
 
-    async def export_pliego_xlsx(self, user: User, project_uuid: UUID) -> bytes:
+    async def export_pliego_xlsx(self, user: User, project_uuid: UUID) -> tuple[bytes, str]:
         payload = await self._load_payload(user, project_uuid)
-        tpl = Path(settings.templates_dir) / "GA-FO-01-pliego.xlsx"
-        if tpl.is_file():
-            from openpyxl import load_workbook
-
+        tpl = resolve_pliego_template_path(Path(settings.templates_dir))
+        if tpl is not None:
             wb = load_workbook(tpl)
-            return self._fill_template_pliego(wb, payload)
-        return self.build_pliego_xlsx(payload)
+            if fill_pliego_workbook(wb, payload):
+                return workbook_to_bytes(wb), suggested_pliego_xlsx_filename(str(project_uuid))
+        return self.build_pliego_xlsx(payload), f"pliego-{project_uuid}.xlsx"
 
     async def export_control_xlsx(self, user: User, project_uuid: UUID) -> bytes:
         payload = await self._load_payload(user, project_uuid)
         tpl = Path(settings.templates_dir) / "GA-FO-03-control-planos.xlsx"
         if tpl.is_file():
-            from openpyxl import load_workbook
-
             wb = load_workbook(tpl)
             return self._fill_template_control(wb, payload)
         return self.build_control_planos_xlsx(payload)
-
-    def _fill_template_pliego(self, wb, payload: dict) -> bytes:
-        _ = payload
-        buf = BytesIO()
-        wb.save(buf)
-        return buf.getvalue()
 
     def _fill_template_control(self, wb, payload: dict) -> bytes:
         _ = payload

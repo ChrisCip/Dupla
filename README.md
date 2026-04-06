@@ -58,12 +58,13 @@ Si ejecutas `seed` sin migraciones, verás un error indicando que falta `alembic
 
 ## Plantillas GA-FO (Excel 1:1)
 
-Coloca los archivos oficiales como:
+Coloca el Excel oficial del pliego como (nombre recomendado):
 
-- `backend/app/templates/GA-FO-01-pliego.xlsx`
-- `backend/app/templates/GA-FO-03-control-planos.xlsx`
+- `backend/app/templates/GA-FO-01-(06-2025)-V02- Pliego de Condiciones - Arquitectura.xlsx`
 
-Si existen, el backend los usa como base (relleno futuro); si no, genera un XLSX estructurado desde los datos del proyecto.
+También se acepta `GA-FO-01-pliego.xlsx` como alias. Opcional: `GA-FO-03-control-planos.xlsx` para control de planos.
+
+Si el pliego oficial está presente, la exportación rellena esa plantilla (cabeceras reconocidas por texto, filas antes de `TOTAL`). Si no, el backend genera un XLSX genérico.
 
 ## Pruebas
 

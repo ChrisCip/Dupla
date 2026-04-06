@@ -13,6 +13,7 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.models.module import Module
+from app.models.task_board import TaskList
 from app.models.user import User, UserModule, UserRole
 from app.security.password import hash_password
 
@@ -53,12 +54,34 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as s:
         await s.execute(
             text(
-                "TRUNCATE user_modules, project_architecture_data, projects, users, modules RESTART IDENTITY CASCADE"
+                "TRUNCATE chat_messages, task_cards, task_lists, user_modules, "
+                "project_architecture_data, projects, users, modules RESTART IDENTITY CASCADE"
             )
         )
         await s.commit()
 
         s.add(Module(id=1, name="Arquitectura"))
+        s.add(
+            TaskList(
+                id=uuid.UUID("a0000001-0000-4000-8000-000000000001"),
+                title="Por hacer",
+                position=0,
+            )
+        )
+        s.add(
+            TaskList(
+                id=uuid.UUID("a0000001-0000-4000-8000-000000000002"),
+                title="En progreso",
+                position=1,
+            )
+        )
+        s.add(
+            TaskList(
+                id=uuid.UUID("a0000001-0000-4000-8000-000000000003"),
+                title="Hecho",
+                position=2,
+            )
+        )
         uid = uuid.uuid4()
         s.add(
             User(
@@ -69,6 +92,16 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
             )
         )
         s.add(UserModule(user_id=uid, module_id=1))
+        worker_id = uuid.uuid4()
+        s.add(
+            User(
+                id=worker_id,
+                email="worker@dupla.demo",
+                password_hash=hash_password("workerpass123"),
+                role=UserRole.WORKER,
+            )
+        )
+        s.add(UserModule(user_id=worker_id, module_id=1))
         await s.commit()
         yield s
 

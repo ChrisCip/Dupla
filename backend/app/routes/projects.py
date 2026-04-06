@@ -50,6 +50,23 @@ async def create_project(
 
 
 @router.get(
+    "/{project_uuid}",
+    response_model=ProjectResponse,
+    summary="Get project",
+    description="Returns project metadata by UUID. Requires Architecture module access.",
+    responses={404: {"description": "Project not found"}, 403: {"description": "No module access"}},
+)
+async def get_project(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = ProjectService(session)
+    project = await svc.get_project(current, project_uuid)
+    return ProjectResponse.from_project(project)
+
+
+@router.get(
     "/{project_uuid}/architecture",
     response_model=ArchitectureDataResponse,
     summary="Get architecture workspace data",
@@ -94,7 +111,7 @@ async def put_architecture(
 @router.get(
     "/{project_uuid}/exports/pliego.xlsx",
     summary="Export Pliego (Excel)",
-    description="Downloads Pliego de Condiciones as XLSX (template used if present under templates/).",
+    description="Pliego GA-FO-01: usa plantilla en app/templates/ si existe; nombre de archivo sugerido en Content-Disposition.",
     responses={404: {"description": "Project not found"}},
 )
 async def export_pliego_xlsx(
@@ -103,11 +120,11 @@ async def export_pliego_xlsx(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     svc = ExportService(session)
-    data = await svc.export_pliego_xlsx(current, project_uuid)
+    data, filename = await svc.export_pliego_xlsx(current, project_uuid)
     return Response(
         content=data,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="pliego-{project_uuid}.xlsx"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

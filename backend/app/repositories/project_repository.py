@@ -1,4 +1,5 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import select
@@ -19,7 +20,7 @@ class ProjectRepository:
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_by_uuid(self, project_uuid: UUID) -> Project | None:
+    async def get_by_uuid(self, project_uuid: UUID) -> Optional[Project]:
         result = await self._session.execute(
             select(Project)
             .options(selectinload(Project.architecture_data))
@@ -31,7 +32,7 @@ class ProjectRepository:
         self,
         *,
         name: str,
-        client_name: str | None,
+        client_name: Optional[str],
         created_by: UUID,
     ) -> Project:
         project = Project(
@@ -58,7 +59,7 @@ class ProjectRepository:
         document: dict,
         materiales: list,
         user_uuid: UUID,
-    ) -> ProjectArchitectureData | None:
+    ) -> Optional[ProjectArchitectureData]:
         result = await self._session.execute(
             select(ProjectArchitectureData).where(ProjectArchitectureData.project_id == project_uuid)
         )
@@ -68,7 +69,7 @@ class ProjectRepository:
         row.document = document
         row.materiales = materiales
         row.last_updated_by = user_uuid
-        row.updated_at = datetime.now(UTC)
+        row.updated_at = datetime.now(timezone.utc)
         await self._session.flush()
         await self._session.refresh(row)
         return row

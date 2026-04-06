@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -9,13 +10,13 @@ from app.models.project import Project
 
 class ProjectCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    client_name: str | None = Field(default=None, max_length=255)
+    client_name: Optional[str] = Field(default=None, max_length=255)
 
 
 class ProjectResponse(BaseModel):
     uuid: UUID
     name: str
-    client_name: str | None
+    client_name: Optional[str]
     status: str
 
     @classmethod
