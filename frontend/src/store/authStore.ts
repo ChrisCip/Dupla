@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 import { apiFetch } from '../api/client'
+import { AUTH_PERSIST_KEY } from './authConstants'
 
 type Role = 'MASTER' | 'COORDINATOR' | 'WORKER'
 
@@ -49,6 +50,6 @@ export const useAuthStore = create<AuthState>()(
         })
       },
     }),
-    { name: 'dupla-auth' },
+    { name: AUTH_PERSIST_KEY },
   ),
 )

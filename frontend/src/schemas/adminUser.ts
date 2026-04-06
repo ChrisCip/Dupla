@@ -8,7 +8,7 @@ export const adminCreateUserSchema = z
     architectureAccess: z.boolean(),
   })
   .refine((d) => d.architectureAccess, {
-    message: 'Debe concederse acceso al módulo Arquitectura (o amplía el backend para otros módulos).',
+    message: 'Debe concederse acceso a la plataforma (módulos asignados).',
     path: ['architectureAccess'],
   })
 

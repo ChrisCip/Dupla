@@ -25,6 +25,7 @@ services:
       timeout: 3s
       retries: 5
 
+  # Entrypoint: alembic upgrade → python -m app.seed → uvicorn
   backend:
     build:
       context: ./backend

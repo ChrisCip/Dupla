@@ -2,6 +2,7 @@ import os
 import socket
 import uuid
 from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
@@ -12,10 +13,17 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app.models.chat_conversation import (
+    GENERAL_CONVERSATION_UUID,
+    ChatConversation,
+    ChatConversationKind,
+)
 from app.models.module import Module
 from app.models.task_board import TaskList
 from app.models.user import User, UserModule, UserRole
 from app.security.password import hash_password
+
+MODULE_ID = 1
 
 
 @pytest.fixture(scope="session")
@@ -54,13 +62,13 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as s:
         await s.execute(
             text(
-                "TRUNCATE chat_messages, task_cards, task_lists, user_modules, "
+                "TRUNCATE chat_messages, chat_conversation_members, chat_conversations, task_cards, task_lists, user_modules, "
                 "project_architecture_data, projects, users, modules RESTART IDENTITY CASCADE"
             )
         )
         await s.commit()
 
-        s.add(Module(id=1, name="Arquitectura"))
+        s.add(Module(id=MODULE_ID, name="Arquitectura"))
         s.add(
             TaskList(
                 id=uuid.UUID("a0000001-0000-4000-8000-000000000001"),
@@ -82,16 +90,26 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
                 position=2,
             )
         )
-        uid = uuid.uuid4()
+        master_id = uuid.uuid4()
         s.add(
             User(
-                id=uid,
-                email="tester@dupla.demo",
-                password_hash=hash_password("testpass123"),
+                id=master_id,
+                email="master@dupla.demo",
+                password_hash=hash_password("master123"),
                 role=UserRole.MASTER,
             )
         )
-        s.add(UserModule(user_id=uid, module_id=1))
+        s.add(UserModule(user_id=master_id, module_id=MODULE_ID))
+        tester_id = uuid.uuid4()
+        s.add(
+            User(
+                id=tester_id,
+                email="tester@dupla.demo",
+                password_hash=hash_password("testpass123"),
+                role=UserRole.COORDINATOR,
+            )
+        )
+        s.add(UserModule(user_id=tester_id, module_id=MODULE_ID))
         worker_id = uuid.uuid4()
         s.add(
             User(
@@ -101,7 +119,16 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
                 role=UserRole.WORKER,
             )
         )
-        s.add(UserModule(user_id=worker_id, module_id=1))
+        s.add(UserModule(user_id=worker_id, module_id=MODULE_ID))
+        s.add(
+            ChatConversation(
+                id=GENERAL_CONVERSATION_UUID,
+                kind=ChatConversationKind.GENERAL,
+                title=None,
+                created_at=datetime.now(timezone.utc),
+                last_message_at=None,
+            )
+        )
         await s.commit()
         yield s
 
@@ -122,9 +149,22 @@ async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture()
 async def auth_headers_async(client: AsyncClient) -> dict[str, str]:
+    """COORDINATOR (tester): proyectos, chat, tablero con escritura."""
     res = await client.post(
         "/api/auth/token",
         data={"username": "tester@dupla.demo", "password": "testpass123"},
+    )
+    assert res.status_code == 200, res.text
+    token = res.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture()
+async def master_auth_headers_async(client: AsyncClient) -> dict[str, str]:
+    """MASTER: administración y tablero solo lectura."""
+    res = await client.post(
+        "/api/auth/token",
+        data={"username": "master@dupla.demo", "password": "master123"},
     )
     assert res.status_code == 200, res.text
     token = res.json()["access_token"]

@@ -118,7 +118,7 @@ export function ProjectWorkspacePage() {
           <h1 id="workspace-heading" className="mt-2 text-xl font-bold tracking-tight text-ink">
             {displayTitle}
           </h1>
-          <p className="mt-1 du-meta">Módulo Arquitectura · Workspace</p>
+          <p className="mt-1 du-meta">Workspace del proyecto</p>
         </div>
         <div className="flex w-full flex-col gap-4 sm:w-auto sm:items-end">
           <StatusBadge status={status} lastSavedAt={lastSavedAt} errorMessage={lastError} />

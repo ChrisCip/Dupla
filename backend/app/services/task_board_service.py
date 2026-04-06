@@ -1,19 +1,24 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import get_settings
 from app.models.task_board import TaskCard, TaskList
-from app.models.user import User
+from app.models.user import User, UserModule
+from app.repositories.user_repository import UserRepository
 from app.schemas.task_board import (
+    TaskAssigneeOption,
     TaskBoardResponse,
     TaskCardCreateRequest,
     TaskCardPatchRequest,
+    TaskCardResponse,
     TaskListResponse,
 )
 
@@ -21,20 +26,91 @@ from app.schemas.task_board import (
 class TaskBoardService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+        self._users = UserRepository(session)
 
-    async def get_board(self) -> TaskBoardResponse:
+    async def list_assignees(self) -> list[TaskAssigneeOption]:
+        settings = get_settings()
+        mid = settings.architecture_module_id
+        q = (
+            select(User)
+            .join(UserModule, UserModule.user_id == User.id)
+            .where(UserModule.module_id == mid)
+            .order_by(User.email)
+        )
+        rows = list((await self._session.execute(q)).scalars().all())
+        return [TaskAssigneeOption(uuid=u.id, email=u.email) for u in rows]
+
+    async def _validate_assignee(self, assignee_uuid: Optional[uuid.UUID]) -> None:
+        if assignee_uuid is None:
+            return
+        user = await self._session.get(User, assignee_uuid)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El usuario asignado no existe",
+            )
+        settings = get_settings()
+        if not await self._users.has_module(assignee_uuid, settings.architecture_module_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El asignado debe tener acceso al módulo Arquitectura",
+            )
+
+    async def get_board(
+        self,
+        *,
+        viewer: User,
+        include_archived: bool,
+        mine: bool,
+        filter_assignee: Optional[uuid.UUID],
+    ) -> TaskBoardResponse:
         result = await self._session.execute(
-            select(TaskList).options(selectinload(TaskList.cards)).order_by(TaskList.position)
+            select(TaskList)
+            .options(
+                selectinload(TaskList.cards).selectinload(TaskCard.creator),
+                selectinload(TaskList.cards).selectinload(TaskCard.assignee),
+            )
+            .order_by(TaskList.position)
         )
         lists = list(result.scalars().all())
-        return TaskBoardResponse(lists=[TaskListResponse.from_list(tl) for tl in lists])
+
+        assignee_target: Optional[uuid.UUID] = None
+        if mine:
+            assignee_target = viewer.id
+        elif filter_assignee is not None:
+            assignee_target = filter_assignee
+
+        list_responses: list[TaskListResponse] = []
+        for tl in lists:
+            active = [c for c in tl.cards if not c.archived]
+            if assignee_target is not None:
+                active = [c for c in active if c.assignee_id == assignee_target]
+            list_responses.append(TaskListResponse.from_list(tl, active))
+
+        archived_cards: list[TaskCardResponse] = []
+        if include_archived:
+            q = (
+                select(TaskCard)
+                .where(TaskCard.archived.is_(True))
+                .options(selectinload(TaskCard.creator), selectinload(TaskCard.assignee))
+                .order_by(TaskCard.archived_at.desc(), TaskCard.created_at.desc())
+            )
+            arch_rows = list((await self._session.execute(q)).scalars().all())
+            filtered = arch_rows
+            if assignee_target is not None:
+                filtered = [c for c in arch_rows if c.assignee_id == assignee_target]
+            archived_cards = [TaskCardResponse.from_card(c) for c in filtered]
+
+        return TaskBoardResponse(lists=list_responses, archived_cards=archived_cards)
 
     async def create_card(self, actor: User, body: TaskCardCreateRequest) -> TaskCard:
+        await self._validate_assignee(body.assignee_uuid)
+
         lst = await self._session.get(TaskList, body.list_uuid)
         if lst is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lista no encontrada")
 
-        q = select(TaskCard).where(TaskCard.list_id == body.list_uuid)
+        q = select(TaskCard).where(TaskCard.list_id == body.list_uuid, TaskCard.archived.is_(False))
         existing = list((await self._session.execute(q)).scalars().all())
         position = max((c.position for c in existing), default=-1) + 1
 
@@ -45,10 +121,14 @@ class TaskBoardService:
             description=body.description.strip() if body.description else None,
             position=position,
             created_by=actor.id,
-            created_at=datetime.utcnow(),
+            assignee_id=body.assignee_uuid,
+            archived=False,
+            archived_at=None,
+            created_at=datetime.now(timezone.utc),
         )
         self._session.add(card)
         await self._session.flush()
+        await self._session.refresh(card, attribute_names=["creator", "assignee"])
         return card
 
     async def patch_card(self, card_uuid: uuid.UUID, body: TaskCardPatchRequest) -> TaskCard:
@@ -56,28 +136,52 @@ class TaskBoardService:
         if card is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
 
-        if body.title is not None:
-            card.title = body.title.strip()
-        if body.description is not None:
-            card.description = body.description.strip() if body.description else None
+        updates = body.model_dump(exclude_unset=True)
 
-        if body.list_uuid is not None:
-            if body.position is None:
+        if "assignee_uuid" in updates:
+            await self._validate_assignee(updates["assignee_uuid"])
+            card.assignee_id = updates["assignee_uuid"]
+
+        if "title" in updates and updates["title"] is not None:
+            card.title = updates["title"].strip()
+        if "description" in updates:
+            card.description = (
+                updates["description"].strip() if updates["description"] else None
+            )
+
+        if "archived" in updates:
+            card.archived = bool(updates["archived"])
+            if card.archived:
+                card.archived_at = datetime.now(timezone.utc)
+            else:
+                card.archived_at = None
+
+        has_list = "list_uuid" in updates and updates["list_uuid"] is not None
+        has_position = "position" in updates
+        if has_list or has_position:
+            if card.archived:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="position es obligatoria al mover de lista",
+                    detail="Desarchiva la tarea antes de moverla de columna",
                 )
-            await self._move_card(card, body.list_uuid, body.position)
-        elif body.position is not None:
-            await self._move_card(card, card.list_id, body.position)
+            if has_list:
+                if not has_position:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="position es obligatoria al mover de lista",
+                    )
+                await self._move_card(card, updates["list_uuid"], updates["position"])
+            else:
+                await self._move_card(card, card.list_id, updates["position"])
 
         await self._session.flush()
+        await self._session.refresh(card, attribute_names=["creator", "assignee"])
         return card
 
     async def _ordered_ids(self, list_id: uuid.UUID) -> list[uuid.UUID]:
         q = (
             select(TaskCard)
-            .where(TaskCard.list_id == list_id)
+            .where(TaskCard.list_id == list_id, TaskCard.archived.is_(False))
             .order_by(TaskCard.position.asc(), TaskCard.id.asc())
         )
         cards = list((await self._session.execute(q)).scalars().all())

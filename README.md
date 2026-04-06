@@ -16,10 +16,15 @@ docker compose up --build
 - API: `http://localhost:8000` — Swagger: `http://localhost:8000/docs`
 - Frontend: `http://localhost:5173` (Nginx sirve `dist` y proxy `/api` → backend)
 
-Usuario semilla (tras `seed` en el contenedor backend):
+Usuarios semilla (tras `python -m app.seed` o el entrypoint Docker del backend):
 
-- Email: `master@dupla.demo`
-- Password: `master123`
+| Usuario | Contraseña | Rol | Uso |
+|--------|------------|-----|-----|
+| `master@dupla.demo` | `master123` | MASTER | Administración de usuarios; tablero solo lectura |
+| `tester@dupla.demo` | `testpass123` | COORDINATOR | Proyectos, chat, tablero con escritura |
+| `worker@dupla.demo` | `workerpass123` | WORKER | Proyectos, chat, tablero con escritura |
+
+El seed es **idempotente**: si ya existía `master@dupla.demo` de una versión anterior, al volver a ejecutar el seed se añaden `tester` y `worker` si faltan.
 
 ## Variables de entorno (opcional)
 
@@ -50,7 +55,7 @@ Con Postgres en `127.0.0.1:5432` (por ejemplo `docker compose up -d postgres red
 cd backend
 source venv/bin/activate   # o tu entorno
 alembic upgrade head       # crea tablas; obligatorio antes del seed
-python -m app.seed         # usuario demo master@dupla.demo / master123
+python -m app.seed         # master, tester (COORDINATOR), worker — ver tabla arriba
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 

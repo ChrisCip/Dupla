@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
@@ -16,6 +17,7 @@ class ChatAuthorResponse(BaseModel):
 
 class ChatMessageResponse(BaseModel):
     uuid: UUID
+    conversation_uuid: UUID
     body: str
     created_at: datetime
     author: ChatAuthorResponse
@@ -24,6 +26,7 @@ class ChatMessageResponse(BaseModel):
     def from_row(cls, msg: ChatMessage, author: User) -> ChatMessageResponse:
         return cls(
             uuid=msg.id,
+            conversation_uuid=msg.conversation_id,
             body=msg.body,
             created_at=msg.created_at,
             author=ChatAuthorResponse(uuid=author.id, email=author.email),
@@ -32,3 +35,24 @@ class ChatMessageResponse(BaseModel):
 
 class ChatPostRequest(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
+
+
+class ChatConversationResponse(BaseModel):
+    uuid: UUID
+    kind: str
+    display_title: str
+    last_message_at: Optional[datetime] = None
+
+
+class ChatDirectCreateRequest(BaseModel):
+    user_uuid: UUID
+
+
+class ChatGroupCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    member_uuids: list[UUID] = Field(min_length=1, max_length=50)
+
+
+class ChatUserDirectoryItem(BaseModel):
+    uuid: UUID
+    email: EmailStr

@@ -1,13 +1,14 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.dependencies import get_current_user, require_task_operator
 from app.models.user import User
 from app.schemas.task_board import (
+    TaskAssigneeOption,
     TaskBoardResponse,
     TaskCardCreateRequest,
     TaskCardPatchRequest,
@@ -19,17 +20,45 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 
 @router.get(
+    "/assignees",
+    response_model=list[TaskAssigneeOption],
+    summary="Usuarios asignables",
+    description="Usuarios con acceso al módulo Arquitectura (para asignar tareas).",
+)
+async def list_task_assignees(
+    _: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[TaskAssigneeOption]:
+    svc = TaskBoardService(session)
+    return await svc.list_assignees()
+
+
+@router.get(
     "/board",
     response_model=TaskBoardResponse,
     summary="Tablero de tareas",
-    description="Listas y tarjetas ordenadas. Todos los usuarios autenticados.",
+    description=(
+        "Listas activas (sin archivadas). Query `mine=1` filtra por asignado = usuario actual; "
+        "`assignee_uuid` filtra por otro usuario. `include_archived=1` añade `archived_cards`."
+    ),
 )
 async def get_task_board(
-    _: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    include_archived: Annotated[bool, Query(description="Incluir lista de tarjetas archivadas")] = False,
+    mine: Annotated[bool, Query(description="Solo tareas asignadas a mí")] = False,
+    assignee_uuid: Annotated[
+        Optional[UUID],
+        Query(description="Filtrar por usuario asignado (UUID)"),
+    ] = None,
 ) -> TaskBoardResponse:
     svc = TaskBoardService(session)
-    return await svc.get_board()
+    return await svc.get_board(
+        viewer=current,
+        include_archived=include_archived,
+        mine=mine,
+        filter_assignee=assignee_uuid,
+    )
 
 
 @router.post(
@@ -53,7 +82,7 @@ async def create_task_card(
 @router.patch(
     "/cards/{card_uuid}",
     response_model=TaskCardResponse,
-    summary="Actualizar o mover tarjeta",
+    summary="Actualizar, mover, archivar o asignar tarjeta",
     description="COORDINATOR y WORKER. MASTER solo lectura.",
 )
 async def patch_task_card(

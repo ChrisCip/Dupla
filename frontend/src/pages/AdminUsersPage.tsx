@@ -90,7 +90,7 @@ export function AdminUsersPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-ink">Administración de usuarios</h1>
         <p className="mt-2 max-w-prose text-sm text-muted">
-          Alta de credenciales, rol y acceso al módulo Arquitectura. Solo usuarios MASTER.
+          Alta de credenciales, rol y permisos de acceso a la plataforma. Solo usuarios MASTER.
         </p>
       </div>
 
@@ -141,7 +141,7 @@ export function AdminUsersPage() {
             </div>
             <label className="flex items-center gap-2 text-sm text-ink">
               <input type="checkbox" className="rounded border-black/20" {...register('architectureAccess')} />
-              Acceso al módulo Arquitectura
+              Acceso a proyectos y workspace
             </label>
             {errors.architectureAccess ? (
               <p className="text-sm text-primary">{errors.architectureAccess.message}</p>

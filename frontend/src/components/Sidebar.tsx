@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 
+import { DuplaLogo } from './DuplaLogo'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
 
@@ -13,9 +14,8 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-black/10 bg-white">
-      <div className="border-b border-black/10 px-4 py-5">
-        <div className="text-lg font-bold tracking-tight text-primary">GRUPO DUPLA</div>
-        <div className="du-meta mt-1">Arquitectura</div>
+      <div className="border-b border-black/10 px-4 py-6">
+        <DuplaLogo className="h-14 w-auto max-w-[min(100%,320px)] object-contain object-left" />
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 p-3" aria-label="Principal">
         <NavLink

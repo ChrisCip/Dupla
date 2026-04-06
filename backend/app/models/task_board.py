@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -46,7 +46,16 @@ class TaskCard(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    assignee_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    archived: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False, index=True)
+    archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     task_list: Mapped["TaskList"] = relationship(back_populates="cards")
     creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
+    assignee: Mapped[Optional["User"]] = relationship("User", foreign_keys=[assignee_id])
