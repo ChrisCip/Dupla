@@ -28,11 +28,11 @@ export function Tabs({ tabs, value, onChange, children, labelledBy }: Props) {
               aria-selected={selected}
               id={`tab-${t.id}`}
               tabIndex={selected ? 0 : -1}
-              className={`relative -mb-px border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+              className={`relative -mb-px border-b-2 px-4 py-3 text-sm font-medium outline-none transition-colors duration-150 ${
                 selected
-                  ? 'border-primary text-ink'
-                  : 'border-transparent text-muted hover:text-ink'
-              }`}
+                  ? 'border-primary bg-primary/[0.06] text-ink'
+                  : 'border-transparent text-muted hover:bg-black/[0.04] hover:text-ink active:bg-black/[0.06]'
+              } focus-visible:z-10 focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white`}
               onClick={() => onChange(t.id)}
             >
               {t.label}

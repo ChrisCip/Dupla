@@ -7,7 +7,7 @@ type Props = HTMLAttributes<HTMLDivElement> & {
 export function Card({ children, className = '', ...rest }: Props) {
   return (
     <div
-      className={`rounded-xl border border-black/10 bg-white shadow-[var(--shadow-card)] ${className}`}
+      className={`rounded-xl border border-black/10 bg-white shadow-[var(--shadow-card)] transition-shadow duration-150 ${className}`}
       {...rest}
     >
       {children}

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
 import { Card } from '../components/Card'
@@ -8,6 +9,7 @@ import { useChatStore } from '../store/chatStore'
 import type { ChatConversationSummary, ChatMessage } from '../types/chat'
 
 export function ChatPage() {
+  const [searchParams] = useSearchParams()
   const token = useAuthStore((s) => s.token)
   const userUuid = useAuthStore((s) => s.userUuid)
   const conversations = useChatStore((s) => s.conversations)
@@ -30,6 +32,14 @@ export function ChatPage() {
   const [groupMembers, setGroupMembers] = useState<Record<string, boolean>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  const refreshConversations = useCallback(async () => {
+    if (!token) return
+    const res = await apiFetch('/api/chat/conversations', { token })
+    if (res.ok) {
+      setConversations((await res.json()) as ChatConversationSummary[])
+    }
+  }, [token, setConversations])
+
   useEffect(() => {
     if (!token) return
     let cancelled = false
@@ -43,6 +53,14 @@ export function ChatPage() {
       cancelled = true
     }
   }, [token, setDirectory])
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('conversation')
+    if (fromUrl && token) {
+      setActiveConversationUuid(fromUrl)
+      void refreshConversations()
+    }
+  }, [searchParams, token, setActiveConversationUuid, refreshConversations])
 
   useEffect(() => {
     if (!token || conversations.length === 0) return
@@ -71,14 +89,6 @@ export function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, activeConversationUuid])
-
-  async function refreshConversations() {
-    if (!token) return
-    const res = await apiFetch('/api/chat/conversations', { token })
-    if (res.ok) {
-      setConversations((await res.json()) as ChatConversationSummary[])
-    }
-  }
 
   async function openDirect() {
     if (!token || !dmTarget) return

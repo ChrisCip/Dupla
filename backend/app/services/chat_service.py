@@ -16,7 +16,9 @@ from app.models.chat_conversation import (
     ChatConversationMember,
 )
 from app.models.chat_message import ChatMessage
+from app.models.project import Project
 from app.models.user import User
+from app.services.project_service import ProjectService
 from app.schemas.chat import (
     ChatConversationResponse,
     ChatMessageResponse,
@@ -47,6 +49,15 @@ class ChatService:
     async def _assert_can_access(self, user: User, conv: ChatConversation) -> None:
         if conv.kind == ChatConversationKind.GENERAL:
             return
+        if conv.kind == ChatConversationKind.PROJECT:
+            stmt = select(ChatConversationMember).where(
+                ChatConversationMember.conversation_id == conv.id,
+                ChatConversationMember.user_id == user.id,
+            )
+            row = (await self._session.execute(stmt)).scalar_one_or_none()
+            if row is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversación no encontrada")
+            return
         stmt = select(ChatConversationMember).where(
             ChatConversationMember.conversation_id == conv.id,
             ChatConversationMember.user_id == user.id,
@@ -68,6 +79,18 @@ class ChatService:
                 uuid=conv.id,
                 kind=conv.kind.value,
                 display_title=(conv.title or "Grupo").strip() or "Grupo",
+                last_message_at=conv.last_message_at,
+            )
+        if conv.kind == ChatConversationKind.PROJECT:
+            title = "Proyecto"
+            if conv.project_id is not None:
+                proj = await self._session.get(Project, conv.project_id)
+                if proj is not None:
+                    title = proj.name
+            return ChatConversationResponse(
+                uuid=conv.id,
+                kind=conv.kind.value,
+                display_title=f"Chat · {title}",
                 last_message_at=conv.last_message_at,
             )
         stmt = (
@@ -257,3 +280,39 @@ class ChatService:
     async def post_message(self, author: User, body: ChatPostRequest) -> ChatMessageResponse:
         general = await self._get_general_conversation()
         return await self.post_conversation_message(author, general.id, body)
+
+    async def get_or_create_project_conversation(
+        self,
+        user: User,
+        project_uuid: uuid.UUID,
+    ) -> ChatConversationResponse:
+        ps = ProjectService(self._session)
+        project = await ps.get_project(user, project_uuid)
+        stmt = select(ChatConversation).where(
+            ChatConversation.kind == ChatConversationKind.PROJECT,
+            ChatConversation.project_id == project.id,
+        )
+        conv = (await self._session.execute(stmt)).scalar_one_or_none()
+        now = datetime.now(timezone.utc)
+        if conv is None:
+            conv = ChatConversation(
+                id=uuid.uuid4(),
+                kind=ChatConversationKind.PROJECT,
+                title=None,
+                created_at=now,
+                last_message_at=None,
+                project_id=project.id,
+            )
+            self._session.add(conv)
+            self._session.add(ChatConversationMember(conversation_id=conv.id, user_id=user.id))
+            await self._session.flush()
+        else:
+            m_stmt = select(ChatConversationMember).where(
+                ChatConversationMember.conversation_id == conv.id,
+                ChatConversationMember.user_id == user.id,
+            )
+            existing_m = (await self._session.execute(m_stmt)).scalar_one_or_none()
+            if existing_m is None:
+                self._session.add(ChatConversationMember(conversation_id=conv.id, user_id=user.id))
+                await self._session.flush()
+        return await self._conversation_to_response(conv, user)

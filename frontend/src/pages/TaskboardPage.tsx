@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
 import { PrimaryButton } from '../components/PrimaryButton'
@@ -9,16 +10,24 @@ import type { TaskAssigneeOption, TaskBoardDto, TaskCardDto, TaskListDto } from 
 
 const CARD_MIME = 'application/x-dupla-task-card'
 
-function boardQueryParams(mine: boolean, assigneeUuid: string, includeArchived: boolean): string {
+function boardQueryParams(
+  mine: boolean,
+  assigneeUuid: string,
+  includeArchived: boolean,
+  projectUuid: string,
+): string {
   const p = new URLSearchParams()
   if (includeArchived) p.set('include_archived', 'true')
   if (mine) p.set('mine', 'true')
   else if (assigneeUuid) p.set('assignee_uuid', assigneeUuid)
+  if (projectUuid) p.set('project_uuid', projectUuid)
   const s = p.toString()
   return s ? `?${s}` : ''
 }
 
 export function TaskboardPage() {
+  const [searchParams] = useSearchParams()
+  const projectFilter = searchParams.get('project_uuid') ?? ''
   const token = useAuthStore((s) => s.token)
   const role = useAuthStore((s) => s.role)
   const readOnly = role === 'MASTER'
@@ -36,7 +45,7 @@ export function TaskboardPage() {
   const load = useCallback(async () => {
     if (!token) return
     setError(null)
-    const qs = boardQueryParams(mineOnly, filterAssignee, includeArchived)
+    const qs = boardQueryParams(mineOnly, filterAssignee, includeArchived, projectFilter)
     const res = await apiFetch(`/api/tasks/board${qs}`, { token })
     if (!res.ok) {
       setError('No se pudo cargar el tablero')
@@ -44,7 +53,7 @@ export function TaskboardPage() {
       return
     }
     setBoard((await res.json()) as TaskBoardDto)
-  }, [token, mineOnly, filterAssignee, includeArchived])
+  }, [token, mineOnly, filterAssignee, includeArchived, projectFilter])
 
   const loadAssignees = useCallback(async () => {
     if (!token) return
@@ -158,6 +167,21 @@ export function TaskboardPage() {
                 ? 'Como administrador (MASTER) puedes ver el tablero. Coordinadores y operarios editan, asignan y archivan.'
                 : 'Asigna personas, descripciones breves y archiva lo completado. Clic en una tarjeta para el detalle.'}
             </p>
+            {projectFilter ? (
+              <p className="mt-2 text-sm text-ink">
+                Filtrando por proyecto.{' '}
+                <Link className="font-semibold text-primary underline-offset-2 hover:underline" to="/app/tasks">
+                  Ver tablero global
+                </Link>{' '}
+                ·{' '}
+                <Link
+                  className="font-semibold text-primary underline-offset-2 hover:underline"
+                  to={`/app/projects/${projectFilter}`}
+                >
+                  Volver al workspace
+                </Link>
+              </p>
+            ) : null}
           </div>
           {!readOnly ? (
             <PrimaryButton type="button" className="shrink-0 self-start" onClick={() => setCreateOpen(true)}>
@@ -296,6 +320,7 @@ export function TaskboardPage() {
           token={token}
           lists={listOptions}
           assignees={assignees}
+          defaultProjectUuid={projectFilter || undefined}
           onClose={() => setCreateOpen(false)}
           onCreated={() => void load()}
         />

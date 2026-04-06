@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -18,6 +18,10 @@ class ProjectResponse(BaseModel):
     name: str
     client_name: Optional[str]
     status: str
+    workflow_phase: str
+    workflow_meta: dict[str, Any]
+    project_bootstrap_criteria: list[Any]
+    specifications_document: dict[str, Any]
 
     @classmethod
     def from_project(cls, project: Project) -> ProjectResponse:
@@ -26,4 +30,8 @@ class ProjectResponse(BaseModel):
             name=project.name,
             client_name=project.client_name,
             status=project.status,
+            workflow_phase=project.workflow_phase,
+            workflow_meta=project.workflow_meta or {},
+            project_bootstrap_criteria=project.project_bootstrap_criteria or [],
+            specifications_document=project.specifications_document or {},
         )

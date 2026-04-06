@@ -62,8 +62,10 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as s:
         await s.execute(
             text(
-                "TRUNCATE chat_messages, chat_conversation_members, chat_conversations, task_cards, task_lists, user_modules, "
-                "project_architecture_data, projects, users, modules RESTART IDENTITY CASCADE"
+                "TRUNCATE subcontract_quote_lines, subcontract_quotes, user_notifications, architecture_revisions, "
+                "project_files, project_events, chat_messages, chat_conversation_members, chat_conversations, "
+                "task_cards, task_lists, project_architecture_data, projects, user_modules, users, modules "
+                "RESTART IDENTITY CASCADE"
             )
         )
         await s.commit()

@@ -6,6 +6,7 @@ export type TaskCardDto = {
   description: string | null
   position: number
   list_uuid: string
+  project_uuid: string | null
   created_at: string
   created_by_uuid: string | null
   creator_email: string | null

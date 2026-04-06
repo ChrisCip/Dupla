@@ -10,11 +10,19 @@ type Props = {
   token: string
   lists: ListOption[]
   assignees: TaskAssigneeOption[]
+  defaultProjectUuid?: string
   onClose: () => void
   onCreated: () => void
 }
 
-export function TaskboardCreateModal({ token, lists, assignees, onClose, onCreated }: Props) {
+export function TaskboardCreateModal({
+  token,
+  lists,
+  assignees,
+  defaultProjectUuid,
+  onClose,
+  onCreated,
+}: Props) {
   const defaultList = lists[0]?.uuid ?? ''
   const [listUuid, setListUuid] = useState(defaultList)
   const [title, setTitle] = useState('')
@@ -51,6 +59,7 @@ export function TaskboardCreateModal({ token, lists, assignees, onClose, onCreat
           title: t,
           description: description.trim() || null,
           assignee_uuid: assigneeUuid || null,
+          project_uuid: defaultProjectUuid ?? null,
         }),
       })
       if (!res.ok) {

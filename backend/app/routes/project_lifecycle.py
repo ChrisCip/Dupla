@@ -1,0 +1,315 @@
+from typing import Annotated, Optional
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.session import get_db
+from app.dependencies import get_current_user
+from app.domain.workflow_phase import WorkflowPhase
+from app.models.architecture_revision import ArchitectureRevisionDecision
+from app.models.user import User
+from app.schemas.chat import ChatConversationResponse
+from app.schemas.project import ProjectResponse
+from app.schemas.project_lifecycle import (
+    ArchitectureRevisionCreateRequest,
+    ArchitectureRevisionResponse,
+    BootstrapCriteriaReplaceRequest,
+    ProjectEventResponse,
+    ProjectFileResponse,
+    ProjectPatchRequest,
+    ProjectTransitionRequest,
+    SpecificationsReplaceRequest,
+    SubcontractLineCreateRequest,
+    SubcontractQuoteCreateRequest,
+    SubcontractQuoteResponse,
+    WorkflowMetaPatchRequest,
+)
+from app.services.chat_service import ChatService
+from app.services.project_lifecycle_service import ProjectLifecycleService
+
+router = APIRouter(prefix="/api/projects", tags=["projects"])
+
+
+def _parse_target_phase(raw: str) -> WorkflowPhase:
+    try:
+        return WorkflowPhase(raw.strip().upper())
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Fase de flujo no válida",
+        ) from e
+
+
+def _parse_revision_decision(raw: str) -> ArchitectureRevisionDecision:
+    try:
+        return ArchitectureRevisionDecision(raw.strip().upper())
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="decision debe ser APPROVED, REJECTED o PARTIAL",
+        ) from e
+
+
+@router.patch("/{project_uuid}", response_model=ProjectResponse, summary="Actualizar metadatos del proyecto")
+async def patch_project(
+    project_uuid: UUID,
+    body: ProjectPatchRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = ProjectLifecycleService(session)
+    p = await svc.update_project_meta(
+        current,
+        project_uuid,
+        name=body.name,
+        client_name=body.client_name,
+    )
+    await session.commit()
+    return ProjectResponse.from_project(p)
+
+
+@router.post("/{project_uuid}/transitions", response_model=ProjectResponse, summary="Avanzar fase del flujo")
+async def post_transition(
+    project_uuid: UUID,
+    body: ProjectTransitionRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    target = _parse_target_phase(body.target_phase)
+    svc = ProjectLifecycleService(session)
+    p = await svc.transition_phase(current, project_uuid, target)
+    await session.commit()
+    return ProjectResponse.from_project(p)
+
+
+@router.put("/{project_uuid}/bootstrap", response_model=ProjectResponse, summary="Reemplazar checklist bootstrap")
+async def put_bootstrap(
+    project_uuid: UUID,
+    body: BootstrapCriteriaReplaceRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = ProjectLifecycleService(session)
+    p = await svc.put_bootstrap_criteria(current, project_uuid, body.criteria)
+    await session.commit()
+    return ProjectResponse.from_project(p)
+
+
+@router.put("/{project_uuid}/specifications", response_model=ProjectResponse, summary="Guardar especificaciones")
+async def put_specifications(
+    project_uuid: UUID,
+    body: SpecificationsReplaceRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = ProjectLifecycleService(session)
+    p = await svc.put_specifications(current, project_uuid, body.document)
+    await session.commit()
+    return ProjectResponse.from_project(p)
+
+
+@router.patch("/{project_uuid}/workflow-meta", response_model=ProjectResponse, summary="Actualizar workflow_meta")
+async def patch_workflow_meta(
+    project_uuid: UUID,
+    body: WorkflowMetaPatchRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = ProjectLifecycleService(session)
+    patch: dict = {}
+    if body.budget_pipeline is not None:
+        patch["budget_pipeline"] = body.budget_pipeline
+    p = await svc.patch_workflow_meta(current, project_uuid, patch)
+    await session.commit()
+    return ProjectResponse.from_project(p)
+
+
+@router.get("/{project_uuid}/events", response_model=list[ProjectEventResponse], summary="Historial de eventos")
+async def get_project_events(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[ProjectEventResponse]:
+    svc = ProjectLifecycleService(session)
+    rows = await svc.list_events(current, project_uuid)
+    return [ProjectEventResponse.from_row(r) for r in rows]
+
+
+@router.post(
+    "/{project_uuid}/architecture-revisions",
+    response_model=ArchitectureRevisionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar revisión de arquitectura",
+)
+async def post_architecture_revision(
+    project_uuid: UUID,
+    body: ArchitectureRevisionCreateRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ArchitectureRevisionResponse:
+    decision = _parse_revision_decision(body.decision)
+    svc = ProjectLifecycleService(session)
+    rev = await svc.create_architecture_revision(
+        current,
+        project_uuid,
+        decision=decision,
+        notes=body.notes,
+        checklist=body.checklist,
+    )
+    await session.commit()
+    return ArchitectureRevisionResponse.from_row(rev)
+
+
+@router.get(
+    "/{project_uuid}/architecture-revisions",
+    response_model=list[ArchitectureRevisionResponse],
+    summary="Listar revisiones de arquitectura",
+)
+async def get_architecture_revisions(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[ArchitectureRevisionResponse]:
+    svc = ProjectLifecycleService(session)
+    rows = await svc.list_architecture_revisions(current, project_uuid)
+    return [ArchitectureRevisionResponse.from_row(r) for r in rows]
+
+
+@router.post(
+    "/{project_uuid}/files",
+    response_model=ProjectFileResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Subir archivo de proyecto",
+)
+async def post_project_file(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    file: Annotated[UploadFile, File()],
+    category: Annotated[Optional[str], Form()] = None,
+) -> ProjectFileResponse:
+    svc = ProjectLifecycleService(session)
+    row = await svc.upload_file(current, project_uuid, file, category)
+    await session.commit()
+    return ProjectFileResponse.from_row(row)
+
+
+@router.get("/{project_uuid}/files", response_model=list[ProjectFileResponse], summary="Listar archivos")
+async def get_project_files(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[ProjectFileResponse]:
+    svc = ProjectLifecycleService(session)
+    rows = await svc.list_files(current, project_uuid)
+    return [ProjectFileResponse.from_row(r) for r in rows]
+
+
+@router.get("/{project_uuid}/files/{file_uuid}/download", summary="Descargar archivo")
+async def download_project_file(
+    project_uuid: UUID,
+    file_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> FileResponse:
+    svc = ProjectLifecycleService(session)
+    pf, path = await svc.get_file_path(current, project_uuid, file_uuid)
+    if not path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado en disco")
+    return FileResponse(
+        path=str(path),
+        filename=pf.original_name,
+        media_type=pf.mime or "application/octet-stream",
+    )
+
+
+@router.get(
+    "/{project_uuid}/subcontracts",
+    response_model=list[SubcontractQuoteResponse],
+    summary="Cotizaciones de subcontratación",
+)
+async def get_subcontracts(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[SubcontractQuoteResponse]:
+    svc = ProjectLifecycleService(session)
+    rows = await svc.list_subcontract_quotes(current, project_uuid)
+    return [SubcontractQuoteResponse.from_row(r) for r in rows]
+
+
+@router.post(
+    "/{project_uuid}/subcontracts",
+    response_model=SubcontractQuoteResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear cotización",
+)
+async def post_subcontract_quote(
+    project_uuid: UUID,
+    body: SubcontractQuoteCreateRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> SubcontractQuoteResponse:
+    svc = ProjectLifecycleService(session)
+    q = await svc.create_subcontract_quote(current, project_uuid, body.title)
+    await session.commit()
+    await session.refresh(q, ["lines"])
+    return SubcontractQuoteResponse.from_row(q)
+
+
+@router.post(
+    "/{project_uuid}/subcontracts/{quote_uuid}/lines",
+    response_model=SubcontractQuoteResponse,
+    summary="Agregar línea a cotización",
+)
+async def post_subcontract_line(
+    project_uuid: UUID,
+    quote_uuid: UUID,
+    body: SubcontractLineCreateRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> SubcontractQuoteResponse:
+    svc = ProjectLifecycleService(session)
+    await svc.add_subcontract_line(
+        current,
+        project_uuid,
+        quote_uuid,
+        item_label=body.item_label,
+        provider=body.provider,
+        price=body.price,
+        currency=body.currency,
+        external_ref=body.external_ref,
+    )
+    await session.commit()
+    row = await svc.get_subcontract_quote_with_lines(current, project_uuid, quote_uuid)
+    return SubcontractQuoteResponse.from_row(row)
+
+
+@router.delete("/{project_uuid}/subcontracts/{quote_uuid}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar cotización")
+async def delete_subcontract_quote(
+    project_uuid: UUID,
+    quote_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    svc = ProjectLifecycleService(session)
+    await svc.delete_subcontract_quote(current, project_uuid, quote_uuid)
+    await session.commit()
+
+
+@router.post(
+    "/{project_uuid}/chat/conversation",
+    response_model=ChatConversationResponse,
+    summary="Abrir u obtener chat del proyecto",
+)
+async def post_project_chat_conversation(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ChatConversationResponse:
+    chat = ChatService(session)
+    res = await chat.get_or_create_project_conversation(current, project_uuid)
+    await session.commit()
+    return res

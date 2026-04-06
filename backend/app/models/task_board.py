@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.project import Project
     from app.models.user import User
 
 
@@ -55,7 +56,14 @@ class TaskCard(Base):
     archived: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False, index=True)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    project_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     task_list: Mapped["TaskList"] = relationship(back_populates="cards")
     creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
     assignee: Mapped[Optional["User"]] = relationship("User", foreign_keys=[assignee_id])
+    project: Mapped[Optional["Project"]] = relationship()

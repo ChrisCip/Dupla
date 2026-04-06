@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     architecture_module_id: Annotated[int, Field(default=1, ge=1)]
 
     templates_dir: Annotated[str, Field(default="app/templates")]
+    upload_root: Annotated[
+        str,
+        Field(
+            default="var/uploads",
+            description="Directorio raíz para archivos de proyecto (DWG/DXF, etc.).",
+        ),
+    ]
 
     @field_validator("database_url")
     @classmethod

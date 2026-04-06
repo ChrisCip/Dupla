@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
 
 const linkClass =
-  'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-black/5'
+  'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-ink outline-none transition-colors duration-150 hover:bg-black/5 active:bg-black/10 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white'
 const activeClass = 'bg-primary/10 text-primary'
 
 export function Sidebar() {

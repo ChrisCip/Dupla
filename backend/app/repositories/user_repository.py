@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User, UserModule
+from app.models.user import User, UserModule, UserRole
 
 
 class UserRepository:
@@ -38,3 +38,18 @@ class UserRepository:
 
     def add_module_link(self, link: UserModule) -> None:
         self._session.add(link)
+
+    async def list_ids_by_module_and_roles(
+        self,
+        module_id: int,
+        roles: list[UserRole],
+    ) -> list[UUID]:
+        if not roles:
+            return []
+        q = (
+            select(User.id)
+            .join(UserModule, UserModule.user_id == User.id)
+            .where(UserModule.module_id == module_id, User.role.in_(roles))
+        )
+        rows = (await self._session.execute(q)).scalars().all()
+        return list(rows)

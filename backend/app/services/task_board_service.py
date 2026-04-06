@@ -63,6 +63,7 @@ class TaskBoardService:
         include_archived: bool,
         mine: bool,
         filter_assignee: Optional[uuid.UUID],
+        filter_project: Optional[uuid.UUID] = None,
     ) -> TaskBoardResponse:
         result = await self._session.execute(
             select(TaskList)
@@ -85,6 +86,8 @@ class TaskBoardService:
             active = [c for c in tl.cards if not c.archived]
             if assignee_target is not None:
                 active = [c for c in active if c.assignee_id == assignee_target]
+            if filter_project is not None:
+                active = [c for c in active if c.project_id == filter_project]
             list_responses.append(TaskListResponse.from_list(tl, active))
 
         archived_cards: list[TaskCardResponse] = []
@@ -99,6 +102,8 @@ class TaskBoardService:
             filtered = arch_rows
             if assignee_target is not None:
                 filtered = [c for c in arch_rows if c.assignee_id == assignee_target]
+            if filter_project is not None:
+                filtered = [c for c in filtered if c.project_id == filter_project]
             archived_cards = [TaskCardResponse.from_card(c) for c in filtered]
 
         return TaskBoardResponse(lists=list_responses, archived_cards=archived_cards)
@@ -125,6 +130,7 @@ class TaskBoardService:
             archived=False,
             archived_at=None,
             created_at=datetime.now(timezone.utc),
+            project_id=body.project_uuid,
         )
         self._session.add(card)
         await self._session.flush()
@@ -141,6 +147,9 @@ class TaskBoardService:
         if "assignee_uuid" in updates:
             await self._validate_assignee(updates["assignee_uuid"])
             card.assignee_id = updates["assignee_uuid"]
+
+        if "project_uuid" in updates:
+            card.project_id = updates["project_uuid"]
 
         if "title" in updates and updates["title"] is not None:
             card.title = updates["title"].strip()

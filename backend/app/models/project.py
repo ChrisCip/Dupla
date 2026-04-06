@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.domain.workflow_phase import WorkflowPhase
 
 
 class Project(Base):
@@ -18,6 +19,14 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     client_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="DRAFT")
+    workflow_phase: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        default=WorkflowPhase.BOOTSTRAPPING.value,
+    )
+    workflow_meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    project_bootstrap_criteria: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    specifications_document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),
@@ -33,6 +42,26 @@ class Project(Base):
     architecture_data: Mapped[Optional["ProjectArchitectureData"]] = relationship(
         back_populates="project",
         uselist=False,
+    )
+    events: Mapped[list["ProjectEvent"]] = relationship(
+        "ProjectEvent",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    files: Mapped[list["ProjectFile"]] = relationship(
+        "ProjectFile",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    architecture_revisions: Mapped[list["ArchitectureRevision"]] = relationship(
+        "ArchitectureRevision",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    subcontract_quotes: Mapped[list["SubcontractQuote"]] = relationship(
+        "SubcontractQuote",
+        back_populates="project",
+        cascade="all, delete-orphan",
     )
 
 

@@ -1,0 +1,172 @@
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
+from typing import Any, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from app.models.architecture_revision import ArchitectureRevision
+from app.models.project_event import ProjectEvent
+from app.models.project_file import ProjectFile
+from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
+from app.models.user_notification import UserNotification
+
+
+class ProjectTransitionRequest(BaseModel):
+    target_phase: str = Field(..., min_length=1, max_length=64)
+
+
+class ProjectPatchRequest(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    client_name: Optional[str] = Field(default=None, max_length=255)
+
+
+class BootstrapCriteriaReplaceRequest(BaseModel):
+    criteria: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class SpecificationsReplaceRequest(BaseModel):
+    document: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkflowMetaPatchRequest(BaseModel):
+    budget_pipeline: Optional[dict[str, Any]] = None
+
+
+class ProjectEventResponse(BaseModel):
+    uuid: UUID
+    event_type: str
+    payload: dict[str, Any]
+    actor_user_uuid: Optional[UUID]
+    created_at: datetime
+
+    @classmethod
+    def from_row(cls, row: ProjectEvent) -> ProjectEventResponse:
+        return cls(
+            uuid=row.id,
+            event_type=row.event_type,
+            payload=row.payload or {},
+            actor_user_uuid=row.actor_user_id,
+            created_at=row.created_at,
+        )
+
+
+class ProjectFileResponse(BaseModel):
+    uuid: UUID
+    original_name: str
+    mime: Optional[str]
+    category: Optional[str]
+    created_by_uuid: Optional[UUID]
+    created_at: datetime
+
+    @classmethod
+    def from_row(cls, row: ProjectFile) -> ProjectFileResponse:
+        return cls(
+            uuid=row.id,
+            original_name=row.original_name,
+            mime=row.mime,
+            category=row.category,
+            created_by_uuid=row.created_by,
+            created_at=row.created_at,
+        )
+
+
+class ArchitectureRevisionCreateRequest(BaseModel):
+    decision: str = Field(..., min_length=1, max_length=20)
+    notes: Optional[str] = Field(default=None, max_length=4000)
+    checklist: dict[str, Any] = Field(default_factory=dict)
+
+
+class ArchitectureRevisionResponse(BaseModel):
+    uuid: UUID
+    version: int
+    decision: str
+    notes: Optional[str]
+    checklist: dict[str, Any]
+    checked_by_uuid: Optional[UUID]
+    created_at: datetime
+
+    @classmethod
+    def from_row(cls, row: ArchitectureRevision) -> ArchitectureRevisionResponse:
+        return cls(
+            uuid=row.id,
+            version=row.version,
+            decision=row.decision.value,
+            notes=row.notes,
+            checklist=row.checklist or {},
+            checked_by_uuid=row.checked_by,
+            created_at=row.created_at,
+        )
+
+
+class SubcontractQuoteLineResponse(BaseModel):
+    uuid: UUID
+    item_label: str
+    provider: Optional[str]
+    price: Decimal
+    currency: str
+    external_ref: Optional[str]
+
+    @classmethod
+    def from_row(cls, row: SubcontractQuoteLine) -> SubcontractQuoteLineResponse:
+        return cls(
+            uuid=row.id,
+            item_label=row.item_label,
+            provider=row.provider,
+            price=row.price,
+            currency=row.currency,
+            external_ref=row.external_ref,
+        )
+
+
+class SubcontractQuoteResponse(BaseModel):
+    uuid: UUID
+    title: Optional[str]
+    created_at: datetime
+    lines: list[SubcontractQuoteLineResponse]
+
+    @classmethod
+    def from_row(cls, row: SubcontractQuote) -> SubcontractQuoteResponse:
+        lines = sorted(row.lines, key=lambda x: str(x.id))
+        return cls(
+            uuid=row.id,
+            title=row.title,
+            created_at=row.created_at,
+            lines=[SubcontractQuoteLineResponse.from_row(l) for l in lines],
+        )
+
+
+class SubcontractQuoteCreateRequest(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=255)
+
+
+class SubcontractLineCreateRequest(BaseModel):
+    item_label: str = Field(..., min_length=1, max_length=512)
+    provider: Optional[str] = Field(default=None, max_length=255)
+    price: Decimal = Field(..., ge=Decimal("0"))
+    currency: str = Field(default="MXN", max_length=8)
+    external_ref: Optional[str] = Field(default=None, max_length=255)
+
+
+class UserNotificationResponse(BaseModel):
+    uuid: UUID
+    project_uuid: Optional[UUID]
+    kind: str
+    title: str
+    body: Optional[str]
+    read_at: Optional[datetime]
+    created_at: datetime
+
+    @classmethod
+    def from_row(cls, row: UserNotification) -> UserNotificationResponse:
+        return cls(
+            uuid=row.id,
+            project_uuid=row.project_id,
+            kind=row.kind,
+            title=row.title,
+            body=row.body,
+            read_at=row.read_at,
+            created_at=row.created_at,
+        )

@@ -1,4 +1,4 @@
-export type ChatConversationKind = 'GENERAL' | 'DIRECT' | 'GROUP'
+export type ChatConversationKind = 'GENERAL' | 'DIRECT' | 'GROUP' | 'PROJECT'
 
 export type ChatConversationSummary = {
   uuid: string

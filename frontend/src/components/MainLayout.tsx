@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
@@ -16,6 +16,21 @@ export function MainLayout() {
   const role = useAuthStore((s) => s.role)
   const setSession = useAuthStore((s) => s.setSession)
   const logout = useAuthStore((s) => s.logout)
+  const [unreadNotifs, setUnreadNotifs] = useState(0)
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    void (async () => {
+      const res = await apiFetch('/api/me/notifications?unread_only=true', { token })
+      if (!res.ok || cancelled) return
+      const rows = (await res.json()) as unknown[]
+      if (!cancelled) setUnreadNotifs(rows.length)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   useEffect(() => {
     if (!token || userUuid) return
@@ -36,6 +51,11 @@ export function MainLayout() {
             <div className="du-meta">
               <span className="text-ink">{email}</span>
               {role ? <span> · {role}</span> : null}
+              {unreadNotifs > 0 ? (
+                <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                  {unreadNotifs} aviso{unreadNotifs === 1 ? '' : 's'}
+                </span>
+              ) : null}
             </div>
             <button
               type="button"

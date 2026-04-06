@@ -20,6 +20,7 @@ class TaskCardResponse(BaseModel):
     description: Optional[str]
     position: int
     list_uuid: UUID
+    project_uuid: Optional[UUID]
     created_at: datetime
     created_by_uuid: Optional[UUID]
     creator_email: Optional[str]
@@ -38,6 +39,7 @@ class TaskCardResponse(BaseModel):
             description=card.description,
             position=card.position,
             list_uuid=card.list_id,
+            project_uuid=card.project_id,
             created_at=card.created_at,
             created_by_uuid=card.created_by,
             creator_email=creator.email if creator is not None else None,
@@ -75,6 +77,7 @@ class TaskCardCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: Optional[str] = Field(default=None, max_length=500)
     assignee_uuid: Optional[UUID] = None
+    project_uuid: Optional[UUID] = None
 
 
 class TaskCardPatchRequest(BaseModel):
@@ -84,3 +87,4 @@ class TaskCardPatchRequest(BaseModel):
     position: Optional[int] = Field(default=None, ge=0)
     assignee_uuid: Optional[UUID] = None
     archived: Optional[bool] = None
+    project_uuid: Optional[UUID] = None

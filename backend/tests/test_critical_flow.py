@@ -55,7 +55,9 @@ async def test_project_architecture_flow(client, auth_headers_async: dict[str, s
         json={"name": "Obra demo", "client_name": "Cliente"},
     )
     assert create.status_code == 201, create.text
-    pid = create.json()["uuid"]
+    created = create.json()
+    assert created["workflow_phase"] == "BOOTSTRAPPING"
+    pid = created["uuid"]
     project_uuid = uuid.UUID(pid)
 
     get_empty = await client.get(
@@ -110,6 +112,7 @@ async def test_exports_return_bytes(client, auth_headers_async: dict[str, str]):
         json={"name": "Export demo", "client_name": None},
     )
     assert create.status_code == 201
+    assert create.json()["workflow_phase"] == "BOOTSTRAPPING"
     pid = uuid.UUID(create.json()["uuid"])
 
     xlsx = await client.get(f"/api/projects/{pid}/exports/pliego.xlsx", headers=auth_headers_async)

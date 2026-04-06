@@ -51,6 +51,10 @@ async def get_task_board(
         Optional[UUID],
         Query(description="Filtrar por usuario asignado (UUID)"),
     ] = None,
+    project_uuid: Annotated[
+        Optional[UUID],
+        Query(description="Filtrar tarjetas vinculadas a un proyecto"),
+    ] = None,
 ) -> TaskBoardResponse:
     svc = TaskBoardService(session)
     return await svc.get_board(
@@ -58,6 +62,7 @@ async def get_task_board(
         include_archived=include_archived,
         mine=mine,
         filter_assignee=assignee_uuid,
+        filter_project=project_uuid,
     )
 
 

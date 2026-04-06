@@ -1,12 +1,31 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.domain.bootstrap_defaults import default_bootstrap_criteria
+from app.domain.workflow_phase import WorkflowPhase
 from app.models.project import Project, ProjectArchitectureData
+from app.models.project_event import ProjectEvent
+from app.models.project_file import ProjectFile
+
+
+def _default_workflow_meta() -> dict[str, Any]:
+    return {
+        "budget_pipeline": {
+            "subcontracts_done": False,
+            "volumetry_done": False,
+            "cost_analysis_done": False,
+            "budget_marked_complete": False,
+            "client_approved_version_label": None,
+            "volumetry": {},
+            "cost_analysis": {},
+            "budget_versions": [],
+        }
+    }
 
 
 class ProjectRepository:
@@ -39,6 +58,10 @@ class ProjectRepository:
             name=name,
             client_name=client_name,
             created_by=created_by,
+            workflow_phase=WorkflowPhase.BOOTSTRAPPING.value,
+            workflow_meta=_default_workflow_meta(),
+            project_bootstrap_criteria=default_bootstrap_criteria(),
+            specifications_document={},
         )
         self._session.add(project)
         await self._session.flush()
@@ -73,3 +96,25 @@ class ProjectRepository:
         await self._session.flush()
         await self._session.refresh(row)
         return row
+
+    async def record_event(
+        self,
+        *,
+        project_id: UUID,
+        actor_user_id: Optional[UUID],
+        event_type: str,
+        payload: dict[str, Any],
+    ) -> None:
+        ev = ProjectEvent(
+            project_id=project_id,
+            actor_user_id=actor_user_id,
+            event_type=event_type,
+            payload=payload,
+            created_at=datetime.now(timezone.utc),
+        )
+        self._session.add(ev)
+        await self._session.flush()
+
+    async def count_project_files(self, project_id: UUID) -> int:
+        q = select(func.count()).select_from(ProjectFile).where(ProjectFile.project_id == project_id)
+        return int((await self._session.execute(q)).scalar_one())

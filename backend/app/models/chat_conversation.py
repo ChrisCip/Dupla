@@ -23,6 +23,7 @@ class ChatConversationKind(str, enum.Enum):
     GENERAL = "GENERAL"
     DIRECT = "DIRECT"
     GROUP = "GROUP"
+    PROJECT = "PROJECT"
 
 
 class ChatConversation(Base):
@@ -36,6 +37,12 @@ class ChatConversation(Base):
     title: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     last_message_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    project_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=True,
+        unique=True,
+    )
 
     members: Mapped[list["ChatConversationMember"]] = relationship(
         back_populates="conversation",
