@@ -48,7 +48,7 @@ const WORKSPACE_TABS = [
   { id: 'flujo', label: 'Flujo' },
   { id: 'archivos', label: 'Archivos' },
   { id: 'revisiones', label: 'Revisiones' },
-  { id: 'especificaciones', label: 'Especificaciones' },
+  { id: 'especificaciones', label: 'Pliego de condiciones' },
   { id: 'presupuesto', label: 'Presupuesto' },
   { id: 'eventos', label: 'Eventos' },
   { id: 'pliegos', label: 'Pliegos' },
@@ -268,7 +268,7 @@ export function ProjectWorkspacePage() {
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
-      setFlowMsg((j as { detail?: string }).detail ?? 'Error al guardar especificaciones')
+      setFlowMsg((j as { detail?: string }).detail ?? 'Error al guardar el pliego de condiciones')
       return
     }
     setProject(j as Project)
@@ -684,18 +684,25 @@ export function ProjectWorkspacePage() {
 
         {tab === 'especificaciones' ? (
           <Card className="space-y-4 p-6">
-            <h2 className="text-lg font-semibold text-ink">Especificaciones</h2>
+            <h2 className="text-lg font-semibold text-ink">Pliego de condiciones</h2>
             <p className="text-sm text-muted">
-              Resumen del pliego (mínimo 10 caracteres) para avanzar a la fase de presupuesto.
+              Este paso va <span className="font-medium text-ink">antes del presupuesto</span>: documenta aquí las
+              condiciones del contrato / obra (alcance, exclusiones, normas, plazos, etc.). El resumen debe tener al menos
+              10 caracteres para poder avanzar la fase a Presupuesto en <strong className="text-ink">Flujo</strong>.
             </p>
             {flowMsg ? <p className="text-sm text-primary">{flowMsg}</p> : null}
+            <label htmlFor="spec-summary" className="du-label">
+              Resumen del pliego de condiciones
+            </label>
             <textarea
+              id="spec-summary"
               className="du-input min-h-[160px] w-full text-sm"
               value={specSummary}
               onChange={(e) => setSpecSummary(e.target.value)}
+              aria-label="Resumen del pliego de condiciones"
             />
             <PrimaryButton type="button" onClick={() => void saveSpecifications()}>
-              Guardar
+              Guardar pliego de condiciones
             </PrimaryButton>
           </Card>
         ) : null}
@@ -704,6 +711,10 @@ export function ProjectWorkspacePage() {
           <div className="space-y-6">
             <Card className="space-y-4 p-6">
               <h2 className="text-lg font-semibold text-ink">Pipeline de presupuesto</h2>
+              <p className="text-sm text-muted">
+                Esta fase sigue al <strong className="text-ink">pliego de condiciones</strong>. Marca cada hito cuando
+                corresponda y registra la versión aprobada por el cliente antes del cierre.
+              </p>
               {flowMsg ? <p className="text-sm text-primary">{flowMsg}</p> : null}
               {(
                 [

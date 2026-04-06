@@ -14,7 +14,7 @@ export const WORKFLOW_PHASE_LABELS: Record<string, string> = {
   AWAITING_FILES: 'Esperando archivos CAD',
   FILES_INGESTED: 'Archivos ingresados',
   ARCHITECTURE_REVIEW: 'Revisión de arquitectura',
-  SPECIFICATIONS: 'Especificaciones',
+  SPECIFICATIONS: 'Pliego de condiciones',
   BUDGETING_PIPELINE: 'Presupuesto (cotización / volumetría / costo)',
   BUDGET_APPROVED: 'Presupuesto aprobado por cliente',
 }

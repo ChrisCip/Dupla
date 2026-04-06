@@ -117,7 +117,7 @@ class ProjectLifecycleService:
             if len(summary) < 10:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="Completa las especificaciones (resumen mínimo 10 caracteres)",
+                    detail="Completa el pliego de condiciones (resumen mínimo 10 caracteres) antes de presupuesto",
                 )
         if current == WorkflowPhase.BUDGETING_PIPELINE and target == WorkflowPhase.BUDGET_APPROVED:
             if user.role != UserRole.MASTER:
@@ -280,7 +280,7 @@ class ProjectLifecycleService:
         if wf not in allowed:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Especificaciones no editables en esta fase",
+                detail="El pliego de condiciones no es editable en esta fase",
             )
         project.specifications_document = document
         await self._projects.record_event(

@@ -97,7 +97,11 @@ async def put_bootstrap(
     return ProjectResponse.from_project(p)
 
 
-@router.put("/{project_uuid}/specifications", response_model=ProjectResponse, summary="Guardar especificaciones")
+@router.put(
+    "/{project_uuid}/specifications",
+    response_model=ProjectResponse,
+    summary="Guardar pliego de condiciones",
+)
 async def put_specifications(
     project_uuid: UUID,
     body: SpecificationsReplaceRequest,
