@@ -277,7 +277,6 @@ def _simple_to_level_inventory(
             {
                 "id": f"vis-wetarea-{i:02d}",
                 "source": "vision",
-                "source_layers": [],
                 "source_refs": [f"vision:{image_name}:wetarea_{i}"],
                 "assumptions": [],
                 "inputs": {"raw": a},
@@ -299,7 +298,6 @@ def _simple_to_level_inventory(
             {
                 "id": f"vis-kitchen-{i:02d}",
                 "source": "vision",
-                "source_layers": [],
                 "source_refs": [f"vision:{image_name}:kitchen_{i}"],
                 "assumptions": [],
                 "inputs": {"raw": k},
@@ -318,7 +316,6 @@ def _simple_to_level_inventory(
             {
                 "id": f"vis-stair-{i:02d}",
                 "source": "vision",
-                "source_layers": [],
                 "source_refs": [f"vision:{image_name}:stair_{i}"],
                 "assumptions": [],
                 "inputs": {"raw": s},
@@ -339,7 +336,6 @@ def _simple_to_level_inventory(
             {
                 "id": f"vis-{etype}-{i:02d}",
                 "source": "vision",
-                "source_layers": [],
                 "source_refs": [f"vision:{image_name}:{etype}_{i}"],
                 "assumptions": [],
                 "inputs": {"raw": e},
@@ -360,7 +356,6 @@ def _simple_to_level_inventory(
             {
                 "id": f"vis-fixture-{i:02d}",
                 "source": "vision",
-                "source_layers": [],
                 "source_refs": [f"vision:{image_name}:fixture_{i}"],
                 "assumptions": [],
                 "inputs": {"raw": f_item},
