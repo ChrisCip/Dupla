@@ -26,6 +26,7 @@ Notes:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import sys
@@ -96,6 +97,15 @@ logger = logging.getLogger("dupla.runner")
 # Stage functions — each returns its output (or a tuple for metrics)
 # ---------------------------------------------------------------------------
 
+def _pdf_pages_cache_dir(outputs_dir: Path, pdf_path: Path) -> Path:
+    """
+    Carpeta corta bajo rendered_pages/ para evitar MAX_PATH en Windows cuando el
+    nombre del PDF es muy largo (fitz no abre rutas truncadas).
+    """
+    key = hashlib.sha256(str(pdf_path.resolve()).encode("utf-8")).hexdigest()[:16]
+    return outputs_dir / "rendered_pages" / f"p_{key}"
+
+
 def render_pdf_to_images(pdf_path: Path, output_dir: Path, dpi: int = 200) -> list[Path]:
     try:
         import fitz  # PyMuPDF
@@ -115,7 +125,7 @@ def render_pdf_to_images(pdf_path: Path, output_dir: Path, dpi: int = 200) -> li
     for page_index in range(len(doc)):
         page = doc.load_page(page_index)
         pix = page.get_pixmap(matrix=matrix, alpha=False)
-        image_path = output_dir / f"{pdf_path.stem}_page_{page_index + 1:03d}.png"
+        image_path = output_dir / f"page_{page_index + 1:04d}.png"
         pix.save(str(image_path))
         image_paths.append(image_path)
 
@@ -181,7 +191,7 @@ def stage_resolve_pages(outputs_dir: Path) -> dict:
         pdf_path = (REPO_ROOT / PDF_PATH).resolve()
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
-        rendered_dir = outputs_dir / "rendered_pages" / pdf_path.stem
+        rendered_dir = _pdf_pages_cache_dir(outputs_dir, pdf_path)
         image_paths = render_pdf_to_images(pdf_path, rendered_dir)
         logger.info("Rendered %d pages from PDF: %s", len(image_paths), pdf_path.name)
         return {"pages_dir": rendered_dir, "page_count": len(image_paths), "source": "pdf"}
@@ -231,13 +241,17 @@ def stage_knowledge_inputs(outputs_dir: Path) -> dict:
     else:
         logger.info("BC3 catalog: skipped (no BC3_PATH configured)")
 
-    xlsx_training_path = (REPO_ROOT / XLSX_TRAINING_PATH).resolve()
     training_pairs = []
-    if xlsx_training_path.exists():
-        training_pairs = extract_training_pairs(xlsx_training_path)
-        logger.info("Training pairs loaded: %d from %s", len(training_pairs), xlsx_training_path.name)
+    if not XLSX_TRAINING_PATH or str(XLSX_TRAINING_PATH).startswith("__no_pres_training"):
+        xlsx_training_path = (REPO_ROOT / "_skipped_training.xlsx").resolve()
+        logger.info("XLSX training omitido (sin PRES / proyecto independiente).")
     else:
-        logger.warning("XLSX training file not found: %s", xlsx_training_path)
+        xlsx_training_path = (REPO_ROOT / XLSX_TRAINING_PATH).resolve()
+        if xlsx_training_path.exists():
+            training_pairs = extract_training_pairs(xlsx_training_path)
+            logger.info("Training pairs loaded: %d from %s", len(training_pairs), xlsx_training_path.name)
+        else:
+            logger.warning("XLSX training file not found: %s", xlsx_training_path)
 
     embedding_index = None
     if bc3_catalog.get("items"):
