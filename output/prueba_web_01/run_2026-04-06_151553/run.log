@@ -1,0 +1,92 @@
+2026-04-06 15:15:57 | INFO    | dupla.multi_dwg_cad          | Planos: 15 — BLCAD14001.dwg, BLCAD14002.dwg, BLCAD14003.dwg, BLCAD14004.dwg, BLCAD14005.dwg, BLCAD14006.dwg, BLCAD14007.dwg, BLCAD14008.dwg, BLCAD14009.dwg, BLCAD14010.dwg, BLCAD14011.dwg, BLCAD14012.dwg, BLCAD14013.dwg, BLCAD14014.dwg, BLCAD14015.dwg
+2026-04-06 15:15:57 | INFO    | dupla.multi_dwg_cad          | Salida: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553
+2026-04-06 15:15:57 | INFO    | dupla.multi_dwg_cad          | Pares PRES: 1565 (PRES.xlsx)
+2026-04-06 15:15:57 | INFO    | dupla.multi_dwg_cad          | Embeddings BC3: 684 items
+2026-04-06 15:15:57 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14001.dwg ===
+2026-04-06 15:15:59 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_151559
+2026-04-06 15:16:02 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14001_20260406_151559.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:18:53 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14001.autodesk_raw.json
+2026-04-06 15:18:53 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14001.normalized.json (4 keys)
+2026-04-06 15:18:53 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14002.dwg ===
+2026-04-06 15:18:55 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_151855
+2026-04-06 15:18:57 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14002_20260406_151855.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:19:25 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14002.autodesk_raw.json
+2026-04-06 15:19:25 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14002.normalized.json (4 keys)
+2026-04-06 15:19:25 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14003.dwg ===
+2026-04-06 15:19:27 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_151927
+2026-04-06 15:19:29 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14003_20260406_151927.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:20:08 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14003.autodesk_raw.json
+2026-04-06 15:20:09 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14003.normalized.json (4 keys)
+2026-04-06 15:20:09 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14004.dwg ===
+2026-04-06 15:20:11 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152011
+2026-04-06 15:20:14 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14004_20260406_152011.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:20:43 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14004.autodesk_raw.json
+2026-04-06 15:20:43 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14004.normalized.json (4 keys)
+2026-04-06 15:20:43 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14005.dwg ===
+2026-04-06 15:20:45 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152045
+2026-04-06 15:20:48 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14005_20260406_152045.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:21:17 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14005.autodesk_raw.json
+2026-04-06 15:21:17 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14005.normalized.json (4 keys)
+2026-04-06 15:21:17 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14006.dwg ===
+2026-04-06 15:21:19 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152119
+2026-04-06 15:21:22 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14006_20260406_152119.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:22:02 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14006.autodesk_raw.json
+2026-04-06 15:22:03 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14006.normalized.json (4 keys)
+2026-04-06 15:22:03 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14007.dwg ===
+2026-04-06 15:22:04 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152204
+2026-04-06 15:22:07 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14007_20260406_152204.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:22:35 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14007.autodesk_raw.json
+2026-04-06 15:22:35 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14007.normalized.json (4 keys)
+2026-04-06 15:22:35 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14008.dwg ===
+2026-04-06 15:22:37 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152237
+2026-04-06 15:22:39 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14008_20260406_152237.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:23:30 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14008.autodesk_raw.json
+2026-04-06 15:23:30 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14008.normalized.json (4 keys)
+2026-04-06 15:23:30 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14009.dwg ===
+2026-04-06 15:23:32 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152332
+2026-04-06 15:23:35 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14009_20260406_152332.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:24:15 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14009.autodesk_raw.json
+2026-04-06 15:24:15 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14009.normalized.json (4 keys)
+2026-04-06 15:24:16 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14010.dwg ===
+2026-04-06 15:24:17 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152417
+2026-04-06 15:24:20 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14010_20260406_152417.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:24:50 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14010.autodesk_raw.json
+2026-04-06 15:24:50 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14010.normalized.json (4 keys)
+2026-04-06 15:24:50 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14011.dwg ===
+2026-04-06 15:24:51 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152451
+2026-04-06 15:24:55 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14011_20260406_152451.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:25:24 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14011.autodesk_raw.json
+2026-04-06 15:25:24 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14011.normalized.json (4 keys)
+2026-04-06 15:25:24 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14012.dwg ===
+2026-04-06 15:25:25 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152525
+2026-04-06 15:25:27 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14012_20260406_152525.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:26:06 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14012.autodesk_raw.json
+2026-04-06 15:26:06 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14012.normalized.json (4 keys)
+2026-04-06 15:26:06 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14013.dwg ===
+2026-04-06 15:26:08 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152608
+2026-04-06 15:26:10 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14013_20260406_152608.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:26:37 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14013.autodesk_raw.json
+2026-04-06 15:26:37 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14013.normalized.json (4 keys)
+2026-04-06 15:26:37 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14014.dwg ===
+2026-04-06 15:26:38 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152638
+2026-04-06 15:26:40 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14014_20260406_152638.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:27:07 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14014.autodesk_raw.json
+2026-04-06 15:27:08 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14014.normalized.json (4 keys)
+2026-04-06 15:27:08 | INFO    | dupla.multi_dwg_cad          | === APS: BLCAD14015.dwg ===
+2026-04-06 15:27:09 | DEBUG   | dupla.runner                 | Auto-unique upload suffix: 20260406_152709
+2026-04-06 15:27:11 | INFO    | dupla.runner                 | DWG uploaded as 'BLCAD14015_20260406_152709.dwg' to bucket 'dupla_dwg_bucket_test_01'
+2026-04-06 15:27:37 | INFO    | dupla.runner                 | Raw Autodesk JSON saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14015.autodesk_raw.json
+2026-04-06 15:27:37 | INFO    | dupla.runner                 | Normalized CAD facts saved: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\BLCAD14015.normalized.json (4 keys)
+2026-04-06 15:27:37 | INFO    | dupla.multi_dwg_cad          | Fusionado guardado: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\project_merged.normalized.json (objetos totales declarados: 14794)
+2026-04-06 15:27:37 | INFO    | dupla.multi_dwg_cad          | Presupuesto CAD fusionado…
+2026-04-06 15:27:37 | INFO    | dupla.pipeline               | build_budget_from_sources: starting hybrid inventory + takeoffs
+2026-04-06 15:27:37 | INFO    | dupla.pipeline               | No vision payloads — building CAD-only inventory for 'merged:BLCAD14001+BLCAD14002+BLCAD14003+BLCAD14004+BLCAD14005+BLCAD14006+BLCAD14007+BLCAD14008+BLCAD14009+BLCAD14010+BLCAD14011+BLCAD14012+BLCAD14013+BLCAD14014+BLCAD14015'
+2026-04-06 15:27:37 | INFO    | dupla.pipeline               | Takeoffs: 21 base -> 31 expanded (rules applied)
+2026-04-06 15:27:37 | INFO    | dupla.pipeline               | After PRES merge: 31 takeoffs
+2026-04-06 15:27:37 | INFO    | dupla.pipeline               | Matching 31 takeoffs to BC3 catalog
+2026-04-06 21:15:18 | INFO    | dupla.pipeline               | BC3 candidates matched for 31 takeoff keys
+2026-04-06 21:15:18 | INFO    | dupla.composer               | Budget diagnostics: 31 total takeoffs, 13 budgetable, 18 excluded
+2026-04-06 21:15:18 | DEBUG   | dupla.composer               | Exclusion reasons: {'type_excluded': 10, 'derived_child': 3, 'unmapped_item_type': 3, 'structural_subtype_excluded': 2}
+2026-04-06 21:15:18 | INFO    | dupla.composer               | Budget composed: 3 chapters, 13 lines, 19 rows
+2026-04-06 21:15:18 | INFO    | dupla.pipeline               | Budget built: 3 chapters, 13 lines, 19 rows
+2026-04-06 21:15:19 | INFO    | dupla.multi_dwg_cad          | Excel: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\dupla_presupuesto_proyecto_merged.xlsx

@@ -1,0 +1,3501 @@
+{
+  "project": "BLCAD14011.autodesk_raw.json",
+  "total_objects": 374,
+  "cad_facts": {
+    "layers": {
+      "015": {
+        "object_count": 1,
+        "entity_types": {
+          "Block Reference": 1
+        },
+        "sample_names": [
+          "A1h [5AEB]"
+        ],
+        "handles": [
+          "5aeb"
+        ]
+      },
+      "UNKNOWN": {
+        "object_count": 10,
+        "entity_types": {
+          "Blocks (1)": 1,
+          "Solid (11)": 1,
+          "Hatches (11)": 1,
+          "MText (83)": 1,
+          "Lines (186)": 1,
+          "Polylines (3)": 1,
+          "Circles (36)": 1,
+          "Arcs (39)": 1,
+          "Ellipses (5)": 1,
+          "Model": 1
+        },
+        "sample_names": [
+          "Blocks (1)",
+          "Solid (11)",
+          "Hatches (11)",
+          "MText (83)",
+          "Lines (186)"
+        ],
+        "handles": []
+      },
+      "0": {
+        "object_count": 363,
+        "entity_types": {
+          "Hatch": 11,
+          "Text": 83,
+          "Line": 186,
+          "Polyline": 3,
+          "Circle": 36,
+          "Arc": 39,
+          "Ellipse": 5
+        },
+        "sample_names": [
+          "Solid [1D0A]",
+          "Solid [4AD1]",
+          "Solid [4ADE]",
+          "Solid [4AEB]",
+          "Solid [4AF8]"
+        ],
+        "handles": [
+          "1d0a",
+          "4ad1",
+          "4ade",
+          "4aeb",
+          "4af8"
+        ]
+      }
+    },
+    "texts": [
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1b8c",
+        "content": "1,5",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1b8d",
+        "content": "100",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1b91",
+        "content": "E2",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1b94",
+        "content": "2,5",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1b95",
+        "content": "1000",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1b9d",
+        "content": "A2",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1ba4",
+        "content": "AISLAMIENTO",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1ba5",
+        "content": "POTENCIA (W)",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1ba6",
+        "content": "DENOMINACION",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1ba7",
+        "content": "SECCION (mm2)",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1ba9",
+        "content": "2,5",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1baa",
+        "content": "1000",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1bab",
+        "content": "A1",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1be7",
+        "content": "2,5",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1be8",
+        "content": "1000",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1bed",
+        "content": "A4",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c00",
+        "content": "1,5",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c01",
+        "content": "100",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c02",
+        "content": "E1",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c4a",
+        "content": "4",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c4b",
+        "content": "2200",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c4c",
+        "content": "T1",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c65",
+        "content": "4",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c66",
+        "content": "4400",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c68",
+        "content": "F4",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c69",
+        "content": "4",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c6a",
+        "content": "4400",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1c6b",
+        "content": "F2",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1cc1",
+        "content": "%%uC.G.B.T.",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1cef",
+        "content": "4",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1cf1",
+        "content": "4",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1cf2",
+        "content": "2200",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1cf3",
+        "content": "T2",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "1d05",
+        "content": "F1",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4acd",
+        "content": "16A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4ada",
+        "content": "16A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4ae7",
+        "content": "16A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4af4",
+        "content": "10A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b00",
+        "content": "10A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b11",
+        "content": "T",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b23",
+        "content": "25A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b24",
+        "content": "30mA",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b2f",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b31",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b33",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b34",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b35",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b37",
+        "content": "USO",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b39",
+        "content": "ALUMBRADO INTERIOR",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b3a",
+        "content": "ALUMBRADO EXTERIOR",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b3b",
+        "content": "ALUMBRADO EMERGENCIA",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b3c",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b3d",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b3f",
+        "content": "TOMAS PLACAS ELECTRICAS",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b48",
+        "content": "25A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b5d",
+        "content": "25A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b73",
+        "content": "30mA",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b80",
+        "content": "40A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b88",
+        "content": "3x25+1x16 mm2 Cu  Rv 0,6/1Kv + TTx16 mm2 Cu V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b8a",
+        "content": "20A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4b9f",
+        "content": "20A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4bbc",
+        "content": "30mA",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4bbd",
+        "content": "25A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4bbf",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4bc0",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4bc1",
+        "content": "TERMOS ELECTRICOS",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4c04",
+        "content": "F3",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4c06",
+        "content": "4",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4c09",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4c0b",
+        "content": "V750",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4c0c",
+        "content": "TOMAS DESPACHO",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4c0e",
+        "content": "TOMAS ASEOS Y",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4c10",
+        "content": "ZONAS COMUNES",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4e28",
+        "content": "%%UCUADRO GENERAL DE BAJA TENSION",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4e29",
+        "content": "2200",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4e2b",
+        "content": "2200",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "4e3f",
+        "content": "63A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "5bdf",
+        "content": "20A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "5bf0",
+        "content": "30mA",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "5bf3",
+        "content": "25A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "5bfa",
+        "content": "20A",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "5c0c",
+        "content": "30mA",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "5c11",
+        "content": "25A",
+        "bbox": {}
+      },
+      {
+        "layer": "UNKNOWN",
+        "entity_type": "MText (83)",
+        "handle": "",
+        "content": "",
+        "bbox": {}
+      }
+    ],
+    "dimensions": [],
+    "hatches": [
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "1d0a",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "4ad1",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "4ade",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "4aeb",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "4af8",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "4b04",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "4b4a",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "4b54",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "4b8d",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "4b9b",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Hatch",
+        "handle": "4bdd",
+        "area": 4660.187,
+        "pattern_name": "SOLID",
+        "fill_type": "Solid",
+        "bbox": {}
+      },
+      {
+        "layer": "UNKNOWN",
+        "entity_type": "Hatches (11)",
+        "handle": "",
+        "area": null,
+        "pattern_name": "",
+        "fill_type": "",
+        "bbox": {}
+      }
+    ],
+    "blocks": [
+      {
+        "layer": "015",
+        "entity_type": "Block Reference",
+        "handle": "5aeb",
+        "block_name": "A1h",
+        "bbox": {}
+      }
+    ],
+    "geometry_hints": [
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1B8A]",
+        "handle": "1b8a",
+        "length": 29250.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1B8B]",
+        "handle": "1b8b",
+        "length": 29250.6,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1B8E]",
+        "handle": "1b8e",
+        "length": 29250.6,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1B90]",
+        "handle": "1b90",
+        "length": 8999.4,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1B92]",
+        "handle": "1b92",
+        "length": 29250.6,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1B93]",
+        "handle": "1b93",
+        "length": 29250.6,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1BA8]",
+        "handle": "1ba8",
+        "length": 2197.8,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1BAC]",
+        "handle": "1bac",
+        "length": 2175.9,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1BEE]",
+        "handle": "1bee",
+        "length": 2250.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1BF2]",
+        "handle": "1bf2",
+        "length": 1604.7,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1BF3]",
+        "handle": "1bf3",
+        "length": 2175.9,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1C03]",
+        "handle": "1c03",
+        "length": 2175.9,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1C04]",
+        "handle": "1c04",
+        "length": 1604.7,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1C6C]",
+        "handle": "1c6c",
+        "length": 2175.9,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1C86]",
+        "handle": "1c86",
+        "length": 2198.4,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1C9C]",
+        "handle": "1c9c",
+        "length": 802.35,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1CBC]",
+        "handle": "1cbc",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1CBD]",
+        "handle": "1cbd",
+        "length": 739.455,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1CBE]",
+        "handle": "1cbe",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1CBF]",
+        "handle": "1cbf",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1CC0]",
+        "handle": "1cc0",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1CC2]",
+        "handle": "1cc2",
+        "length": 453.945,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1CF4]",
+        "handle": "1cf4",
+        "length": 1627.2,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1CF5]",
+        "handle": "1cf5",
+        "length": 2198.4,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1D04]",
+        "handle": "1d04",
+        "length": 2198.4,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1D06]",
+        "handle": "1d06",
+        "length": 2099.25,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1D07]",
+        "handle": "1d07",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1D08]",
+        "handle": "1d08",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1D09]",
+        "handle": "1d09",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [1D3B]",
+        "handle": "1d3b",
+        "length": 1095.645,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4ACE]",
+        "handle": "4ace",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4ACF]",
+        "handle": "4acf",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AD0]",
+        "handle": "4ad0",
+        "length": 1940.901,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AD2]",
+        "handle": "4ad2",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AD3]",
+        "handle": "4ad3",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AD4]",
+        "handle": "4ad4",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AD5]",
+        "handle": "4ad5",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AD8]",
+        "handle": "4ad8",
+        "length": 925.245,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4ADB]",
+        "handle": "4adb",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4ADC]",
+        "handle": "4adc",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4ADD]",
+        "handle": "4add",
+        "length": 1940.901,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4ADF]",
+        "handle": "4adf",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AE0]",
+        "handle": "4ae0",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AE1]",
+        "handle": "4ae1",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AE2]",
+        "handle": "4ae2",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AE5]",
+        "handle": "4ae5",
+        "length": 925.245,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AE8]",
+        "handle": "4ae8",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AE9]",
+        "handle": "4ae9",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AEA]",
+        "handle": "4aea",
+        "length": 1940.901,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AEC]",
+        "handle": "4aec",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AED]",
+        "handle": "4aed",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AEE]",
+        "handle": "4aee",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AEF]",
+        "handle": "4aef",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AF2]",
+        "handle": "4af2",
+        "length": 925.245,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AF5]",
+        "handle": "4af5",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AF6]",
+        "handle": "4af6",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AF7]",
+        "handle": "4af7",
+        "length": 1940.901,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AF9]",
+        "handle": "4af9",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AFA]",
+        "handle": "4afa",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AFB]",
+        "handle": "4afb",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AFC]",
+        "handle": "4afc",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4AFF]",
+        "handle": "4aff",
+        "length": 925.245,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B03]",
+        "handle": "4b03",
+        "length": 1940.901,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B05]",
+        "handle": "4b05",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B06]",
+        "handle": "4b06",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B07]",
+        "handle": "4b07",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B09]",
+        "handle": "4b09",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B0A]",
+        "handle": "4b0a",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B0B]",
+        "handle": "4b0b",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B0E]",
+        "handle": "4b0e",
+        "length": 924.645,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B0F]",
+        "handle": "4b0f",
+        "length": 436.86,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B15]",
+        "handle": "4b15",
+        "length": 368.595,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B16]",
+        "handle": "4b16",
+        "length": 222.051,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B1A]",
+        "handle": "4b1a",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B1B]",
+        "handle": "4b1b",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B1D]",
+        "handle": "4b1d",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B1E]",
+        "handle": "4b1e",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B1F]",
+        "handle": "4b1f",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B20]",
+        "handle": "4b20",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B21]",
+        "handle": "4b21",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B22]",
+        "handle": "4b22",
+        "length": 744.6,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B2C]",
+        "handle": "4b2c",
+        "length": 307.875,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B36]",
+        "handle": "4b36",
+        "length": 29249.4,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B44]",
+        "handle": "4b44",
+        "length": 902.745,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B45]",
+        "handle": "4b45",
+        "length": 902.145,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B46]",
+        "handle": "4b46",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B47]",
+        "handle": "4b47",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B49]",
+        "handle": "4b49",
+        "length": 1940.901,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B4B]",
+        "handle": "4b4b",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B4C]",
+        "handle": "4b4c",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B4D]",
+        "handle": "4b4d",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B4E]",
+        "handle": "4b4e",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B53]",
+        "handle": "4b53",
+        "length": 1940.901,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B55]",
+        "handle": "4b55",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B56]",
+        "handle": "4b56",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B57]",
+        "handle": "4b57",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B5C]",
+        "handle": "4b5c",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B5E]",
+        "handle": "4b5e",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B62]",
+        "handle": "4b62",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B70]",
+        "handle": "4b70",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B71]",
+        "handle": "4b71",
+        "length": 744.6,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B72]",
+        "handle": "4b72",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B74]",
+        "handle": "4b74",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B75]",
+        "handle": "4b75",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B76]",
+        "handle": "4b76",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B77]",
+        "handle": "4b77",
+        "length": 307.875,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B78]",
+        "handle": "4b78",
+        "length": 222.051,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B7B]",
+        "handle": "4b7b",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B7C]",
+        "handle": "4b7c",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B7F]",
+        "handle": "4b7f",
+        "length": 368.595,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B82]",
+        "handle": "4b82",
+        "length": 636.45,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B83]",
+        "handle": "4b83",
+        "length": 636.45,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B84]",
+        "handle": "4b84",
+        "length": 21374.7,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B8B]",
+        "handle": "4b8b",
+        "length": 902.145,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B8C]",
+        "handle": "4b8c",
+        "length": 1940.901,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B8E]",
+        "handle": "4b8e",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B8F]",
+        "handle": "4b8f",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B90]",
+        "handle": "4b90",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B91]",
+        "handle": "4b91",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B96]",
+        "handle": "4b96",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B97]",
+        "handle": "4b97",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B99]",
+        "handle": "4b99",
+        "length": 902.145,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B9A]",
+        "handle": "4b9a",
+        "length": 1940.901,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B9C]",
+        "handle": "4b9c",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B9D]",
+        "handle": "4b9d",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4B9E]",
+        "handle": "4b9e",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BA0]",
+        "handle": "4ba0",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BA5]",
+        "handle": "4ba5",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BA6]",
+        "handle": "4ba6",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BA7]",
+        "handle": "4ba7",
+        "length": 2248.8,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BAB]",
+        "handle": "4bab",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BAC]",
+        "handle": "4bac",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BAD]",
+        "handle": "4bad",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BAE]",
+        "handle": "4bae",
+        "length": 744.6,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BAF]",
+        "handle": "4baf",
+        "length": 739.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BB0]",
+        "handle": "4bb0",
+        "length": 636.45,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BB1]",
+        "handle": "4bb1",
+        "length": 222.051,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BB4]",
+        "handle": "4bb4",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BB5]",
+        "handle": "4bb5",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BB7]",
+        "handle": "4bb7",
+        "length": 307.875,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BB9]",
+        "handle": "4bb9",
+        "length": 368.595,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BC4]",
+        "handle": "4bc4",
+        "length": 2099.25,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BD5]",
+        "handle": "4bd5",
+        "length": 1095.645,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BDE]",
+        "handle": "4bde",
+        "length": 98.161,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BDF]",
+        "handle": "4bdf",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BE0]",
+        "handle": "4be0",
+        "length": 106.885,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4BFF]",
+        "handle": "4bff",
+        "length": 2198.4,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [4C03]",
+        "handle": "4c03",
+        "length": 2197.2,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BDA]",
+        "handle": "5bda",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BDB]",
+        "handle": "5bdb",
+        "length": 739.455,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BDC]",
+        "handle": "5bdc",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BDD]",
+        "handle": "5bdd",
+        "length": 745.2,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BDE]",
+        "handle": "5bde",
+        "length": 364.05,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BE0]",
+        "handle": "5be0",
+        "length": 739.455,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BE1]",
+        "handle": "5be1",
+        "length": 739.455,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BE2]",
+        "handle": "5be2",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BE3]",
+        "handle": "5be3",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BE4]",
+        "handle": "5be4",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BE5]",
+        "handle": "5be5",
+        "length": 329.1,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BE6]",
+        "handle": "5be6",
+        "length": 329.1,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BE7]",
+        "handle": "5be7",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BE8]",
+        "handle": "5be8",
+        "length": 348.645,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BEA]",
+        "handle": "5bea",
+        "length": 308.475,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BEB]",
+        "handle": "5beb",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BEC]",
+        "handle": "5bec",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BF5]",
+        "handle": "5bf5",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BF6]",
+        "handle": "5bf6",
+        "length": 739.455,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BF7]",
+        "handle": "5bf7",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BF8]",
+        "handle": "5bf8",
+        "length": 745.2,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BF9]",
+        "handle": "5bf9",
+        "length": 364.05,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BFB]",
+        "handle": "5bfb",
+        "length": 739.455,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BFC]",
+        "handle": "5bfc",
+        "length": 739.455,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BFD]",
+        "handle": "5bfd",
+        "length": 208.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BFE]",
+        "handle": "5bfe",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5BFF]",
+        "handle": "5bff",
+        "length": 416.203,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C00]",
+        "handle": "5c00",
+        "length": 677.145,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C01]",
+        "handle": "5c01",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C02]",
+        "handle": "5c02",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C03]",
+        "handle": "5c03",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C04]",
+        "handle": "5c04",
+        "length": 348.645,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C06]",
+        "handle": "5c06",
+        "length": 308.475,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C07]",
+        "handle": "5c07",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C08]",
+        "handle": "5c08",
+        "length": 222.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C0D]",
+        "handle": "5c0d",
+        "length": 1095.045,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C12]",
+        "handle": "5c12",
+        "length": 2248.8,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Line",
+        "name": "Line [5C14]",
+        "handle": "5c14",
+        "length": 1627.2,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Polyline",
+        "name": "Polyline [4B10]",
+        "handle": "4b10",
+        "length": 1108.08,
+        "area": 76674.47,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Polyline",
+        "name": "Polyline [5BEF]",
+        "handle": "5bef",
+        "length": 923.4,
+        "area": 53246.16,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C0B]",
+        "handle": "5c0b",
+        "length": 923.4,
+        "area": 53246.16,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [1CBB]",
+        "handle": "1cbb",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [1CC3]",
+        "handle": "1cc3",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4ACC]",
+        "handle": "4acc",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4AD7]",
+        "handle": "4ad7",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4AD9]",
+        "handle": "4ad9",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4AE4]",
+        "handle": "4ae4",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4AE6]",
+        "handle": "4ae6",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4AF1]",
+        "handle": "4af1",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4AF3]",
+        "handle": "4af3",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4AFE]",
+        "handle": "4afe",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B01]",
+        "handle": "4b01",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B02]",
+        "handle": "4b02",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B17]",
+        "handle": "4b17",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B18]",
+        "handle": "4b18",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B51]",
+        "handle": "4b51",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B61]",
+        "handle": "4b61",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B63]",
+        "handle": "4b63",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B67]",
+        "handle": "4b67",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B7E]",
+        "handle": "4b7e",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B81]",
+        "handle": "4b81",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B94]",
+        "handle": "4b94",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4B95]",
+        "handle": "4b95",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4BA3]",
+        "handle": "4ba3",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4BA4]",
+        "handle": "4ba4",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4BBA]",
+        "handle": "4bba",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [4BBB]",
+        "handle": "4bbb",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [5BE9]",
+        "handle": "5be9",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [5BED]",
+        "handle": "5bed",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [5BEE]",
+        "handle": "5bee",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [5BF1]",
+        "handle": "5bf1",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [5BF2]",
+        "handle": "5bf2",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [5C05]",
+        "handle": "5c05",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [5C09]",
+        "handle": "5c09",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [5C0A]",
+        "handle": "5c0a",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [5C0E]",
+        "handle": "5c0e",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Circle",
+        "name": "Circle [5C0F]",
+        "handle": "5c0f",
+        "length": null,
+        "area": 4881.658,
+        "radius": 39.419,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4AD6]",
+        "handle": "4ad6",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4AE3]",
+        "handle": "4ae3",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4AF0]",
+        "handle": "4af0",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4AFD]",
+        "handle": "4afd",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B08]",
+        "handle": "4b08",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B26]",
+        "handle": "4b26",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B27]",
+        "handle": "4b27",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B28]",
+        "handle": "4b28",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B29]",
+        "handle": "4b29",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B2A]",
+        "handle": "4b2a",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B2B]",
+        "handle": "4b2b",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B2D]",
+        "handle": "4b2d",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B2E]",
+        "handle": "4b2e",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B38]",
+        "handle": "4b38",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B4F]",
+        "handle": "4b4f",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B50]",
+        "handle": "4b50",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B5F]",
+        "handle": "4b5f",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B60]",
+        "handle": "4b60",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B6E]",
+        "handle": "4b6e",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B79]",
+        "handle": "4b79",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B7D]",
+        "handle": "4b7d",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B85]",
+        "handle": "4b85",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B86]",
+        "handle": "4b86",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B92]",
+        "handle": "4b92",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B93]",
+        "handle": "4b93",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4B98]",
+        "handle": "4b98",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4BA1]",
+        "handle": "4ba1",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4BA2]",
+        "handle": "4ba2",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4BA8]",
+        "handle": "4ba8",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4BA9]",
+        "handle": "4ba9",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4BB3]",
+        "handle": "4bb3",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4BB6]",
+        "handle": "4bb6",
+        "length": 0.471,
+        "area": 0.014,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4BB8]",
+        "handle": "4bb8",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4BBE]",
+        "handle": "4bbe",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4C07]",
+        "handle": "4c07",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4C08]",
+        "handle": "4c08",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4C11]",
+        "handle": "4c11",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [4C13]",
+        "handle": "4c13",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Arc",
+        "name": "Arc [5C10]",
+        "handle": "5c10",
+        "length": 0.942,
+        "area": 0.103,
+        "radius": 0.6,
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Ellipse",
+        "name": "Ellipse [4B1C]",
+        "handle": "4b1c",
+        "length": null,
+        "area": 35207.059,
+        "radius": 211.05,
+        "bbox": {
+          "min": "53.100",
+          "max": null
+        }
+      },
+      {
+        "layer": "0",
+        "entity_type": "Ellipse",
+        "name": "Ellipse [4B7A]",
+        "handle": "4b7a",
+        "length": null,
+        "area": 35207.059,
+        "radius": 211.05,
+        "bbox": {
+          "min": "53.100",
+          "max": null
+        }
+      },
+      {
+        "layer": "0",
+        "entity_type": "Ellipse",
+        "name": "Ellipse [4BB2]",
+        "handle": "4bb2",
+        "length": null,
+        "area": 35207.059,
+        "radius": 211.05,
+        "bbox": {
+          "min": "53.100",
+          "max": null
+        }
+      },
+      {
+        "layer": "0",
+        "entity_type": "Ellipse",
+        "name": "Ellipse [5BD9]",
+        "handle": "5bd9",
+        "length": null,
+        "area": 35207.059,
+        "radius": 211.05,
+        "bbox": {
+          "min": "53.100",
+          "max": null
+        }
+      },
+      {
+        "layer": "0",
+        "entity_type": "Ellipse",
+        "name": "Ellipse [5BF4]",
+        "handle": "5bf4",
+        "length": null,
+        "area": 35207.059,
+        "radius": 211.05,
+        "bbox": {
+          "min": "53.100",
+          "max": null
+        }
+      }
+    ]
+  },
+  "inventory_hints": {
+    "level_markers": [],
+    "scale_dimensions": [],
+    "block_frequency": [
+      {
+        "block_name": "A1h",
+        "count": 1
+      }
+    ],
+    "layer_names": [
+      "0",
+      "015",
+      "UNKNOWN"
+    ]
+  }
+}

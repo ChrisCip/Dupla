@@ -1,0 +1,342 @@
+[
+  {
+    "level_id": "page_0001",
+    "level_name": "page_0001",
+    "source": "vision",
+    "source_image": "page_0001.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0001.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0001.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0001",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0001.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "exterior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=exterior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "exterior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [
+      {
+        "id": "vis-door-01",
+        "level_id": "page_0001",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0001.png:door_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "exterior",
+            "count": 4,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=exterior, count=4."
+        ],
+        "source_layers": [],
+        "count": 4,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "exterior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      }
+    ],
+    "windows": [
+      {
+        "id": "vis-window-01",
+        "level_id": "page_0001",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0001.png:window_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "fixed",
+            "count": 10,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=fixed, count=10."
+        ],
+        "source_layers": [],
+        "count": 10,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "fixed",
+        "glazing_hint": null,
+        "wall_id": null
+      }
+    ],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [
+      {
+        "check": "door_inventory_vs_block_hints",
+        "vision_count": 4,
+        "cad_block_hint": 0,
+        "status": "info"
+      },
+      {
+        "check": "window_inventory_vs_block_hints",
+        "vision_count": 10,
+        "cad_block_hint": 0,
+        "status": "info"
+      }
+    ],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"unknown\",\n      \"location\": \"exterior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [\n    {\n      \"type\": \"exterior\",\n      \"count\": 4,\n      \"width_m\": null\n    }\n  ],\n  \"windows\": [\n    {\n      \"type\": \"fixed\",\n      \"count\": 10,\n      \"width_m\": null\n    }\n  ],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [],\n  \"fixtures\": []\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "unknown",
+          "location": "exterior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [
+        {
+          "type": "exterior",
+          "count": 4,
+          "width_m": null
+        }
+      ],
+      "windows": [
+        {
+          "type": "fixed",
+          "count": 10,
+          "width_m": null
+        }
+      ],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0001.png",
+      "timestamp": "2026-04-06T14:53:29.042711"
+    }
+  },
+  {
+    "level_id": "page_0002",
+    "level_name": "page_0002",
+    "source": "vision",
+    "source_image": "page_0002.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0002.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0002.png"
+    },
+    "conflict_notes": [],
+    "walls": [],
+    "openings": [],
+    "doors": [],
+    "windows": [],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [],\n  \"doors\": [],\n  \"windows\": [],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [],\n  \"fixtures\": []\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [],
+      "doors": [],
+      "windows": [],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0002.png",
+      "timestamp": "2026-04-06T14:53:31.694029"
+    }
+  },
+  {
+    "error": "WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0003.png"
+  },
+  {
+    "error": "StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0004.png"
+  },
+  {
+    "error": "StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0005.png"
+  },
+  {
+    "error": "StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0006.png"
+  },
+  {
+    "error": "StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0007.png"
+  },
+  {
+    "error": "StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0008.png"
+  },
+  {
+    "error": "WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0009.png"
+  },
+  {
+    "error": "WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0010.png"
+  },
+  {
+    "error": "StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0011.png"
+  },
+  {
+    "level_id": "page_0012",
+    "level_name": "page_0012",
+    "source": "vision",
+    "source_image": "page_0012.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0012.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0012.png"
+    },
+    "conflict_notes": [],
+    "walls": [],
+    "openings": [],
+    "doors": [],
+    "windows": [],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [],\n  \"doors\": [],\n  \"windows\": [],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [],\n  \"fixtures\": []\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [],
+      "doors": [],
+      "windows": [],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0012.png",
+      "timestamp": "2026-04-06T14:54:17.185612"
+    }
+  },
+  {
+    "error": "WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0013.png"
+  },
+  {
+    "error": "WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0014.png"
+  },
+  {
+    "error": "WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0015.png"
+  },
+  {
+    "error": "WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?",
+    "file": "page_0016.png"
+  }
+]

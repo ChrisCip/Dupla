@@ -1,0 +1,270 @@
+2026-04-06 14:53:09 | INFO    | dupla.merged_pdf_vision      | PDF: C:\Users\Enrique Casanova\Dupla\Batch_Publish_20260406 (Conflicted Copy).pdf
+2026-04-06 14:53:09 | INFO    | dupla.merged_pdf_vision      | CAD fusionado: C:\Users\Enrique Casanova\Dupla\output\multi_dwg_project\giualca_i_edificio_tejas\2026-04-06_144031\project_merged.normalized.json
+2026-04-06 14:53:09 | INFO    | dupla.merged_pdf_vision      | Salida: C:\Users\Enrique Casanova\Dupla\output\multi_dwg_project\giualca_i_edificio_tejas\pdf_vision_2026-04-06_145309
+2026-04-06 14:53:23 | INFO    | dupla.merged_pdf_vision      | Renderizadas 16 páginas → C:\Users\Enrique Casanova\Dupla\output\multi_dwg_project\giualca_i_edificio_tejas\pdf_vision_2026-04-06_145309\rendered_pages\p_21498189199d707e
+2026-04-06 14:53:39 | WARNING | dupla.vision                 | Vision failed for page_0003.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 348, in level_inventory_from_dict
+    wet_areas=_list_of(WetArea, list(data.get("wet_areas", [])), level_id, source),
+              ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:53:44 | WARNING | dupla.vision                 | Vision failed for page_0004.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 352, in level_inventory_from_dict
+    structural_elements=_list_of(
+                        ~~~~~~~~^
+        StructuralElement,
+        ^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        source,
+        ^^^^^^^
+    ),
+    ^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:53:47 | WARNING | dupla.vision                 | Vision failed for page_0005.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 352, in level_inventory_from_dict
+    structural_elements=_list_of(
+                        ~~~~~~~~^
+        StructuralElement,
+        ^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        source,
+        ^^^^^^^
+    ),
+    ^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:53:51 | WARNING | dupla.vision                 | Vision failed for page_0006.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 352, in level_inventory_from_dict
+    structural_elements=_list_of(
+                        ~~~~~~~~^
+        StructuralElement,
+        ^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        source,
+        ^^^^^^^
+    ),
+    ^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:53:55 | WARNING | dupla.vision                 | Vision failed for page_0007.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 352, in level_inventory_from_dict
+    structural_elements=_list_of(
+                        ~~~~~~~~^
+        StructuralElement,
+        ^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        source,
+        ^^^^^^^
+    ),
+    ^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:53:58 | WARNING | dupla.vision                 | Vision failed for page_0008.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 352, in level_inventory_from_dict
+    structural_elements=_list_of(
+                        ~~~~~~~~^
+        StructuralElement,
+        ^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        source,
+        ^^^^^^^
+    ),
+    ^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:05 | WARNING | dupla.vision                 | Vision failed for page_0009.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 348, in level_inventory_from_dict
+    wet_areas=_list_of(WetArea, list(data.get("wet_areas", [])), level_id, source),
+              ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:10 | WARNING | dupla.vision                 | Vision failed for page_0010.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 348, in level_inventory_from_dict
+    wet_areas=_list_of(WetArea, list(data.get("wet_areas", [])), level_id, source),
+              ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:13 | WARNING | dupla.vision                 | Vision failed for page_0011.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 352, in level_inventory_from_dict
+    structural_elements=_list_of(
+                        ~~~~~~~~^
+        StructuralElement,
+        ^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        source,
+        ^^^^^^^
+    ),
+    ^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:22 | WARNING | dupla.vision                 | Vision failed for page_0013.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 348, in level_inventory_from_dict
+    wet_areas=_list_of(WetArea, list(data.get("wet_areas", [])), level_id, source),
+              ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:30 | WARNING | dupla.vision                 | Vision failed for page_0014.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 348, in level_inventory_from_dict
+    wet_areas=_list_of(WetArea, list(data.get("wet_areas", [])), level_id, source),
+              ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:39 | WARNING | dupla.vision                 | Vision failed for page_0015.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 348, in level_inventory_from_dict
+    wet_areas=_list_of(WetArea, list(data.get("wet_areas", [])), level_id, source),
+              ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.vision                 | Vision failed for page_0016.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+Traceback (most recent call last):
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 515, in run_full_vision_analysis
+    results.append(analyze_plan(image_path, cad_summary, level_name))
+                   ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\agents\vision_agent.py", line 493, in analyze_plan
+    level_inventory = level_inventory_from_dict(adapted, default_source="vision")
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 348, in level_inventory_from_dict
+    wet_areas=_list_of(WetArea, list(data.get("wet_areas", [])), level_id, source),
+              ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Enrique Casanova\Dupla\core\schemas.py", line 317, in _list_of
+    items.append(model_cls(**payload))
+                 ~~~~~~~~~^^^^^^^^^^^
+TypeError: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | INFO    | dupla.runner                 | Vision analysis: 3 pages OK, 13 errors
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0003.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0004.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0005.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0006.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0007.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0008.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0009.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0010.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0011.png: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0013.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0014.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0015.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | WARNING | dupla.runner                 | Vision error on page_0016.png: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:47 | INFO    | dupla.runner                 | BC3 catalog loaded: 684 items from TGIU.bc3
+2026-04-06 14:54:48 | INFO    | dupla.runner                 | Training pairs loaded: 1565 from PRES.xlsx
+2026-04-06 14:54:48 | INFO    | dupla.runner                 | Embeddings ready: 684 items, model=text-embedding-3-small
+2026-04-06 14:54:48 | INFO    | dupla.pipeline               | build_budget_from_sources: starting hybrid inventory + takeoffs
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 3 contains error, skipping: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 4 contains error, skipping: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 5 contains error, skipping: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 6 contains error, skipping: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 7 contains error, skipping: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 8 contains error, skipping: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 9 contains error, skipping: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 10 contains error, skipping: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 11 contains error, skipping: StructuralElement.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 13 contains error, skipping: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 14 contains error, skipping: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 15 contains error, skipping: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | WARNING | dupla.pipeline               | Vision payload 16 contains error, skipping: WetArea.__init__() got an unexpected keyword argument 'source_layers'. Did you mean 'source_refs'?
+2026-04-06 14:54:48 | INFO    | dupla.pipeline               | Hybrid inventory built: 3 levels (13 vision errors skipped)
+2026-04-06 14:54:48 | INFO    | dupla.pipeline               | Takeoffs: 65 base -> 36 expanded (rules applied)
+2026-04-06 14:54:48 | INFO    | dupla.pipeline               | After PRES merge: 36 takeoffs
+2026-04-06 14:54:48 | INFO    | dupla.pipeline               | Matching 36 takeoffs to BC3 catalog
+2026-04-06 14:55:32 | INFO    | dupla.pipeline               | BC3 candidates matched for 36 takeoff keys
+2026-04-06 14:55:32 | INFO    | dupla.composer               | Budget diagnostics: 36 total takeoffs, 16 budgetable, 20 excluded
+2026-04-06 14:55:32 | DEBUG   | dupla.composer               | Exclusion reasons: {'derived_child': 5, 'type_excluded': 10, 'unmapped_item_type': 3, 'structural_subtype_excluded': 2}
+2026-04-06 14:55:32 | INFO    | dupla.composer               | Budget composed: 6 chapters, 16 lines, 28 rows
+2026-04-06 14:55:32 | INFO    | dupla.pipeline               | Budget built: 6 chapters, 16 lines, 28 rows
+2026-04-06 14:55:32 | INFO    | dupla.runner                 | Excel export done: C:\Users\Enrique Casanova\Dupla\output\multi_dwg_project\giualca_i_edificio_tejas\pdf_vision_2026-04-06_145309\dupla_presupuesto_cad_pdf_vision.xlsx + reviewer: C:\Users\Enrique Casanova\Dupla\output\multi_dwg_project\giualca_i_edificio_tejas\pdf_vision_2026-04-06_145309\dupla_budget_for_review.xlsx
+2026-04-06 14:55:32 | INFO    | dupla.merged_pdf_vision      | Listo: C:\Users\Enrique Casanova\Dupla\output\multi_dwg_project\giualca_i_edificio_tejas\pdf_vision_2026-04-06_145309\dupla_presupuesto_cad_pdf_vision.xlsx

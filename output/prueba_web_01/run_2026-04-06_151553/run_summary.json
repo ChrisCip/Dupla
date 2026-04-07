@@ -1,0 +1,11 @@
+{
+  "project": "prueba_web_01",
+  "run_folder": "run_2026-04-06_151553",
+  "merged_json": "project_merged.normalized.json",
+  "cad_only_xlsx": "dupla_presupuesto_proyecto_merged.xlsx",
+  "hybrid_xlsx": "pdf_vision_complete/dupla_presupuesto_cad_pdf_vision.xlsx",
+  "review_xlsx": "pdf_vision_complete/dupla_budget_for_review.xlsx",
+  "analisis_md": "analisis_presupuesto.md",
+  "dwg_count": 15,
+  "note": "Resultado híbrido canónico en pdf_vision_complete/"
+}

@@ -1,0 +1,20 @@
+2026-04-06 21:36:07 | INFO    | dupla.merged_pdf_vision      | PDF: C:\Users\Enrique Casanova\Dupla\Batch_Publish_20260406 (Conflicted Copy).pdf
+2026-04-06 21:36:07 | INFO    | dupla.merged_pdf_vision      | CAD fusionado: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\project_merged.normalized.json
+2026-04-06 21:36:07 | INFO    | dupla.merged_pdf_vision      | Salida: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\pdf_vision_complete
+2026-04-06 21:36:20 | INFO    | dupla.merged_pdf_vision      | Renderizadas 16 páginas → C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\pdf_vision_complete\rendered_pages\p_21498189199d707e
+2026-04-06 21:37:31 | INFO    | dupla.runner                 | Vision analysis: 16 pages OK, 0 errors
+2026-04-06 21:37:31 | INFO    | dupla.runner                 | BC3 catalog loaded: 684 items from TGIU.bc3
+2026-04-06 21:37:31 | INFO    | dupla.runner                 | Training pairs loaded: 1565 from PRES.xlsx
+2026-04-06 21:37:31 | INFO    | dupla.runner                 | Embeddings ready: 684 items, model=text-embedding-3-small
+2026-04-06 21:37:31 | INFO    | dupla.pipeline               | build_budget_from_sources: starting hybrid inventory + takeoffs
+2026-04-06 21:37:33 | INFO    | dupla.pipeline               | Hybrid inventory built: 16 levels (0 vision errors skipped)
+2026-04-06 21:37:33 | INFO    | dupla.pipeline               | Takeoffs: 410 base -> 53 expanded (rules applied)
+2026-04-06 21:37:33 | INFO    | dupla.pipeline               | After PRES merge: 53 takeoffs
+2026-04-06 21:37:33 | INFO    | dupla.pipeline               | Matching 53 takeoffs to BC3 catalog
+2026-04-06 21:38:53 | INFO    | dupla.pipeline               | BC3 candidates matched for 53 takeoff keys
+2026-04-06 21:38:53 | INFO    | dupla.composer               | Budget diagnostics: 53 total takeoffs, 27 budgetable, 26 excluded
+2026-04-06 21:38:53 | DEBUG   | dupla.composer               | Exclusion reasons: {'derived_child': 7, 'type_excluded': 14, 'unmapped_item_type': 3, 'structural_subtype_excluded': 2}
+2026-04-06 21:38:53 | INFO    | dupla.composer               | Budget composed: 13 chapters, 27 lines, 53 rows
+2026-04-06 21:38:53 | INFO    | dupla.pipeline               | Budget built: 13 chapters, 27 lines, 53 rows
+2026-04-06 21:38:53 | INFO    | dupla.runner                 | Excel export done: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\pdf_vision_complete\dupla_presupuesto_cad_pdf_vision.xlsx + reviewer: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\pdf_vision_complete\dupla_budget_for_review.xlsx
+2026-04-06 21:38:53 | INFO    | dupla.merged_pdf_vision      | Listo: C:\Users\Enrique Casanova\Dupla\output\prueba_web_01\run_2026-04-06_151553\pdf_vision_complete\dupla_presupuesto_cad_pdf_vision.xlsx
