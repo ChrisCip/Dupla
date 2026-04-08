@@ -119,6 +119,25 @@ def test_budget_composer_groups_rows_and_generates_codes_and_subtotals() -> None
     assert all(row.excel_row is not None for row in rows)
 
 
+def test_budget_composer_drops_bc3_candidate_not_in_catalog_when_catalog_provided() -> None:
+    context, takeoffs, candidates = _sample_takeoffs()
+    bc3_catalog = {
+        "items": [{"code": "ONLY", "unit": "m3", "price": 1.0, "summary": "Otro"}],
+        "concepts_by_code": {"ONLY": {"unit": "m3", "price": 1.0}},
+    }
+    _, lines, _ = compose_budget_rows(
+        context, takeoffs, candidates, bc3_catalog=bc3_catalog
+    )
+    line_by_key = {line.takeoff_key: line for line in lines}
+    assert line_by_key["beam_01:concrete_volume"].code.startswith("DUP")
+    assert (
+        line_by_key["beam_01:concrete_volume"].metadata.get("bc3_guard_drop_reason")
+        == "bc3_code_missing_in_catalog"
+    )
+    assert line_by_key["wall_01:paint"].code == "DUP-0002"
+    assert line_by_key["door_01:leaf"].code == "DUP-0003"
+
+
 def test_budget_composer_returns_serializable_budget_payload() -> None:
     context, takeoffs, candidates = _sample_takeoffs()
     composed = compose_budget(context, takeoffs, candidates)

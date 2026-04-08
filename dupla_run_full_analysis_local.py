@@ -22,6 +22,8 @@ Notes:
 - If USE_PDF = True, it requires PyMuPDF for PDF rendering
 - Pipeline report saved to outputs as pipeline_report.json
 - Full debug log saved to outputs as dupla_debug.log
+- Evolución del criterio de visión: editar `knowledge/office_methodology.md` y re-ejecutar
+  (mismo diseño; `OFFICE_METHODOLOGY_PATH` en CONFIG apunta al markdown).
 """
 
 from __future__ import annotations
@@ -64,6 +66,10 @@ FAILED_MANIFEST_GRACE_SLEEP_SECONDS = 20
 UPLOAD_OBJECT_NAME = None  # Set a string to override the uploaded Autodesk object name
 AUTO_UNIQUE_OBJECT_NAME = True
 
+# Office methodology (step 1 evolution loop) — markdown injected into every vision page prompt.
+# Edit knowledge/office_methodology.md between runs; set to "" to disable.
+OFFICE_METHODOLOGY_PATH = "./knowledge/office_methodology.md"
+
 # Outputs
 OUTPUTS_DIR = r"C:\Users\chris\Downloads\archivos dupla\dwg"
 OUTPUT_NAME = "dupla_budget_ready_full"
@@ -76,16 +82,36 @@ REPO_ROOT = Path(__file__).resolve().parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+
+def _load_office_methodology(rel_path: str | None) -> tuple[str, str | None]:
+    """
+    Load markdown text for vision prompts. Returns (text, resolved_path_or_none).
+    Empty string if disabled or file missing.
+    """
+    if not rel_path or not str(rel_path).strip():
+        return "", None
+    path = (REPO_ROOT / rel_path).resolve()
+    if not path.exists():
+        logging.getLogger("dupla.local").warning(
+            "OFFICE_METHODOLOGY_PATH not found (%s) — vision runs without office block.",
+            path,
+        )
+        return "", str(path)
+    text = path.read_text(encoding="utf-8").strip()
+    return text, str(path)
+
 from aps_integration.aps_auth import get_aps_token
 from aps_integration.model_derivative import extract_dwg_data
 from aps_integration.oss_manager import APS_BUCKET_NAME, create_bucket, upload_file_to_bucket
 from agents.vision_agent import run_full_vision_analysis
+from budget.export_bc3 import export_budget_bc3
 from budget.export_excel import export_budget_workbook
 from core.logging_config import setup_logging
 from core.pipeline import build_budget_from_sources
 from core.schemas import ProjectContext
 from core.stage import PipelineRunner
 from knowledge.bc3_embeddings import load_or_build_embeddings
+from knowledge.methodology_generator import generate_methodology_context
 from knowledge.training_data import extract_training_pairs
 from processors.bc3_parser import parse_bc3
 from processors.json_processor import process_autodesk_json
@@ -204,9 +230,38 @@ def stage_resolve_pages(outputs_dir: Path) -> dict:
     return {"pages_dir": images_dir, "page_count": count, "source": "directory"}
 
 
-def stage_vision_analysis(pages_dir: Path, cad_facts: dict, outputs_dir: Path) -> dict:
+def stage_vision_analysis(
+    pages_dir: Path,
+    cad_facts: dict,
+    outputs_dir: Path,
+    *,
+    auto_methodology: str | None = None,
+) -> dict:
     """Stage 3: Run GPT-4o vision analysis on each page."""
-    vision_results = run_full_vision_analysis(str(pages_dir), cad_facts)
+    manual_text, manual_path = _load_office_methodology(OFFICE_METHODOLOGY_PATH)
+    parts: list[str] = []
+    if auto_methodology and auto_methodology.strip():
+        parts.append(auto_methodology.strip())
+        logger.info("Auto methodology from PRES/BC3: %d chars", len(auto_methodology))
+    if manual_text.strip():
+        parts.append(manual_text.strip())
+        logger.info("Manual methodology from %s: %d chars", manual_path, len(manual_text))
+    methodology = "\n\n---\n\n".join(parts) if parts else None
+    if methodology:
+        logger.info("Combined methodology for vision: %d chars", len(methodology))
+    else:
+        logger.info("No methodology context for vision (PRES/BC3/manual all empty)")
+
+    vision_results = run_full_vision_analysis(
+        str(pages_dir),
+        cad_facts,
+        office_methodology=methodology,
+    )
+
+    if methodology:
+        snap = outputs_dir / "office_methodology_snapshot.md"
+        snap.write_text(methodology, encoding="utf-8")
+        logger.info("Methodology snapshot for this run: %s", snap.name)
 
     vision_json_path = outputs_dir / "vision_inventory_results.json"
     vision_json_path.write_text(json.dumps(vision_results, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -224,11 +279,12 @@ def stage_vision_analysis(pages_dir: Path, cad_facts: dict, outputs_dir: Path) -
         "vision_json_path": vision_json_path,
         "pages_ok": ok_count,
         "pages_with_errors": error_count,
+        "methodology_chars": len(methodology or ""),
     }
 
 
 def stage_knowledge_inputs(outputs_dir: Path) -> dict:
-    """Stage 4: Load BC3 catalog, training pairs, and build embeddings."""
+    """Stage 4: Load BC3 catalog, training pairs, and build embeddings.""" 
     bc3_catalog: dict = {}
     bc3_path_value = None
     if BC3_PATH:
@@ -263,12 +319,22 @@ def stage_knowledge_inputs(outputs_dir: Path) -> dict:
     else:
         logger.info("Embeddings skipped (BC3 catalog empty)")
 
+    auto_methodology = generate_methodology_context(
+        training_pairs=training_pairs or None,
+        bc3_catalog=bc3_catalog or None,
+    )
+    if auto_methodology:
+        logger.info("Auto methodology generated: %d chars", len(auto_methodology))
+    else:
+        logger.info("Auto methodology: empty (no PRES/BC3 data)")
+
     return {
         "bc3_catalog": bc3_catalog,
         "bc3_path_value": bc3_path_value,
         "training_pairs": training_pairs,
         "embedding_index": embedding_index,
         "xlsx_training_path": str(xlsx_training_path) if xlsx_training_path.exists() else None,
+        "auto_methodology": auto_methodology,
     }
 
 
@@ -365,6 +431,22 @@ def stage_excel_export(
     }
 
 
+def stage_bc3_export(
+    context: ProjectContext,
+    budget: dict,
+    outputs_dir: Path,
+) -> dict:
+    """Stage 7: Export BC3 (FIEBDC) file for Presto import."""
+    bc3_output_path = outputs_dir / f"{OUTPUT_NAME}.bc3"
+    saved_bc3_path = export_budget_bc3(
+        context=context,
+        rows=budget["rows"],
+        output_path=bc3_output_path,
+    )
+    logger.info("BC3 (Presto) export done: %s", saved_bc3_path)
+    return {"saved_bc3_path": saved_bc3_path}
+
+
 def _save_for_review(budget: dict, output_dir: Path) -> Path:
     workbook = Workbook()
     worksheet = workbook.active
@@ -429,28 +511,34 @@ def main() -> None:
         return
     runner.add_metrics("vision_pages", {"page_count": s2.output["page_count"], "source": s2.output["source"]})
 
-    # --- Stage 3: Vision analysis ---
-    s3 = runner.run_stage(
-        "vision_analysis",
-        stage_vision_analysis, s2.output["pages_dir"], aps["cad_facts"], outputs_dir,
-    )
+    # --- Stage 3: Knowledge inputs (BC3 + training + embeddings) ---
+    #     Loaded BEFORE vision so the auto methodology context is available.
+    s3 = runner.run_stage("knowledge_inputs", stage_knowledge_inputs, outputs_dir)
     if not s3.ok:
         _finish(runner, outputs_dir)
         return
-    runner.add_metrics("vision_analysis", {
-        "pages_ok": s3.output["pages_ok"],
-        "pages_with_errors": s3.output["pages_with_errors"],
+    runner.add_metrics("knowledge_inputs", {
+        "bc3_items": len(s3.output["bc3_catalog"].get("items", [])),
+        "training_pairs": len(s3.output["training_pairs"]),
+        "has_embeddings": s3.output["embedding_index"] is not None,
     })
 
-    # --- Stage 4: Knowledge inputs (BC3 + training + embeddings) ---
-    s4 = runner.run_stage("knowledge_inputs", stage_knowledge_inputs, outputs_dir)
+    # --- Stage 4: Vision analysis (uses auto methodology from stage 3) ---
+    s4 = runner.run_stage(
+        "vision_analysis",
+        stage_vision_analysis,
+        s2.output["pages_dir"],
+        aps["cad_facts"],
+        outputs_dir,
+        auto_methodology=s3.output.get("auto_methodology") or None,
+    )
     if not s4.ok:
         _finish(runner, outputs_dir)
         return
-    runner.add_metrics("knowledge_inputs", {
-        "bc3_items": len(s4.output["bc3_catalog"].get("items", [])),
-        "training_pairs": len(s4.output["training_pairs"]),
-        "has_embeddings": s4.output["embedding_index"] is not None,
+    runner.add_metrics("vision_analysis", {
+        "pages_ok": s4.output["pages_ok"],
+        "pages_with_errors": s4.output["pages_with_errors"],
+        "methodology_chars": s4.output.get("methodology_chars", 0),
     })
 
     # --- Stage 5: Build budget ---
@@ -458,15 +546,15 @@ def main() -> None:
         "build_budget",
         stage_build_budget,
         aps["cad_facts"],
-        s3.output["vision_results"],
-        s4.output["bc3_catalog"],
-        s4.output["embedding_index"],
-        s4.output["training_pairs"],
+        s4.output["vision_results"],
+        s3.output["bc3_catalog"],
+        s3.output["embedding_index"],
+        s3.output["training_pairs"],
         aps["raw_json_path"],
         aps["normalized_json_path"],
         aps["uploaded_object_name"],
         s2.output["pages_dir"],
-        s4.output["xlsx_training_path"],
+        s3.output["xlsx_training_path"],
         outputs_dir,
     )
     if not s5.ok:
@@ -488,15 +576,21 @@ def main() -> None:
         _finish(runner, outputs_dir)
         return
 
+    # --- Stage 7: BC3 export (Presto) ---
+    s7 = runner.run_stage("bc3_export", stage_bc3_export, s5.output["context"], budget, outputs_dir)
+    if not s7.ok:
+        logger.warning("BC3 export failed — continuing with Excel output only")
+
     # --- Final summary ---
     summary = {
         "dwg": str(dwg_path),
         "raw_autodesk_json": str(aps["raw_json_path"]),
         "normalized_json": str(aps["normalized_json_path"]),
-        "vision_inventory_json": str(s3.output["vision_json_path"]),
+        "vision_inventory_json": str(s4.output["vision_json_path"]),
         "budget_json": str(s5.output["budget_json_path"]),
         "budget_excel": str(s6.output["saved_workbook_path"]),
         "budget_review_excel": str(s6.output["review_workbook_path"]),
+        "budget_bc3": str(s7.output["saved_bc3_path"]) if s7.ok else None,
         "pages_dir": str(s2.output["pages_dir"]),
         "vision_pages_count": len(s5.output["page_paths"]),
         "uploaded_object_name": aps["uploaded_object_name"],

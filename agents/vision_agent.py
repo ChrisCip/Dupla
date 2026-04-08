@@ -86,29 +86,161 @@ def _extract_json(text: str) -> dict[str, Any]:
 # Step 1: Simple prompt — GPT-4o counts visible elements
 # ---------------------------------------------------------------------------
 
-_SIMPLE_SYSTEM_PROMPT = """You are a building quantity surveyor analyzing architectural plan images.
+_MAX_OFFICE_METHODOLOGY_CHARS = 12000
 
-Count and list ALL visible building elements concisely.
-Return ONLY valid JSON — no markdown, no explanation, no text before or after.
-Use null for values you cannot determine from the image.
-Only report what is clearly visible; do not invent counts."""
+
+_SIMPLE_SYSTEM_PROMPT = """Eres un ingeniero presupuestista senior dominicano con 20+ años de experiencia en cuantificación de obras.
+Analizas planos de construcción (plantas, cortes, elevaciones, detalles) para extraer TODOS los elementos constructivos con sus dimensiones exactas para presupuesto.
+
+Si el usuario incluye un bloque "METODOLOGÍA DE OFICINA", aplícalo como criterio de prioridad para
+interpretar notaciones y desgloses, sin contradecir el formato JSON ni inventar cantidades no visibles.
+
+REGLAS OBLIGATORIAS:
+1. BUSCA ACTIVAMENTE en toda la imagen: cuadros de resumen, leyendas, notaciones, cotas, secciones anotadas, detalles constructivos.
+2. NO devuelvas null si el dato es visible o deducible. Si ves "V-1 0.30x0.60" eso son section_width_m=0.30 y section_height_m=0.60.
+3. Si ves "B-6" o "bloque 6" = espesor 0.15m (6 pulgadas). "B-8" = 0.20m. "B-4" = 0.10m.
+4. Notaciones tipo "e=0.20" o "esp. 0.15" = espesor en metros.
+5. Si ves cotas entre líneas de nivel (NPT+0.00, NPT+2.80) = altura de entrepiso.
+6. CADA tipo diferente de elemento va en una entrada separada. No agrupes bloques de 6 con bloques de 8.
+7. Extrae ABSOLUTAMENTE TODO lo visible: estructura, albañilería, acabados, instalaciones eléctricas, sanitarias, carpintería.
+8. Para baños: cuenta CADA pieza sanitaria (inodoro, lavamanos, ducha, bañera, bidet, gabinete).
+9. Para cocinas: identifica gabinetes, fregaderos, conexiones de gas si son visibles.
+10. Para instalaciones eléctricas: tomacorrientes, interruptores, luminarias, paneles, salidas especiales.
+11. Para instalaciones sanitarias: tuberías visibles, registros, trampas, válvulas, puntos de agua.
+12. Identifica el TIPO DE PLANO: arquitectónico, estructural, eléctrico, sanitario, corte, elevación, detalle.
+
+Return ONLY valid JSON — no markdown, no explanation, no text."""
 
 _SIMPLE_SCHEMA_HINT = """{
+  "plan_type": "architectural|structural|electrical|plumbing|section|elevation|detail|site|combined",
   "floor_area_m2": <number or null>,
+  "ceiling_height_m": <number or null>,
+  "floor_to_floor_height_m": <number or null>,
   "walls": [
-    {"material": "masonry|concrete|drywall|wood|other",
-     "location": "interior|exterior|unknown",
-     "estimated_length_m": <number or null>,
+    {"id": "descriptive label (e.g. muro_ext_bloque8, muro_int_bloque6, muro_concreto)",
+     "material": "block_6in|block_8in|block_4in|concrete|drywall|wood|other",
+     "location": "interior|exterior",
+     "estimated_length_m": <number>,
      "estimated_area_m2": <number or null>,
+     "height_m": <number or null>,
+     "thickness_m": <number>,
+     "finish_interior": "plaster|ceramic_tile|paint|none|null",
+     "finish_exterior": "plaster|ceramic_tile|paint|exposed|none|null",
+     "structural": true/false,
+     "count_segments": <integer>}
+  ],
+  "doors": [
+    {"id": "descriptive (e.g. puerta_principal, puerta_interior_madera)",
+     "type": "main_entry|interior|service|bathroom|closet|garage|sliding|folding|other",
+     "material": "wood|metal|aluminum|pvc|glass|other",
+     "count": <integer>,
+     "width_m": <number or null>,
+     "height_m": <number or null>,
+     "includes_frame": true/false,
+     "includes_hardware": true/false}
+  ],
+  "windows": [
+    {"id": "descriptive (e.g. ventana_corrediza_aluminio)",
+     "type": "sliding|fixed|casement|jalousie|louver|awning|other",
+     "material": "aluminum|wood|pvc|steel|other",
+     "glazing": "clear|tinted|frosted|double|other",
+     "count": <integer>,
+     "width_m": <number or null>,
      "height_m": <number or null>}
   ],
-  "doors": [{"type": "interior|exterior|garage|main_entry|service|other", "count": <integer>, "width_m": <number or null>}],
-  "windows": [{"type": "sliding|fixed|casement|jalousie|other", "count": <integer>, "width_m": <number or null>}],
-  "wet_areas": [{"kind": "bathroom|laundry|service_bath", "count": <integer>, "area_m2": <number or null>}],
-  "kitchens": [{"count": <integer>, "area_m2": <number or null>}],
-  "stairs": [{"count": <integer>, "flights": <integer or null>, "width_m": <number or null>}],
-  "structural_elements": [{"type": "column|beam|slab|footing|shear_wall", "count": <integer or null>, "area_m2": <number or null>}],
-  "fixtures": [{"type": "sink|toilet|shower|bathtub|outlet|switch|luminaire|panel|pump|other", "count": <integer>}]
+  "wet_areas": [
+    {"id": "descriptive (e.g. bano_principal, bano_servicio, lavanderia)",
+     "kind": "full_bathroom|half_bathroom|service_bathroom|laundry|utility",
+     "count": <integer>,
+     "area_m2": <number or null>,
+     "has_shower": true/false,
+     "has_bathtub": true/false,
+     "has_toilet": true/false,
+     "has_sink": true/false,
+     "has_bidet": true/false,
+     "has_cabinet": true/false,
+     "floor_finish": "ceramic|porcelain|other|null",
+     "wall_finish": "ceramic|porcelain|paint|other|null",
+     "waterproofing_required": true/false}
+  ],
+  "kitchens": [
+    {"id": "descriptive",
+     "count": <integer>,
+     "area_m2": <number or null>,
+     "has_upper_cabinets": true/false,
+     "has_lower_cabinets": true/false,
+     "has_countertop": true/false,
+     "countertop_material": "granite|marble|quartz|other|null",
+     "has_sink": true/false,
+     "has_gas_connection": true/false,
+     "floor_finish": "ceramic|porcelain|other|null",
+     "wall_finish": "ceramic|porcelain|paint|other|null"}
+  ],
+  "stairs": [
+    {"id": "descriptive",
+     "count": <integer>,
+     "flights": <integer or null>,
+     "steps_per_flight": <integer or null>,
+     "width_m": <number or null>,
+     "material": "concrete|steel|wood|other",
+     "has_railing": true/false,
+     "railing_material": "metal|wood|glass|other|null"}
+  ],
+  "structural_elements": [
+    {"id": "notation if visible (e.g. V-1, C-1, L-1, Z-1) or descriptive",
+     "type": "column|beam|slab|footing|shear_wall|lintel|tie_beam",
+     "count": <integer>,
+     "section_width_m": <number or null>,
+     "section_height_m": <number or null>,
+     "length_m": <number or null>,
+     "area_m2": <number or null>,
+     "span_m": <number or null>,
+     "material": "concrete|steel|masonry|other",
+     "concrete_grade": "fc_210|fc_250|fc_280|null",
+     "has_reinforcement": true}
+  ],
+  "floor_finishes": [
+    {"id": "descriptive (e.g. piso_porcelanato_sala, piso_ceramica_bano)",
+     "type": "ceramic|porcelain|marble|granite|vinyl|concrete_polished|terrazo|other",
+     "area_m2": <number or null>,
+     "location": "description of where"}
+  ],
+  "ceiling_finishes": [
+    {"id": "descriptive",
+     "type": "plaster|drywall|exposed|suspended|wood|other",
+     "area_m2": <number or null>,
+     "location": "description"}
+  ],
+  "electrical": [
+    {"id": "descriptive",
+     "type": "outlet_110v|outlet_220v|switch_single|switch_double|switch_triple|switch_dimmer|luminaire_ceiling|luminaire_wall|luminaire_recessed|panel_breaker|intercom|doorbell|data_outlet|tv_outlet|phone_outlet|smoke_detector|emergency_light|fan_connection|ac_connection|other",
+     "count": <integer>,
+     "location": "description or null"}
+  ],
+  "plumbing": [
+    {"id": "descriptive",
+     "type": "water_supply_point|drain_point|vent_pipe|cleanout|floor_drain|water_heater_connection|washing_machine_connection|hose_bib|valve|water_meter|cistern|pump|other",
+     "count": <integer>,
+     "pipe_diameter_in": <number or null>,
+     "material": "pvc|cpvc|copper|galvanized|other|null",
+     "location": "description or null"}
+  ],
+  "fixtures": [
+    {"id": "descriptive",
+     "type": "toilet|sink|shower_base|bathtub|bidet|urinal|laundry_sink|kitchen_sink|water_heater|pump|other",
+     "count": <integer>,
+     "brand_or_quality": "standard|premium|economy|null"}
+  ],
+  "exterior_works": [
+    {"id": "descriptive",
+     "type": "sidewalk|driveway|garden_wall|fence|gate|parking_area|ramp|retaining_wall|drainage_channel|other",
+     "quantity": <number or null>,
+     "unit": "m2|m|unit",
+     "material": "description or null"}
+  ],
+  "annotations_and_notes": [
+    {"text": "exact text visible", "interpretation": "what it means for quantification"}
+  ]
 }"""
 
 
@@ -171,20 +303,76 @@ def _build_simple_user_prompt(
     image_path: Path,
     level_name: str,
     cad_summary: dict[str, Any],
+    *,
+    office_methodology: str | None = None,
 ) -> str:
     view_type = _detect_view_type(image_path)
     cad_hints = format_cad_facts_for_prompt(cad_summary)
-    return f"""Analyze this {view_type} image for level: {level_name}
+    methodology_block = ""
+    if office_methodology and office_methodology.strip():
+        trimmed = office_methodology.strip()
+        if len(trimmed) > _MAX_OFFICE_METHODOLOGY_CHARS:
+            logger.warning(
+                "Office methodology truncated: %d → %d chars",
+                len(trimmed),
+                _MAX_OFFICE_METHODOLOGY_CHARS,
+            )
+            trimmed = trimmed[:_MAX_OFFICE_METHODOLOGY_CHARS] + "\n\n[... texto truncado por límite ...]"
+        methodology_block = f"""METODOLOGÍA DE OFICINA (criterio del presupuestista — prioridad al interpretar notas y desgloses):
+{trimmed}
 
-CAD layer hints (use to cross-check your counts):
+---
+
+"""
+
+    return f"""ANALIZA este plano ({view_type}) del nivel: {level_name}
+
+{methodology_block}DATOS DEL CAD (úsalos para verificar y complementar lo que ves):
 {cad_hints}
 
-Count ALL visible building elements. Group same-type elements together.
-Each wall group (interior masonry, exterior concrete, etc.) = one entry.
-Each door type (interior, exterior, etc.) = one entry with total count.
-Each window type = one entry with total count.
+INSTRUCCIONES DE EXTRACCIÓN EXHAUSTIVA:
 
-Return this exact JSON structure:
+1. ESTRUCTURA: Busca cuadros de columnas/vigas/zapatas/losas. Lee CADA notación 
+   (V-1, C-1, Z-1, L-1) con su sección (ancho x alto). Si ves "0.30x0.60" cerca 
+   de una viga, esa es la sección. Cuenta CADA elemento individualmente.
+
+2. MUROS: Diferencia CADA tipo: bloque 6" (B-6, 0.15m), bloque 8" (B-8, 0.20m), 
+   concreto armado (muro cortante), drywall. Mide longitudes de las cotas o estima 
+   por escala. Indica interior/exterior.
+
+3. ACABADOS DE MUROS: Si ves notas de "pañete", "empañete", "fraguache", "repello" = 
+   plaster. Si ves "cerámica" o "azulejo" = ceramic_tile. Indica ambas caras si aplica.
+
+4. PUERTAS: CADA tipo por separado (principal, interiores, baño, servicio, closet). 
+   Lee dimensiones de las cotas (ancho x alto). Material si visible.
+
+5. VENTANAS: CADA tipo (corrediza, fija, celosía, proyectante). Dimensiones de cotas.
+
+6. BAÑOS: Para CADA baño cuenta: inodoro, lavamanos, ducha/tina, gabinete, espejo, 
+   accesorios. Nota acabados (cerámica piso, cerámica pared, pintura).
+
+7. COCINA: Gabinetes superiores e inferiores, tope, fregadero, conexión gas.
+
+8. PISOS: Tipo de acabado por zona (porcelanato sala, cerámica baño, etc.). Área si 
+   hay cotas.
+
+9. CIELOS: Tipo (yeso, suspendido, expuesto) por zona.
+
+10. ELÉCTRICO: Cuenta CADA punto: tomacorrientes 110V, 220V, interruptores (sencillo, 
+    doble, triple), luminarias (techo, pared, empotradas), salidas de datos, TV, 
+    teléfono, panel de breakers, timbres, detectores de humo, abanicos, A/C.
+
+11. SANITARIO/PLOMERÍA: Puntos de agua, desagües, ventilaciones, registros, válvulas, 
+    conexión calentador, conexión lavadora, llaves de paso, medidor, cisterna, bomba.
+
+12. ESCALERAS: Tipo, material, ancho, número de peldaños, barandas.
+
+13. EXTERIORES: Aceras, rampas, muros de contención, cercas, portones, estacionamiento.
+
+14. ANOTACIONES: Lee TODAS las notas y textos relevantes del plano. Interpreta su 
+    significado para cuantificación.
+
+Devuelve este JSON EXACTO (sin texto adicional):
 {_SIMPLE_SCHEMA_HINT}"""
 
 
@@ -200,28 +388,59 @@ def _simple_to_level_inventory(
 ) -> dict[str, Any]:
     """Convert GPT-4o simple inventory output to a LevelInventory-compatible dict."""
 
+    _BLOCK_THICKNESS: dict[str, float] = {
+        "block_6in": 0.15, "block_8in": 0.20, "block_4in": 0.10,
+    }
+
     walls: list[dict[str, Any]] = []
     for i, w in enumerate(simple.get("walls") or [], 1):
+        raw_material = w.get("material") or "other"
+        thickness = w.get("thickness_m")
+        if thickness is None:
+            thickness = _BLOCK_THICKNESS.get(raw_material)
+
+        material_hint = raw_material
+        if raw_material.startswith("block_"):
+            material_hint = "masonry"
+
+        wall_system = None
+        if raw_material.startswith("block_"):
+            wall_system = "masonry_wall"
+        elif raw_material == "concrete":
+            wall_system = "concrete_wall"
+        elif raw_material == "drywall":
+            wall_system = "drywall_partition"
+
+        wall_id = w.get("id") or f"vis-wall-{i:02d}"
         walls.append(
             {
-                "id": f"vis-wall-{i:02d}",
+                "id": wall_id,
                 "source": "vision",
                 "source_layers": [],
                 "source_refs": [f"vision:{image_name}:wall_{i}"],
-                "assumptions": ["Dimensions estimated from visible plan scale."],
-                "inputs": {"raw": w},
+                "assumptions": ["Dimensions extracted from plan analysis."],
+                "inputs": {
+                    "raw": w,
+                    "finish_interior": w.get("finish_interior"),
+                    "finish_exterior": w.get("finish_exterior"),
+                    "original_material_code": raw_material,
+                },
                 "conflict_notes": [],
                 "length_m": w.get("estimated_length_m"),
                 "height_m": w.get("height_m"),
+                "thickness_m": thickness,
                 "area_m2": w.get("estimated_area_m2"),
-                "material_hint": w.get("material"),
+                "material_hint": material_hint,
+                "wall_system": wall_system,
                 "interior_exterior_hint": (
                     w.get("location") if w.get("location") in {"interior", "exterior"} else None
                 ),
-                "confidence": 0.65,
+                "structural": w.get("structural") or False,
+                "finish_required": True,
+                "confidence": 0.70,
                 "evidence": [
-                    f"Identified from plan image: material={w.get('material')}, "
-                    f"location={w.get('location')}."
+                    f"Wall identified: material={raw_material}, location={w.get('location')}, "
+                    f"thickness={thickness}m, length={w.get('estimated_length_m')}m."
                 ],
             }
         )
@@ -240,6 +459,7 @@ def _simple_to_level_inventory(
                 "conflict_notes": [],
                 "count": int(count) if count is not None else 1,
                 "width_m": d.get("width_m"),
+                "height_m": d.get("height_m"),
                 "type_hint": d.get("type"),
                 "confidence": 0.70,
                 "evidence": [
@@ -262,6 +482,7 @@ def _simple_to_level_inventory(
                 "conflict_notes": [],
                 "count": int(count) if count is not None else 1,
                 "width_m": w.get("width_m"),
+                "height_m": w.get("height_m"),
                 "type_hint": w.get("type"),
                 "confidence": 0.70,
                 "evidence": [
@@ -332,20 +553,43 @@ def _simple_to_level_inventory(
     for i, e in enumerate(simple.get("structural_elements") or [], 1):
         etype = e.get("type") or "other"
         raw_count = e.get("count")
+        material = e.get("material") or ("concrete" if etype in {"column", "beam", "slab", "footing", "shear_wall", "lintel", "tie_beam"} else None)
+        notation = e.get("id") or ""
+        elem_id = notation if notation and not notation.startswith("vis-") else f"vis-{etype}-{i:02d}"
+
+        concrete_grade = e.get("concrete_grade")
+        concrete_grade_hint = None
+        if concrete_grade and concrete_grade != "null":
+            concrete_grade_hint = concrete_grade.replace("fc_", "fc'=").replace("_", " ")
+
         structural_elements.append(
             {
-                "id": f"vis-{etype}-{i:02d}",
+                "id": elem_id,
                 "source": "vision",
                 "source_refs": [f"vision:{image_name}:{etype}_{i}"],
                 "assumptions": [],
-                "inputs": {"raw": e},
+                "inputs": {
+                    "raw": e,
+                    "notation": notation,
+                    "concrete_grade_raw": concrete_grade,
+                },
                 "conflict_notes": [],
-                "element_type": etype,
+                "element_type": etype if etype not in {"shear_wall", "lintel", "tie_beam"} else "other",
                 "count": int(raw_count) if raw_count is not None else 1,
                 "area_m2": e.get("area_m2"),
                 "length_m": e.get("length_m"),
-                "confidence": 0.60,
-                "evidence": [f"Identified from plan image: type={etype}."],
+                "span_m": e.get("span_m"),
+                "section_width_m": e.get("section_width_m"),
+                "section_height_m": e.get("section_height_m"),
+                "material_hint": material,
+                "reinforcement_hint": "reinforced" if material == "concrete" or e.get("has_reinforcement") else None,
+                "concrete_grade_hint": concrete_grade_hint,
+                "confidence": 0.65,
+                "evidence": [
+                    f"Structural element from plan: notation={notation}, type={etype}, "
+                    f"section={e.get('section_width_m')}x{e.get('section_height_m')}m, "
+                    f"material={material}, count={raw_count}."
+                ],
             }
         )
 
@@ -368,12 +612,114 @@ def _simple_to_level_inventory(
             }
         )
 
+    extra_fixtures: list[dict[str, Any]] = []
+
+    for i, e in enumerate(simple.get("electrical") or [], 1):
+        count = e.get("count")
+        extra_fixtures.append(
+            {
+                "id": f"vis-elec-{i:02d}",
+                "source": "vision",
+                "source_refs": [f"vision:{image_name}:elec_{i}"],
+                "assumptions": [],
+                "inputs": {"raw": e, "discipline": "electrical"},
+                "conflict_notes": [],
+                "fixture_type": e.get("type") or "electrical_other",
+                "count": int(count) if count is not None else 1,
+                "unit": "unit",
+                "location_hint": e.get("location"),
+                "confidence": 0.65,
+                "evidence": [f"Electrical element from plan: type={e.get('type')}, count={count}."],
+            }
+        )
+
+    for i, p in enumerate(simple.get("plumbing") or [], 1):
+        count = p.get("count")
+        extra_fixtures.append(
+            {
+                "id": f"vis-plumb-{i:02d}",
+                "source": "vision",
+                "source_refs": [f"vision:{image_name}:plumb_{i}"],
+                "assumptions": [],
+                "inputs": {
+                    "raw": p,
+                    "discipline": "plumbing",
+                    "pipe_diameter_in": p.get("pipe_diameter_in"),
+                    "pipe_material": p.get("material"),
+                },
+                "conflict_notes": [],
+                "fixture_type": p.get("type") or "plumbing_other",
+                "count": int(count) if count is not None else 1,
+                "unit": "unit",
+                "location_hint": p.get("location"),
+                "confidence": 0.60,
+                "evidence": [f"Plumbing element from plan: type={p.get('type')}, count={count}."],
+            }
+        )
+
+    for i, ext in enumerate(simple.get("exterior_works") or [], 1):
+        qty = ext.get("quantity")
+        extra_fixtures.append(
+            {
+                "id": f"vis-ext-{i:02d}",
+                "source": "vision",
+                "source_refs": [f"vision:{image_name}:ext_{i}"],
+                "assumptions": [],
+                "inputs": {
+                    "raw": ext,
+                    "discipline": "exterior",
+                    "ext_unit": ext.get("unit"),
+                    "ext_material": ext.get("material"),
+                },
+                "conflict_notes": [],
+                "fixture_type": ext.get("type") or "exterior_other",
+                "count": int(qty) if qty is not None else 1,
+                "unit": ext.get("unit") or "unit",
+                "location_hint": ext.get("id"),
+                "confidence": 0.55,
+                "evidence": [f"Exterior work from plan: type={ext.get('type')}."],
+            }
+        )
+
+    all_fixtures = fixtures + extra_fixtures
+
+    plan_type = simple.get("plan_type", "unknown")
+    annotations = simple.get("annotations_and_notes") or []
+    floor_finishes = simple.get("floor_finishes") or []
+    ceiling_finishes = simple.get("ceiling_finishes") or []
+
+    notes = [
+        f"Plan type detected: {plan_type}.",
+        "Exhaustive vision extraction — Python-adapted to LevelInventory schema.",
+    ]
+    for ann in annotations[:10]:
+        text = ann.get("text", "")
+        interp = ann.get("interpretation", "")
+        if text:
+            notes.append(f"Annotation: '{text}' → {interp}")
+
+    system_notes: list[str] = []
+    if floor_finishes:
+        for ff in floor_finishes:
+            system_notes.append(
+                f"Floor finish: {ff.get('type', 'unknown')} at {ff.get('location', 'unknown')}"
+                f" ({ff.get('area_m2', '?')} m2)"
+            )
+    if ceiling_finishes:
+        for cf in ceiling_finishes:
+            system_notes.append(
+                f"Ceiling finish: {cf.get('type', 'unknown')} at {cf.get('location', 'unknown')}"
+                f" ({cf.get('area_m2', '?')} m2)"
+            )
+
     return {
         "level_id": level_id,
         "level_name": level_name,
         "source": "vision",
         "source_image": image_name,
+        "source_view": plan_type,
         "floor_area_m2": simple.get("floor_area_m2"),
+        "ceiling_area_m2": simple.get("floor_area_m2"),
         "walls": walls,
         "doors": doors,
         "windows": windows,
@@ -381,13 +727,20 @@ def _simple_to_level_inventory(
         "kitchens": kitchens,
         "stairs": stairs,
         "structural_elements": structural_elements,
-        "fixtures": fixtures,
+        "fixtures": all_fixtures,
         "openings": [],
         "conflict_notes": [],
         "source_refs": [f"vision:{image_name}"],
-        "assumptions": ["Quantities estimated from visual plan analysis."],
-        "inputs": {"image": image_name},
-        "notes": ["Simple vision extraction — Python-adapted to LevelInventory schema."],
+        "assumptions": ["Quantities extracted from exhaustive visual plan analysis."],
+        "inputs": {
+            "image": image_name,
+            "plan_type": plan_type,
+            "floor_finishes": floor_finishes,
+            "ceiling_finishes": ceiling_finishes,
+            "annotations": annotations,
+        },
+        "system_notes": system_notes,
+        "notes": notes,
     }
 
 
@@ -432,7 +785,13 @@ def _build_cross_checks(level_inventory: LevelInventory, cad_summary: dict[str, 
     return checks
 
 
-def analyze_plan(image_path: Path, cad_summary: dict[str, Any], level_name: str) -> dict[str, Any]:
+def analyze_plan(
+    image_path: Path,
+    cad_summary: dict[str, Any],
+    level_name: str,
+    *,
+    office_methodology: str | None = None,
+) -> dict[str, Any]:
     client = get_client()
     image_path = Path(image_path).resolve()
     if not image_path.exists():
@@ -452,7 +811,12 @@ def analyze_plan(image_path: Path, cad_summary: dict[str, Any], level_name: str)
                 "content": [
                     {
                         "type": "text",
-                        "text": _build_simple_user_prompt(image_path, level_name, cad_summary),
+                        "text": _build_simple_user_prompt(
+                            image_path,
+                            level_name,
+                            cad_summary,
+                            office_methodology=office_methodology,
+                        ),
                     },
                     {
                         "type": "image_url",
@@ -464,7 +828,7 @@ def analyze_plan(image_path: Path, cad_summary: dict[str, Any], level_name: str)
                 ],
             },
         ],
-        max_tokens=2048,
+        max_tokens=4096,
         temperature=0.1,
     )
 
@@ -493,11 +857,17 @@ def analyze_plan(image_path: Path, cad_summary: dict[str, Any], level_name: str)
     result["_metadata"] = {
         "file": image_path.name,
         "timestamp": datetime.now().isoformat(),
+        "office_methodology_chars": len(office_methodology or ""),
     }
     return result
 
 
-def run_full_vision_analysis(pages_dir: str, cad_summary: dict[str, Any]) -> list[dict[str, Any]]:
+def run_full_vision_analysis(
+    pages_dir: str,
+    cad_summary: dict[str, Any],
+    *,
+    office_methodology: str | None = None,
+) -> list[dict[str, Any]]:
     pages_path = Path(pages_dir)
     images = sorted(
         path for path in pages_path.iterdir() if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
@@ -507,7 +877,14 @@ def run_full_vision_analysis(pages_dir: str, cad_summary: dict[str, Any]) -> lis
     for image_path in images:
         level_name = image_path.stem
         try:
-            results.append(analyze_plan(image_path, cad_summary, level_name))
+            results.append(
+                analyze_plan(
+                    image_path,
+                    cad_summary,
+                    level_name,
+                    office_methodology=office_methodology,
+                )
+            )
         except Exception as exc:  # pragma: no cover - depends on external API/runtime
             logger.warning("Vision failed for %s: %s", image_path.name, exc, exc_info=True)
             results.append({"error": str(exc), "file": image_path.name})
@@ -525,7 +902,7 @@ if __name__ == "__main__":
             cad_summary = json.load(handle)
 
     if image_path.exists():
-        result = analyze_plan(image_path, cad_summary, level_name=image_path.stem)
+        result = analyze_plan(image_path, cad_summary, level_name=image_path.stem, office_methodology=None)
         output_path = Path("vision_inventory_result.json")
         with open(output_path, "w", encoding="utf-8") as handle:
             json.dump(result, handle, indent=2, ensure_ascii=False)

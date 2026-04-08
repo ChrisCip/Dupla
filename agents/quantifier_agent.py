@@ -3,10 +3,14 @@ Deterministic inventory quantifier.
 
 This module converts normalized inventory into traceable quantity takeoffs.
 It intentionally avoids project-specific calibration tables and opaque heuristics.
+
+Default dimensions are applied when CAD/vision sources do not provide explicit
+measurements, enabling volume/area calculations even for incomplete inventories.
 """
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Iterable
 
 from core.schemas import (
@@ -23,6 +27,37 @@ from core.schemas import (
     WetArea,
     Window,
 )
+
+logger = logging.getLogger("dupla.quantifier")
+
+# ---------------------------------------------------------------------------
+# Default dimensions for MVP — applied when explicit values are missing
+# ---------------------------------------------------------------------------
+
+_DEFAULT_WALL_HEIGHT_M = 2.80
+_DEFAULT_WALL_THICKNESS: dict[str | None, float] = {
+    "masonry": 0.15,
+    "concrete": 0.20,
+    "drywall": 0.12,
+    "wood": 0.10,
+    None: 0.15,
+}
+
+_DEFAULT_SLAB_THICKNESS_M = 0.20
+_DEFAULT_BEAM_WIDTH_M = 0.30
+_DEFAULT_BEAM_HEIGHT_M = 0.50
+_DEFAULT_COLUMN_WIDTH_M = 0.40
+_DEFAULT_COLUMN_HEIGHT_M = 0.40
+_DEFAULT_COLUMN_FLOOR_HEIGHT_M = 2.80
+_DEFAULT_FOOTING_THICKNESS_M = 0.40
+
+_REBAR_KG_PER_M3: dict[str, float] = {
+    "beam": 100.0,
+    "column": 120.0,
+    "slab": 80.0,
+    "footing": 60.0,
+    "other": 90.0,
+}
 
 
 def _make_takeoff(
@@ -279,7 +314,11 @@ def _structural_requires_reinforcement_hint(element: StructuralElement) -> bool:
         return True
     if element.concrete_grade_hint is not None:
         return True
-    return (element.material_hint or "").lower() == "concrete"
+    if (element.material_hint or "").lower() == "concrete":
+        return True
+    if element.material_hint is None and element.element_type in {"beam", "column", "slab", "footing"}:
+        return True
+    return False
 
 
 def _has_aggregated_json_count(opening: Opening) -> bool:
@@ -448,6 +487,19 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 )
             )
 
+        effective_height = wall.height_m
+        height_assumed = False
+        if effective_height is None and wall.length_m is not None:
+            effective_height = _DEFAULT_WALL_HEIGHT_M
+            height_assumed = True
+
+        effective_thickness = wall.thickness_m
+        thickness_assumed = False
+        if effective_thickness is None and wall.length_m is not None:
+            mat = (wall.material_hint or "").lower() or None
+            effective_thickness = _DEFAULT_WALL_THICKNESS.get(mat, _DEFAULT_WALL_THICKNESS[None])
+            thickness_assumed = True
+
         gross_area: float | None = None
         gross_formula = ""
         gross_inputs: dict[str, Any] = {}
@@ -457,14 +509,14 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             gross_area = wall.area_m2
             gross_formula = "wall.area_m2"
             gross_inputs = {"area_m2": wall.area_m2}
-        elif wall.length_m is not None and wall.height_m is not None:
-            gross_area = wall.length_m * wall.height_m
+        elif wall.length_m is not None and effective_height is not None:
+            gross_area = wall.length_m * effective_height
             gross_formula = "wall.length_m * wall.height_m"
-            gross_inputs = {"length_m": wall.length_m, "height_m": wall.height_m}
-        elif wall.length_m is not None and wall.height_m is None:
-            gross_assumptions.append(
-                f"Wall {wall.id} gross/net area was not quantified because wall height is missing."
-            )
+            gross_inputs = {"length_m": wall.length_m, "height_m": effective_height}
+            if height_assumed:
+                gross_assumptions.append(
+                    f"Wall {wall.id} height assumed at {_DEFAULT_WALL_HEIGHT_M}m (standard residential floor-to-ceiling)."
+                )
 
         if gross_area is not None:
             gross_context_tags = _entity_context_tags(wall, "wall", "gross_area")
@@ -570,25 +622,37 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 )
             )
 
-        if wall.length_m is not None and wall.height_m is not None and wall.thickness_m is not None:
+        if wall.length_m is not None and effective_height is not None and effective_thickness is not None:
             wall_volume_context_tags = _entity_context_tags(wall, "wall", "volume")
+            vol_assumptions = list(wall.assumptions)
+            if height_assumed:
+                vol_assumptions.append(
+                    f"Wall {wall.id} height assumed at {_DEFAULT_WALL_HEIGHT_M}m (standard residential)."
+                )
+            if thickness_assumed:
+                vol_assumptions.append(
+                    f"Wall {wall.id} thickness assumed at {effective_thickness}m "
+                    f"(default for {wall.material_hint or 'generic'} wall)."
+                )
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{wall.id}:volume",
                     item_type="wall_volume",
                     level_id=level.level_id,
                     unit="m3",
-                    quantity=wall.length_m * wall.height_m * wall.thickness_m,
+                    quantity=wall.length_m * effective_height * effective_thickness,
                     formula="wall.length_m * wall.height_m * wall.thickness_m",
                     inputs={
                         "length_m": wall.length_m,
-                        "height_m": wall.height_m,
-                        "thickness_m": wall.thickness_m,
+                        "height_m": effective_height,
+                        "thickness_m": effective_thickness,
                         "material_hint": wall.material_hint,
                         "structural": wall.structural,
                         "context_tags": wall_volume_context_tags,
+                        "height_assumed": height_assumed,
+                        "thickness_assumed": thickness_assumed,
                     },
-                    assumptions=list(wall.assumptions),
+                    assumptions=vol_assumptions,
                     source_refs=list(wall.source_refs),
                     trace=_trace_from_entities(
                         entities=[wall],
@@ -900,9 +964,116 @@ def _fixture_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     ]
 
 
+def _apply_structural_defaults(element: StructuralElement) -> tuple[StructuralElement, list[str]]:
+    """Return element with filled-in defaults and a list of assumption notes."""
+    assumptions: list[str] = []
+    updates: dict[str, Any] = {}
+
+    etype = element.element_type
+
+    if etype == "beam":
+        if element.section_width_m is None:
+            updates["section_width_m"] = _DEFAULT_BEAM_WIDTH_M
+            assumptions.append(
+                f"Beam {element.id} section width assumed at {_DEFAULT_BEAM_WIDTH_M}m (standard rectangular beam)."
+            )
+        if element.section_height_m is None:
+            updates["section_height_m"] = _DEFAULT_BEAM_HEIGHT_M
+            assumptions.append(
+                f"Beam {element.id} section height assumed at {_DEFAULT_BEAM_HEIGHT_M}m (standard rectangular beam)."
+            )
+
+    elif etype == "column":
+        if element.section_width_m is None:
+            updates["section_width_m"] = _DEFAULT_COLUMN_WIDTH_M
+            assumptions.append(
+                f"Column {element.id} section width assumed at {_DEFAULT_COLUMN_WIDTH_M}m."
+            )
+        if element.section_height_m is None:
+            updates["section_height_m"] = _DEFAULT_COLUMN_HEIGHT_M
+            assumptions.append(
+                f"Column {element.id} section height assumed at {_DEFAULT_COLUMN_HEIGHT_M}m."
+            )
+        if element.length_m is None and element.span_m is None:
+            updates["length_m"] = _DEFAULT_COLUMN_FLOOR_HEIGHT_M * max(element.count, 1)
+            assumptions.append(
+                f"Column {element.id} total length inferred from floor height "
+                f"{_DEFAULT_COLUMN_FLOOR_HEIGHT_M}m x {max(element.count, 1)} units."
+            )
+
+    elif etype == "slab":
+        if element.section_height_m is None:
+            updates["section_height_m"] = _DEFAULT_SLAB_THICKNESS_M
+            assumptions.append(
+                f"Slab {element.id} thickness assumed at {_DEFAULT_SLAB_THICKNESS_M}m (standard solid slab)."
+            )
+
+    elif etype == "footing":
+        if element.section_height_m is None:
+            updates["section_height_m"] = _DEFAULT_FOOTING_THICKNESS_M
+            assumptions.append(
+                f"Footing {element.id} depth assumed at {_DEFAULT_FOOTING_THICKNESS_M}m."
+            )
+
+    if not updates:
+        return element, assumptions
+
+    from dataclasses import fields as dc_fields
+    payload = {f.name: getattr(element, f.name) for f in dc_fields(element)}
+    payload.update(updates)
+    payload["assumptions"] = list(dict.fromkeys([*element.assumptions, *assumptions]))
+    return StructuralElement(**payload), assumptions
+
+
+def _rebar_takeoffs(
+    element: StructuralElement,
+    level_id: str | None,
+    volume_quantity: float,
+    volume_formula: str | None,
+) -> list[QuantityTakeoff]:
+    """Estimate reinforcement steel weight from concrete volume using standard ratios."""
+    etype = element.element_type
+    ratio = _REBAR_KG_PER_M3.get(etype, _REBAR_KG_PER_M3["other"])
+    rebar_kg = volume_quantity * ratio
+
+    context_tags = _entity_context_tags(element, "structural", etype, "reinforcement", "kg")
+    return [
+        _make_takeoff(
+            item_key=f"{element.id}:reinforcement_kg",
+            item_type=f"{etype}_reinforcement_kg",
+            level_id=level_id,
+            unit="kg",
+            quantity=rebar_kg,
+            formula=f"concrete_volume_m3 * {ratio} kg/m3",
+            inputs={
+                "concrete_volume_m3": volume_quantity,
+                "rebar_ratio_kg_m3": ratio,
+                "element_type": etype,
+                "material_hint": element.material_hint,
+                "reinforcement_hint": element.reinforcement_hint,
+                "context_tags": context_tags,
+            },
+            assumptions=[
+                f"{etype.title()} {element.id} reinforcement estimated at {ratio} kg/m3 "
+                f"(standard preliminary ratio for {etype} elements).",
+            ],
+            source_refs=list(element.source_refs),
+            trace=_trace_from_entities(
+                entities=[element],
+                steps=[
+                    f"Estimated reinforcement steel from concrete volume ({volume_quantity:.3f} m3) "
+                    f"using standard ratio of {ratio} kg/m3.",
+                ],
+                metadata={"context_tags": context_tags},
+            ),
+        )
+    ]
+
+
 def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     takeoffs: list[QuantityTakeoff] = []
     for element in level.structural_elements:
+        element, default_assumptions = _apply_structural_defaults(element)
         base_context_tags = _entity_context_tags(element, "structural", element.element_type)
         base_inputs = {
             "element_type": element.element_type,
@@ -1277,46 +1448,14 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 )
             )
 
-        if element.element_type in {"beam", "column", "slab"} and _structural_requires_reinforcement_hint(element):
-            reinforcement_context_tags = _entity_context_tags(
-                element,
-                "structural",
-                element.element_type,
-                "reinforcement",
-                "hint",
-            )
-            takeoffs.append(
-                _make_takeoff(
-                    item_key=f"{element.id}:reinforcement_required_hint",
-                    item_type=f"{element.element_type}_reinforcement_required_hint",
-                    level_id=level.level_id,
-                    unit="flag",
-                    quantity=float(max(element.count, 1)),
-                    formula="structural_element.count",
-                    inputs={
-                        "count": element.count,
-                        **base_inputs,
-                        "context_tags": reinforcement_context_tags,
-                    },
-                    assumptions=list(
-                        dict.fromkeys(
-                            [
-                                *element.assumptions,
-                                f"{element.element_type.title()} {element.id} is marked as reinforcement-required only as a hint; exact rebar schedules are intentionally not computed.",
-                            ]
-                        )
-                    ),
-                    source_refs=list(element.source_refs),
-                    trace=_trace_from_entities(
-                        entities=[element],
-                        steps=["Recorded structural reinforcement-required hint from normalized inventory."],
-                        metadata={
-                            **base_metadata,
-                            "context_tags": reinforcement_context_tags,
-                        },
-                    ),
+        if element.element_type in {"beam", "column", "slab", "footing"}:
+            effective_volume = volume_quantity
+            if effective_volume is None and element.volume_m3 is not None:
+                effective_volume = element.volume_m3
+            if effective_volume is not None and effective_volume > 0:
+                takeoffs.extend(
+                    _rebar_takeoffs(element, level.level_id, effective_volume, volume_formula)
                 )
-            )
 
     return takeoffs
 

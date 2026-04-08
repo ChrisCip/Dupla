@@ -234,18 +234,18 @@ def test_quantify_inventory_generates_structural_quantities_and_material_hints()
     assert takeoff_map["beam_01:beam_volume"].quantity == 1.5
     assert takeoff_map["beam_01:concrete_volume"].quantity == 1.5
     assert takeoff_map["beam_01:formwork_area_hint"].quantity == 15.0
-    assert takeoff_map["beam_01:reinforcement_required_hint"].quantity == 1.0
+    assert takeoff_map["beam_01:reinforcement_kg"].quantity == 1.5 * 100.0
 
     assert round(takeoff_map["column_01:column_volume"].quantity, 4) == 1.08
     assert round(takeoff_map["column_01:formwork_area_hint"].quantity, 4) == 14.4
-    assert takeoff_map["column_01:reinforcement_required_hint"].quantity == 4.0
+    assert round(takeoff_map["column_01:reinforcement_kg"].quantity, 2) == round(1.08 * 120.0, 2)
 
     assert takeoff_map["slab_01:slab_area"].quantity == 30.0
     assert takeoff_map["slab_01:slab_volume"].quantity == 4.5
     assert takeoff_map["slab_01:concrete_volume"].quantity == 4.5
     assert takeoff_map["slab_01:formwork_area_hint"].quantity == 30.0
-    assert takeoff_map["slab_01:reinforcement_required_hint"].quantity == 1.0
+    assert takeoff_map["slab_01:reinforcement_kg"].quantity == 4.5 * 80.0
 
     assert takeoff_map["beam_01:concrete_volume"].inputs["material_hint"] == "concrete"
     assert takeoff_map["beam_01:concrete_volume"].trace.metadata["material_hint"] == "concrete"
-    assert takeoff_map["beam_01:reinforcement_required_hint"].inputs["reinforcement_hint"] == "reinforced"
+    assert takeoff_map["beam_01:reinforcement_kg"].inputs["rebar_ratio_kg_m3"] == 100.0
