@@ -37,6 +37,7 @@ class LevelTemplate:
 
 
 _ITEM_TYPE_HINTS: list[tuple[tuple[str, ...], str]] = [
+    (("excavac", "rellen", "terracer", "compactac", "movimiento de tierra", "bote"), "generic_construction_item"),
     (("zapata", "platea", "fundacion"), "footing"),
     (("columna",), "column"),
     (("viga",), "beam"),
@@ -215,21 +216,63 @@ def extract_level_templates(xlsx_path: str | Path) -> list[LevelTemplate]:
     return templates
 
 
-def generate_few_shot_examples(training_pairs: list[TrainingPair], category: str) -> str:
+# BC3 chapter codes (classifier_agent._CHAPTERS keys) -> training pair item_types to prefer
+_FEW_SHOT_TYPES_BY_CHAPTER: dict[str, tuple[str, ...]] = {
+    "01": ("footing", "generic_construction_item"),
+    "02": ("footing", "column", "beam", "slab", "wall"),
+    "03": ("wall", "wall_finish_plaster"),
+    "04": ("floor_finish",),
+    "05": ("door_count", "window_count"),
+    "06": ("fixture_count",),
+    "07": ("wet_area_fixture_count",),
+    "08": ("wall_finish_paint",),
+    "09": ("generic_construction_item",),
+}
+
+# First word of chapter title (lowercase) -> item types when chapter_code is missing
+_FEW_SHOT_TYPES_BY_TITLE_WORD: dict[str, tuple[str, ...]] = {
+    "movimiento": ("footing", "generic_construction_item"),
+    "hormigon": ("footing", "column", "beam", "slab", "wall"),
+    "muros": ("wall", "wall_finish_plaster"),
+    "pisos": ("floor_finish",),
+    "puertas": ("door_count", "window_count"),
+    "ventanas": ("window_count",),
+    "instalaciones": ("fixture_count", "wet_area_fixture_count"),
+    "sanitarias": ("wet_area_fixture_count",),
+    "pintura": ("wall_finish_paint", "wall_finish_plaster"),
+    "gastos": ("generic_construction_item",),
+    "electrico": ("fixture_count",),
+    "sanitario": ("wet_area_fixture_count",),
+}
+
+
+def generate_few_shot_examples(
+    training_pairs: list[TrainingPair],
+    category: str,
+    *,
+    chapter_code: str | None = None,
+    max_examples: int = 10,
+) -> str:
     if not training_pairs:
         return ""
 
     normalized_category = _normalize(category)
-    category_map: dict[str, tuple[str, ...]] = {
-        "muros": ("wall", "wall_finish_plaster"),
-        "pisos": ("floor_finish",),
-        "puertas": ("door_count",),
-        "ventanas": ("window_count",),
-        "hormigon": ("footing", "column", "beam", "slab"),
-        "electrico": ("fixture_count",),
-        "sanitario": ("wet_area_fixture_count",),
-    }
-    allowed_types = category_map.get(normalized_category, ())
+    allowed_types: tuple[str, ...] = ()
+    if chapter_code and chapter_code in _FEW_SHOT_TYPES_BY_CHAPTER:
+        allowed_types = _FEW_SHOT_TYPES_BY_CHAPTER[chapter_code]
+    elif normalized_category in _FEW_SHOT_TYPES_BY_TITLE_WORD:
+        allowed_types = _FEW_SHOT_TYPES_BY_TITLE_WORD[normalized_category]
+    else:
+        legacy_map: dict[str, tuple[str, ...]] = {
+            "muros": ("wall", "wall_finish_plaster"),
+            "pisos": ("floor_finish",),
+            "puertas": ("door_count",),
+            "ventanas": ("window_count",),
+            "hormigon": ("footing", "column", "beam", "slab"),
+            "electrico": ("fixture_count",),
+            "sanitario": ("wet_area_fixture_count",),
+        }
+        allowed_types = legacy_map.get(normalized_category, ())
 
     filtered = [
         pair
@@ -243,8 +286,11 @@ def generate_few_shot_examples(training_pairs: list[TrainingPair], category: str
     if not filtered:
         filtered = training_pairs
 
-    selected = filtered[:8]
-    lines = ["EJEMPLOS REALES (few-shot):"]
+    selected = filtered[: max(1, min(max_examples, 12))]
+    header = "EJEMPLOS REALES (PRES / BC3 — few-shot):"
+    if chapter_code:
+        header += f" capítulo {chapter_code}."
+    lines = [header]
     for pair in selected:
         lines.append(
             (
@@ -254,4 +300,8 @@ def generate_few_shot_examples(training_pairs: list[TrainingPair], category: str
                 f"unit={pair.output_unit}, qty={pair.output_quantity:.2f}, price={pair.output_price:.2f}"
             )
         )
+    lines.append(
+        "Regla: los códigos anteriores son del proyecto de referencia; en esta tarea solo "
+        "puedes usar códigos que aparezcan en el catálogo BC3 proporcionado abajo."
+    )
     return "\n".join(lines)

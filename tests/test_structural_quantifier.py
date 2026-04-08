@@ -60,17 +60,17 @@ def test_quantifier_generates_structural_takeoffs_from_explicit_and_inferred_inp
     assert takeoff_map["beam_inferred:beam_volume"].quantity == 1.125
     assert takeoff_map["beam_inferred:concrete_volume"].quantity == 1.125
     assert takeoff_map["beam_inferred:formwork_area_hint"].quantity == 11.5
-    assert takeoff_map["beam_inferred:reinforcement_required_hint"].quantity == 2.0
+    assert takeoff_map["beam_inferred:reinforcement_kg"].quantity == 1.125 * 100.0
 
     assert round(takeoff_map["column_explicit:column_volume"].quantity, 4) == 1.08
     assert round(takeoff_map["column_explicit:formwork_area_hint"].quantity, 4) == 14.4
-    assert takeoff_map["column_explicit:reinforcement_required_hint"].quantity == 4.0
+    assert round(takeoff_map["column_explicit:reinforcement_kg"].quantity, 2) == round(1.08 * 120.0, 2)
 
     assert takeoff_map["slab_explicit:slab_area"].quantity == 42.0
     assert takeoff_map["slab_explicit:slab_volume"].quantity == 6.72
     assert takeoff_map["slab_explicit:concrete_volume"].quantity == 6.72
     assert takeoff_map["slab_explicit:formwork_area_hint"].quantity == 42.0
-    assert takeoff_map["slab_explicit:reinforcement_required_hint"].quantity == 1.0
+    assert takeoff_map["slab_explicit:reinforcement_kg"].quantity == 6.72 * 80.0
 
 
 def test_quantifier_propagates_material_hints_context_and_uncertainty_for_structural_items() -> None:
@@ -102,7 +102,7 @@ def test_quantifier_propagates_material_hints_context_and_uncertainty_for_struct
 
     beam_length = takeoff_map["beam_trace:beam_length"]
     beam_concrete = takeoff_map["beam_trace:concrete_volume"]
-    beam_reinforcement = takeoff_map["beam_trace:reinforcement_required_hint"]
+    beam_reinforcement = takeoff_map["beam_trace:reinforcement_kg"]
 
     assert any(
         "total length was inferred from span_m * count" in note
@@ -122,8 +122,5 @@ def test_quantifier_propagates_material_hints_context_and_uncertainty_for_struct
         "frame",
         "primary_structure",
     ]
-    assert beam_reinforcement.inputs["reinforcement_hint"] == "reinforced"
-    assert any(
-        "exact rebar schedules are intentionally not computed" in note
-        for note in beam_reinforcement.assumptions
-    )
+    assert beam_reinforcement.inputs["rebar_ratio_kg_m3"] == 100.0
+    assert beam_reinforcement.unit == "kg"

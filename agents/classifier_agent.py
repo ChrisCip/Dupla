@@ -10,6 +10,7 @@ Fallback path (no OpenAI API key): deterministic token-overlap ranking.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import unicodedata
@@ -24,6 +25,8 @@ from knowledge.pres_expansion import inject_pres_reference_candidates
 from knowledge.training_data import TrainingPair, generate_few_shot_examples
 
 load_dotenv(Path(__file__).parent.parent / ".env")
+
+logger = logging.getLogger("dupla.classifier")
 
 try:
     from openai import OpenAI
@@ -115,19 +118,31 @@ _ITEM_TYPE_TO_CHAPTER: dict[str, str] = {
     "beam_concrete_volume": "02",
     "beam_volume": "02",
     "beam_area": "02",
+    "beam_length": "02",
+    "beam_count": "02",
     "beam_formwork_area_hint": "02",
+    "beam_reinforcement_kg": "02",
     "column_concrete_volume": "02",
     "column_volume": "02",
     "column_area": "02",
+    "column_length": "02",
+    "column_count": "02",
     "column_formwork_area_hint": "02",
+    "column_reinforcement_kg": "02",
     "slab_concrete_volume": "02",
     "slab_area": "02",
+    "slab_count": "02",
     "slab_formwork_area_hint": "02",
+    "slab_reinforcement_kg": "02",
     "footing_concrete_volume": "02",
     "footing_volume": "02",
+    "footing_area": "02",
+    "footing_formwork_area_hint": "02",
+    "footing_reinforcement_kg": "02",
     "structural_count": "02",
     "structural_area": "02",
     "structural_volume": "02",
+    "structural_length": "02",
     "stair_count": "02",
     # Muros y pañete
     "wall_net_area": "03",
@@ -157,6 +172,47 @@ _ITEM_TYPE_TO_CHAPTER: dict[str, str] = {
     # Eléctrico
     "fixture_count": "06",
 }
+
+# Short discipline guidance per BC3 chapter (no fake codes — model must pick from catalog).
+_STATIC_CHAPTER_GUIDANCE: dict[str, str] = {
+    "01": (
+        "Cap. tierras: excavación, relleno, compactación, transporte de material; "
+        "no mezclar con hormigón armado (cap.02). Unidad suele ser m3 o m2 según partida."
+    ),
+    "02": (
+        "Cap. estructura: hormigón armado, encofrados, acero por kg, vigas/columnas/losas/zapatas; "
+        "respeta m3 vs m2 vs kg del takeoff."
+    ),
+    "03": (
+        "Cap. muros: bloques, mampostería, tabiques, mortero; m2 de muro o m3 según partida; "
+        "pañete/revoque fino suele ir en acabados (cap.08) si el takeoff es pintura/revoque."
+    ),
+    "04": (
+        "Cap. pisos y cerámica: porcelanato, cerámica, contrapiso, nivelación; "
+        "unidad m2 salvo partidas por ud."
+    ),
+    "05": (
+        "Cap. carpinterías: puertas y ventanas, marcos, vidrios, herrajes; "
+        "ud para hojas/marcos, m2 para vidrio o paneles según catálogo."
+    ),
+    "06": (
+        "Cap. eléctrico: puntos, cableado, tableros, luminarias; "
+        "no asignar partidas sanitarias a takeoffs eléctricos."
+    ),
+    "07": (
+        "Cap. sanitario/plomería: inodoros, lavamanos, tuberías PVC, drenaje; "
+        "no confundir con eléctrico."
+    ),
+    "08": (
+        "Cap. pintura y acabados: pintura, selladores, impermeabilizantes de acabado; "
+        "m2 habitual en muros/cielos."
+    ),
+    "09": (
+        "Cap. gastos generales: supervisión, limpieza, seguridad, indirectos; "
+        "solo si el takeoff es claramente administrativo/indirecto."
+    ),
+}
+
 
 _PREFIX_TO_CHAPTER: list[tuple[str, str]] = [
     ("beam_", "02"),
@@ -313,8 +369,10 @@ def _gpt4o_classify_chapter(
             f'"price":{price:.2f},"summary":"{summary}"}}'
         )
 
+    static_hint = _STATIC_CHAPTER_GUIDANCE.get(chapter_code, "")
     prompt = (
-        f"Eres un presupuestista dominicano senior. Capitulo: {chapter_desc}\n\n"
+        f"Eres un presupuestista dominicano senior. Capítulo ({chapter_code}): {chapter_desc}\n"
+        f"{static_hint}\n\n"
         + (few_shot_examples + "\n\n" if few_shot_examples else "")
         + "PARTIDAS A CLASIFICAR:\n[\n"
         + ",\n".join(takeoff_lines)
@@ -322,12 +380,18 @@ def _gpt4o_classify_chapter(
         + "CATALOGO BC3 (precios en RD$):\n[\n"
         + ",\n".join(bc3_lines)
         + "\n]\n\n"
-        + "Asigna el codigo BC3 mas apropiado a cada partida.\n"
-        + "- Solo asigna si hay un match razonable (misma disciplina y unidad compatible).\n"
-        + "- unit_price es el precio del catalogo BC3.\n"
-        + "- match_type: exacto | aproximado | estimado\n\n"
-        + 'Devuelve SOLO un JSON array (sin texto adicional):\n'
-        + '[{"takeoff_key":"<key>","bc3_code":"<code>","unit_price":<price>,"match_type":"exacto|aproximado|estimado"}]'
+        + "Instrucciones estrictas:\n"
+        + "- bc3_code debe ser EXACTAMENTE uno de los valores \"code\" del catálogo anterior. "
+        + "Nunca inventes códigos.\n"
+        + "- Si ninguna partida del catálogo encaja de forma razonable, OMITe esa partida "
+        + "(no incluyas objeto para ese takeoff_key).\n"
+        + "- Misma disciplina y unidad compatible (m2 con m2, m3 con m3, ud con ud, etc.).\n"
+        + "- unit_price: copia el precio del ítem del catálogo para ese code.\n"
+        + "- match_type: exacto (misma obra y unidad), aproximado (muy cercano), "
+        + "estimado (solo si no hay mejor opción pero aún es defendible).\n\n"
+        + "Devuelve SOLO un JSON array (sin texto adicional):\n"
+        + '[{"takeoff_key":"<key>","bc3_code":"<code>","unit_price":<number>,'
+        + '"match_type":"exacto|aproximado|estimado"}]'
     )
 
     try:
@@ -338,13 +402,20 @@ def _gpt4o_classify_chapter(
             messages=[
                 {
                     "role": "system",
-                    "content": "Presupuestista dominicano. Devuelve SOLO JSON array. Precios en RD$.",
+                    "content": (
+                        "Presupuestista dominicano. Devuelve SOLO un JSON array. "
+                        "Precios en RD$. No inventes códigos BC3: solo códigos del catálogo del usuario."
+                    ),
                 },
                 {"role": "user", "content": prompt},
             ],
         )
         raw = resp.choices[0].message.content or ""
     except Exception:
+        logger.warning(
+            "GPT-4o call failed for chapter %s (%d takeoffs)",
+            chapter_code, len(takeoffs), exc_info=True,
+        )
         return {}
 
     matches = _extract_json_list(raw)
@@ -361,7 +432,15 @@ def _gpt4o_classify_chapter(
 
         # Look up unit from catalog; use takeoff unit as canonical for the score check
         bc3_item = code_to_item.get(bc3_code)
-        summary = bc3_item.get("summary", bc3_code) if bc3_item else bc3_code
+        if not bc3_item:
+            logger.debug(
+                "GPT-4o proposed unknown bc3_code %r for takeoff %s — skipping",
+                bc3_code,
+                key,
+            )
+            continue
+
+        summary = str(bc3_item.get("summary", bc3_code))
 
         unit_price = 0.0
         try:
@@ -372,8 +451,13 @@ def _gpt4o_classify_chapter(
         if unit_price == 0.0 and bc3_item:
             unit_price = float(bc3_item.get("price") or 0)
 
-        match_type = str(match.get("match_type") or "aproximado")
-        score = 1.0 if match_type == "exacto" else 0.85
+        match_type = str(match.get("match_type") or "aproximado").lower()
+        if match_type == "exacto":
+            score = 1.0
+        elif match_type == "estimado":
+            score = 0.42
+        else:
+            score = 0.88
 
         # Find the original takeoff to get its unit (ensures select_strong_candidate passes)
         takeoff_unit = next(
@@ -424,7 +508,11 @@ def _match_with_gpt4o(
             continue
 
         category_hint = chapter_info["title"].split(" ")[0].lower()
-        few_shot = generate_few_shot_examples(training_pairs or [], category_hint)
+        few_shot = generate_few_shot_examples(
+            training_pairs or [],
+            category_hint,
+            chapter_code=chapter_code,
+        )
         matches = _gpt4o_classify_chapter(
             chapter_takeoffs,
             bc3_subset,
@@ -536,6 +624,10 @@ def match_takeoffs_to_bc3(
                     training_pairs=training_pairs,
                 )
             except Exception:
+                logger.warning(
+                    "GPT-4o matching failed for %d takeoffs, falling back to token overlap",
+                    len(non_pres), exc_info=True,
+                )
                 result = {}
 
     if not result and non_pres:

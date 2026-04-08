@@ -169,16 +169,26 @@ def chapter_path_for_takeoff(takeoff: QuantityTakeoff) -> list[ChapterSegment]:
             ChapterSegment("05.04", "COCINAS Y AREAS HUMEDAS"),
         ]
 
-    if item_type.startswith(("beam_", "column_", "slab_", "structural_")):
+    if item_type.startswith(("beam_", "column_", "slab_", "footing_", "structural_")):
         if "formwork" in item_type:
             return [
                 ChapterSegment("01", "ESTRUCTURA"),
                 ChapterSegment("01.02", "ENCOFRADOS"),
             ]
+        if "reinforcement_kg" in item_type:
+            return [
+                ChapterSegment("01", "ESTRUCTURA"),
+                ChapterSegment("01.03", "ACERO DE REFUERZO"),
+            ]
         if "reinforcement" in item_type:
             return [
                 ChapterSegment("01", "ESTRUCTURA"),
                 ChapterSegment("01.03", "ACERO DE REFUERZO"),
+            ]
+        if "count" in item_type or "length" in item_type:
+            return [
+                ChapterSegment("01", "ESTRUCTURA"),
+                ChapterSegment("01.04", "ELEMENTOS ESTRUCTURALES"),
             ]
         return [
             ChapterSegment("01", "ESTRUCTURA"),
@@ -252,18 +262,58 @@ def _structural_summary(takeoff: QuantityTakeoff) -> str:
         return "Hormigon armado en columnas"
     if item_type == "slab_concrete_volume":
         return "Hormigon armado en losas"
+    if item_type == "footing_concrete_volume":
+        return "Hormigon armado en zapatas"
     if item_type == "beam_formwork_area_hint":
         return "Encofrado de vigas"
     if item_type == "column_formwork_area_hint":
         return "Encofrado de columnas"
     if item_type == "slab_formwork_area_hint":
         return "Encofrado inferior de losas"
+    if item_type == "footing_formwork_area_hint":
+        return "Encofrado de zapatas"
+    if item_type == "beam_reinforcement_kg":
+        return "Acero de refuerzo en vigas"
+    if item_type == "column_reinforcement_kg":
+        return "Acero de refuerzo en columnas"
+    if item_type == "slab_reinforcement_kg":
+        return "Acero de refuerzo en losas"
+    if item_type == "footing_reinforcement_kg":
+        return "Acero de refuerzo en zapatas"
     if item_type == "beam_volume":
         return "Volumen estructural de vigas"
     if item_type == "column_volume":
         return "Volumen estructural de columnas"
     if item_type == "slab_volume":
         return "Volumen estructural de losas"
+    if item_type == "footing_volume":
+        return "Volumen estructural de zapatas"
+    if item_type == "beam_area":
+        return "Area de vigas"
+    if item_type == "column_area":
+        return "Area de columnas"
+    if item_type == "slab_area":
+        return "Area de losas"
+    if item_type == "footing_area":
+        return "Area de zapatas"
+    if item_type == "beam_length":
+        return "Longitud de vigas"
+    if item_type == "column_length":
+        return "Longitud de columnas"
+    if item_type == "beam_count":
+        return "Cantidad de vigas"
+    if item_type == "column_count":
+        return "Cantidad de columnas"
+    if item_type == "slab_count":
+        return "Cantidad de losas"
+    if item_type == "footing_count":
+        return "Cantidad de zapatas"
+    if item_type == "structural_count":
+        return "Elementos estructurales"
+    if item_type == "structural_length":
+        return "Longitud estructural"
+    if item_type == "structural_volume":
+        return "Volumen estructural"
     if material_hint == "concrete":
         return "Elemento estructural de hormigon"
     return "Elemento estructural"

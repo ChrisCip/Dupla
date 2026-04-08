@@ -1,0 +1,57 @@
+{
+  "project": "BLCAD14001.autodesk_raw.json",
+  "total_objects": 3,
+  "cad_facts": {
+    "layers": {
+      "CALIDADES": {
+        "object_count": 1,
+        "entity_types": {
+          "Polyline": 1
+        },
+        "sample_names": [
+          "Polyline [1F27B]"
+        ],
+        "handles": [
+          "1f27b"
+        ]
+      },
+      "UNKNOWN": {
+        "object_count": 2,
+        "entity_types": {
+          "Polylines (99)": 1,
+          "Model": 1
+        },
+        "sample_names": [
+          "Polylines (99)",
+          "Model"
+        ],
+        "handles": []
+      }
+    },
+    "texts": [],
+    "dimensions": [],
+    "hatches": [],
+    "blocks": [],
+    "geometry_hints": [
+      {
+        "layer": "CALIDADES",
+        "entity_type": "Polyline",
+        "name": "Polyline [1F27B]",
+        "handle": "1f27b",
+        "length": 143400.0,
+        "area": 1247400000.0,
+        "radius": null,
+        "bbox": {}
+      }
+    ]
+  },
+  "inventory_hints": {
+    "level_markers": [],
+    "scale_dimensions": [],
+    "block_frequency": [],
+    "layer_names": [
+      "CALIDADES",
+      "UNKNOWN"
+    ]
+  }
+}

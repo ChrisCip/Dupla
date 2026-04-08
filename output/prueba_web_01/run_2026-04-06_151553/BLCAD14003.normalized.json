@@ -1,0 +1,6120 @@
+{
+  "project": "BLCAD14003.autodesk_raw.json",
+  "total_objects": 607,
+  "cad_facts": {
+    "layers": {
+      "04": {
+        "object_count": 107,
+        "entity_types": {
+          "Block Reference": 7,
+          "Line": 77,
+          "Polyline": 21,
+          "Arc": 2
+        },
+        "sample_names": [
+          "11X8 [1AD8]",
+          "11X8 [1ADF]",
+          "11X8 [1AE0]",
+          "11X8 [1AE1]",
+          "11X8 [1AE2]"
+        ],
+        "handles": [
+          "1ad8",
+          "1adf",
+          "1ae0",
+          "1ae1",
+          "1ae2"
+        ]
+      },
+      "02": {
+        "object_count": 99,
+        "entity_types": {
+          "Block Reference": 1,
+          "Rotated Dimension": 1,
+          "Line": 88,
+          "Polyline": 9
+        },
+        "sample_names": [
+          "A1v [249C]",
+          "Linear [6B9]",
+          "Line [1B5B]",
+          "Line [1E97]",
+          "Line [1E98]"
+        ],
+        "handles": [
+          "249c",
+          "6b9",
+          "1b5b",
+          "1e97",
+          "1e98"
+        ]
+      },
+      "UNKNOWN": {
+        "object_count": 11,
+        "entity_types": {
+          "Blocks (8)": 1,
+          "Pattern (7)": 1,
+          "Hatches (7)": 1,
+          "MText (33)": 1,
+          "Linear (10)": 1,
+          "Dimensions (10)": 1,
+          "Lines (365)": 1,
+          "Polylines (158)": 1,
+          "Circles (10)": 1,
+          "Arcs (5)": 1,
+          "Model": 1
+        },
+        "sample_names": [
+          "Blocks (8)",
+          "Pattern (7)",
+          "Hatches (7)",
+          "MText (33)",
+          "Linear (10)"
+        ],
+        "handles": []
+      },
+      "1": {
+        "object_count": 150,
+        "entity_types": {
+          "Hatch": 3,
+          "Text": 13,
+          "Rotated Dimension": 8,
+          "Line": 59,
+          "Polyline": 57,
+          "Circle": 10
+        },
+        "sample_names": [
+          "AR-CONC [1B58]",
+          "AR-CONC [BB5]",
+          "AR-CONC [BE7]",
+          "Text [28]",
+          "Text [282]"
+        ],
+        "handles": [
+          "1b58",
+          "bb5",
+          "be7",
+          "28",
+          "282"
+        ]
+      },
+      "015": {
+        "object_count": 35,
+        "entity_types": {
+          "Hatch": 4,
+          "Rotated Dimension": 1,
+          "Line": 28,
+          "Polyline": 1,
+          "Arc": 1
+        },
+        "sample_names": [
+          "AR-CONC [1BB3]",
+          "AR-CONC [1BBA]",
+          "AR-CONC [1BC8]",
+          "AR-SAND [1BD7]",
+          "Linear [1C35]"
+        ],
+        "handles": [
+          "1bb3",
+          "1bba",
+          "1bc8",
+          "1bd7",
+          "1c35"
+        ]
+      },
+      "03": {
+        "object_count": 18,
+        "entity_types": {
+          "Text": 18
+        },
+        "sample_names": [
+          "Text [208]",
+          "Text [20C]",
+          "Text [215]",
+          "Text [219]",
+          "Text [2BD]"
+        ],
+        "handles": [
+          "208",
+          "20c",
+          "215",
+          "219",
+          "2bd"
+        ]
+      },
+      "3": {
+        "object_count": 48,
+        "entity_types": {
+          "Text": 2,
+          "Line": 45,
+          "Polyline": 1
+        },
+        "sample_names": [
+          "Text [8B1]",
+          "Text [8B2]",
+          "Line [1AB8]",
+          "Line [28E]",
+          "Line [290]"
+        ],
+        "handles": [
+          "8b1",
+          "8b2",
+          "1ab8",
+          "28e",
+          "290"
+        ]
+      },
+      "9": {
+        "object_count": 26,
+        "entity_types": {
+          "Line": 7,
+          "Polyline": 18,
+          "Arc": 1
+        },
+        "sample_names": [
+          "Line [1B1D]",
+          "Line [1B1E]",
+          "Line [1B1F]",
+          "Line [1B62]",
+          "Line [1B63]"
+        ],
+        "handles": [
+          "1b1d",
+          "1b1e",
+          "1b1f",
+          "1b62",
+          "1b63"
+        ]
+      },
+      "TEXTOS": {
+        "object_count": 55,
+        "entity_types": {
+          "Line": 55
+        },
+        "sample_names": [
+          "Line [205]",
+          "Line [207]",
+          "Line [20A]",
+          "Line [20B]",
+          "Line [20D]"
+        ],
+        "handles": [
+          "205",
+          "207",
+          "20a",
+          "20b",
+          "20d"
+        ]
+      },
+      "025": {
+        "object_count": 55,
+        "entity_types": {
+          "Line": 4,
+          "Polyline": 51
+        },
+        "sample_names": [
+          "Line [2B2]",
+          "Line [2C2]",
+          "Line [5A6]",
+          "Line [5B2]",
+          "Polyline [5A7]"
+        ],
+        "handles": [
+          "2b2",
+          "2c2",
+          "5a6",
+          "5b2",
+          "5a7"
+        ]
+      },
+      "6": {
+        "object_count": 3,
+        "entity_types": {
+          "Line": 2,
+          "Arc": 1
+        },
+        "sample_names": [
+          "Line [643]",
+          "Line [651]",
+          "Arc [1B5F]"
+        ],
+        "handles": [
+          "643",
+          "651",
+          "1b5f"
+        ]
+      }
+    },
+    "texts": [
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "208",
+        "content": "Camara de aire",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "20c",
+        "content": "Tabique de ladrillo hueco doble 11x8x24xcm.",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "215",
+        "content": "Alfeizar de baldosa ceramica",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "219",
+        "content": "Citara ladrillo perforado, cara vista",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "28",
+        "content": "Cota Pavimento Exterior",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "282",
+        "content": "con acristalamiento tipo Climalit",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "283",
+        "content": "Carpinteria de Aluminio Lacado en verde",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "286",
+        "content": "Solado y Rodapie de terrazo",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "2bd",
+        "content": "Hidraulica 20x20 cm.",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "2be",
+        "content": "Mortero agarre",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "2da",
+        "content": "Bordillo prefabricado de",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "2db",
+        "content": "Hormigon de 15x25 cm.",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "35",
+        "content": "Solado con baldosa",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "508",
+        "content": "HM-15",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "50a",
+        "content": "Pte.1%",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "50d",
+        "content": "Mortero de agarre",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "50f",
+        "content": "40x40 grano grueso",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "514",
+        "content": "Aislamiento de poliuretano proyectado mínimo 2cm.",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "515",
+        "content": "Guarnecido de yeso Y.12 e=1.2 cm. y pintado con pintura plastica lisa",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "548",
+        "content": "Encachado de grava",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "54d",
+        "content": "Solera hormigon",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "56f",
+        "content": "Cargadero de doble Vigueta prefabricada de",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "570",
+        "content": "Hormigón recibido nin. en muro 15 cm.",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Text",
+        "handle": "573",
+        "content": "Forjado",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "5fe",
+        "content": "Teja ceramica",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "601",
+        "content": "Mortero de cemento",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "604",
+        "content": "Tablero de rasillon de 4x25x100",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "607",
+        "content": "Tabique palomero de ladrillo hueco doble",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "60b",
+        "content": "Citara de ladrillo perforado, cara vista",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "6cb",
+        "content": "Manta de fibra de vidrio IBR e=4 cm.",
+        "bbox": {}
+      },
+      {
+        "layer": "03",
+        "entity_type": "Text",
+        "handle": "6cd",
+        "content": "11x8x24 cm. cada 1 cm.",
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Text",
+        "handle": "8b1",
+        "content": "NOTA: EN LA SALA DE MÁQUINAS LA SOLERA DE HORMIGON TENDRA UN ESPESOR DE 20cm.",
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Text",
+        "handle": "8b2",
+        "content": "(REDUCIENDO EL ESPESOR DEL ENCACHADO) E IRÁ ARMADA CON %%C8#15x15cm",
+        "bbox": {}
+      },
+      {
+        "layer": "UNKNOWN",
+        "entity_type": "MText (33)",
+        "handle": "",
+        "content": "",
+        "bbox": {}
+      }
+    ],
+    "dimensions": [
+      {
+        "layer": "1",
+        "entity_type": "Rotated Dimension",
+        "handle": "1c1c",
+        "measurement": null,
+        "text": "Yes",
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Rotated Dimension",
+        "handle": "1c35",
+        "measurement": null,
+        "text": "Yes",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Rotated Dimension",
+        "handle": "1d30",
+        "measurement": null,
+        "text": "Yes",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Rotated Dimension",
+        "handle": "1d3d",
+        "measurement": null,
+        "text": "Yes",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Rotated Dimension",
+        "handle": "1d61",
+        "measurement": null,
+        "text": "Yes",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Rotated Dimension",
+        "handle": "54f",
+        "measurement": null,
+        "text": "Yes",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Rotated Dimension",
+        "handle": "55e",
+        "measurement": null,
+        "text": "Yes",
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Rotated Dimension",
+        "handle": "6b9",
+        "measurement": null,
+        "text": "Yes",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Rotated Dimension",
+        "handle": "896",
+        "measurement": null,
+        "text": "Yes",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Rotated Dimension",
+        "handle": "8a3",
+        "measurement": null,
+        "text": "Yes",
+        "bbox": {}
+      },
+      {
+        "layer": "UNKNOWN",
+        "entity_type": "Dimensions (10)",
+        "handle": "",
+        "measurement": null,
+        "text": "",
+        "bbox": {}
+      }
+    ],
+    "hatches": [
+      {
+        "layer": "1",
+        "entity_type": "Hatch",
+        "handle": "1b58",
+        "area": null,
+        "pattern_name": "AR-CONC",
+        "fill_type": "Hatch Pattern",
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Hatch",
+        "handle": "1bb3",
+        "area": 166964.058,
+        "pattern_name": "AR-CONC",
+        "fill_type": "Hatch Pattern",
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Hatch",
+        "handle": "1bba",
+        "area": 26615.795,
+        "pattern_name": "AR-CONC",
+        "fill_type": "Hatch Pattern",
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Hatch",
+        "handle": "1bc8",
+        "area": 137888.968,
+        "pattern_name": "AR-CONC",
+        "fill_type": "Hatch Pattern",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Hatch",
+        "handle": "bb5",
+        "area": 214181.468,
+        "pattern_name": "AR-CONC",
+        "fill_type": "Hatch Pattern",
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Hatch",
+        "handle": "be7",
+        "area": 202061.883,
+        "pattern_name": "AR-CONC",
+        "fill_type": "Hatch Pattern",
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Hatch",
+        "handle": "1bd7",
+        "area": 39075.699,
+        "pattern_name": "AR-SAND",
+        "fill_type": "Hatch Pattern",
+        "bbox": {}
+      },
+      {
+        "layer": "UNKNOWN",
+        "entity_type": "Hatches (7)",
+        "handle": "",
+        "area": null,
+        "pattern_name": "",
+        "fill_type": "",
+        "bbox": {}
+      }
+    ],
+    "blocks": [
+      {
+        "layer": "04",
+        "entity_type": "Block Reference",
+        "handle": "1ad8",
+        "block_name": "11X8",
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Block Reference",
+        "handle": "1adf",
+        "block_name": "11X8",
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Block Reference",
+        "handle": "1ae0",
+        "block_name": "11X8",
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Block Reference",
+        "handle": "1ae1",
+        "block_name": "11X8",
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Block Reference",
+        "handle": "1ae2",
+        "block_name": "11X8",
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Block Reference",
+        "handle": "1ae3",
+        "block_name": "11X8",
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Block Reference",
+        "handle": "1af2",
+        "block_name": "11X8",
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Block Reference",
+        "handle": "249c",
+        "block_name": "A1v",
+        "bbox": {}
+      }
+    ],
+    "geometry_hints": [
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AA9]",
+        "handle": "1aa9",
+        "length": 54.8,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AAA]",
+        "handle": "1aaa",
+        "length": 60.506,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AAD]",
+        "handle": "1aad",
+        "length": 54.8,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AAE]",
+        "handle": "1aae",
+        "length": 54.8,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AB1]",
+        "handle": "1ab1",
+        "length": 60.506,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AB4]",
+        "handle": "1ab4",
+        "length": 60.506,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AB5]",
+        "handle": "1ab5",
+        "length": 60.641,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AB7]",
+        "handle": "1ab7",
+        "length": 54.8,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [1AB8]",
+        "handle": "1ab8",
+        "length": 521.288,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AF0]",
+        "handle": "1af0",
+        "length": 82.616,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [1AF1]",
+        "handle": "1af1",
+        "length": 889.101,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AF3]",
+        "handle": "1af3",
+        "length": 47.518,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [1AF4]",
+        "handle": "1af4",
+        "length": 47.518,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Line",
+        "name": "Line [1B1D]",
+        "handle": "1b1d",
+        "length": 24.942,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Line",
+        "name": "Line [1B1E]",
+        "handle": "1b1e",
+        "length": 24.736,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Line",
+        "name": "Line [1B1F]",
+        "handle": "1b1f",
+        "length": 6.286,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [1B5B]",
+        "handle": "1b5b",
+        "length": 3.636,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Line",
+        "name": "Line [1B62]",
+        "handle": "1b62",
+        "length": 24.942,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Line",
+        "name": "Line [1B63]",
+        "handle": "1b63",
+        "length": 24.736,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Line",
+        "name": "Line [1B64]",
+        "handle": "1b64",
+        "length": 6.286,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [1E6B]",
+        "handle": "1e6b",
+        "length": 20.654,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [1E8E]",
+        "handle": "1e8e",
+        "length": 20.654,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [1E8F]",
+        "handle": "1e8f",
+        "length": 20.658,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [1E97]",
+        "handle": "1e97",
+        "length": 188.476,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [1E98]",
+        "handle": "1e98",
+        "length": 45.835,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [202]",
+        "handle": "202",
+        "length": 889.102,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [205]",
+        "handle": "205",
+        "length": 1066.33,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [207]",
+        "handle": "207",
+        "length": 1224.053,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [20A]",
+        "handle": "20a",
+        "length": 316.081,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [20B]",
+        "handle": "20b",
+        "length": 1176.88,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [20D]",
+        "handle": "20d",
+        "length": 913.351,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [20E]",
+        "handle": "20e",
+        "length": 1120.394,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [20F]",
+        "handle": "20f",
+        "length": 1140.168,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [213]",
+        "handle": "213",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [216]",
+        "handle": "216",
+        "length": 601.929,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [217]",
+        "handle": "217",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [218]",
+        "handle": "218",
+        "length": 393.46,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [21A]",
+        "handle": "21a",
+        "length": 718.767,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [21B]",
+        "handle": "21b",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [21C]",
+        "handle": "21c",
+        "length": 1380.737,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [245]",
+        "handle": "245",
+        "length": 1711.69,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [246]",
+        "handle": "246",
+        "length": 1711.69,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [247]",
+        "handle": "247",
+        "length": 1711.69,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [248]",
+        "handle": "248",
+        "length": 1711.69,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [249]",
+        "handle": "249",
+        "length": 3.464,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [24A]",
+        "handle": "24a",
+        "length": 1.549,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [24B]",
+        "handle": "24b",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [24C]",
+        "handle": "24c",
+        "length": 6.196,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [24D]",
+        "handle": "24d",
+        "length": 16.523,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [24E]",
+        "handle": "24e",
+        "length": 14.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [24F]",
+        "handle": "24f",
+        "length": 14.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [250]",
+        "handle": "250",
+        "length": 16.523,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [251]",
+        "handle": "251",
+        "length": 22.719,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [252]",
+        "handle": "252",
+        "length": 17.305,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [253]",
+        "handle": "253",
+        "length": 17.305,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [254]",
+        "handle": "254",
+        "length": 14.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [255]",
+        "handle": "255",
+        "length": 16.523,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [256]",
+        "handle": "256",
+        "length": 14.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [257]",
+        "handle": "257",
+        "length": 16.523,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [258]",
+        "handle": "258",
+        "length": 26.334,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [259]",
+        "handle": "259",
+        "length": 6.713,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [25A]",
+        "handle": "25a",
+        "length": 58.096,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [25B]",
+        "handle": "25b",
+        "length": 37.694,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [25C]",
+        "handle": "25c",
+        "length": 17.305,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [25D]",
+        "handle": "25d",
+        "length": 48.537,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [25E]",
+        "handle": "25e",
+        "length": 47.504,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [25F]",
+        "handle": "25f",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [260]",
+        "handle": "260",
+        "length": 20.403,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [261]",
+        "handle": "261",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [262]",
+        "handle": "262",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [263]",
+        "handle": "263",
+        "length": 45.439,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [264]",
+        "handle": "264",
+        "length": 45.439,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [265]",
+        "handle": "265",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [266]",
+        "handle": "266",
+        "length": 15.491,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [267]",
+        "handle": "267",
+        "length": 7.229,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [268]",
+        "handle": "268",
+        "length": 7.229,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [269]",
+        "handle": "269",
+        "length": 5.164,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [26A]",
+        "handle": "26a",
+        "length": 20.654,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [26B]",
+        "handle": "26b",
+        "length": 15.491,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [26C]",
+        "handle": "26c",
+        "length": 7.229,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [26D]",
+        "handle": "26d",
+        "length": 10.327,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [26E]",
+        "handle": "26e",
+        "length": 5.164,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [26F]",
+        "handle": "26f",
+        "length": 1.007,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [270]",
+        "handle": "270",
+        "length": 15.491,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [271]",
+        "handle": "271",
+        "length": 15.491,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [272]",
+        "handle": "272",
+        "length": 2.065,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [273]",
+        "handle": "273",
+        "length": 286.581,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [274]",
+        "handle": "274",
+        "length": 44.155,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [275]",
+        "handle": "275",
+        "length": 286.581,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [276]",
+        "handle": "276",
+        "length": 41.308,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [277]",
+        "handle": "277",
+        "length": 41.308,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [278]",
+        "handle": "278",
+        "length": 304.647,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [279]",
+        "handle": "279",
+        "length": 304.647,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [284]",
+        "handle": "284",
+        "length": 735.677,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [285]",
+        "handle": "285",
+        "length": 772.706,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [287]",
+        "handle": "287",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [288]",
+        "handle": "288",
+        "length": 878.458,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [289]",
+        "handle": "289",
+        "length": 745.254,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [28A]",
+        "handle": "28a",
+        "length": 20.658,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [28B]",
+        "handle": "28b",
+        "length": 56.993,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [28C]",
+        "handle": "28c",
+        "length": 46.685,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [28E]",
+        "handle": "28e",
+        "length": 1207.101,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [290]",
+        "handle": "290",
+        "length": 1207.101,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [291]",
+        "handle": "291",
+        "length": 46.685,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [292]",
+        "handle": "292",
+        "length": 56.993,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [293]",
+        "handle": "293",
+        "length": 67.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [294]",
+        "handle": "294",
+        "length": 77.607,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [295]",
+        "handle": "295",
+        "length": 87.914,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [296]",
+        "handle": "296",
+        "length": 63.909,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [297]",
+        "handle": "297",
+        "length": 44.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [298]",
+        "handle": "298",
+        "length": 54.121,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [299]",
+        "handle": "299",
+        "length": 34.545,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [29A]",
+        "handle": "29a",
+        "length": 36.378,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [29B]",
+        "handle": "29b",
+        "length": 73.697,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [29C]",
+        "handle": "29c",
+        "length": 83.485,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [29D]",
+        "handle": "29d",
+        "length": 255.1,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [29F]",
+        "handle": "29f",
+        "length": 279.384,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [2A0]",
+        "handle": "2a0",
+        "length": 279.384,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [2A1]",
+        "handle": "2a1",
+        "length": 87.914,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [2A2]",
+        "handle": "2a2",
+        "length": 67.3,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [2A3]",
+        "handle": "2a3",
+        "length": 77.607,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [2A5]",
+        "handle": "2a5",
+        "length": 63.909,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [2A6]",
+        "handle": "2a6",
+        "length": 54.121,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [2A7]",
+        "handle": "2a7",
+        "length": 44.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [2A8]",
+        "handle": "2a8",
+        "length": 234.356,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [2B1]",
+        "handle": "2b1",
+        "length": 60.591,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Line",
+        "name": "Line [2B2]",
+        "handle": "2b2",
+        "length": 63.118,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [2B3]",
+        "handle": "2b3",
+        "length": 112.941,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [2BB]",
+        "handle": "2bb",
+        "length": 108.007,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [2BC]",
+        "handle": "2bc",
+        "length": 292.299,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [2C0]",
+        "handle": "2c0",
+        "length": 891.89,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [2C1]",
+        "handle": "2c1",
+        "length": 1005.198,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Line",
+        "name": "Line [2C2]",
+        "handle": "2c2",
+        "length": 832.888,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [2CA]",
+        "handle": "2ca",
+        "length": 103.27,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [2CF]",
+        "handle": "2cf",
+        "length": 103.27,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [2D3]",
+        "handle": "2d3",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [2D4]",
+        "handle": "2d4",
+        "length": 258.176,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [2D5]",
+        "handle": "2d5",
+        "length": 258.176,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [2D7]",
+        "handle": "2d7",
+        "length": 473.793,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [2D8]",
+        "handle": "2d8",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [2D9]",
+        "handle": "2d9",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [2DC]",
+        "handle": "2dc",
+        "length": 505.821,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [2DD]",
+        "handle": "2dd",
+        "length": 551.68,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [2DE]",
+        "handle": "2de",
+        "length": 562.702,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [2DF]",
+        "handle": "2df",
+        "length": 258.176,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [2E0]",
+        "handle": "2e0",
+        "length": 214.469,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [2E2]",
+        "handle": "2e2",
+        "length": 83.485,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [2E3]",
+        "handle": "2e3",
+        "length": 73.697,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [503]",
+        "handle": "503",
+        "length": 1027.539,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [504]",
+        "handle": "504",
+        "length": 1027.744,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [505]",
+        "handle": "505",
+        "length": 1028.157,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [506]",
+        "handle": "506",
+        "length": 1027.744,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [507]",
+        "handle": "507",
+        "length": 255.1,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [509]",
+        "handle": "509",
+        "length": 160.136,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [50E]",
+        "handle": "50e",
+        "length": 570.445,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [510]",
+        "handle": "510",
+        "length": 569.216,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [511]",
+        "handle": "511",
+        "length": 1011.074,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [516]",
+        "handle": "516",
+        "length": 1468.494,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [525]",
+        "handle": "525",
+        "length": 1382.66,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [529]",
+        "handle": "529",
+        "length": 258.176,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [52A]",
+        "handle": "52a",
+        "length": 258.176,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [52B]",
+        "handle": "52b",
+        "length": 433.632,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [52C]",
+        "handle": "52c",
+        "length": 309.811,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [532]",
+        "handle": "532",
+        "length": 82.223,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [545]",
+        "handle": "545",
+        "length": 332.738,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [546]",
+        "handle": "546",
+        "length": 41.308,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [547]",
+        "handle": "547",
+        "length": 410.007,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [54A]",
+        "handle": "54a",
+        "length": 409.388,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [54B]",
+        "handle": "54b",
+        "length": 41.308,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [54C]",
+        "handle": "54c",
+        "length": 342.091,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [56D]",
+        "handle": "56d",
+        "length": 662.543,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [56E]",
+        "handle": "56e",
+        "length": 777.871,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [571]",
+        "handle": "571",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [572]",
+        "handle": "572",
+        "length": 285.003,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [574]",
+        "handle": "574",
+        "length": 165.673,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [575]",
+        "handle": "575",
+        "length": 26.334,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [576]",
+        "handle": "576",
+        "length": 3.614,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [577]",
+        "handle": "577",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [578]",
+        "handle": "578",
+        "length": 44.155,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [579]",
+        "handle": "579",
+        "length": 20.403,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [57A]",
+        "handle": "57a",
+        "length": 17.305,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [57B]",
+        "handle": "57b",
+        "length": 15.491,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [57C]",
+        "handle": "57c",
+        "length": 5.164,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [57D]",
+        "handle": "57d",
+        "length": 7.229,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [57E]",
+        "handle": "57e",
+        "length": 10.327,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [57F]",
+        "handle": "57f",
+        "length": 7.229,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [580]",
+        "handle": "580",
+        "length": 7.229,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [581]",
+        "handle": "581",
+        "length": 5.164,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [582]",
+        "handle": "582",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [583]",
+        "handle": "583",
+        "length": 20.654,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [584]",
+        "handle": "584",
+        "length": 47.504,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [585]",
+        "handle": "585",
+        "length": 37.694,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [586]",
+        "handle": "586",
+        "length": 58.096,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [587]",
+        "handle": "587",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [588]",
+        "handle": "588",
+        "length": 16.523,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [589]",
+        "handle": "589",
+        "length": 48.537,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [58A]",
+        "handle": "58a",
+        "length": 45.439,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [58B]",
+        "handle": "58b",
+        "length": 45.439,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [58C]",
+        "handle": "58c",
+        "length": 6.196,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [58D]",
+        "handle": "58d",
+        "length": 16.523,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [58E]",
+        "handle": "58e",
+        "length": 17.305,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [58F]",
+        "handle": "58f",
+        "length": 17.305,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [590]",
+        "handle": "590",
+        "length": 14.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [591]",
+        "handle": "591",
+        "length": 14.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [592]",
+        "handle": "592",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [593]",
+        "handle": "593",
+        "length": 15.491,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [594]",
+        "handle": "594",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [595]",
+        "handle": "595",
+        "length": 14.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [596]",
+        "handle": "596",
+        "length": 16.523,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [597]",
+        "handle": "597",
+        "length": 16.523,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [598]",
+        "handle": "598",
+        "length": 22.719,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [599]",
+        "handle": "599",
+        "length": 14.206,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [59B]",
+        "handle": "59b",
+        "length": 3.098,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [59C]",
+        "handle": "59c",
+        "length": 1511.748,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [59D]",
+        "handle": "59d",
+        "length": 1617.876,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [59E]",
+        "handle": "59e",
+        "length": 1634.399,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [59F]",
+        "handle": "59f",
+        "length": 51.635,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5A0]",
+        "handle": "5a0",
+        "length": 41.308,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5A1]",
+        "handle": "5a1",
+        "length": 41.308,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5A2]",
+        "handle": "5a2",
+        "length": 41.308,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5A3]",
+        "handle": "5a3",
+        "length": 41.308,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5A4]",
+        "handle": "5a4",
+        "length": 41.308,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5A5]",
+        "handle": "5a5",
+        "length": 41.308,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Line",
+        "name": "Line [5A6]",
+        "handle": "5a6",
+        "length": 1305.208,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Line",
+        "name": "Line [5B2]",
+        "handle": "5b2",
+        "length": 11.598,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5DA]",
+        "handle": "5da",
+        "length": 1744.741,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5DB]",
+        "handle": "5db",
+        "length": 154.905,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5DC]",
+        "handle": "5dc",
+        "length": 142.513,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5DD]",
+        "handle": "5dd",
+        "length": 350.58,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5DE]",
+        "handle": "5de",
+        "length": 402.668,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5DF]",
+        "handle": "5df",
+        "length": 151.26,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5E0]",
+        "handle": "5e0",
+        "length": 310.472,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5E1]",
+        "handle": "5e1",
+        "length": 258.382,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5E2]",
+        "handle": "5e2",
+        "length": 10.327,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5E3]",
+        "handle": "5e3",
+        "length": 142.513,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5E4]",
+        "handle": "5e4",
+        "length": 310.472,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5E5]",
+        "handle": "5e5",
+        "length": 10.327,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5E6]",
+        "handle": "5e6",
+        "length": 258.382,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5E7]",
+        "handle": "5e7",
+        "length": 142.513,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5E8]",
+        "handle": "5e8",
+        "length": 310.472,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5E9]",
+        "handle": "5e9",
+        "length": 258.382,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5EA]",
+        "handle": "5ea",
+        "length": 10.327,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5EB]",
+        "handle": "5eb",
+        "length": 142.513,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5EC]",
+        "handle": "5ec",
+        "length": 310.472,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5ED]",
+        "handle": "5ed",
+        "length": 258.382,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5EE]",
+        "handle": "5ee",
+        "length": 10.327,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5EF]",
+        "handle": "5ef",
+        "length": 142.513,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5F0]",
+        "handle": "5f0",
+        "length": 310.472,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5F1]",
+        "handle": "5f1",
+        "length": 258.382,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5F2]",
+        "handle": "5f2",
+        "length": 10.327,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5F3]",
+        "handle": "5f3",
+        "length": 142.513,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5F4]",
+        "handle": "5f4",
+        "length": 310.472,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5F5]",
+        "handle": "5f5",
+        "length": 258.382,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5F6]",
+        "handle": "5f6",
+        "length": 10.327,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5F7]",
+        "handle": "5f7",
+        "length": 4.758,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [5F8]",
+        "handle": "5f8",
+        "length": 53.961,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5F9]",
+        "handle": "5f9",
+        "length": 57.62,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [5FA]",
+        "handle": "5fa",
+        "length": 10.327,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [5FB]",
+        "handle": "5fb",
+        "length": 382.248,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [5FC]",
+        "handle": "5fc",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [5FD]",
+        "handle": "5fd",
+        "length": 283.993,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [5FF]",
+        "handle": "5ff",
+        "length": 263.518,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [600]",
+        "handle": "600",
+        "length": 429.693,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [602]",
+        "handle": "602",
+        "length": 239.523,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [603]",
+        "handle": "603",
+        "length": 657.028,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [605]",
+        "handle": "605",
+        "length": 322.358,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [606]",
+        "handle": "606",
+        "length": 838.486,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [608]",
+        "handle": "608",
+        "length": 366.138,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [609]",
+        "handle": "609",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [60A]",
+        "handle": "60a",
+        "length": 792.539,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [60D]",
+        "handle": "60d",
+        "length": 313.941,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [613]",
+        "handle": "613",
+        "length": 0.186,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [614]",
+        "handle": "614",
+        "length": 72.289,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [615]",
+        "handle": "615",
+        "length": 304.647,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [616]",
+        "handle": "616",
+        "length": 304.647,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [617]",
+        "handle": "617",
+        "length": 72.289,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [619]",
+        "handle": "619",
+        "length": 81.79,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [626]",
+        "handle": "626",
+        "length": 129.088,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [627]",
+        "handle": "627",
+        "length": 67.126,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [628]",
+        "handle": "628",
+        "length": 129.088,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [629]",
+        "handle": "629",
+        "length": 67.126,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [62B]",
+        "handle": "62b",
+        "length": 82.616,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [62C]",
+        "handle": "62c",
+        "length": 82.616,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [62E]",
+        "handle": "62e",
+        "length": 82.616,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [639]",
+        "handle": "639",
+        "length": 207.587,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [63B]",
+        "handle": "63b",
+        "length": 207.587,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [63D]",
+        "handle": "63d",
+        "length": 15.491,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [63E]",
+        "handle": "63e",
+        "length": 0.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [63F]",
+        "handle": "63f",
+        "length": 1194.709,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [640]",
+        "handle": "640",
+        "length": 159.036,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [641]",
+        "handle": "641",
+        "length": 219.287,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [642]",
+        "handle": "642",
+        "length": 106.354,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "6",
+        "entity_type": "Line",
+        "name": "Line [643]",
+        "handle": "643",
+        "length": 1398.48,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [644]",
+        "handle": "644",
+        "length": 1576.06,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [645]",
+        "handle": "645",
+        "length": 1576.118,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [646]",
+        "handle": "646",
+        "length": 1093.504,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [647]",
+        "handle": "647",
+        "length": 1230.192,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [648]",
+        "handle": "648",
+        "length": 219.287,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "6",
+        "entity_type": "Line",
+        "name": "Line [651]",
+        "handle": "651",
+        "length": 145.694,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Line",
+        "name": "Line [652]",
+        "handle": "652",
+        "length": 176.303,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [654]",
+        "handle": "654",
+        "length": 219.287,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [658]",
+        "handle": "658",
+        "length": 219.287,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [659]",
+        "handle": "659",
+        "length": 219.287,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [65A]",
+        "handle": "65a",
+        "length": 219.287,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Line",
+        "name": "Line [664]",
+        "handle": "664",
+        "length": 58.405,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [669]",
+        "handle": "669",
+        "length": 67.126,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [66A]",
+        "handle": "66a",
+        "length": 129.088,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [66B]",
+        "handle": "66b",
+        "length": 67.126,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [66C]",
+        "handle": "66c",
+        "length": 129.088,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [678]",
+        "handle": "678",
+        "length": 1615.018,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [680]",
+        "handle": "680",
+        "length": 61.962,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [681]",
+        "handle": "681",
+        "length": 82.616,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [685]",
+        "handle": "685",
+        "length": 82.616,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [69E]",
+        "handle": "69e",
+        "length": 207.587,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [69F]",
+        "handle": "69f",
+        "length": 71.064,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6A4]",
+        "handle": "6a4",
+        "length": 61.962,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6A5]",
+        "handle": "6a5",
+        "length": 71.064,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6A7]",
+        "handle": "6a7",
+        "length": 164.388,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6A8]",
+        "handle": "6a8",
+        "length": 474.199,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6A9]",
+        "handle": "6a9",
+        "length": 784.009,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6AA]",
+        "handle": "6aa",
+        "length": 1093.82,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6AB]",
+        "handle": "6ab",
+        "length": 123.924,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6AC]",
+        "handle": "6ac",
+        "length": 123.924,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6AD]",
+        "handle": "6ad",
+        "length": 84.555,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6AE]",
+        "handle": "6ae",
+        "length": 123.924,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6AF]",
+        "handle": "6af",
+        "length": 123.924,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6B0]",
+        "handle": "6b0",
+        "length": 44.395,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6B1]",
+        "handle": "6b1",
+        "length": 84.555,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6B2]",
+        "handle": "6b2",
+        "length": 118.75,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6B3]",
+        "handle": "6b3",
+        "length": 123.924,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6B4]",
+        "handle": "6b4",
+        "length": 84.555,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6B5]",
+        "handle": "6b5",
+        "length": 19.61,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6B6]",
+        "handle": "6b6",
+        "length": 93.965,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6B7]",
+        "handle": "6b7",
+        "length": 84.555,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [6B8]",
+        "handle": "6b8",
+        "length": 29.811,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [6CA]",
+        "handle": "6ca",
+        "length": 773.898,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "TEXTOS",
+        "entity_type": "Line",
+        "name": "Line [6CC]",
+        "handle": "6cc",
+        "length": 322.358,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [6CE]",
+        "handle": "6ce",
+        "length": 103.27,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [6CF]",
+        "handle": "6cf",
+        "length": 103.27,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [6D0]",
+        "handle": "6d0",
+        "length": 51.635,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [6D1]",
+        "handle": "6d1",
+        "length": 51.635,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [6D2]",
+        "handle": "6d2",
+        "length": 13.282,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6D3]",
+        "handle": "6d3",
+        "length": 72.289,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6D4]",
+        "handle": "6d4",
+        "length": 51.635,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6D5]",
+        "handle": "6d5",
+        "length": 103.27,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6D6]",
+        "handle": "6d6",
+        "length": 113.597,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6D7]",
+        "handle": "6d7",
+        "length": 1599.528,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6D8]",
+        "handle": "6d8",
+        "length": 157.797,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6D9]",
+        "handle": "6d9",
+        "length": 227.194,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6DA]",
+        "handle": "6da",
+        "length": 124.337,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6DB]",
+        "handle": "6db",
+        "length": 1207.101,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Line",
+        "name": "Line [6DC]",
+        "handle": "6dc",
+        "length": 61.962,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [6DE]",
+        "handle": "6de",
+        "length": 72.443,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [6DF]",
+        "handle": "6df",
+        "length": 21.429,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [83B]",
+        "handle": "83b",
+        "length": 1712.939,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [83C]",
+        "handle": "83c",
+        "length": 1712.939,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [83D]",
+        "handle": "83d",
+        "length": 1712.939,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [83E]",
+        "handle": "83e",
+        "length": 1712.939,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [83F]",
+        "handle": "83f",
+        "length": 1783.402,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [893]",
+        "handle": "893",
+        "length": 0.33,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [8B0]",
+        "handle": "8b0",
+        "length": 1067.516,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [A0]",
+        "handle": "a0",
+        "length": 1044.007,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Line",
+        "name": "Line [BB6]",
+        "handle": "bb6",
+        "length": 1253.986,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [CA]",
+        "handle": "ca",
+        "length": 1782.153,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Line",
+        "name": "Line [D9]",
+        "handle": "d9",
+        "length": 873.611,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [100]",
+        "handle": "100",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [101]",
+        "handle": "101",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [102]",
+        "handle": "102",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [103]",
+        "handle": "103",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [104]",
+        "handle": "104",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [105]",
+        "handle": "105",
+        "length": 66.281,
+        "area": 290.185,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1ABA]",
+        "handle": "1aba",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1ABB]",
+        "handle": "1abb",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1ABC]",
+        "handle": "1abc",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1ABD]",
+        "handle": "1abd",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1ABE]",
+        "handle": "1abe",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1ABF]",
+        "handle": "1abf",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1AC0]",
+        "handle": "1ac0",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1AC1]",
+        "handle": "1ac1",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1AC2]",
+        "handle": "1ac2",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1AC3]",
+        "handle": "1ac3",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1AC4]",
+        "handle": "1ac4",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1AC5]",
+        "handle": "1ac5",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1AC6]",
+        "handle": "1ac6",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1AC7]",
+        "handle": "1ac7",
+        "length": 376.368,
+        "area": 7760.397,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1AEF]",
+        "handle": "1aef",
+        "length": 249.801,
+        "area": 6906.094,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1B05]",
+        "handle": "1b05",
+        "length": 27.461,
+        "area": 0.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [1B06]",
+        "handle": "1b06",
+        "length": 13.728,
+        "area": 0.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Polyline",
+        "name": "Polyline [1B5C]",
+        "handle": "1b5c",
+        "length": 5.739,
+        "area": 2.621,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [1B60]",
+        "handle": "1b60",
+        "length": 875.337,
+        "area": 42177.113,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [1B61]",
+        "handle": "1b61",
+        "length": 753.544,
+        "area": 38031.554,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [1B65]",
+        "handle": "1b65",
+        "length": 875.337,
+        "area": 42376.616,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [1B66]",
+        "handle": "1b66",
+        "length": 753.544,
+        "area": 38031.554,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Polyline",
+        "name": "Polyline [526]",
+        "handle": "526",
+        "length": 1380.944,
+        "area": 0.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [527]",
+        "handle": "527",
+        "length": 0.945,
+        "area": 0.008,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [536]",
+        "handle": "536",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [537]",
+        "handle": "537",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [538]",
+        "handle": "538",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [53F]",
+        "handle": "53f",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [540]",
+        "handle": "540",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [541]",
+        "handle": "541",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5A7]",
+        "handle": "5a7",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5A8]",
+        "handle": "5a8",
+        "length": 76.524,
+        "area": 597.832,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5A9]",
+        "handle": "5a9",
+        "length": 88.812,
+        "area": 561.967,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5AA]",
+        "handle": "5aa",
+        "length": 64.416,
+        "area": 473.763,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5AB]",
+        "handle": "5ab",
+        "length": 76.021,
+        "area": 592.675,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5AC]",
+        "handle": "5ac",
+        "length": 52.308,
+        "area": 349.694,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5AD]",
+        "handle": "5ad",
+        "length": 60.298,
+        "area": 431.561,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5AE]",
+        "handle": "5ae",
+        "length": 40.2,
+        "area": 225.625,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5AF]",
+        "handle": "5af",
+        "length": 44.574,
+        "area": 270.448,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5B0]",
+        "handle": "5b0",
+        "length": 28.092,
+        "area": 101.556,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5B1]",
+        "handle": "5b1",
+        "length": 28.851,
+        "area": 109.334,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5B3]",
+        "handle": "5b3",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5B4]",
+        "handle": "5b4",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5B5]",
+        "handle": "5b5",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5B6]",
+        "handle": "5b6",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5B7]",
+        "handle": "5b7",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5B8]",
+        "handle": "5b8",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5B9]",
+        "handle": "5b9",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5BA]",
+        "handle": "5ba",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5BB]",
+        "handle": "5bb",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5BC]",
+        "handle": "5bc",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5BD]",
+        "handle": "5bd",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5BE]",
+        "handle": "5be",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5BF]",
+        "handle": "5bf",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C0]",
+        "handle": "5c0",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C1]",
+        "handle": "5c1",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C2]",
+        "handle": "5c2",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C3]",
+        "handle": "5c3",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C4]",
+        "handle": "5c4",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C5]",
+        "handle": "5c5",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C6]",
+        "handle": "5c6",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C7]",
+        "handle": "5c7",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C8]",
+        "handle": "5c8",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5C9]",
+        "handle": "5c9",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5CA]",
+        "handle": "5ca",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5CB]",
+        "handle": "5cb",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5CC]",
+        "handle": "5cc",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5CD]",
+        "handle": "5cd",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5CE]",
+        "handle": "5ce",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5CF]",
+        "handle": "5cf",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5D0]",
+        "handle": "5d0",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5D1]",
+        "handle": "5d1",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5D2]",
+        "handle": "5d2",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5D3]",
+        "handle": "5d3",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5D4]",
+        "handle": "5d4",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5D5]",
+        "handle": "5d5",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5D6]",
+        "handle": "5d6",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5D7]",
+        "handle": "5d7",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5D8]",
+        "handle": "5d8",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [5D9]",
+        "handle": "5d9",
+        "length": 207.518,
+        "area": 1343.757,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [60F]",
+        "handle": "60f",
+        "length": 567.917,
+        "area": 7102.546,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [610]",
+        "handle": "610",
+        "length": 567.917,
+        "area": 7102.546,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Polyline",
+        "name": "Polyline [649]",
+        "handle": "649",
+        "length": 5.739,
+        "area": 2.621,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [64A]",
+        "handle": "64a",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [64B]",
+        "handle": "64b",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [64C]",
+        "handle": "64c",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [64D]",
+        "handle": "64d",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [64F]",
+        "handle": "64f",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Polyline",
+        "name": "Polyline [655]",
+        "handle": "655",
+        "length": 5.739,
+        "area": 2.621,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Polyline",
+        "name": "Polyline [656]",
+        "handle": "656",
+        "length": 5.739,
+        "area": 2.621,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Polyline",
+        "name": "Polyline [657]",
+        "handle": "657",
+        "length": 5.739,
+        "area": 2.621,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [65B]",
+        "handle": "65b",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [65C]",
+        "handle": "65c",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Polyline",
+        "name": "Polyline [65F]",
+        "handle": "65f",
+        "length": 17.133,
+        "area": 23.359,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Polyline",
+        "name": "Polyline [665]",
+        "handle": "665",
+        "length": 5.739,
+        "area": 2.621,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Polyline",
+        "name": "Polyline [666]",
+        "handle": "666",
+        "length": 5.739,
+        "area": 2.621,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Polyline",
+        "name": "Polyline [667]",
+        "handle": "667",
+        "length": 5.739,
+        "area": 2.621,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "02",
+        "entity_type": "Polyline",
+        "name": "Polyline [668]",
+        "handle": "668",
+        "length": 5.739,
+        "area": 2.621,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [682]",
+        "handle": "682",
+        "length": 144.578,
+        "area": 2559.537,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "3",
+        "entity_type": "Polyline",
+        "name": "Polyline [68F]",
+        "handle": "68f",
+        "length": 1732.947,
+        "area": 321518.862,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Polyline",
+        "name": "Polyline [690]",
+        "handle": "690",
+        "length": 13.733,
+        "area": 0.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [692]",
+        "handle": "692",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [693]",
+        "handle": "693",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [694]",
+        "handle": "694",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [695]",
+        "handle": "695",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [696]",
+        "handle": "696",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [697]",
+        "handle": "697",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [698]",
+        "handle": "698",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [699]",
+        "handle": "699",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [69A]",
+        "handle": "69a",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [69B]",
+        "handle": "69b",
+        "length": 8.0,
+        "area": 4.838,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [69C]",
+        "handle": "69c",
+        "length": 66.149,
+        "area": 288.319,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "025",
+        "entity_type": "Polyline",
+        "name": "Polyline [6A6]",
+        "handle": "6a6",
+        "length": 104.158,
+        "area": 698.949,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [B56]",
+        "handle": "b56",
+        "length": 8.707,
+        "area": 5.89,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [DA]",
+        "handle": "da",
+        "length": 64.9,
+        "area": 271.607,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [DB]",
+        "handle": "db",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [DC]",
+        "handle": "dc",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [DD]",
+        "handle": "dd",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [DE]",
+        "handle": "de",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [DF]",
+        "handle": "df",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [E0]",
+        "handle": "e0",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [E1]",
+        "handle": "e1",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [E2]",
+        "handle": "e2",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [E3]",
+        "handle": "e3",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [E4]",
+        "handle": "e4",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [E5]",
+        "handle": "e5",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [E6]",
+        "handle": "e6",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [E7]",
+        "handle": "e7",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [E8]",
+        "handle": "e8",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [E9]",
+        "handle": "e9",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [EA]",
+        "handle": "ea",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [EB]",
+        "handle": "eb",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [EC]",
+        "handle": "ec",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [ED]",
+        "handle": "ed",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [EE]",
+        "handle": "ee",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [EF]",
+        "handle": "ef",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [F0]",
+        "handle": "f0",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [F1]",
+        "handle": "f1",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [F2]",
+        "handle": "f2",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [F3]",
+        "handle": "f3",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [F4]",
+        "handle": "f4",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [F5]",
+        "handle": "f5",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [F6]",
+        "handle": "f6",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [F7]",
+        "handle": "f7",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [F8]",
+        "handle": "f8",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [F9]",
+        "handle": "f9",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [FA]",
+        "handle": "fa",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [FB]",
+        "handle": "fb",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [FC]",
+        "handle": "fc",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [FD]",
+        "handle": "fd",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [FE]",
+        "handle": "fe",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Polyline",
+        "name": "Polyline [FF]",
+        "handle": "ff",
+        "length": 130.2,
+        "area": 533.237,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Circle",
+        "name": "Circle [1AE6]",
+        "handle": "1ae6",
+        "length": null,
+        "area": 30.003,
+        "radius": 3.09,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Circle",
+        "name": "Circle [1AE9]",
+        "handle": "1ae9",
+        "length": null,
+        "area": 164.171,
+        "radius": 7.229,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Circle",
+        "name": "Circle [1AEA]",
+        "handle": "1aea",
+        "length": null,
+        "area": 164.171,
+        "radius": 7.229,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Circle",
+        "name": "Circle [1AEB]",
+        "handle": "1aeb",
+        "length": null,
+        "area": 164.171,
+        "radius": 7.229,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Circle",
+        "name": "Circle [1AEC]",
+        "handle": "1aec",
+        "length": null,
+        "area": 164.171,
+        "radius": 7.229,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Circle",
+        "name": "Circle [1AED]",
+        "handle": "1aed",
+        "length": null,
+        "area": 164.171,
+        "radius": 7.229,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Circle",
+        "name": "Circle [1AEE]",
+        "handle": "1aee",
+        "length": null,
+        "area": 164.171,
+        "radius": 7.229,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Circle",
+        "name": "Circle [1AF7]",
+        "handle": "1af7",
+        "length": null,
+        "area": 30.003,
+        "radius": 3.09,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Circle",
+        "name": "Circle [1AFE]",
+        "handle": "1afe",
+        "length": null,
+        "area": 164.171,
+        "radius": 7.229,
+        "bbox": {}
+      },
+      {
+        "layer": "1",
+        "entity_type": "Circle",
+        "name": "Circle [1AFF]",
+        "handle": "1aff",
+        "length": null,
+        "area": 164.171,
+        "radius": 7.229,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Arc",
+        "name": "Arc [1AFC]",
+        "handle": "1afc",
+        "length": 26.927,
+        "area": 111.719,
+        "radius": 7.229,
+        "bbox": {}
+      },
+      {
+        "layer": "04",
+        "entity_type": "Arc",
+        "name": "Arc [1AFD]",
+        "handle": "1afd",
+        "length": 26.927,
+        "area": 111.719,
+        "radius": 7.229,
+        "bbox": {}
+      },
+      {
+        "layer": "9",
+        "entity_type": "Arc",
+        "name": "Arc [1B10]",
+        "handle": "1b10",
+        "length": 23.71,
+        "area": 85.599,
+        "radius": 6.196,
+        "bbox": {}
+      },
+      {
+        "layer": "6",
+        "entity_type": "Arc",
+        "name": "Arc [1B5F]",
+        "handle": "1b5f",
+        "length": 19.466,
+        "area": 43.829,
+        "radius": 12.392,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Arc",
+        "name": "Arc [2D2]",
+        "handle": "2d2",
+        "length": 0.442,
+        "area": 0.007,
+        "radius": 1.033,
+        "bbox": {}
+      }
+    ]
+  },
+  "inventory_hints": {
+    "level_markers": [],
+    "scale_dimensions": [],
+    "block_frequency": [
+      {
+        "block_name": "11X8",
+        "count": 7
+      },
+      {
+        "block_name": "A1v",
+        "count": 1
+      }
+    ],
+    "layer_names": [
+      "015",
+      "02",
+      "025",
+      "03",
+      "04",
+      "1",
+      "3",
+      "6",
+      "9",
+      "TEXTOS",
+      "UNKNOWN"
+    ]
+  }
+}

@@ -683,6 +683,68 @@
           ]
         }
       ]
+    },
+    {
+      "id": "slab_length_concrete_standard",
+      "description": "Fallback slab concrete and formwork from slab area when only area is known. Assumes 0.20m slab thickness.",
+      "priority": 5,
+      "strategy": "surface_multiplier",
+      "match": {
+        "item_types": ["slab_area"]
+      },
+      "derive": [
+        {
+          "suffix": "concrete_volume",
+          "item_type": "slab_concrete_volume",
+          "unit": "m3",
+          "factor": 0.20,
+          "context_tags": ["slab", "concrete"],
+          "assumptions": [
+            "Default slab thickness 0.20m assumed. Concrete volume = area x 0.20m."
+          ]
+        },
+        {
+          "suffix": "formwork",
+          "item_type": "slab_formwork_area_hint",
+          "unit": "m2",
+          "factor": 1.0,
+          "context_tags": ["slab", "formwork"],
+          "assumptions": [
+            "Slab formwork area equals plan area (underside only)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "column_length_concrete_standard",
+      "description": "Fallback column concrete and formwork from column length. Assumes 0.40m x 0.40m section.",
+      "priority": 5,
+      "strategy": "surface_multiplier",
+      "match": {
+        "item_types": ["column_length"]
+      },
+      "derive": [
+        {
+          "suffix": "concrete_volume",
+          "item_type": "column_concrete_volume",
+          "unit": "m3",
+          "factor": 0.16,
+          "context_tags": ["column", "concrete"],
+          "assumptions": [
+            "Default column section 0.40m x 0.40m assumed. Concrete volume = length x 0.16m2."
+          ]
+        },
+        {
+          "suffix": "formwork",
+          "item_type": "column_formwork_area_hint",
+          "unit": "m2",
+          "factor": 1.60,
+          "context_tags": ["column", "formwork"],
+          "assumptions": [
+            "Default column perimeter 4 x 0.40m = 1.60m2/m. Formwork = all 4 faces."
+          ]
+        }
+      ]
     }
   ]
 }

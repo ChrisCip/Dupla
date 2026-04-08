@@ -1,0 +1,86 @@
+{
+  "urn": "dXJuOmFkc2sub2JqZWN0czpvcy5vYmplY3Q6ZHVwbGFfZHdnX2J1Y2tldF90ZXN0XzAxL0JMQ0FEMTQwMDFfMjAyNjA0MDZfMTUxNTU5LmR3Zw",
+  "object_name": "BLCAD14001_20260406_151559.dwg",
+  "views_requested": [
+    "2d"
+  ],
+  "manifest_reused": false,
+  "manifest_strategy": "fresh_submission",
+  "translation_submitted": true,
+  "resubmitted_after_failed_manifest": false,
+  "manifest_status": "success",
+  "manifest_progress": "complete",
+  "property_database_exists": true,
+  "property_database_success": true,
+  "token_refresh_count": 0,
+  "salvage_attempted": false,
+  "salvage_succeeded": false,
+  "views": [
+    {
+      "name": "2D View",
+      "guid": "7618df84-32c6-9334-5119-ae77f7a009ea",
+      "role": "2d",
+      "error": "413 Client Error: Payload Too Large for url: https://developer.api.autodesk.com/modelderivative/v2/designdata/dXJuOmFkc2sub2JqZWN0czpvcy5vYmplY3Q6ZHVwbGFfZHdnX2J1Y2tldF90ZXN0XzAxL0JMQ0FEMTQwMDFfMjAyNjA0MDZfMTUxNTU5LmR3Zw/metadata/7618df84-32c6-9334-5119-ae77f7a009ea/properties"
+    },
+    {
+      "name": "Presentación1",
+      "guid": "7d7dae10-4bab-1ba9-441b-951da5d5afb0",
+      "role": "2d",
+      "object_count": 3,
+      "objects": [
+        {
+          "objectid": 63777,
+          "name": "Polyline [1F27B]",
+          "externalId": "1F27B",
+          "properties": {
+            "General": {
+              "Handle": "1f27b",
+              "Name ": "Polyline",
+              "Color": "red",
+              "Layer": "CALIDADES",
+              "Linetype": "ByLayer",
+              "Linetype scale": "1.000",
+              "Plot style": "ByColor",
+              "Lineweight": "ByLayer",
+              "Transparency": "ByLayer",
+              "Thickness": "0.000 mm"
+            },
+            "3D Visualization ": {
+              "Material": "ByLayer"
+            },
+            "Geometry": {
+              "Vertex - 3: Start segment width": "0.000 mm",
+              "Vertex - 2: Start segment width": "0.000 mm",
+              "Vertex - 1: Start segment width": "0.000 mm",
+              "Vertex - 4: Start segment width": "0.000 mm",
+              "Vertex - 4: End segment width": "0.000 mm",
+              "Vertex - 1: End segment width": "0.000 mm",
+              "Vertex - 2: End segment width": "0.000 mm",
+              "Vertex - 3: End segment width": "0.000 mm",
+              "Global width": "0.000 mm",
+              "Elevation": "0.000 mm",
+              "Area": "1247400000.000",
+              "Length": "143400.000 mm"
+            },
+            "Misc": {
+              "Closed": "Yes",
+              "Linetype generation": "No"
+            }
+          }
+        },
+        {
+          "objectid": 63809,
+          "name": "Polylines (99)",
+          "externalId": "Polylines",
+          "properties": {}
+        },
+        {
+          "objectid": 2,
+          "name": "Model",
+          "externalId": "2",
+          "properties": {}
+        }
+      ]
+    }
+  ]
+}

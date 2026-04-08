@@ -5,9 +5,12 @@ Budget composition layer for workbook-ready budget rows.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from collections import Counter
 from typing import Any, Iterable
+
+logger = logging.getLogger("dupla.composer")
 
 from core.schemas import (
     BudgetCandidate,
@@ -26,6 +29,83 @@ from .chapter_rules import (
 )
 
 DATA_START_ROW = 4
+
+
+def _bc3_catalog_code_set(bc3_catalog: dict[str, Any]) -> set[str]:
+    codes: set[str] = set()
+    for item in bc3_catalog.get("items", []) or []:
+        c = str(item.get("code", "") or "").strip()
+        if c:
+            codes.add(c)
+    for key in bc3_catalog.get("concepts_by_code", {}) or {}:
+        k = str(key).strip()
+        if k:
+            codes.add(k)
+    return codes
+
+
+def _normalize_unit_family(unit: str) -> str | None:
+    """Coarse unit family for compatibility checks (construction quantities)."""
+    u = (
+        unit.lower()
+        .strip()
+        .replace(" ", "")
+        .replace("²", "2")
+        .replace("³", "3")
+    )
+    if u in ("m2", "m^2", "sqm", "mt2"):
+        return "area"
+    if u in ("m3", "m^3", "cbm", "mt3"):
+        return "volume"
+    if u in ("ml", "lm", "m.lineal", "metrolineal") or u == "m":
+        return "length"
+    if u in ("ud", "un", "unit", "u", "pz", "pza", "ea", "cj", "jgo", "juego", "par", "und"):
+        return "count"
+    if u in ("kg", "kgs", "kilogramo", "kilogramos"):
+        return "mass"
+    return None
+
+
+def _catalog_unit_for_code(bc3_catalog: dict[str, Any], bc3_code: str) -> str:
+    concepts = bc3_catalog.get("concepts_by_code") or {}
+    row = concepts.get(bc3_code, {})
+    u = str(row.get("unit", "") or "").strip()
+    if u:
+        return u
+    for item in bc3_catalog.get("items", []) or []:
+        if str(item.get("code", "")) == bc3_code:
+            return str(item.get("unit", "") or "").strip()
+    return ""
+
+
+def _guard_budget_candidate(
+    takeoff: QuantityTakeoff,
+    candidate: BudgetCandidate | None,
+    bc3_catalog: dict[str, Any] | None,
+    context: ProjectContext | None,
+) -> tuple[BudgetCandidate | None, str | None]:
+    """
+    Drop BC3 matches that cannot be verified against the catalog (hallucinated codes).
+
+    Optional: ``context.metadata["budget_bc3_strict_units"]`` enforces coarse unit-family
+    agreement between takeoff and catalog line.
+    """
+    if candidate is None or not bc3_catalog:
+        return candidate, None
+
+    codes = _bc3_catalog_code_set(bc3_catalog)
+    if codes and candidate.bc3_code not in codes:
+        return None, "bc3_code_missing_in_catalog"
+
+    meta = context.metadata if context is not None else {}
+    if meta.get("budget_bc3_strict_units"):
+        fam_t = _normalize_unit_family(takeoff.unit)
+        cat_u = _catalog_unit_for_code(bc3_catalog, candidate.bc3_code)
+        fam_c = _normalize_unit_family(cat_u)
+        if fam_t and fam_c and fam_t != fam_c:
+            return None, "bc3_unit_family_mismatch"
+
+    return candidate, None
 
 
 def _extract_unit_price(
@@ -67,6 +147,7 @@ class _PreparedLine:
     chapter_path: list[ChapterSegment]
     summary: str
     candidate: BudgetCandidate | None
+    bc3_guard_drop_reason: str | None = None
 
 
 @dataclass
@@ -125,20 +206,13 @@ def takeoff_budget_eligibility(
         return True, ""
 
     always_skip = {
-        "structural_count",
-        "structural_length",
-        "structural_volume",
         "wall_gross_area",
-        "wet_area_count",
     }
     if not budget_inclusive:
-        always_skip = always_skip | {"wall_length", "structural_area"}
+        always_skip = always_skip | {"structural_area"}
 
     if item_type in always_skip:
         return False, "type_excluded"
-
-    if item_type.endswith("reinforcement_required_hint"):
-        return False, "reinforcement_hint"
 
     if takeoff.item_key in derived_from_keys:
         return False, "derived_child"
@@ -150,16 +224,27 @@ def takeoff_budget_eligibility(
     if item_type.startswith(("beam_", "column_", "slab_")):
         ok = any(
             token in item_type
-            for token in ("concrete_volume", "volume", "area", "formwork_area_hint")
-        ) and not item_type.endswith(("_length", "_count"))
+            for token in (
+                "concrete_volume", "volume", "area",
+                "formwork_area_hint", "reinforcement_kg",
+                "count", "length",
+            )
+        )
         return (True, "") if ok else (False, "structural_subtype_excluded")
 
     if item_type.startswith("footing_"):
         ok = any(
             token in item_type
-            for token in ("concrete_volume", "volume", "area", "formwork_area_hint")
-        ) and not item_type.endswith(("_length", "_count"))
+            for token in (
+                "concrete_volume", "volume", "area",
+                "formwork_area_hint", "reinforcement_kg",
+                "count", "length",
+            )
+        )
         return (True, "") if ok else (False, "footing_subtype_excluded")
+
+    if item_type.startswith("structural_"):
+        return True, ""
 
     if item_type in {"stair_count", "fixture_count", "kitchen_count", "kitchen_area"}:
         return True, ""
@@ -171,18 +256,24 @@ def takeoff_budget_eligibility(
             "wall_waterproofing",
             "wall_finish_paint",
             "wall_finish_plaster",
+            "wall_finish_tile",
+            "wall_length",
+            "wall_area",
         }
-        if budget_inclusive:
-            allowed |= {"wall_length", "wall_area"}
         ok = item_type in allowed
         return (True, "") if ok else (False, "wall_subtype_excluded")
 
     if item_type.startswith("floor_"):
-        ok = item_type in {"floor_area", "floor_finish", "floor_waterproofing"}
+        ok = item_type in {
+            "floor_area", "floor_finish", "floor_waterproofing",
+            "floor_screed", "floor_finish_tile",
+        }
         return (True, "") if ok else (False, "floor_subtype_excluded")
 
     if item_type.startswith("ceiling_"):
-        ok = item_type in {"ceiling_area", "ceiling_finish_paint"}
+        ok = item_type in {
+            "ceiling_area", "ceiling_finish_paint", "ceiling_finish_plaster",
+        }
         return (True, "") if ok else (False, "ceiling_subtype_excluded")
 
     if item_type.startswith("door_"):
@@ -192,10 +283,9 @@ def takeoff_budget_eligibility(
         return True, ""
 
     if item_type.startswith("wet_area_"):
-        ok = item_type != "wet_area_count"
-        return (True, "") if ok else (False, "wet_area_count")
+        return True, ""
 
-    return False, "unmapped_item_type"
+    return True, ""
 
 
 def _budgetable_takeoff(
@@ -437,12 +527,19 @@ def compose_budget_rows(
             takeoff,
             candidates_by_takeoff.get(takeoff.item_key, []),
         )
+        strong_candidate, guard_reason = _guard_budget_candidate(
+            takeoff,
+            strong_candidate,
+            bc3_catalog,
+            context,
+        )
         prepared_lines.append(
             _PreparedLine(
                 takeoff=takeoff,
                 chapter_path=chapter_path_for_takeoff(takeoff),
                 summary=build_budget_summary(takeoff, strong_candidate),
                 candidate=strong_candidate,
+                bc3_guard_drop_reason=guard_reason,
             )
         )
 
@@ -472,6 +569,19 @@ def compose_budget_rows(
             line_code = f"DUP-{internal_code_counter:04d}"
             internal_code_counter += 1
 
+        line_metadata: dict[str, Any] = {
+            "item_type": prepared.takeoff.item_type,
+            "level_id": prepared.takeoff.level_id,
+            "line_id": f"BLINE-{line_index:04d}",
+            "chapter_path": [segment.title for segment in prepared.chapter_path],
+            "chapter_codes": [segment.code for segment in prepared.chapter_path],
+            "candidate_summary": prepared.candidate.summary if prepared.candidate else None,
+            "candidate_rationale": prepared.candidate.rationale if prepared.candidate else None,
+            "trace_metadata": dict(prepared.takeoff.trace.metadata),
+        }
+        if prepared.bc3_guard_drop_reason:
+            line_metadata["bc3_guard_drop_reason"] = prepared.bc3_guard_drop_reason
+
         budget_line = BudgetLine(
             line_id=f"BLINE-{line_index:04d}",
             takeoff_key=prepared.takeoff.item_key,
@@ -486,16 +596,7 @@ def compose_budget_rows(
             candidate_score=prepared.candidate.score if prepared.candidate else None,
             source_refs=list(prepared.takeoff.source_refs),
             assumptions=list(prepared.takeoff.assumptions),
-            metadata={
-                "item_type": prepared.takeoff.item_type,
-                "level_id": prepared.takeoff.level_id,
-                "line_id": f"BLINE-{line_index:04d}",
-                "chapter_path": [segment.title for segment in prepared.chapter_path],
-                "chapter_codes": [segment.code for segment in prepared.chapter_path],
-                "candidate_summary": prepared.candidate.summary if prepared.candidate else None,
-                "candidate_rationale": prepared.candidate.rationale if prepared.candidate else None,
-                "trace_metadata": dict(prepared.takeoff.trace.metadata),
-            },
+            metadata=line_metadata,
         )
         lines.append(budget_line)
         chapter_nodes[leaf_chapter_id].lines.append(budget_line)
@@ -529,9 +630,19 @@ def compose_budget(
         derived_from_keys=derived_from_keys,
         concrete_volume_prefixes=concrete_volume_prefixes,
     )
+    logger.info(
+        "Budget diagnostics: %d total takeoffs, %d budgetable, %d excluded",
+        diagnostics["takeoffs_total"],
+        diagnostics["takeoffs_budgetable"],
+        diagnostics["takeoffs_excluded"],
+    )
+    if diagnostics["excluded_by_reason"]:
+        logger.debug("Exclusion reasons: %s", diagnostics["excluded_by_reason"])
+
     chapters, lines, rows = compose_budget_rows(
         context, takeoff_list, candidates_by_takeoff, bc3_catalog=bc3_catalog
     )
+    logger.info("Budget composed: %d chapters, %d lines, %d rows", len(chapters), len(lines), len(rows))
     return {
         "project_context": context.to_dict(),
         "chapters": [chapter.to_dict() for chapter in chapters],

@@ -1,0 +1,2918 @@
+{
+  "project": "BLCAD14007.autodesk_raw.json",
+  "total_objects": 275,
+  "cad_facts": {
+    "layers": {
+      "0": {
+        "object_count": 4,
+        "entity_types": {
+          "Block Reference": 1,
+          "Text": 3
+        },
+        "sample_names": [
+          "EHE [120E]",
+          "Text [20B]",
+          "Text [2C]",
+          "Text [2E]"
+        ],
+        "handles": [
+          "120e",
+          "20b",
+          "2c",
+          "2e"
+        ]
+      },
+      "UNKNOWN": {
+        "object_count": 6,
+        "entity_types": {
+          "Blocks (1)": 1,
+          "MText (41)": 1,
+          "Lines (201)": 1,
+          "Polylines (18)": 1,
+          "Circles (8)": 1,
+          "Model": 1
+        },
+        "sample_names": [
+          "Blocks (1)",
+          "MText (41)",
+          "Lines (201)",
+          "Polylines (18)",
+          "Circles (8)"
+        ],
+        "handles": []
+      },
+      "ARM_TRANSVERSAL": {
+        "object_count": 10,
+        "entity_types": {
+          "Text": 10
+        },
+        "sample_names": [
+          "Text [120F]",
+          "Text [1210]",
+          "Text [1211]",
+          "Text [1212]",
+          "Text [38]"
+        ],
+        "handles": [
+          "120f",
+          "1210",
+          "1211",
+          "1212",
+          "38"
+        ]
+      },
+      "PILAR_REF": {
+        "object_count": 16,
+        "entity_types": {
+          "Text": 16
+        },
+        "sample_names": [
+          "Text [236]",
+          "Text [238]",
+          "Text [23E]",
+          "Text [269]",
+          "Text [276]"
+        ],
+        "handles": [
+          "236",
+          "238",
+          "23e",
+          "269",
+          "276"
+        ]
+      },
+      "REF_REFERENCIAS": {
+        "object_count": 8,
+        "entity_types": {
+          "Text": 8
+        },
+        "sample_names": [
+          "Text [35]",
+          "Text [4B]",
+          "Text [9F]",
+          "Text [A0]",
+          "Text [A1]"
+        ],
+        "handles": [
+          "35",
+          "4b",
+          "9f",
+          "a0",
+          "a1"
+        ]
+      },
+      "ARM_LONGITUDINAL": {
+        "object_count": 4,
+        "entity_types": {
+          "Text": 4
+        },
+        "sample_names": [
+          "Text [3A]",
+          "Text [60]",
+          "Text [6C]",
+          "Text [6F]"
+        ],
+        "handles": [
+          "3a",
+          "60",
+          "6c",
+          "6f"
+        ]
+      },
+      "015": {
+        "object_count": 2,
+        "entity_types": {
+          "Line": 1,
+          "Polyline": 1
+        },
+        "sample_names": [
+          "Line [1139]",
+          "Polyline [1137]"
+        ],
+        "handles": [
+          "1139",
+          "1137"
+        ]
+      },
+      "PILAR_EJES": {
+        "object_count": 76,
+        "entity_types": {
+          "Line": 76
+        },
+        "sample_names": [
+          "Line [1267]",
+          "Line [1268]",
+          "Line [126A]",
+          "Line [126C]",
+          "Line [126D]"
+        ],
+        "handles": [
+          "1267",
+          "1268",
+          "126a",
+          "126c",
+          "126d"
+        ]
+      },
+      "VIGAS": {
+        "object_count": 44,
+        "entity_types": {
+          "Line": 44
+        },
+        "sample_names": [
+          "Line [20F]",
+          "Line [219]",
+          "Line [21B]",
+          "Line [222]",
+          "Line [22B]"
+        ],
+        "handles": [
+          "20f",
+          "219",
+          "21b",
+          "222",
+          "22b"
+        ]
+      },
+      "CUAD_LINEAS": {
+        "object_count": 12,
+        "entity_types": {
+          "Line": 12
+        },
+        "sample_names": [
+          "Line [30]",
+          "Line [32]",
+          "Line [33]",
+          "Line [34]",
+          "Line [47]"
+        ],
+        "handles": [
+          "30",
+          "32",
+          "33",
+          "34",
+          "47"
+        ]
+      },
+      "SEC_COTAS": {
+        "object_count": 36,
+        "entity_types": {
+          "Line": 36
+        },
+        "sample_names": [
+          "Line [36]",
+          "Line [45]",
+          "Line [46]",
+          "Line [4C]",
+          "Line [4D]"
+        ],
+        "handles": [
+          "36",
+          "45",
+          "46",
+          "4c",
+          "4d"
+        ]
+      },
+      "SEC_ESTRIBO": {
+        "object_count": 24,
+        "entity_types": {
+          "Line": 24
+        },
+        "sample_names": [
+          "Line [3C]",
+          "Line [3E]",
+          "Line [43]",
+          "Line [44]",
+          "Line [50]"
+        ],
+        "handles": [
+          "3c",
+          "3e",
+          "43",
+          "44",
+          "50"
+        ]
+      },
+      "SEC_SECCION": {
+        "object_count": 8,
+        "entity_types": {
+          "Line": 8
+        },
+        "sample_names": [
+          "Line [3F]",
+          "Line [41]",
+          "Line [5F]",
+          "Line [7C]",
+          "Line [8F]"
+        ],
+        "handles": [
+          "3f",
+          "41",
+          "5f",
+          "7c",
+          "8f"
+        ]
+      },
+      "06": {
+        "object_count": 1,
+        "entity_types": {
+          "Polyline": 1
+        },
+        "sample_names": [
+          "Polyline [1138]"
+        ],
+        "handles": [
+          "1138"
+        ]
+      },
+      "PILAR_RECT": {
+        "object_count": 16,
+        "entity_types": {
+          "Polyline": 16
+        },
+        "sample_names": [
+          "Polyline [1266]",
+          "Polyline [1269]",
+          "Polyline [126B]",
+          "Polyline [126F]",
+          "Polyline [1272]"
+        ],
+        "handles": [
+          "1266",
+          "1269",
+          "126b",
+          "126f",
+          "1272"
+        ]
+      },
+      "SEC_BARRAS": {
+        "object_count": 8,
+        "entity_types": {
+          "Circle": 8
+        },
+        "sample_names": [
+          "Circle [52]",
+          "Circle [54]",
+          "Circle [7A]",
+          "Circle [7B]",
+          "Circle [8B]"
+        ],
+        "handles": [
+          "52",
+          "54",
+          "7a",
+          "7b",
+          "8b"
+        ]
+      }
+    },
+    "texts": [
+      {
+        "layer": "ARM_TRANSVERSAL",
+        "entity_type": "Text",
+        "handle": "120f",
+        "content": "13",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_TRANSVERSAL",
+        "entity_type": "Text",
+        "handle": "1210",
+        "content": "13",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_TRANSVERSAL",
+        "entity_type": "Text",
+        "handle": "1211",
+        "content": "25",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_TRANSVERSAL",
+        "entity_type": "Text",
+        "handle": "1212",
+        "content": "25",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "20b",
+        "content": "CUADRO DE PILARES",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "236",
+        "content": "P3",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "238",
+        "content": "P2",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "23e",
+        "content": "P1",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "269",
+        "content": "P4",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "276",
+        "content": "P5",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "284",
+        "content": "P7",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "289",
+        "content": "P10",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "28e",
+        "content": "P11",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "29c",
+        "content": "P8",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "2a7",
+        "content": "P14",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "2aa",
+        "content": "P12",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "2c",
+        "content": "Cimentacion",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "2c2",
+        "content": "P6",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "2cc",
+        "content": "P15",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "2da",
+        "content": "P9",
+        "bbox": {}
+      },
+      {
+        "layer": "0",
+        "entity_type": "Text",
+        "handle": "2e",
+        "content": "Forjado",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "2e9",
+        "content": "P13",
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_REF",
+        "entity_type": "Text",
+        "handle": "2f0",
+        "content": "P16",
+        "bbox": {}
+      },
+      {
+        "layer": "REF_REFERENCIAS",
+        "entity_type": "Text",
+        "handle": "35",
+        "content": "P14=P15",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_TRANSVERSAL",
+        "entity_type": "Text",
+        "handle": "38",
+        "content": "21%%c6c/15",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_LONGITUDINAL",
+        "entity_type": "Text",
+        "handle": "3a",
+        "content": "4%%c12 L=105",
+        "bbox": {}
+      },
+      {
+        "layer": "REF_REFERENCIAS",
+        "entity_type": "Text",
+        "handle": "4b",
+        "content": "P16",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_LONGITUDINAL",
+        "entity_type": "Text",
+        "handle": "60",
+        "content": "4%%c12",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_TRANSVERSAL",
+        "entity_type": "Text",
+        "handle": "66",
+        "content": "13",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_TRANSVERSAL",
+        "entity_type": "Text",
+        "handle": "69",
+        "content": "21%%c6c/15",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_LONGITUDINAL",
+        "entity_type": "Text",
+        "handle": "6c",
+        "content": "4%%c16",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_LONGITUDINAL",
+        "entity_type": "Text",
+        "handle": "6f",
+        "content": "4%%c16 L=110",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_TRANSVERSAL",
+        "entity_type": "Text",
+        "handle": "77",
+        "content": "25",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_TRANSVERSAL",
+        "entity_type": "Text",
+        "handle": "9c",
+        "content": "13",
+        "bbox": {}
+      },
+      {
+        "layer": "ARM_TRANSVERSAL",
+        "entity_type": "Text",
+        "handle": "9d",
+        "content": "25",
+        "bbox": {}
+      },
+      {
+        "layer": "REF_REFERENCIAS",
+        "entity_type": "Text",
+        "handle": "9f",
+        "content": "P10=P11",
+        "bbox": {}
+      },
+      {
+        "layer": "REF_REFERENCIAS",
+        "entity_type": "Text",
+        "handle": "a0",
+        "content": "P7=P9",
+        "bbox": {}
+      },
+      {
+        "layer": "REF_REFERENCIAS",
+        "entity_type": "Text",
+        "handle": "a1",
+        "content": "P4=P6",
+        "bbox": {}
+      },
+      {
+        "layer": "REF_REFERENCIAS",
+        "entity_type": "Text",
+        "handle": "a3",
+        "content": "P12=P13",
+        "bbox": {}
+      },
+      {
+        "layer": "REF_REFERENCIAS",
+        "entity_type": "Text",
+        "handle": "a4",
+        "content": "P1=P2=P3",
+        "bbox": {}
+      },
+      {
+        "layer": "REF_REFERENCIAS",
+        "entity_type": "Text",
+        "handle": "a7",
+        "content": "P5=P8",
+        "bbox": {}
+      },
+      {
+        "layer": "UNKNOWN",
+        "entity_type": "MText (41)",
+        "handle": "",
+        "content": "",
+        "bbox": {}
+      }
+    ],
+    "dimensions": [],
+    "hatches": [],
+    "blocks": [
+      {
+        "layer": "0",
+        "entity_type": "Block Reference",
+        "handle": "120e",
+        "block_name": "EHE",
+        "bbox": {}
+      }
+    ],
+    "geometry_hints": [
+      {
+        "layer": "015",
+        "entity_type": "Line",
+        "name": "Line [1139]",
+        "handle": "1139",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [1267]",
+        "handle": "1267",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [1268]",
+        "handle": "1268",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [126A]",
+        "handle": "126a",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [126C]",
+        "handle": "126c",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [126D]",
+        "handle": "126d",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [126E]",
+        "handle": "126e",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [1270]",
+        "handle": "1270",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [1271]",
+        "handle": "1271",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [20F]",
+        "handle": "20f",
+        "length": 3300.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [212]",
+        "handle": "212",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [215]",
+        "handle": "215",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [218]",
+        "handle": "218",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [219]",
+        "handle": "219",
+        "length": 6175.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [21A]",
+        "handle": "21a",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [21B]",
+        "handle": "21b",
+        "length": 4950.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [21E]",
+        "handle": "21e",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [21F]",
+        "handle": "21f",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [221]",
+        "handle": "221",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [222]",
+        "handle": "222",
+        "length": 4750.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [225]",
+        "handle": "225",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [226]",
+        "handle": "226",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [227]",
+        "handle": "227",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [228]",
+        "handle": "228",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [229]",
+        "handle": "229",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [22A]",
+        "handle": "22a",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [22B]",
+        "handle": "22b",
+        "length": 4950.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [22D]",
+        "handle": "22d",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [22F]",
+        "handle": "22f",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [237]",
+        "handle": "237",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [239]",
+        "handle": "239",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [23A]",
+        "handle": "23a",
+        "length": 4500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [23B]",
+        "handle": "23b",
+        "length": 4950.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [23C]",
+        "handle": "23c",
+        "length": 4500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [23D]",
+        "handle": "23d",
+        "length": 4500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [23F]",
+        "handle": "23f",
+        "length": 4500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [240]",
+        "handle": "240",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [241]",
+        "handle": "241",
+        "length": 6175.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [242]",
+        "handle": "242",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [243]",
+        "handle": "243",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [245]",
+        "handle": "245",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [246]",
+        "handle": "246",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [247]",
+        "handle": "247",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [24D]",
+        "handle": "24d",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [24E]",
+        "handle": "24e",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [254]",
+        "handle": "254",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [255]",
+        "handle": "255",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [256]",
+        "handle": "256",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [258]",
+        "handle": "258",
+        "length": 5625.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [259]",
+        "handle": "259",
+        "length": 5275.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [25A]",
+        "handle": "25a",
+        "length": 5925.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [25B]",
+        "handle": "25b",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [25C]",
+        "handle": "25c",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [25D]",
+        "handle": "25d",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [25E]",
+        "handle": "25e",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [25F]",
+        "handle": "25f",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [260]",
+        "handle": "260",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [261]",
+        "handle": "261",
+        "length": 4450.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [262]",
+        "handle": "262",
+        "length": 4450.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [263]",
+        "handle": "263",
+        "length": 4450.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [264]",
+        "handle": "264",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [265]",
+        "handle": "265",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [268]",
+        "handle": "268",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [26D]",
+        "handle": "26d",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [26E]",
+        "handle": "26e",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [270]",
+        "handle": "270",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [271]",
+        "handle": "271",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [272]",
+        "handle": "272",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [273]",
+        "handle": "273",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [274]",
+        "handle": "274",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [277]",
+        "handle": "277",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [27E]",
+        "handle": "27e",
+        "length": 2625.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [27F]",
+        "handle": "27f",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [280]",
+        "handle": "280",
+        "length": 5800.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [281]",
+        "handle": "281",
+        "length": 4500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [282]",
+        "handle": "282",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [286]",
+        "handle": "286",
+        "length": 3175.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [28A]",
+        "handle": "28a",
+        "length": 2725.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [297]",
+        "handle": "297",
+        "length": 4500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [298]",
+        "handle": "298",
+        "length": 4500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [299]",
+        "handle": "299",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [29A]",
+        "handle": "29a",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [29B]",
+        "handle": "29b",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [29D]",
+        "handle": "29d",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [2A2]",
+        "handle": "2a2",
+        "length": 2625.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [2A4]",
+        "handle": "2a4",
+        "length": 2475.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2AB]",
+        "handle": "2ab",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2AC]",
+        "handle": "2ac",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2AD]",
+        "handle": "2ad",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2AF]",
+        "handle": "2af",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2B1]",
+        "handle": "2b1",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2B4]",
+        "handle": "2b4",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2B5]",
+        "handle": "2b5",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [2B6]",
+        "handle": "2b6",
+        "length": 4450.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [2B7]",
+        "handle": "2b7",
+        "length": 4750.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2BC]",
+        "handle": "2bc",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2BD]",
+        "handle": "2bd",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2BF]",
+        "handle": "2bf",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2C0]",
+        "handle": "2c0",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2C1]",
+        "handle": "2c1",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2C4]",
+        "handle": "2c4",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2C5]",
+        "handle": "2c5",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2C6]",
+        "handle": "2c6",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [2C7]",
+        "handle": "2c7",
+        "length": 3425.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [2C8]",
+        "handle": "2c8",
+        "length": 3075.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [2D5]",
+        "handle": "2d5",
+        "length": 4500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [2D6]",
+        "handle": "2d6",
+        "length": 4775.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2D7]",
+        "handle": "2d7",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2D8]",
+        "handle": "2d8",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2DE]",
+        "handle": "2de",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2DF]",
+        "handle": "2df",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [2E1]",
+        "handle": "2e1",
+        "length": 2475.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "VIGAS",
+        "entity_type": "Line",
+        "name": "Line [2E2]",
+        "handle": "2e2",
+        "length": 2900.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2E3]",
+        "handle": "2e3",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2E4]",
+        "handle": "2e4",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2E7]",
+        "handle": "2e7",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2EB]",
+        "handle": "2eb",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2EC]",
+        "handle": "2ec",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2ED]",
+        "handle": "2ed",
+        "length": 10.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2EE]",
+        "handle": "2ee",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_EJES",
+        "entity_type": "Line",
+        "name": "Line [2F6]",
+        "handle": "2f6",
+        "length": 700.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [30]",
+        "handle": "30",
+        "length": 3603.243,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [32]",
+        "handle": "32",
+        "length": 3603.243,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [33]",
+        "handle": "33",
+        "length": 3603.243,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [34]",
+        "handle": "34",
+        "length": 3593.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [36]",
+        "handle": "36",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [3C]",
+        "handle": "3c",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [3E]",
+        "handle": "3e",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_SECCION",
+        "entity_type": "Line",
+        "name": "Line [3F]",
+        "handle": "3f",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_SECCION",
+        "entity_type": "Line",
+        "name": "Line [41]",
+        "handle": "41",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [43]",
+        "handle": "43",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [44]",
+        "handle": "44",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [45]",
+        "handle": "45",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [46]",
+        "handle": "46",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [47]",
+        "handle": "47",
+        "length": 3593.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [4A]",
+        "handle": "4a",
+        "length": 5533.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [4C]",
+        "handle": "4c",
+        "length": 116.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [4D]",
+        "handle": "4d",
+        "length": 116.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [4E]",
+        "handle": "4e",
+        "length": 250.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [4F]",
+        "handle": "4f",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [50]",
+        "handle": "50",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [51]",
+        "handle": "51",
+        "length": 167.349,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [56]",
+        "handle": "56",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [57]",
+        "handle": "57",
+        "length": 116.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [58]",
+        "handle": "58",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [59]",
+        "handle": "59",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [5A]",
+        "handle": "5a",
+        "length": 116.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [5B]",
+        "handle": "5b",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [5C]",
+        "handle": "5c",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [5D]",
+        "handle": "5d",
+        "length": 250.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [5E]",
+        "handle": "5e",
+        "length": 250.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_SECCION",
+        "entity_type": "Line",
+        "name": "Line [5F]",
+        "handle": "5f",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [61]",
+        "handle": "61",
+        "length": 167.349,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [62]",
+        "handle": "62",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [63]",
+        "handle": "63",
+        "length": 167.349,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [64]",
+        "handle": "64",
+        "length": 167.349,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [65]",
+        "handle": "65",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [67]",
+        "handle": "67",
+        "length": 5533.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [68]",
+        "handle": "68",
+        "length": 5533.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [6A]",
+        "handle": "6a",
+        "length": 3333.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [6B]",
+        "handle": "6b",
+        "length": 3333.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [6D]",
+        "handle": "6d",
+        "length": 250.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [6E]",
+        "handle": "6e",
+        "length": 250.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [70]",
+        "handle": "70",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [71]",
+        "handle": "71",
+        "length": 116.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [72]",
+        "handle": "72",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [73]",
+        "handle": "73",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [74]",
+        "handle": "74",
+        "length": 116.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [75]",
+        "handle": "75",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [76]",
+        "handle": "76",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [78]",
+        "handle": "78",
+        "length": 250.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [79]",
+        "handle": "79",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_SECCION",
+        "entity_type": "Line",
+        "name": "Line [7C]",
+        "handle": "7c",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [7E]",
+        "handle": "7e",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [7F]",
+        "handle": "7f",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [80]",
+        "handle": "80",
+        "length": 116.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [81]",
+        "handle": "81",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [82]",
+        "handle": "82",
+        "length": 116.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [83]",
+        "handle": "83",
+        "length": 250.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [84]",
+        "handle": "84",
+        "length": 250.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [85]",
+        "handle": "85",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [86]",
+        "handle": "86",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [87]",
+        "handle": "87",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [88]",
+        "handle": "88",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [89]",
+        "handle": "89",
+        "length": 167.349,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [8A]",
+        "handle": "8a",
+        "length": 167.349,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_SECCION",
+        "entity_type": "Line",
+        "name": "Line [8F]",
+        "handle": "8f",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_SECCION",
+        "entity_type": "Line",
+        "name": "Line [90]",
+        "handle": "90",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_SECCION",
+        "entity_type": "Line",
+        "name": "Line [91]",
+        "handle": "91",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_SECCION",
+        "entity_type": "Line",
+        "name": "Line [92]",
+        "handle": "92",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [93]",
+        "handle": "93",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [94]",
+        "handle": "94",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [95]",
+        "handle": "95",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [96]",
+        "handle": "96",
+        "length": 500.0,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [97]",
+        "handle": "97",
+        "length": 167.349,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_ESTRIBO",
+        "entity_type": "Line",
+        "name": "Line [98]",
+        "handle": "98",
+        "length": 167.349,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [99]",
+        "handle": "99",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [9A]",
+        "handle": "9a",
+        "length": 256.715,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_COTAS",
+        "entity_type": "Line",
+        "name": "Line [9B]",
+        "handle": "9b",
+        "length": 666.667,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [A2]",
+        "handle": "a2",
+        "length": 3593.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "CUAD_LINEAS",
+        "entity_type": "Line",
+        "name": "Line [A6]",
+        "handle": "a6",
+        "length": 3333.333,
+        "area": null,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "015",
+        "entity_type": "Polyline",
+        "name": "Polyline [1137]",
+        "handle": "1137",
+        "length": 143400.0,
+        "area": 1247400000.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "06",
+        "entity_type": "Polyline",
+        "name": "Polyline [1138]",
+        "handle": "1138",
+        "length": 138400.0,
+        "area": 1162350000.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [1266]",
+        "handle": "1266",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [1269]",
+        "handle": "1269",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [126B]",
+        "handle": "126b",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [126F]",
+        "handle": "126f",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [1272]",
+        "handle": "1272",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [1273]",
+        "handle": "1273",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [1274]",
+        "handle": "1274",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [1275]",
+        "handle": "1275",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [1276]",
+        "handle": "1276",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [1277]",
+        "handle": "1277",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [1278]",
+        "handle": "1278",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [1279]",
+        "handle": "1279",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [127A]",
+        "handle": "127a",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [127B]",
+        "handle": "127b",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [127D]",
+        "handle": "127d",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "PILAR_RECT",
+        "entity_type": "Polyline",
+        "name": "Polyline [127E]",
+        "handle": "127e",
+        "length": 1000.0,
+        "area": 62500.0,
+        "radius": null,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_BARRAS",
+        "entity_type": "Circle",
+        "name": "Circle [52]",
+        "handle": "52",
+        "length": null,
+        "area": 5026.548,
+        "radius": 40.0,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_BARRAS",
+        "entity_type": "Circle",
+        "name": "Circle [54]",
+        "handle": "54",
+        "length": null,
+        "area": 5026.548,
+        "radius": 40.0,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_BARRAS",
+        "entity_type": "Circle",
+        "name": "Circle [7A]",
+        "handle": "7a",
+        "length": null,
+        "area": 5026.548,
+        "radius": 40.0,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_BARRAS",
+        "entity_type": "Circle",
+        "name": "Circle [7B]",
+        "handle": "7b",
+        "length": null,
+        "area": 5026.548,
+        "radius": 40.0,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_BARRAS",
+        "entity_type": "Circle",
+        "name": "Circle [8B]",
+        "handle": "8b",
+        "length": null,
+        "area": 8936.086,
+        "radius": 53.333,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_BARRAS",
+        "entity_type": "Circle",
+        "name": "Circle [8C]",
+        "handle": "8c",
+        "length": null,
+        "area": 8936.086,
+        "radius": 53.333,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_BARRAS",
+        "entity_type": "Circle",
+        "name": "Circle [8D]",
+        "handle": "8d",
+        "length": null,
+        "area": 8936.086,
+        "radius": 53.333,
+        "bbox": {}
+      },
+      {
+        "layer": "SEC_BARRAS",
+        "entity_type": "Circle",
+        "name": "Circle [8E]",
+        "handle": "8e",
+        "length": null,
+        "area": 8936.086,
+        "radius": 53.333,
+        "bbox": {}
+      }
+    ]
+  },
+  "inventory_hints": {
+    "level_markers": [],
+    "scale_dimensions": [],
+    "block_frequency": [
+      {
+        "block_name": "EHE",
+        "count": 1
+      }
+    ],
+    "layer_names": [
+      "0",
+      "015",
+      "06",
+      "ARM_LONGITUDINAL",
+      "ARM_TRANSVERSAL",
+      "CUAD_LINEAS",
+      "PILAR_EJES",
+      "PILAR_RECT",
+      "PILAR_REF",
+      "REF_REFERENCIAS",
+      "SEC_BARRAS",
+      "SEC_COTAS",
+      "SEC_ESTRIBO",
+      "SEC_SECCION",
+      "UNKNOWN",
+      "VIGAS"
+    ]
+  }
+}

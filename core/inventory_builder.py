@@ -1,11 +1,19 @@
 """
 Inventory merge helpers for the active APS/JSON-first pipeline.
+
+Includes GPT-4o-assisted layer classification when token-based heuristics
+cannot identify a layer's construction discipline.
 """
 
 from __future__ import annotations
 
+import json
+import logging
+import os
 from dataclasses import fields
 from typing import Any, Iterable, Mapping, TypeVar
+
+logger = logging.getLogger("dupla.inventory_builder")
 
 from core.schemas import (
     Door,
@@ -351,22 +359,301 @@ def _sum_hatch_area(cad_facts: dict[str, Any], tokens: tuple[str, ...]) -> tuple
     return (total if refs else None, refs)
 
 
-def _build_json_walls(level_id: str, cad_facts: dict[str, Any]) -> list[Wall]:
+_MIN_WALL_LINE_LENGTH_M = 0.5
+_MAX_WALL_LINE_LENGTH_M = 50.0
+
+
+def _is_probable_wall_geometry(hint: dict[str, Any]) -> bool:
+    """Heuristic: a geometry hint that looks like wall linework by its properties."""
+    length = hint.get("length")
+    if length is None:
+        return False
+    length = float(length)
+    if length < _MIN_WALL_LINE_LENGTH_M or length > _MAX_WALL_LINE_LENGTH_M:
+        return False
+    entity_type = str(hint.get("entity_type", "")).lower()
+    if entity_type in {"line", "polyline", "lwpolyline", "arc", ""}:
+        return True
+    return False
+
+
+_LAYER_GPT_CACHE: dict[str, dict[str, str]] = {}
+
+
+def _layer_stats_for_gpt(cad_facts: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    layers_payload = cad_facts.get("cad_facts", {}).get("layers", {}) or {}
+    geometry_hints = cad_facts.get("cad_facts", {}).get("geometry_hints", []) or []
+    per_layer_geom: dict[str, dict[str, Any]] = {}
+    for hint in geometry_hints:
+        layer = str(hint.get("layer", "") or "UNKNOWN")
+        entry = per_layer_geom.setdefault(
+            layer,
+            {"geom_segments": 0, "total_length_m": 0.0, "entity_types": set()},
+        )
+        entry["geom_segments"] += 1
+        if hint.get("length") is not None:
+            entry["total_length_m"] += float(hint["length"])
+        et = str(hint.get("entity_type", "") or "")
+        if et:
+            entry["entity_types"].add(et)
+
+    out: dict[str, dict[str, Any]] = {}
+    for layer_name, summary in layers_payload.items():
+        if not isinstance(summary, dict):
+            continue
+        geom = per_layer_geom.get(layer_name, {})
+        entity_types = geom.get("entity_types", set())
+        out[layer_name] = {
+            "object_count": summary.get("object_count", 0),
+            "entity_types": dict(summary.get("entity_types", {})),
+            "sample_names": list(summary.get("sample_names", []))[:5],
+            "geom_segments": geom.get("geom_segments", 0),
+            "geom_length_m": round(geom.get("total_length_m", 0.0), 3),
+            "geom_entity_types": sorted(entity_types)[:8],
+        }
+    for layer_name, geom in per_layer_geom.items():
+        if layer_name in out:
+            continue
+        out[layer_name] = {
+            "object_count": 0,
+            "entity_types": {},
+            "sample_names": [],
+            "geom_segments": geom.get("geom_segments", 0),
+            "geom_length_m": round(geom.get("total_length_m", 0.0), 3),
+            "geom_entity_types": sorted(geom.get("entity_types", set()))[:8],
+        }
+    return out
+
+
+def _gpt_classify_cad_layers(cad_facts: dict[str, Any]) -> dict[str, str]:
+    """
+    Batch-classify CAD layer names using GPT-4o when OPENAI_API_KEY is set.
+    Returns mapping layer_name -> role token used by wall/structural builders.
+    """
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return {}
+
+    stats = _layer_stats_for_gpt(cad_facts)
+    if not stats:
+        return {}
+
+    import hashlib
+
+    cache_key = hashlib.sha256(
+        json.dumps(sorted(stats.items()), ensure_ascii=False, default=str).encode("utf-8")
+    ).hexdigest()[:20]
+    if cache_key in _LAYER_GPT_CACHE:
+        return dict(_LAYER_GPT_CACHE[cache_key])
+
+    try:
+        from openai import OpenAI
+    except ImportError:
+        logger.warning("openai not installed; skipping GPT layer classification")
+        return {}
+
+    layers_for_prompt = list(stats.items())[:80]
+    payload = [
+        {
+            "layer": name,
+            "object_count": data["object_count"],
+            "cad_entity_types": data["entity_types"],
+            "sample_block_or_object_names": data["sample_names"],
+            "geometry_segments": data["geom_segments"],
+            "geometry_length_m": data["geom_length_m"],
+            "geometry_entity_types": data["geom_entity_types"],
+        }
+        for name, data in layers_for_prompt
+    ]
+
+    client = OpenAI(api_key=api_key)
+    prompt = (
+        "Eres un ingeniero BIM/presupuestista. Clasifica CADA capa CAD para cuantificación de obra.\n"
+        "Devuelve SOLO JSON válido: {\"classifications\":[{\"layer\":\"...\",\"role\":\"...\",\"confidence\":0.0-1.0}]}\n\n"
+        "Valores permitidos para role (elige el MÁS ESPECÍFICO que aplique):\n"
+        "- wall_masonry — muros de bloque/concreto en planta\n"
+        "- wall_partition — tabiques, drywall, divisiones ligeras\n"
+        "- structural_beam — vigas (líneas estructurales)\n"
+        "- structural_column — columnas\n"
+        "- structural_slab — losas / forjados en planta\n"
+        "- structural_footing — zapatas / cimentación\n"
+        "- door_window_symbol — puertas/ventanas como bloques o símbolos\n"
+        "- floor_ceiling — pisos, techos, acabados horizontales\n"
+        "- electrical — instalación eléctrica\n"
+        "- plumbing — instalación sanitaria / agua / desagüe\n"
+        "- annotation_dimension — cotas, textos, ejes, mallas\n"
+        "- titleblock_legend_noise — sellos, leyendas decorativas, marcos de plano\n"
+        "- other_constructive — constructivo pero no encaja arriba\n"
+        "- unknown — no hay suficiente señal\n\n"
+        "REGLAS: No clasifiques como wall_masonry si es claramente electrical/plumbing/annotation/titleblock. "
+        "Si geom_length_m es alto y entity_types incluyen Line/Polyline y el nombre sugiere muro, wall_masonry.\n\n"
+        f"CAPAS (JSON):\n{json.dumps(payload, ensure_ascii=False, indent=2)}"
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0.1,
+            max_tokens=4096,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Respond ONLY with compact JSON. No markdown fences.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+        )
+        raw = (response.choices[0].message.content or "").strip()
+    except Exception:
+        logger.warning("GPT layer classification failed", exc_info=True)
+        return {}
+
+    parsed: dict[str, Any] = {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        start, end = raw.find("{"), raw.rfind("}")
+        if start >= 0 and end > start:
+            try:
+                parsed = json.loads(raw[start : end + 1])
+            except json.JSONDecodeError:
+                logger.warning("Could not parse GPT layer classification JSON")
+                return {}
+
+    rows = parsed.get("classifications") or parsed.get("layers") or []
+    result: dict[str, str] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        layer = str(row.get("layer") or row.get("name") or "").strip()
+        role = str(row.get("role") or row.get("category") or "").strip()
+        if not layer or not role:
+            continue
+        conf = row.get("confidence")
+        try:
+            conf_f = float(conf) if conf is not None else 0.5
+        except (TypeError, ValueError):
+            conf_f = 0.5
+        if conf_f < 0.35 and role in {"wall_masonry", "wall_partition", "structural_beam", "structural_column"}:
+            continue
+        result[layer] = role
+
+    _LAYER_GPT_CACHE[cache_key] = dict(result)
+    logger.info("GPT classified %d CAD layers for inventory routing", len(result))
+    return result
+
+
+def _gpt_role_to_wall(role: str) -> bool:
+    return role in {"wall_masonry", "wall_partition"}
+
+
+def _gpt_role_to_structural_type(role: str) -> str | None:
+    return {
+        "structural_beam": "beam",
+        "structural_column": "column",
+        "structural_slab": "slab",
+        "structural_footing": "footing",
+    }.get(role)
+
+
+def _layer_excludes_wall_geometry_fallback(role: str | None) -> bool:
+    if not role:
+        return False
+    return role in {
+        "annotation_dimension",
+        "titleblock_legend_noise",
+        "electrical",
+        "plumbing",
+        "door_window_symbol",
+        "floor_ceiling",
+    }
+
+
+def _structural_or_opening_layer_tokens(layer: str) -> bool:
+    return _contains_token(
+        layer,
+        (
+            *_BEAM_TOKENS,
+            *_COLUMN_TOKENS,
+            *_SLAB_TOKENS,
+            *_FOOTING_TOKENS,
+            *_DOOR_TOKENS,
+            *_WINDOW_TOKENS,
+            *_CEILING_TOKENS,
+        ),
+    )
+
+
+def _build_json_walls(
+    level_id: str,
+    cad_facts: dict[str, Any],
+    *,
+    gpt_layer_roles: dict[str, str] | None = None,
+) -> list[Wall]:
+    gpt_layer_roles = gpt_layer_roles or {}
     geometry_hints = cad_facts.get("cad_facts", {}).get("geometry_hints", [])
     wall_lengths: dict[str, float] = {}
     wall_refs: dict[str, list[str]] = {}
+    token_wall_layers: set[str] = set()
 
     for hint in geometry_hints:
         layer = str(hint.get("layer", ""))
-        if not _contains_token(layer, _WALL_TOKENS):
-            continue
+        if _contains_token(layer, _WALL_TOKENS):
+            length = hint.get("length")
+            if length is None:
+                continue
+            wall_lengths[layer] = wall_lengths.get(layer, 0.0) + float(length)
+            wall_refs.setdefault(layer, []).append(f"geometry:{hint.get('handle') or layer}")
+            token_wall_layers.add(layer)
 
+    gpt_wall_lengths: dict[str, float] = {}
+    gpt_wall_refs: dict[str, list[str]] = {}
+    for hint in geometry_hints:
+        layer = str(hint.get("layer", ""))
+        if layer in token_wall_layers:
+            continue
+        if _structural_or_opening_layer_tokens(layer):
+            continue
+        role = gpt_layer_roles.get(layer)
+        if not _gpt_role_to_wall(role):
+            continue
         length = hint.get("length")
         if length is None:
             continue
+        gpt_wall_lengths[layer] = gpt_wall_lengths.get(layer, 0.0) + float(length)
+        gpt_wall_refs.setdefault(layer, []).append(f"geometry:{hint.get('handle') or layer}")
 
-        wall_lengths[layer] = wall_lengths.get(layer, 0.0) + float(length)
-        wall_refs.setdefault(layer, []).append(f"geometry:{hint.get('handle') or layer}")
+    gpt_wall_layers: set[str] = set()
+    for layer, total in gpt_wall_lengths.items():
+        wall_lengths[layer] = wall_lengths.get(layer, 0.0) + total
+        wall_refs.setdefault(layer, []).extend(gpt_wall_refs.get(layer, []))
+        gpt_wall_layers.add(layer)
+
+    classified_for_fallback: set[str] = set(token_wall_layers) | set(gpt_wall_layers)
+    unclassified_lengths: dict[str, float] = {}
+    unclassified_refs: dict[str, list[str]] = {}
+    for hint in geometry_hints:
+        layer = str(hint.get("layer", ""))
+        if layer in classified_for_fallback:
+            continue
+        if _structural_or_opening_layer_tokens(layer):
+            continue
+        role = gpt_layer_roles.get(layer)
+        if _layer_excludes_wall_geometry_fallback(role):
+            continue
+        if _is_probable_wall_geometry(hint):
+            length = float(hint.get("length", 0))
+            unclassified_lengths[layer] = unclassified_lengths.get(layer, 0.0) + length
+            unclassified_refs.setdefault(layer, []).append(
+                f"geometry:{hint.get('handle') or layer}"
+            )
+
+    geometry_fallback_layers: set[str] = set()
+    for layer, total_length in unclassified_lengths.items():
+        if total_length >= 3.0:
+            wall_lengths[layer] = wall_lengths.get(layer, 0.0) + total_length
+            wall_refs.setdefault(layer, []).extend(unclassified_refs.get(layer, []))
+            geometry_fallback_layers.add(layer)
 
     walls: list[Wall] = []
     for layer, length in wall_lengths.items():
@@ -375,6 +662,21 @@ def _build_json_walls(level_id: str, cad_facts: dict[str, Any]) -> list[Wall]:
         interior_exterior_hint = _infer_interior_exterior_hint(layer)
         finish_required = _infer_finish_required(layer)
         structural_hint = _infer_load_bearing_hint(layer)
+        gpt_role = gpt_layer_roles.get(layer)
+        if layer in token_wall_layers:
+            detection = "layer_name_token"
+            is_fallback = False
+        elif layer in gpt_wall_layers:
+            detection = "gpt_layer_role"
+            is_fallback = False
+        else:
+            detection = "geometry_heuristic"
+            is_fallback = True
+        if gpt_role and layer in gpt_wall_layers:
+            if gpt_role == "wall_partition":
+                wall_system = wall_system or "drywall_partition"
+            elif gpt_role == "wall_masonry":
+                wall_system = wall_system or "masonry_wall"
         walls.append(
             Wall(
                 id=f"json-wall-{layer.lower()}",
@@ -391,7 +693,22 @@ def _build_json_walls(level_id: str, cad_facts: dict[str, Any]) -> list[Wall]:
                 inputs={
                     "json_layer": layer,
                     "json_length_m": length,
+                    "detected_by_geometry": is_fallback,
+                    "wall_detection": detection,
+                    **({"gpt_layer_role": gpt_role} if gpt_role else {}),
                 },
+                assumptions=[
+                    *(
+                        [f"Layer '{layer}' classified as wall by geometry heuristic (total linework >= 3m)."]
+                        if is_fallback
+                        else []
+                    ),
+                    *(
+                        [f"Layer '{layer}' classified as wall by GPT-4o role '{gpt_role}'."]
+                        if layer in gpt_wall_layers and gpt_role
+                        else []
+                    ),
+                ],
                 evidence=[
                     f"Aggregated linework length from layer {layer}.",
                     *(
@@ -404,13 +721,29 @@ def _build_json_walls(level_id: str, cad_facts: dict[str, Any]) -> list[Wall]:
                         if material_hint
                         else []
                     ),
+                    *(
+                        [f"Geometry fallback: layer '{layer}' had {length:.1f}m of linework matching wall-like geometry properties."]
+                        if is_fallback
+                        else []
+                    ),
+                    *(
+                        [f"GPT layer classification: {gpt_role}."]
+                        if layer in gpt_wall_layers and gpt_role
+                        else []
+                    ),
                 ],
             )
         )
     return walls
 
 
-def _build_json_structural_elements(level_id: str, cad_facts: dict[str, Any]) -> list[StructuralElement]:
+def _build_json_structural_elements(
+    level_id: str,
+    cad_facts: dict[str, Any],
+    *,
+    gpt_layer_roles: dict[str, str] | None = None,
+) -> list[StructuralElement]:
+    gpt_layer_roles = gpt_layer_roles or {}
     geometry_hints = cad_facts.get("cad_facts", {}).get("geometry_hints", [])
     blocks = cad_facts.get("cad_facts", {}).get("blocks", [])
     hatches = cad_facts.get("cad_facts", {}).get("hatches", [])
@@ -421,6 +754,7 @@ def _build_json_structural_elements(level_id: str, cad_facts: dict[str, Any]) ->
         key = (element_type, layer)
         if key not in grouped:
             hint_text = _joined_hint_text(layer, name_hint)
+            mat = _infer_material_hint(hint_text)
             grouped[key] = {
                 "id": f"json-{element_type}-{layer.lower()}",
                 "level_id": level_id,
@@ -430,7 +764,7 @@ def _build_json_structural_elements(level_id: str, cad_facts: dict[str, Any]) ->
                 "length_m": None,
                 "area_m2": None,
                 "volume_m3": None,
-                "material_hint": _infer_material_hint(hint_text),
+                "material_hint": mat,
                 "orientation": "vertical" if element_type == "column" else "horizontal",
                 "load_bearing": True if element_type in {"beam", "column", "slab", "footing"} else _infer_load_bearing_hint(hint_text),
                 "reinforcement_hint": _infer_reinforcement_hint(hint_text),
@@ -457,7 +791,9 @@ def _build_json_structural_elements(level_id: str, cad_facts: dict[str, Any]) ->
     for hint in geometry_hints:
         layer = str(hint.get("layer", ""))
         name_hint = str(hint.get("name", ""))
-        entity_type = _infer_structural_element_type(layer, name_hint)
+        entity_type_from_tokens = _infer_structural_element_type(layer, name_hint)
+        gpt_role = gpt_layer_roles.get(layer)
+        entity_type = entity_type_from_tokens or _gpt_role_to_structural_type(gpt_role or "")
         if not entity_type:
             continue
 
@@ -469,11 +805,16 @@ def _build_json_structural_elements(level_id: str, cad_facts: dict[str, Any]) ->
         group["evidence"].append(
             f"Aggregated geometry hint for structural {entity_type} from layer {layer}."
         )
+        if not entity_type_from_tokens and gpt_role:
+            group["evidence"].append(f"GPT layer role: {gpt_role}.")
+            group["inputs"]["gpt_layer_role"] = gpt_role
 
     for block in blocks:
         layer = str(block.get("layer", ""))
         block_name = str(block.get("block_name", ""))
-        element_type = _infer_structural_element_type(layer, block_name)
+        element_type_from_tokens = _infer_structural_element_type(layer, block_name)
+        gpt_role = gpt_layer_roles.get(layer)
+        element_type = element_type_from_tokens or _gpt_role_to_structural_type(gpt_role or "")
         if not element_type:
             continue
 
@@ -484,12 +825,24 @@ def _build_json_structural_elements(level_id: str, cad_facts: dict[str, Any]) ->
         group["evidence"].append(
             f"Counted explicit structural block '{block_name}' on layer {layer}."
         )
+        if not element_type_from_tokens and gpt_role:
+            group["evidence"].append(f"GPT layer role: {gpt_role}.")
+            group["inputs"]["gpt_layer_role"] = gpt_role
 
     for hatch in hatches:
         layer = str(hatch.get("layer", ""))
         pattern_name = str(hatch.get("pattern_name", ""))
-        element_type = _infer_structural_element_type(layer, pattern_name)
-        if element_type != "slab":
+        entity_type_from_tokens = _infer_structural_element_type(layer, pattern_name)
+        gpt_role = gpt_layer_roles.get(layer)
+        element_type = entity_type_from_tokens or _gpt_role_to_structural_type(gpt_role or "")
+
+        if element_type is None:
+            if _contains_token(layer, _CONCRETE_TOKENS) or _contains_token(pattern_name, _CONCRETE_TOKENS):
+                area = hatch.get("area")
+                if area is not None and float(area) > 0.5:
+                    element_type = "slab"
+
+        if element_type not in {"slab", "footing"}:
             continue
 
         group = ensure_group(element_type, layer, pattern_name)
@@ -497,8 +850,15 @@ def _build_json_structural_elements(level_id: str, cad_facts: dict[str, Any]) ->
         if hatch.get("handle"):
             group["source_refs"].append(f"hatch:{hatch['handle']}")
         group["evidence"].append(
-            f"Aggregated slab hatch area from layer {layer}."
+            f"Aggregated {element_type} hatch area from layer {layer}."
         )
+        if (
+            not entity_type_from_tokens
+            and gpt_role
+            and _gpt_role_to_structural_type(gpt_role) == element_type
+        ):
+            group["evidence"].append(f"GPT layer role: {gpt_role}.")
+            group["inputs"]["gpt_layer_role"] = gpt_role
 
     structural_elements: list[StructuralElement] = []
     for _, payload in sorted(grouped.items(), key=lambda item: item[0]):
@@ -598,8 +958,11 @@ def build_json_inventory(
         cls=Window,
         item_prefix="json-window",
     )
-    walls = _build_json_walls(level_id, cad_facts)
-    structural_elements = _build_json_structural_elements(level_id, cad_facts)
+    gpt_layer_roles = _gpt_classify_cad_layers(cad_facts)
+    walls = _build_json_walls(level_id, cad_facts, gpt_layer_roles=gpt_layer_roles)
+    structural_elements = _build_json_structural_elements(
+        level_id, cad_facts, gpt_layer_roles=gpt_layer_roles
+    )
     space_types = _extract_space_types(cad_facts)
     structural_types = _unique_strings(
         element.element_type for element in structural_elements if element.element_type
@@ -617,6 +980,7 @@ def build_json_inventory(
             "material_hints": material_hints,
             "structural_types": structural_types,
             "space_types": space_types,
+            **({"gpt_layer_roles": gpt_layer_roles} if gpt_layer_roles else {}),
         },
         source_refs=_unique_strings(
             floor_refs,

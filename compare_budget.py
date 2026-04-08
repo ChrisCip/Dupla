@@ -134,7 +134,15 @@ def _mean(values: list[float]) -> float:
     return sum(values) / len(values)
 
 
-def build_comparison_report(generated_path: Path, real_path: Path, output_dir: Path) -> Path:
+def _md_cell(value: Any) -> str:
+    text = _safe_str(value).replace("|", "\\|").replace("\n", " ")
+    return text
+
+
+def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]:
+    """
+    Métricas compartidas entre el informe .txt y el informe Markdown.
+    """
     generated_rows = _load_budget_rows(generated_path)
     real_rows = _load_budget_rows(real_path)
 
@@ -150,6 +158,8 @@ def build_comparison_report(generated_path: Path, real_path: Path, output_dir: P
         _safe_str(row["code"]): row for row in real_partidas if _safe_str(row["code"])
     }
     matching_codes = sorted(set(real_by_code) & set(generated_by_code))
+    real_only_codes = sorted(set(real_by_code) - set(generated_by_code))
+    generated_only_codes = sorted(set(generated_by_code) - set(real_by_code))
 
     qty_precisions = [
         _line_precision(real_by_code[code]["quantity"], generated_by_code[code]["quantity"])
@@ -177,6 +187,186 @@ def build_comparison_report(generated_path: Path, real_path: Path, output_dir: P
     coverage = 100.0 * (len(matching_codes) / len(real_by_code)) if real_by_code else 0.0
     qty_accuracy = 100.0 * _mean(qty_precisions)
     price_accuracy = 100.0 * _mean(price_precisions)
+
+    amount_deltas: list[dict[str, Any]] = []
+    for code in matching_codes:
+        r = real_by_code[code]
+        g = generated_by_code[code]
+        amount_deltas.append(
+            {
+                "code": code,
+                "real_amount": r["amount"],
+                "gen_amount": g["amount"],
+                "delta": g["amount"] - r["amount"],
+                "real_qty": r["quantity"],
+                "gen_qty": g["quantity"],
+                "summary": _safe_str(r["summary"])[:120],
+            }
+        )
+    amount_deltas.sort(key=lambda item: abs(float(item["delta"])), reverse=True)
+
+    return {
+        "generated_rows": generated_rows,
+        "real_rows": real_rows,
+        "generated_partidas": generated_partidas,
+        "real_partidas": real_partidas,
+        "generated_chapters": generated_chapters,
+        "real_chapters": real_chapters,
+        "generated_by_code": generated_by_code,
+        "real_by_code": real_by_code,
+        "matching_codes": matching_codes,
+        "real_only_codes": real_only_codes,
+        "generated_only_codes": generated_only_codes,
+        "qty_precisions": qty_precisions,
+        "price_precisions": price_precisions,
+        "generated_disciplines": generated_disciplines,
+        "real_disciplines": real_disciplines,
+        "top20_real": top20_real,
+        "generated_non_empty_price": generated_non_empty_price,
+        "generated_non_empty_amount": generated_non_empty_amount,
+        "real_total": real_total,
+        "generated_total": generated_total,
+        "coverage": coverage,
+        "qty_accuracy": qty_accuracy,
+        "price_accuracy": price_accuracy,
+        "amount_deltas": amount_deltas,
+    }
+
+
+def build_comparison_markdown(
+    generated_path: Path,
+    real_path: Path,
+    *,
+    title: str,
+    run_date: str,
+    run_tag: str,
+    notes: str = "",
+    max_list_codes: int = 80,
+    max_delta_rows: int = 25,
+) -> str:
+    """
+    Informe en Markdown para carpetas de comparación por proyecto/corrida.
+    """
+    stats = analyze_budget_pair(generated_path, real_path)
+    lines: list[str] = [
+        f"# {title}",
+        "",
+        f"- **Fecha de corrida:** {run_date}",
+        f"- **Etiqueta de corrida:** `{run_tag}`",
+        f"- **Generado (Dupla):** `{generated_path}`",
+        f"- **Referencia (PRES):** `{real_path}`",
+        "",
+        "## Contexto y limitaciones",
+        "",
+        notes.strip() or (
+            "- Esta comparación asume el mismo layout Presto en la primera hoja (filas desde la 4). "
+            "- Requiere validación manual si el PRES usa otra hoja o formato."
+        ),
+        "",
+        "## Resumen ejecutivo",
+        "",
+        "| Métrica | Generado | PRES (real) |",
+        "| --- | ---: | ---: |",
+        f"| Partidas | {len(stats['generated_partidas'])} | {len(stats['real_partidas'])} |",
+        f"| Capítulos (filas Nat) | {len(stats['generated_chapters'])} | {len(stats['real_chapters'])} |",
+        f"| Códigos coincidentes | {len(stats['matching_codes'])} | — |",
+        f"| Cobertura códigos PRES con equivalente generado | {stats['coverage']:.2f}% | — |",
+        f"| Precisión cantidad (solo códigos coincidentes) | {stats['qty_accuracy']:.2f}% | — |",
+        f"| Precisión precio unitario (solo coincidentes) | {stats['price_accuracy']:.2f}% | — |",
+        f"| Suma Importe (ImpPres) | {stats['generated_total']:,.2f} | {stats['real_total']:,.2f} |",
+        f"| Delta (generado − real) | {stats['generated_total'] - stats['real_total']:,.2f} | — |",
+        "",
+        "### Completitud de precios en generado",
+        "",
+        f"- Filas partida con PrPres > 0: **{stats['generated_non_empty_price']}** / {len(stats['generated_partidas'])}",
+        f"- Filas partida con ImpPres > 0: **{stats['generated_non_empty_amount']}** / {len(stats['generated_partidas'])}",
+        "",
+        "## Disciplinas (heurística por texto del resumen)",
+        "",
+        f"- Etiquetas presentes en PRES y no detectadas en generado: **{', '.join(sorted(stats['real_disciplines'] - stats['generated_disciplines'])) or '—'}**",
+        "",
+        "## Mayores diferencias de importe (códigos en ambos)",
+        "",
+        "| Código | ImpPres real | ImpPres gen | Delta | Cant. real | Cant. gen | Resumen (PRES) |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | --- |",
+    ]
+    for row in stats["amount_deltas"][:max_delta_rows]:
+        lines.append(
+            "| {code} | {ra:,.2f} | {ga:,.2f} | {d:,.2f} | {rq} | {gq} | {s} |".format(
+                code=_md_cell(row["code"]),
+                ra=row["real_amount"],
+                ga=row["gen_amount"],
+                d=row["delta"],
+                rq=row["real_qty"],
+                gq=row["gen_qty"],
+                s=_md_cell(row["summary"]),
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "## Códigos solo en PRES (no aparecen en generado)",
+            "",
+        ]
+    )
+    roc = stats["real_only_codes"]
+    if not roc:
+        lines.append("_Ninguno._")
+    else:
+        shown = roc[:max_list_codes]
+        lines.extend(f"- `{c}`" for c in shown)
+        if len(roc) > max_list_codes:
+            lines.append(f"- … y **{len(roc) - max_list_codes}** más.")
+    lines.extend(["", "## Códigos solo en generado (no están en PRES)", ""])
+    goc = stats["generated_only_codes"]
+    if not goc:
+        lines.append("_Ninguno._")
+    else:
+        shown = goc[:max_list_codes]
+        lines.extend(f"- `{c}`" for c in shown)
+        if len(goc) > max_list_codes:
+            lines.append(f"- … y **{len(goc) - max_list_codes}** más.")
+
+    lines.extend(["", "## Top 20 partidas PRES por importe vs generado", ""])
+    for row in stats["top20_real"]:
+        code = _safe_str(row["code"])
+        gen = stats["generated_by_code"].get(code)
+        if gen is None:
+            lines.append(
+                f"- **{code}**: real **{row['amount']:,.2f}** — generado _no encontrado_ — {_md_cell(row['summary'])}"
+            )
+            continue
+        qty_score = 100.0 * _line_precision(row["quantity"], gen["quantity"])
+        price_score = 100.0 * _line_precision(row["price"], gen["price"])
+        lines.append(
+            f"- **{code}**: real **{row['amount']:,.2f}** | gen **{gen['amount']:,.2f}** | "
+            f"precisión cant. {qty_score:.1f}% | precio {price_score:.1f}%"
+        )
+
+    return "\n".join(lines) + "\n"
+
+
+def build_comparison_report(generated_path: Path, real_path: Path, output_dir: Path) -> Path:
+    stats = analyze_budget_pair(generated_path, real_path)
+    matching_codes = stats["matching_codes"]
+    qty_precisions = stats["qty_precisions"]
+    price_precisions = stats["price_precisions"]
+    generated_disciplines = stats["generated_disciplines"]
+    real_disciplines = stats["real_disciplines"]
+    top20_real = stats["top20_real"]
+    generated_partidas = stats["generated_partidas"]
+    real_partidas = stats["real_partidas"]
+    generated_chapters = stats["generated_chapters"]
+    real_chapters = stats["real_chapters"]
+    generated_by_code = stats["generated_by_code"]
+    real_by_code = stats["real_by_code"]
+    generated_non_empty_price = stats["generated_non_empty_price"]
+    generated_non_empty_amount = stats["generated_non_empty_amount"]
+    real_total = stats["real_total"]
+    generated_total = stats["generated_total"]
+    coverage = stats["coverage"]
+    qty_accuracy = stats["qty_accuracy"]
+    price_accuracy = stats["price_accuracy"]
 
     lines = [
         "COMPARISON REPORT - DUPLA VS PRES.xlsx",

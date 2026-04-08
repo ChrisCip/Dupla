@@ -1,0 +1,4253 @@
+[
+  {
+    "level_id": "page_0001",
+    "level_name": "page_0001",
+    "source": "vision",
+    "source_image": "page_0001.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0001.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0001.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0001",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0001.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "exterior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=exterior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "exterior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [
+      {
+        "id": "vis-door-01",
+        "level_id": "page_0001",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0001.png:door_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "exterior",
+            "count": 4,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=exterior, count=4."
+        ],
+        "source_layers": [],
+        "count": 4,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "exterior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      }
+    ],
+    "windows": [
+      {
+        "id": "vis-window-01",
+        "level_id": "page_0001",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0001.png:window_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "other",
+            "count": 8,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=other, count=8."
+        ],
+        "source_layers": [],
+        "count": 8,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "other",
+        "glazing_hint": null,
+        "wall_id": null
+      }
+    ],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [
+      {
+        "check": "door_inventory_vs_block_hints",
+        "vision_count": 4,
+        "cad_block_hint": 0,
+        "status": "info"
+      },
+      {
+        "check": "window_inventory_vs_block_hints",
+        "vision_count": 8,
+        "cad_block_hint": 0,
+        "status": "info"
+      }
+    ],
+    "_raw_response": "{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"unknown\",\n      \"location\": \"exterior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [\n    {\n      \"type\": \"exterior\",\n      \"count\": 4,\n      \"width_m\": null\n    }\n  ],\n  \"windows\": [\n    {\n      \"type\": \"other\",\n      \"count\": 8,\n      \"width_m\": null\n    }\n  ],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [],\n  \"fixtures\": []\n}",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "unknown",
+          "location": "exterior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [
+        {
+          "type": "exterior",
+          "count": 4,
+          "width_m": null
+        }
+      ],
+      "windows": [
+        {
+          "type": "other",
+          "count": 8,
+          "width_m": null
+        }
+      ],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0001.png",
+      "timestamp": "2026-04-06T21:36:26.449842"
+    }
+  },
+  {
+    "level_id": "page_0002",
+    "level_name": "page_0002",
+    "source": "vision",
+    "source_image": "page_0002.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0002.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0002.png"
+    },
+    "conflict_notes": [],
+    "walls": [],
+    "openings": [],
+    "doors": [],
+    "windows": [],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [],\n  \"doors\": [],\n  \"windows\": [],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [],\n  \"fixtures\": []\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [],
+      "doors": [],
+      "windows": [],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0002.png",
+      "timestamp": "2026-04-06T21:36:29.067984"
+    }
+  },
+  {
+    "level_id": "page_0003",
+    "level_name": "page_0003",
+    "source": "vision",
+    "source_image": "page_0003.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0003.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0003.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "masonry",
+            "location": "interior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=masonry, location=interior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "masonry",
+        "wall_system": null,
+        "interior_exterior_hint": "interior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      },
+      {
+        "id": "vis-wall-02",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:wall_2"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "masonry",
+            "location": "exterior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=masonry, location=exterior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "masonry",
+        "wall_system": null,
+        "interior_exterior_hint": "exterior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [
+      {
+        "id": "vis-door-01",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:door_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "interior",
+            "count": 10,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=interior, count=10."
+        ],
+        "source_layers": [],
+        "count": 10,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "interior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      },
+      {
+        "id": "vis-door-02",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:door_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "exterior",
+            "count": 2,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=exterior, count=2."
+        ],
+        "source_layers": [],
+        "count": 2,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "exterior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      }
+    ],
+    "windows": [
+      {
+        "id": "vis-window-01",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:window_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "sliding",
+            "count": 8,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=sliding, count=8."
+        ],
+        "source_layers": [],
+        "count": 8,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "sliding",
+        "glazing_hint": null,
+        "wall_id": null
+      }
+    ],
+    "wet_areas": [
+      {
+        "id": "vis-wetarea-01",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:wetarea_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "kind": "bathroom",
+            "count": 2,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: kind=bathroom, count=2."
+        ],
+        "kind": "bathroom",
+        "count": 2,
+        "estimated_area_m2": null,
+        "fixture_ids": []
+      }
+    ],
+    "kitchens": [
+      {
+        "id": "vis-kitchen-01",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:kitchen_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Kitchen identified from plan image."
+        ],
+        "count": 1,
+        "estimated_area_m2": null,
+        "island_present": null,
+        "fixture_ids": []
+      }
+    ],
+    "stairs": [
+      {
+        "id": "vis-stair-01",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:stair_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "flights": null,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Stair identified from plan image."
+        ],
+        "count": 1,
+        "flights": null,
+        "riser_count": null,
+        "tread_count": null,
+        "width_m": null,
+        "elevation_change_m": null
+      }
+    ],
+    "fixtures": [
+      {
+        "id": "vis-fixture-01",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:fixture_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "sink",
+            "count": 2
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=sink."
+        ],
+        "fixture_type": "sink",
+        "count": 2,
+        "unit": "unit",
+        "location_hint": null
+      },
+      {
+        "id": "vis-fixture-02",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:fixture_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "toilet",
+            "count": 2
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=toilet."
+        ],
+        "fixture_type": "toilet",
+        "count": 2,
+        "unit": "unit",
+        "location_hint": null
+      },
+      {
+        "id": "vis-fixture-03",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:fixture_3"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "shower",
+            "count": 2
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=shower."
+        ],
+        "fixture_type": "shower",
+        "count": 2,
+        "unit": "unit",
+        "location_hint": null
+      }
+    ],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0003",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0003.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": null,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 1,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [
+      {
+        "check": "door_inventory_vs_block_hints",
+        "vision_count": 12,
+        "cad_block_hint": 0,
+        "status": "info"
+      },
+      {
+        "check": "window_inventory_vs_block_hints",
+        "vision_count": 8,
+        "cad_block_hint": 0,
+        "status": "info"
+      }
+    ],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"masonry\",\n      \"location\": \"interior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    },\n    {\n      \"material\": \"masonry\",\n      \"location\": \"exterior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [\n    {\n      \"type\": \"interior\",\n      \"count\": 10,\n      \"width_m\": null\n    },\n    {\n      \"type\": \"exterior\",\n      \"count\": 2,\n      \"width_m\": null\n    }\n  ],\n  \"windows\": [\n    {\n      \"type\": \"sliding\",\n      \"count\": 8,\n      \"width_m\": null\n    }\n  ],\n  \"wet_areas\": [\n    {\n      \"kind\": \"bathroom\",\n      \"count\": 2,\n      \"area_m2\": null\n    }\n  ],\n  \"kitchens\": [\n    {\n      \"count\": 1,\n      \"area_m2\": null\n    }\n  ],\n  \"stairs\": [\n    {\n      \"count\": 1,\n      \"flights\": null,\n      \"width_m\": null\n    }\n  ],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": null,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": [\n    {\n      \"type\": \"sink\",\n      \"count\": 2\n    },\n    {\n      \"type\": \"toilet\",\n      \"count\": 2\n    },\n    {\n      \"type\": \"shower\",\n      \"count\": 2\n    }\n  ]\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "masonry",
+          "location": "interior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        },
+        {
+          "material": "masonry",
+          "location": "exterior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [
+        {
+          "type": "interior",
+          "count": 10,
+          "width_m": null
+        },
+        {
+          "type": "exterior",
+          "count": 2,
+          "width_m": null
+        }
+      ],
+      "windows": [
+        {
+          "type": "sliding",
+          "count": 8,
+          "width_m": null
+        }
+      ],
+      "wet_areas": [
+        {
+          "kind": "bathroom",
+          "count": 2,
+          "area_m2": null
+        }
+      ],
+      "kitchens": [
+        {
+          "count": 1,
+          "area_m2": null
+        }
+      ],
+      "stairs": [
+        {
+          "count": 1,
+          "flights": null,
+          "width_m": null
+        }
+      ],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": null,
+          "area_m2": null
+        }
+      ],
+      "fixtures": [
+        {
+          "type": "sink",
+          "count": 2
+        },
+        {
+          "type": "toilet",
+          "count": 2
+        },
+        {
+          "type": "shower",
+          "count": 2
+        }
+      ]
+    },
+    "_metadata": {
+      "file": "page_0003.png",
+      "timestamp": "2026-04-06T21:36:34.531215"
+    }
+  },
+  {
+    "level_id": "page_0004",
+    "level_name": "page_0004",
+    "source": "vision",
+    "source_image": "page_0004.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0004.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0004.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0004",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0004.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "concrete",
+            "location": "exterior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=concrete, location=exterior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "concrete",
+        "wall_system": null,
+        "interior_exterior_hint": "exterior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [],
+    "windows": [],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0004",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0004.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": null,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 1,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      },
+      {
+        "id": "vis-slab-02",
+        "level_id": "page_0004",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0004.png:slab_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "slab",
+            "count": null,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=slab."
+        ],
+        "element_type": "slab",
+        "count": 1,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"concrete\",\n      \"location\": \"exterior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [],\n  \"windows\": [],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": null,\n      \"area_m2\": null\n    },\n    {\n      \"type\": \"slab\",\n      \"count\": null,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": []\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "concrete",
+          "location": "exterior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [],
+      "windows": [],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": null,
+          "area_m2": null
+        },
+        {
+          "type": "slab",
+          "count": null,
+          "area_m2": null
+        }
+      ],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0004.png",
+      "timestamp": "2026-04-06T21:36:38.913882"
+    }
+  },
+  {
+    "level_id": "page_0005",
+    "level_name": "page_0005",
+    "source": "vision",
+    "source_image": "page_0005.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0005.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0005.png"
+    },
+    "conflict_notes": [],
+    "walls": [],
+    "openings": [],
+    "doors": [],
+    "windows": [],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0005",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0005.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": 10,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 10,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [],
+    "_raw_response": "{\n  \"floor_area_m2\": null,\n  \"walls\": [],\n  \"doors\": [],\n  \"windows\": [],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": 10,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": []\n}",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [],
+      "doors": [],
+      "windows": [],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": 10,
+          "area_m2": null
+        }
+      ],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0005.png",
+      "timestamp": "2026-04-06T21:36:42.632127"
+    }
+  },
+  {
+    "level_id": "page_0006",
+    "level_name": "page_0006",
+    "source": "vision",
+    "source_image": "page_0006.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0006.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0006.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0006",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0006.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "concrete",
+            "location": "interior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=concrete, location=interior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "concrete",
+        "wall_system": null,
+        "interior_exterior_hint": "interior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [],
+    "windows": [],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0006",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0006.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": 35,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 35,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [],
+    "_raw_response": "{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"concrete\",\n      \"location\": \"interior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [],\n  \"windows\": [],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": 35,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": []\n}",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "concrete",
+          "location": "interior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [],
+      "windows": [],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": 35,
+          "area_m2": null
+        }
+      ],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0006.png",
+      "timestamp": "2026-04-06T21:36:46.818868"
+    }
+  },
+  {
+    "level_id": "page_0007",
+    "level_name": "page_0007",
+    "source": "vision",
+    "source_image": "page_0007.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0007.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0007.png"
+    },
+    "conflict_notes": [],
+    "walls": [],
+    "openings": [],
+    "doors": [],
+    "windows": [],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [
+      {
+        "id": "vis-beam-01",
+        "level_id": "page_0007",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0007.png:beam_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "beam",
+            "count": 10,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=beam."
+        ],
+        "element_type": "beam",
+        "count": 10,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [],\n  \"doors\": [],\n  \"windows\": [],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [\n    {\"type\": \"beam\", \"count\": 10, \"area_m2\": null}\n  ],\n  \"fixtures\": []\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [],
+      "doors": [],
+      "windows": [],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [
+        {
+          "type": "beam",
+          "count": 10,
+          "area_m2": null
+        }
+      ],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0007.png",
+      "timestamp": "2026-04-06T21:36:50.300412"
+    }
+  },
+  {
+    "level_id": "page_0008",
+    "level_name": "page_0008",
+    "source": "vision",
+    "source_image": "page_0008.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0008.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0008.png"
+    },
+    "conflict_notes": [],
+    "walls": [],
+    "openings": [],
+    "doors": [],
+    "windows": [],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0008",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0008.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": 16,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 16,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [],
+    "_raw_response": "{\n  \"floor_area_m2\": null,\n  \"walls\": [],\n  \"doors\": [],\n  \"windows\": [],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": 16,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": []\n}",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [],
+      "doors": [],
+      "windows": [],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": 16,
+          "area_m2": null
+        }
+      ],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0008.png",
+      "timestamp": "2026-04-06T21:36:53.888504"
+    }
+  },
+  {
+    "level_id": "page_0009",
+    "level_name": "page_0009",
+    "source": "vision",
+    "source_image": "page_0009.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0009.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0009.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "interior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=interior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "interior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      },
+      {
+        "id": "vis-wall-02",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:wall_2"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "exterior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=exterior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "exterior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [
+      {
+        "id": "vis-door-01",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:door_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "interior",
+            "count": 12,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=interior, count=12."
+        ],
+        "source_layers": [],
+        "count": 12,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "interior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      },
+      {
+        "id": "vis-door-02",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:door_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "exterior",
+            "count": 2,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=exterior, count=2."
+        ],
+        "source_layers": [],
+        "count": 2,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "exterior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      }
+    ],
+    "windows": [
+      {
+        "id": "vis-window-01",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:window_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "unknown",
+            "count": 10,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=unknown, count=10."
+        ],
+        "source_layers": [],
+        "count": 10,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "unknown",
+        "glazing_hint": null,
+        "wall_id": null
+      }
+    ],
+    "wet_areas": [
+      {
+        "id": "vis-wetarea-01",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:wetarea_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "kind": "bathroom",
+            "count": 2,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: kind=bathroom, count=2."
+        ],
+        "kind": "bathroom",
+        "count": 2,
+        "estimated_area_m2": null,
+        "fixture_ids": []
+      }
+    ],
+    "kitchens": [
+      {
+        "id": "vis-kitchen-01",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:kitchen_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Kitchen identified from plan image."
+        ],
+        "count": 1,
+        "estimated_area_m2": null,
+        "island_present": null,
+        "fixture_ids": []
+      }
+    ],
+    "stairs": [
+      {
+        "id": "vis-stair-01",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:stair_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "flights": null,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Stair identified from plan image."
+        ],
+        "count": 1,
+        "flights": null,
+        "riser_count": null,
+        "tread_count": null,
+        "width_m": null,
+        "elevation_change_m": null
+      }
+    ],
+    "fixtures": [
+      {
+        "id": "vis-fixture-01",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:fixture_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "sink",
+            "count": 2
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=sink."
+        ],
+        "fixture_type": "sink",
+        "count": 2,
+        "unit": "unit",
+        "location_hint": null
+      },
+      {
+        "id": "vis-fixture-02",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:fixture_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "toilet",
+            "count": 2
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=toilet."
+        ],
+        "fixture_type": "toilet",
+        "count": 2,
+        "unit": "unit",
+        "location_hint": null
+      }
+    ],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0009",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0009.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": null,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 1,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [
+      {
+        "check": "door_inventory_vs_block_hints",
+        "vision_count": 14,
+        "cad_block_hint": 0,
+        "status": "info"
+      },
+      {
+        "check": "window_inventory_vs_block_hints",
+        "vision_count": 10,
+        "cad_block_hint": 0,
+        "status": "info"
+      }
+    ],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"unknown\",\n      \"location\": \"interior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    },\n    {\n      \"material\": \"unknown\",\n      \"location\": \"exterior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [\n    {\n      \"type\": \"interior\",\n      \"count\": 12,\n      \"width_m\": null\n    },\n    {\n      \"type\": \"exterior\",\n      \"count\": 2,\n      \"width_m\": null\n    }\n  ],\n  \"windows\": [\n    {\n      \"type\": \"unknown\",\n      \"count\": 10,\n      \"width_m\": null\n    }\n  ],\n  \"wet_areas\": [\n    {\n      \"kind\": \"bathroom\",\n      \"count\": 2,\n      \"area_m2\": null\n    }\n  ],\n  \"kitchens\": [\n    {\n      \"count\": 1,\n      \"area_m2\": null\n    }\n  ],\n  \"stairs\": [\n    {\n      \"count\": 1,\n      \"flights\": null,\n      \"width_m\": null\n    }\n  ],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": null,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": [\n    {\n      \"type\": \"sink\",\n      \"count\": 2\n    },\n    {\n      \"type\": \"toilet\",\n      \"count\": 2\n    }\n  ]\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "unknown",
+          "location": "interior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        },
+        {
+          "material": "unknown",
+          "location": "exterior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [
+        {
+          "type": "interior",
+          "count": 12,
+          "width_m": null
+        },
+        {
+          "type": "exterior",
+          "count": 2,
+          "width_m": null
+        }
+      ],
+      "windows": [
+        {
+          "type": "unknown",
+          "count": 10,
+          "width_m": null
+        }
+      ],
+      "wet_areas": [
+        {
+          "kind": "bathroom",
+          "count": 2,
+          "area_m2": null
+        }
+      ],
+      "kitchens": [
+        {
+          "count": 1,
+          "area_m2": null
+        }
+      ],
+      "stairs": [
+        {
+          "count": 1,
+          "flights": null,
+          "width_m": null
+        }
+      ],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": null,
+          "area_m2": null
+        }
+      ],
+      "fixtures": [
+        {
+          "type": "sink",
+          "count": 2
+        },
+        {
+          "type": "toilet",
+          "count": 2
+        }
+      ]
+    },
+    "_metadata": {
+      "file": "page_0009.png",
+      "timestamp": "2026-04-06T21:36:58.873935"
+    }
+  },
+  {
+    "level_id": "page_0010",
+    "level_name": "page_0010",
+    "source": "vision",
+    "source_image": "page_0010.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0010.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0010.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "interior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=interior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "interior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      },
+      {
+        "id": "vis-wall-02",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:wall_2"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "exterior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=exterior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "exterior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [
+      {
+        "id": "vis-door-01",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:door_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "interior",
+            "count": 12,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=interior, count=12."
+        ],
+        "source_layers": [],
+        "count": 12,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "interior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      },
+      {
+        "id": "vis-door-02",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:door_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "exterior",
+            "count": 2,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=exterior, count=2."
+        ],
+        "source_layers": [],
+        "count": 2,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "exterior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      }
+    ],
+    "windows": [
+      {
+        "id": "vis-window-01",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:window_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "other",
+            "count": 10,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=other, count=10."
+        ],
+        "source_layers": [],
+        "count": 10,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "other",
+        "glazing_hint": null,
+        "wall_id": null
+      }
+    ],
+    "wet_areas": [
+      {
+        "id": "vis-wetarea-01",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:wetarea_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "kind": "bathroom",
+            "count": 4,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: kind=bathroom, count=4."
+        ],
+        "kind": "bathroom",
+        "count": 4,
+        "estimated_area_m2": null,
+        "fixture_ids": []
+      }
+    ],
+    "kitchens": [
+      {
+        "id": "vis-kitchen-01",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:kitchen_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Kitchen identified from plan image."
+        ],
+        "count": 1,
+        "estimated_area_m2": null,
+        "island_present": null,
+        "fixture_ids": []
+      }
+    ],
+    "stairs": [
+      {
+        "id": "vis-stair-01",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:stair_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 2,
+            "flights": null,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Stair identified from plan image."
+        ],
+        "count": 2,
+        "flights": null,
+        "riser_count": null,
+        "tread_count": null,
+        "width_m": null,
+        "elevation_change_m": null
+      }
+    ],
+    "fixtures": [
+      {
+        "id": "vis-fixture-01",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:fixture_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "sink",
+            "count": 4
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=sink."
+        ],
+        "fixture_type": "sink",
+        "count": 4,
+        "unit": "unit",
+        "location_hint": null
+      },
+      {
+        "id": "vis-fixture-02",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:fixture_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "toilet",
+            "count": 4
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=toilet."
+        ],
+        "fixture_type": "toilet",
+        "count": 4,
+        "unit": "unit",
+        "location_hint": null
+      }
+    ],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0010",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0010.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": null,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 1,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [
+      {
+        "check": "door_inventory_vs_block_hints",
+        "vision_count": 14,
+        "cad_block_hint": 0,
+        "status": "info"
+      },
+      {
+        "check": "window_inventory_vs_block_hints",
+        "vision_count": 10,
+        "cad_block_hint": 0,
+        "status": "info"
+      }
+    ],
+    "_raw_response": "{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"unknown\",\n      \"location\": \"interior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    },\n    {\n      \"material\": \"unknown\",\n      \"location\": \"exterior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [\n    {\n      \"type\": \"interior\",\n      \"count\": 12,\n      \"width_m\": null\n    },\n    {\n      \"type\": \"exterior\",\n      \"count\": 2,\n      \"width_m\": null\n    }\n  ],\n  \"windows\": [\n    {\n      \"type\": \"other\",\n      \"count\": 10,\n      \"width_m\": null\n    }\n  ],\n  \"wet_areas\": [\n    {\n      \"kind\": \"bathroom\",\n      \"count\": 4,\n      \"area_m2\": null\n    }\n  ],\n  \"kitchens\": [\n    {\n      \"count\": 1,\n      \"area_m2\": null\n    }\n  ],\n  \"stairs\": [\n    {\n      \"count\": 2,\n      \"flights\": null,\n      \"width_m\": null\n    }\n  ],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": null,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": [\n    {\n      \"type\": \"sink\",\n      \"count\": 4\n    },\n    {\n      \"type\": \"toilet\",\n      \"count\": 4\n    }\n  ]\n}",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "unknown",
+          "location": "interior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        },
+        {
+          "material": "unknown",
+          "location": "exterior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [
+        {
+          "type": "interior",
+          "count": 12,
+          "width_m": null
+        },
+        {
+          "type": "exterior",
+          "count": 2,
+          "width_m": null
+        }
+      ],
+      "windows": [
+        {
+          "type": "other",
+          "count": 10,
+          "width_m": null
+        }
+      ],
+      "wet_areas": [
+        {
+          "kind": "bathroom",
+          "count": 4,
+          "area_m2": null
+        }
+      ],
+      "kitchens": [
+        {
+          "count": 1,
+          "area_m2": null
+        }
+      ],
+      "stairs": [
+        {
+          "count": 2,
+          "flights": null,
+          "width_m": null
+        }
+      ],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": null,
+          "area_m2": null
+        }
+      ],
+      "fixtures": [
+        {
+          "type": "sink",
+          "count": 4
+        },
+        {
+          "type": "toilet",
+          "count": 4
+        }
+      ]
+    },
+    "_metadata": {
+      "file": "page_0010.png",
+      "timestamp": "2026-04-06T21:37:03.715641"
+    }
+  },
+  {
+    "level_id": "page_0011",
+    "level_name": "page_0011",
+    "source": "vision",
+    "source_image": "page_0011.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0011.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0011.png"
+    },
+    "conflict_notes": [],
+    "walls": [],
+    "openings": [],
+    "doors": [],
+    "windows": [],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0011",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0011.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": 9,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 9,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [],
+    "_raw_response": "{\n    \"floor_area_m2\": null,\n    \"walls\": [],\n    \"doors\": [],\n    \"windows\": [],\n    \"wet_areas\": [],\n    \"kitchens\": [],\n    \"stairs\": [],\n    \"structural_elements\": [\n        {\n            \"type\": \"column\",\n            \"count\": 9,\n            \"area_m2\": null\n        }\n    ],\n    \"fixtures\": []\n}",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [],
+      "doors": [],
+      "windows": [],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": 9,
+          "area_m2": null
+        }
+      ],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0011.png",
+      "timestamp": "2026-04-06T21:37:06.789294"
+    }
+  },
+  {
+    "level_id": "page_0012",
+    "level_name": "page_0012",
+    "source": "vision",
+    "source_image": "page_0012.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0012.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0012.png"
+    },
+    "conflict_notes": [],
+    "walls": [],
+    "openings": [],
+    "doors": [],
+    "windows": [],
+    "wet_areas": [],
+    "kitchens": [],
+    "stairs": [],
+    "fixtures": [],
+    "structural_elements": [],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [],\n  \"doors\": [],\n  \"windows\": [],\n  \"wet_areas\": [],\n  \"kitchens\": [],\n  \"stairs\": [],\n  \"structural_elements\": [],\n  \"fixtures\": []\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [],
+      "doors": [],
+      "windows": [],
+      "wet_areas": [],
+      "kitchens": [],
+      "stairs": [],
+      "structural_elements": [],
+      "fixtures": []
+    },
+    "_metadata": {
+      "file": "page_0012.png",
+      "timestamp": "2026-04-06T21:37:09.656672"
+    }
+  },
+  {
+    "level_id": "page_0013",
+    "level_name": "page_0013",
+    "source": "vision",
+    "source_image": "page_0013.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0013.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0013.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "masonry",
+            "location": "interior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=masonry, location=interior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "masonry",
+        "wall_system": null,
+        "interior_exterior_hint": "interior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      },
+      {
+        "id": "vis-wall-02",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:wall_2"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "masonry",
+            "location": "exterior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=masonry, location=exterior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "masonry",
+        "wall_system": null,
+        "interior_exterior_hint": "exterior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [
+      {
+        "id": "vis-door-01",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:door_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "interior",
+            "count": 12,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=interior, count=12."
+        ],
+        "source_layers": [],
+        "count": 12,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "interior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      },
+      {
+        "id": "vis-door-02",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:door_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "exterior",
+            "count": 4,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=exterior, count=4."
+        ],
+        "source_layers": [],
+        "count": 4,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "exterior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      }
+    ],
+    "windows": [
+      {
+        "id": "vis-window-01",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:window_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "fixed",
+            "count": 10,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=fixed, count=10."
+        ],
+        "source_layers": [],
+        "count": 10,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "fixed",
+        "glazing_hint": null,
+        "wall_id": null
+      }
+    ],
+    "wet_areas": [
+      {
+        "id": "vis-wetarea-01",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:wetarea_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "kind": "bathroom",
+            "count": 4,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: kind=bathroom, count=4."
+        ],
+        "kind": "bathroom",
+        "count": 4,
+        "estimated_area_m2": null,
+        "fixture_ids": []
+      }
+    ],
+    "kitchens": [
+      {
+        "id": "vis-kitchen-01",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:kitchen_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Kitchen identified from plan image."
+        ],
+        "count": 1,
+        "estimated_area_m2": null,
+        "island_present": null,
+        "fixture_ids": []
+      }
+    ],
+    "stairs": [
+      {
+        "id": "vis-stair-01",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:stair_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "flights": null,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Stair identified from plan image."
+        ],
+        "count": 1,
+        "flights": null,
+        "riser_count": null,
+        "tread_count": null,
+        "width_m": null,
+        "elevation_change_m": null
+      }
+    ],
+    "fixtures": [
+      {
+        "id": "vis-fixture-01",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:fixture_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "sink",
+            "count": 4
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=sink."
+        ],
+        "fixture_type": "sink",
+        "count": 4,
+        "unit": "unit",
+        "location_hint": null
+      },
+      {
+        "id": "vis-fixture-02",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:fixture_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "toilet",
+            "count": 4
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=toilet."
+        ],
+        "fixture_type": "toilet",
+        "count": 4,
+        "unit": "unit",
+        "location_hint": null
+      },
+      {
+        "id": "vis-fixture-03",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:fixture_3"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "shower",
+            "count": 4
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=shower."
+        ],
+        "fixture_type": "shower",
+        "count": 4,
+        "unit": "unit",
+        "location_hint": null
+      }
+    ],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0013",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0013.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": null,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 1,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [
+      {
+        "check": "door_inventory_vs_block_hints",
+        "vision_count": 16,
+        "cad_block_hint": 0,
+        "status": "info"
+      },
+      {
+        "check": "window_inventory_vs_block_hints",
+        "vision_count": 10,
+        "cad_block_hint": 0,
+        "status": "info"
+      }
+    ],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"masonry\",\n      \"location\": \"interior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    },\n    {\n      \"material\": \"masonry\",\n      \"location\": \"exterior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [\n    {\n      \"type\": \"interior\",\n      \"count\": 12,\n      \"width_m\": null\n    },\n    {\n      \"type\": \"exterior\",\n      \"count\": 4,\n      \"width_m\": null\n    }\n  ],\n  \"windows\": [\n    {\n      \"type\": \"fixed\",\n      \"count\": 10,\n      \"width_m\": null\n    }\n  ],\n  \"wet_areas\": [\n    {\n      \"kind\": \"bathroom\",\n      \"count\": 4,\n      \"area_m2\": null\n    }\n  ],\n  \"kitchens\": [\n    {\n      \"count\": 1,\n      \"area_m2\": null\n    }\n  ],\n  \"stairs\": [\n    {\n      \"count\": 1,\n      \"flights\": null,\n      \"width_m\": null\n    }\n  ],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": null,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": [\n    {\n      \"type\": \"sink\",\n      \"count\": 4\n    },\n    {\n      \"type\": \"toilet\",\n      \"count\": 4\n    },\n    {\n      \"type\": \"shower\",\n      \"count\": 4\n    }\n  ]\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "masonry",
+          "location": "interior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        },
+        {
+          "material": "masonry",
+          "location": "exterior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [
+        {
+          "type": "interior",
+          "count": 12,
+          "width_m": null
+        },
+        {
+          "type": "exterior",
+          "count": 4,
+          "width_m": null
+        }
+      ],
+      "windows": [
+        {
+          "type": "fixed",
+          "count": 10,
+          "width_m": null
+        }
+      ],
+      "wet_areas": [
+        {
+          "kind": "bathroom",
+          "count": 4,
+          "area_m2": null
+        }
+      ],
+      "kitchens": [
+        {
+          "count": 1,
+          "area_m2": null
+        }
+      ],
+      "stairs": [
+        {
+          "count": 1,
+          "flights": null,
+          "width_m": null
+        }
+      ],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": null,
+          "area_m2": null
+        }
+      ],
+      "fixtures": [
+        {
+          "type": "sink",
+          "count": 4
+        },
+        {
+          "type": "toilet",
+          "count": 4
+        },
+        {
+          "type": "shower",
+          "count": 4
+        }
+      ]
+    },
+    "_metadata": {
+      "file": "page_0013.png",
+      "timestamp": "2026-04-06T21:37:14.893027"
+    }
+  },
+  {
+    "level_id": "page_0014",
+    "level_name": "page_0014",
+    "source": "vision",
+    "source_image": "page_0014.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0014.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0014.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "interior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=interior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "interior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      },
+      {
+        "id": "vis-wall-02",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:wall_2"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "exterior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=exterior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "exterior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [
+      {
+        "id": "vis-door-01",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:door_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "interior",
+            "count": 10,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=interior, count=10."
+        ],
+        "source_layers": [],
+        "count": 10,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "interior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      },
+      {
+        "id": "vis-door-02",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:door_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "exterior",
+            "count": 2,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=exterior, count=2."
+        ],
+        "source_layers": [],
+        "count": 2,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "exterior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      }
+    ],
+    "windows": [
+      {
+        "id": "vis-window-01",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:window_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "other",
+            "count": 8,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=other, count=8."
+        ],
+        "source_layers": [],
+        "count": 8,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "other",
+        "glazing_hint": null,
+        "wall_id": null
+      }
+    ],
+    "wet_areas": [
+      {
+        "id": "vis-wetarea-01",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:wetarea_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "kind": "bathroom",
+            "count": 4,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: kind=bathroom, count=4."
+        ],
+        "kind": "bathroom",
+        "count": 4,
+        "estimated_area_m2": null,
+        "fixture_ids": []
+      }
+    ],
+    "kitchens": [
+      {
+        "id": "vis-kitchen-01",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:kitchen_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Kitchen identified from plan image."
+        ],
+        "count": 1,
+        "estimated_area_m2": null,
+        "island_present": null,
+        "fixture_ids": []
+      }
+    ],
+    "stairs": [
+      {
+        "id": "vis-stair-01",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:stair_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "flights": null,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Stair identified from plan image."
+        ],
+        "count": 1,
+        "flights": null,
+        "riser_count": null,
+        "tread_count": null,
+        "width_m": null,
+        "elevation_change_m": null
+      }
+    ],
+    "fixtures": [
+      {
+        "id": "vis-fixture-01",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:fixture_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "sink",
+            "count": 4
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=sink."
+        ],
+        "fixture_type": "sink",
+        "count": 4,
+        "unit": "unit",
+        "location_hint": null
+      },
+      {
+        "id": "vis-fixture-02",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:fixture_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "toilet",
+            "count": 4
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=toilet."
+        ],
+        "fixture_type": "toilet",
+        "count": 4,
+        "unit": "unit",
+        "location_hint": null
+      },
+      {
+        "id": "vis-fixture-03",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:fixture_3"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "shower",
+            "count": 2
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=shower."
+        ],
+        "fixture_type": "shower",
+        "count": 2,
+        "unit": "unit",
+        "location_hint": null
+      }
+    ],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0014",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0014.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": null,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 1,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [
+      {
+        "check": "door_inventory_vs_block_hints",
+        "vision_count": 12,
+        "cad_block_hint": 0,
+        "status": "info"
+      },
+      {
+        "check": "window_inventory_vs_block_hints",
+        "vision_count": 8,
+        "cad_block_hint": 0,
+        "status": "info"
+      }
+    ],
+    "_raw_response": "{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"unknown\",\n      \"location\": \"interior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    },\n    {\n      \"material\": \"unknown\",\n      \"location\": \"exterior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [\n    {\n      \"type\": \"interior\",\n      \"count\": 10,\n      \"width_m\": null\n    },\n    {\n      \"type\": \"exterior\",\n      \"count\": 2,\n      \"width_m\": null\n    }\n  ],\n  \"windows\": [\n    {\n      \"type\": \"other\",\n      \"count\": 8,\n      \"width_m\": null\n    }\n  ],\n  \"wet_areas\": [\n    {\n      \"kind\": \"bathroom\",\n      \"count\": 4,\n      \"area_m2\": null\n    }\n  ],\n  \"kitchens\": [\n    {\n      \"count\": 1,\n      \"area_m2\": null\n    }\n  ],\n  \"stairs\": [\n    {\n      \"count\": 1,\n      \"flights\": null,\n      \"width_m\": null\n    }\n  ],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": null,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": [\n    {\n      \"type\": \"sink\",\n      \"count\": 4\n    },\n    {\n      \"type\": \"toilet\",\n      \"count\": 4\n    },\n    {\n      \"type\": \"shower\",\n      \"count\": 2\n    }\n  ]\n}",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "unknown",
+          "location": "interior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        },
+        {
+          "material": "unknown",
+          "location": "exterior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [
+        {
+          "type": "interior",
+          "count": 10,
+          "width_m": null
+        },
+        {
+          "type": "exterior",
+          "count": 2,
+          "width_m": null
+        }
+      ],
+      "windows": [
+        {
+          "type": "other",
+          "count": 8,
+          "width_m": null
+        }
+      ],
+      "wet_areas": [
+        {
+          "kind": "bathroom",
+          "count": 4,
+          "area_m2": null
+        }
+      ],
+      "kitchens": [
+        {
+          "count": 1,
+          "area_m2": null
+        }
+      ],
+      "stairs": [
+        {
+          "count": 1,
+          "flights": null,
+          "width_m": null
+        }
+      ],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": null,
+          "area_m2": null
+        }
+      ],
+      "fixtures": [
+        {
+          "type": "sink",
+          "count": 4
+        },
+        {
+          "type": "toilet",
+          "count": 4
+        },
+        {
+          "type": "shower",
+          "count": 2
+        }
+      ]
+    },
+    "_metadata": {
+      "file": "page_0014.png",
+      "timestamp": "2026-04-06T21:37:21.130711"
+    }
+  },
+  {
+    "level_id": "page_0015",
+    "level_name": "page_0015",
+    "source": "vision",
+    "source_image": "page_0015.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0015.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0015.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "interior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=interior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "interior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      },
+      {
+        "id": "vis-wall-02",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:wall_2"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "exterior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=exterior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "exterior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [
+      {
+        "id": "vis-door-01",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:door_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "interior",
+            "count": 10,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=interior, count=10."
+        ],
+        "source_layers": [],
+        "count": 10,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "interior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      },
+      {
+        "id": "vis-door-02",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:door_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "exterior",
+            "count": 2,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=exterior, count=2."
+        ],
+        "source_layers": [],
+        "count": 2,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "exterior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      }
+    ],
+    "windows": [
+      {
+        "id": "vis-window-01",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:window_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "sliding",
+            "count": 8,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=sliding, count=8."
+        ],
+        "source_layers": [],
+        "count": 8,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "sliding",
+        "glazing_hint": null,
+        "wall_id": null
+      }
+    ],
+    "wet_areas": [
+      {
+        "id": "vis-wetarea-01",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:wetarea_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "kind": "bathroom",
+            "count": 2,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: kind=bathroom, count=2."
+        ],
+        "kind": "bathroom",
+        "count": 2,
+        "estimated_area_m2": null,
+        "fixture_ids": []
+      }
+    ],
+    "kitchens": [
+      {
+        "id": "vis-kitchen-01",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:kitchen_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Kitchen identified from plan image."
+        ],
+        "count": 1,
+        "estimated_area_m2": null,
+        "island_present": null,
+        "fixture_ids": []
+      }
+    ],
+    "stairs": [
+      {
+        "id": "vis-stair-01",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:stair_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "flights": null,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Stair identified from plan image."
+        ],
+        "count": 1,
+        "flights": null,
+        "riser_count": null,
+        "tread_count": null,
+        "width_m": null,
+        "elevation_change_m": null
+      }
+    ],
+    "fixtures": [
+      {
+        "id": "vis-fixture-01",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:fixture_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "sink",
+            "count": 2
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=sink."
+        ],
+        "fixture_type": "sink",
+        "count": 2,
+        "unit": "unit",
+        "location_hint": null
+      },
+      {
+        "id": "vis-fixture-02",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:fixture_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "toilet",
+            "count": 2
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=toilet."
+        ],
+        "fixture_type": "toilet",
+        "count": 2,
+        "unit": "unit",
+        "location_hint": null
+      }
+    ],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0015",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0015.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": null,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 1,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [
+      {
+        "check": "door_inventory_vs_block_hints",
+        "vision_count": 12,
+        "cad_block_hint": 0,
+        "status": "info"
+      },
+      {
+        "check": "window_inventory_vs_block_hints",
+        "vision_count": 8,
+        "cad_block_hint": 0,
+        "status": "info"
+      }
+    ],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"unknown\",\n      \"location\": \"interior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    },\n    {\n      \"material\": \"unknown\",\n      \"location\": \"exterior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [\n    {\n      \"type\": \"interior\",\n      \"count\": 10,\n      \"width_m\": null\n    },\n    {\n      \"type\": \"exterior\",\n      \"count\": 2,\n      \"width_m\": null\n    }\n  ],\n  \"windows\": [\n    {\n      \"type\": \"sliding\",\n      \"count\": 8,\n      \"width_m\": null\n    }\n  ],\n  \"wet_areas\": [\n    {\n      \"kind\": \"bathroom\",\n      \"count\": 2,\n      \"area_m2\": null\n    }\n  ],\n  \"kitchens\": [\n    {\n      \"count\": 1,\n      \"area_m2\": null\n    }\n  ],\n  \"stairs\": [\n    {\n      \"count\": 1,\n      \"flights\": null,\n      \"width_m\": null\n    }\n  ],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": null,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": [\n    {\n      \"type\": \"sink\",\n      \"count\": 2\n    },\n    {\n      \"type\": \"toilet\",\n      \"count\": 2\n    }\n  ]\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "unknown",
+          "location": "interior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        },
+        {
+          "material": "unknown",
+          "location": "exterior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [
+        {
+          "type": "interior",
+          "count": 10,
+          "width_m": null
+        },
+        {
+          "type": "exterior",
+          "count": 2,
+          "width_m": null
+        }
+      ],
+      "windows": [
+        {
+          "type": "sliding",
+          "count": 8,
+          "width_m": null
+        }
+      ],
+      "wet_areas": [
+        {
+          "kind": "bathroom",
+          "count": 2,
+          "area_m2": null
+        }
+      ],
+      "kitchens": [
+        {
+          "count": 1,
+          "area_m2": null
+        }
+      ],
+      "stairs": [
+        {
+          "count": 1,
+          "flights": null,
+          "width_m": null
+        }
+      ],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": null,
+          "area_m2": null
+        }
+      ],
+      "fixtures": [
+        {
+          "type": "sink",
+          "count": 2
+        },
+        {
+          "type": "toilet",
+          "count": 2
+        }
+      ]
+    },
+    "_metadata": {
+      "file": "page_0015.png",
+      "timestamp": "2026-04-06T21:37:25.613528"
+    }
+  },
+  {
+    "level_id": "page_0016",
+    "level_name": "page_0016",
+    "source": "vision",
+    "source_image": "page_0016.png",
+    "source_view": null,
+    "cad_hints": {},
+    "floor_area_m2": null,
+    "ceiling_area_m2": null,
+    "space_types": [],
+    "system_notes": [],
+    "structural_notes": [],
+    "source_refs": [
+      "vision:page_0016.png"
+    ],
+    "assumptions": [
+      "Quantities estimated from visual plan analysis."
+    ],
+    "inputs": {
+      "image": "page_0016.png"
+    },
+    "conflict_notes": [],
+    "walls": [
+      {
+        "id": "vis-wall-01",
+        "level_id": "page_0016",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0016.png:wall_1"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "interior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=interior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "interior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      },
+      {
+        "id": "vis-wall-02",
+        "level_id": "page_0016",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0016.png:wall_2"
+        ],
+        "assumptions": [
+          "Dimensions estimated from visible plan scale."
+        ],
+        "inputs": {
+          "raw": {
+            "material": "unknown",
+            "location": "exterior",
+            "estimated_length_m": null,
+            "estimated_area_m2": null,
+            "height_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: material=unknown, location=exterior."
+        ],
+        "source_layers": [],
+        "length_m": null,
+        "height_m": null,
+        "thickness_m": null,
+        "area_m2": null,
+        "material_hint": "unknown",
+        "wall_system": null,
+        "interior_exterior_hint": "exterior",
+        "finish_required": null,
+        "structural": null,
+        "openings_count": 0
+      }
+    ],
+    "openings": [],
+    "doors": [
+      {
+        "id": "vis-door-01",
+        "level_id": "page_0016",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0016.png:door_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "interior",
+            "count": 12,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=interior, count=12."
+        ],
+        "source_layers": [],
+        "count": 12,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "interior",
+        "material_hint": null,
+        "exterior": null,
+        "wall_id": null
+      }
+    ],
+    "windows": [
+      {
+        "id": "vis-window-01",
+        "level_id": "page_0016",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0016.png:window_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "other",
+            "count": 10,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Counted from plan image: type=other, count=10."
+        ],
+        "source_layers": [],
+        "count": 10,
+        "width_m": null,
+        "height_m": null,
+        "type_hint": "other",
+        "glazing_hint": null,
+        "wall_id": null
+      }
+    ],
+    "wet_areas": [
+      {
+        "id": "vis-wetarea-01",
+        "level_id": "page_0016",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0016.png:wetarea_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "kind": "bathroom",
+            "count": 4,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Identified from plan image: kind=bathroom, count=4."
+        ],
+        "kind": "bathroom",
+        "count": 4,
+        "estimated_area_m2": null,
+        "fixture_ids": []
+      }
+    ],
+    "kitchens": [
+      {
+        "id": "vis-kitchen-01",
+        "level_id": "page_0016",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0016.png:kitchen_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Kitchen identified from plan image."
+        ],
+        "count": 1,
+        "estimated_area_m2": null,
+        "island_present": null,
+        "fixture_ids": []
+      }
+    ],
+    "stairs": [
+      {
+        "id": "vis-stair-01",
+        "level_id": "page_0016",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0016.png:stair_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "count": 1,
+            "flights": null,
+            "width_m": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.7,
+        "evidence": [
+          "Stair identified from plan image."
+        ],
+        "count": 1,
+        "flights": null,
+        "riser_count": null,
+        "tread_count": null,
+        "width_m": null,
+        "elevation_change_m": null
+      }
+    ],
+    "fixtures": [
+      {
+        "id": "vis-fixture-01",
+        "level_id": "page_0016",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0016.png:fixture_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "sink",
+            "count": 4
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=sink."
+        ],
+        "fixture_type": "sink",
+        "count": 4,
+        "unit": "unit",
+        "location_hint": null
+      },
+      {
+        "id": "vis-fixture-02",
+        "level_id": "page_0016",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0016.png:fixture_2"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "toilet",
+            "count": 4
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.65,
+        "evidence": [
+          "Counted from plan image: type=toilet."
+        ],
+        "fixture_type": "toilet",
+        "count": 4,
+        "unit": "unit",
+        "location_hint": null
+      }
+    ],
+    "structural_elements": [
+      {
+        "id": "vis-column-01",
+        "level_id": "page_0016",
+        "source": "vision",
+        "source_refs": [
+          "vision:page_0016.png:column_1"
+        ],
+        "assumptions": [],
+        "inputs": {
+          "raw": {
+            "type": "column",
+            "count": null,
+            "area_m2": null
+          }
+        },
+        "conflict_notes": [],
+        "confidence": 0.6,
+        "evidence": [
+          "Identified from plan image: type=column."
+        ],
+        "element_type": "column",
+        "count": 1,
+        "length_m": null,
+        "area_m2": null,
+        "volume_m3": null,
+        "material_hint": null,
+        "section_width_m": null,
+        "section_height_m": null,
+        "span_m": null,
+        "orientation": null,
+        "load_bearing": null,
+        "reinforcement_hint": null,
+        "concrete_grade_hint": null,
+        "steel_grade_hint": null,
+        "host_level": null,
+        "adjacent_elements": []
+      }
+    ],
+    "notes": [
+      "Simple vision extraction — Python-adapted to LevelInventory schema."
+    ],
+    "confidence": null,
+    "cad_cross_checks": [
+      {
+        "check": "door_inventory_vs_block_hints",
+        "vision_count": 12,
+        "cad_block_hint": 0,
+        "status": "info"
+      },
+      {
+        "check": "window_inventory_vs_block_hints",
+        "vision_count": 10,
+        "cad_block_hint": 0,
+        "status": "info"
+      }
+    ],
+    "_raw_response": "```json\n{\n  \"floor_area_m2\": null,\n  \"walls\": [\n    {\n      \"material\": \"unknown\",\n      \"location\": \"interior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    },\n    {\n      \"material\": \"unknown\",\n      \"location\": \"exterior\",\n      \"estimated_length_m\": null,\n      \"estimated_area_m2\": null,\n      \"height_m\": null\n    }\n  ],\n  \"doors\": [\n    {\n      \"type\": \"interior\",\n      \"count\": 12,\n      \"width_m\": null\n    }\n  ],\n  \"windows\": [\n    {\n      \"type\": \"other\",\n      \"count\": 10,\n      \"width_m\": null\n    }\n  ],\n  \"wet_areas\": [\n    {\n      \"kind\": \"bathroom\",\n      \"count\": 4,\n      \"area_m2\": null\n    }\n  ],\n  \"kitchens\": [\n    {\n      \"count\": 1,\n      \"area_m2\": null\n    }\n  ],\n  \"stairs\": [\n    {\n      \"count\": 1,\n      \"flights\": null,\n      \"width_m\": null\n    }\n  ],\n  \"structural_elements\": [\n    {\n      \"type\": \"column\",\n      \"count\": null,\n      \"area_m2\": null\n    }\n  ],\n  \"fixtures\": [\n    {\n      \"type\": \"sink\",\n      \"count\": 4\n    },\n    {\n      \"type\": \"toilet\",\n      \"count\": 4\n    }\n  ]\n}\n```",
+    "_simple_payload": {
+      "floor_area_m2": null,
+      "walls": [
+        {
+          "material": "unknown",
+          "location": "interior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        },
+        {
+          "material": "unknown",
+          "location": "exterior",
+          "estimated_length_m": null,
+          "estimated_area_m2": null,
+          "height_m": null
+        }
+      ],
+      "doors": [
+        {
+          "type": "interior",
+          "count": 12,
+          "width_m": null
+        }
+      ],
+      "windows": [
+        {
+          "type": "other",
+          "count": 10,
+          "width_m": null
+        }
+      ],
+      "wet_areas": [
+        {
+          "kind": "bathroom",
+          "count": 4,
+          "area_m2": null
+        }
+      ],
+      "kitchens": [
+        {
+          "count": 1,
+          "area_m2": null
+        }
+      ],
+      "stairs": [
+        {
+          "count": 1,
+          "flights": null,
+          "width_m": null
+        }
+      ],
+      "structural_elements": [
+        {
+          "type": "column",
+          "count": null,
+          "area_m2": null
+        }
+      ],
+      "fixtures": [
+        {
+          "type": "sink",
+          "count": 4
+        },
+        {
+          "type": "toilet",
+          "count": 4
+        }
+      ]
+    },
+    "_metadata": {
+      "file": "page_0016.png",
+      "timestamp": "2026-04-06T21:37:31.264242"
+    }
+  }
+]

@@ -1,4 +1,6 @@
 .env
+# Excel lock files (opened workbook); [$] is literal $
+**/~[$]*.xlsx
 *.pyc
 __pycache__/
 cad_output/
