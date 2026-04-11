@@ -22,6 +22,7 @@ from core.schemas import (
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.pres_expansion import synthetic_takeoffs_from_pres
 from knowledge.training_data import extract_training_pairs
+from pricing.construcosto_loader import load_construcosto_snapshot
 from processors.bc3_parser import parse_bc3
 from processors.json_processor import process_autodesk_json
 from rules_engine import RulesEngine, default_rules_engine
@@ -55,12 +56,24 @@ def merge_pres_template_takeoffs(
     return merged
 
 
+def _load_construcosto_if_available() -> Any:
+    try:
+        snapshot = load_construcosto_snapshot()
+        if snapshot.count > 0:
+            logger.info("ConstruCosto snapshot: %d entries loaded", snapshot.count)
+            return snapshot
+    except Exception:
+        logger.debug("ConstruCosto snapshot not available", exc_info=True)
+    return None
+
+
 def build_final_budget(
     context: ProjectContext,
     takeoffs: Iterable[QuantityTakeoff],
     candidates_by_takeoff: dict[str, list[BudgetCandidate]],
     *,
     bc3_catalog: dict[str, Any] | None = None,
+    construcosto_snapshot: Any | None = None,
 ) -> dict[str, Any]:
     takeoff_list = list(takeoffs)
     lines = []
@@ -74,7 +87,11 @@ def build_final_budget(
             }
         )
 
-    composed = compose_budget(context, takeoff_list, candidates_by_takeoff, bc3_catalog=bc3_catalog)
+    composed = compose_budget(
+        context, takeoff_list, candidates_by_takeoff,
+        bc3_catalog=bc3_catalog,
+        construcosto_snapshot=construcosto_snapshot,
+    )
     composed["budget_lines"] = lines
     composed["takeoffs"] = [takeoff.to_dict() for takeoff in takeoff_list]
     composed["candidates_by_takeoff"] = {
@@ -110,7 +127,12 @@ def build_budget_from_inventory(
         embedding_index=embedding_index,
         training_pairs=training_pairs,
     )
-    return build_final_budget(context, expanded_takeoffs, candidates, bc3_catalog=bc3_catalog)
+    snapshot = _load_construcosto_if_available()
+    return build_final_budget(
+        context, expanded_takeoffs, candidates,
+        bc3_catalog=bc3_catalog,
+        construcosto_snapshot=snapshot,
+    )
 
 
 def build_expanded_takeoffs_from_inventory(
@@ -261,7 +283,12 @@ def build_budget_from_sources(
     )
     logger.info("BC3 candidates matched for %d takeoff keys", len(candidates))
 
-    budget = build_final_budget(context, expanded_takeoffs, candidates, bc3_catalog=bc3_catalog)
+    snapshot = _load_construcosto_if_available()
+    budget = build_final_budget(
+        context, expanded_takeoffs, candidates,
+        bc3_catalog=bc3_catalog,
+        construcosto_snapshot=snapshot,
+    )
     budget["hybrid_inventory"] = [level.to_dict() for level in hybrid_inventory]
     budget["base_takeoffs"] = [takeoff.to_dict() for takeoff in base_takeoffs]
 
@@ -310,10 +337,13 @@ def bootstrap_pipeline_inputs(context: ProjectContext) -> dict[str, Any]:
             logger.warning("Failed to load training pairs from %s", xlsx_path, exc_info=True)
             training_pairs = []
 
+    construcosto = _load_construcosto_if_available()
+
     return {
         "project_context": context.to_dict(),
         "cad_facts": cad_facts,
         "bc3_catalog": bc3_catalog,
         "bc3_embeddings": embeddings,
         "training_pairs": training_pairs,
+        "construcosto_snapshot": construcosto,
     }

@@ -1,7 +1,7 @@
 # Dupla — Especificación de Requisitos de Software (SRS)
 
-**Versión:** 1.0
-**Fecha:** 2026-04-10
+**Versión:** 1.1
+**Fecha:** 2026-04-11
 **Estado:** Borrador
 
 ---
@@ -37,6 +37,8 @@ El sistema cubre el ciclo completo desde la ingesta de planos hasta la exportaci
 | Takeoff | Cuantificación/medición de una partida de obra |
 | LevelInventory | Modelo de datos que representa el inventario constructivo por nivel |
 | Análisis de Precios Unitarios (APU) | Descomposición detallada del costo unitario de cada partida |
+| Construcosto | Publicación periódica de costos de construcción en RD, por región y trimestre |
+| Pricing Snapshot | Archivo JSON con precios congelados para un proyecto específico |
 
 ### 1.4 Stack tecnológico
 
@@ -395,6 +397,229 @@ Las terminaciones tienen la mayor variabilidad de precios:
 - **Piezas sanitarias**: Precio incluyendo instalación, accesorios de conexión, sellado.
 - **Equipos**: Cisterna, bomba, calentador — incluir instalación y conexiones.
 
+### 5.3 Fuente de datos: Construcosto
+
+#### RF-PU-08: Archivos de referencia de Construcosto
+
+La fuente primaria de precios de mercado es **Construcosto** (publicación periódica de costos de construcción en República Dominicana). Construcosto publica **4 archivos** por periodo y por región, y los 4 son requeridos:
+
+| Archivo | Contenido | Rol en Dupla |
+|---------|----------|-------------|
+| **Materiales e Insumos para la Construcción** | Precios de mercado de todos los insumos: cemento, arena, grava, bloques, acero, cerámica, cables, tuberías, pintura, madera, etc. | **Catálogo base de insumos**. Sin este archivo no se puede armar ningún APU. Es la fuente de precios unitarios de cada material individual. |
+| **Mano de Obra para la Construcción** | Jornales por categoría de trabajador: maestro albañil, oficial, ayudante, plomero, electricista, soldador, operador de equipos, etc. | **Componente de mano de obra** de cada APU. Define cuánto cuesta la labor por jornada para cada especialidad. |
+| **Análisis de Costos para la Construcción** | APUs ya armados: descomposición completa de cada partida constructiva en materiales + mano de obra + equipos con cantidades y rendimientos | **APUs de referencia** listos para usar. Son la base principal del presupuesto. Cada APU referencia insumos del catálogo de materiales y jornales del catálogo de mano de obra. |
+| **Análisis de Costos de Equipos y Movimientos de Tierra** | Costos horarios de equipos (retroexcavadora, grúa, bomba, mixer, compactador, camión) + partidas de excavación, relleno, compactación, acarreo | **Componente de equipos** de cada APU + partidas de **movimiento de tierra** (excavación, relleno, compactación) que no están en los otros 3 archivos. |
+
+#### RF-PU-09: Relación entre los 4 archivos
+
+Los archivos de Construcosto tienen una relación jerárquica:
+
+```text
+ANÁLISIS DE COSTOS (APU completo por partida)
+  ├── referencia precios de → MATERIALES E INSUMOS
+  ├── referencia jornales de → MANO DE OBRA
+  └── referencia costos de  → EQUIPOS Y MOVIMIENTOS DE TIERRA
+```
+
+Los 4 son necesarios porque:
+
+1. **Los APUs ya armados** (Análisis de Costos) sirven como referencia directa cuando la partida coincide con lo que Construcosto publica.
+2. **El catálogo de materiales** permite actualizar precios individualmente — si sube el cemento, se actualiza un solo insumo y todos los APUs que lo usan se recalculan.
+3. **Los jornales de mano de obra** permiten crear APUs custom para partidas que Construcosto no cubre, usando los rendimientos por categoría de trabajador.
+4. **Los costos de equipos** alimentan el componente de equipos de los APUs y cubren las partidas de movimiento de tierra que son independientes de las otras disciplinas.
+
+#### RF-PU-10: Regionalización de precios
+
+Construcosto publica precios **por región geográfica** (Santo Domingo, Punta Cana, Santiago, etc.). Los precios varían entre regiones por diferencias en fletes, disponibilidad de materiales, y costos de mano de obra local.
+
+El sistema debe:
+
+- Registrar la **región** como metadata obligatoria del snapshot de precios
+- Permitir cargar archivos de Construcosto de cualquier región
+- Advertir si la región del snapshot no coincide con la ubicación del proyecto
+- No mezclar precios de diferentes regiones en un mismo presupuesto sin advertencia explícita
+
+### 5.4 Persistencia de precios — Estrategia stateless con snapshots
+
+#### RF-PU-11: Arquitectura stateless con pricing snapshots
+
+Dado que Dupla es un pipeline stateless (archivos entran, archivos salen), los precios se manejan como **snapshots congelados por proyecto**:
+
+```text
+proyecto_torre_x/
+├── planos/
+│   ├── arquitectonico.pdf
+│   ├── estructural.pdf
+│   ├── electrico.pdf
+│   └── sanitario.pdf
+├── dwg/
+│   └── planta_tipo.dwg
+├── pricing_snapshot.json    ← precios congelados para ESTE proyecto
+├── apus_override.json       ← APUs custom si el proyecto requiere algo especial
+└── output/
+    ├── presupuesto.xlsx
+    └── presupuesto.bc3
+```
+
+#### RF-PU-12: Catálogo maestro vs. snapshot de proyecto
+
+El sistema opera con dos niveles de datos de precios:
+
+**Nivel 1 — Catálogo maestro (compartido):**
+Repositorio central con los datos importados de Construcosto, organizado por periodo y región:
+
+```text
+data/
+└── pricing/
+    ├── construcosto/
+    │   ├── 2026_Q1_santo_domingo/
+    │   │   ├── materiales_insumos.json
+    │   │   ├── mano_obra.json
+    │   │   ├── analisis_costos.json
+    │   │   └── equipos_mov_tierra.json
+    │   ├── 2026_Q1_punta_cana/
+    │   │   ├── materiales_insumos.json
+    │   │   ├── mano_obra.json
+    │   │   ├── analisis_costos.json
+    │   │   └── equipos_mov_tierra.json
+    │   └── 2026_Q2_santo_domingo/
+    │       └── ...
+    └── custom_apus/
+        ├── estructura.json
+        ├── terminaciones.json
+        ├── electrico.json
+        └── sanitario.json
+```
+
+**Nivel 2 — Snapshot de proyecto (congelado):**
+Al iniciar un presupuesto, se genera un snapshot que congela los precios para ese proyecto:
+
+```text
+python -m dupla.pricing snapshot \
+    --source data/pricing/construcosto/2026_Q1_santo_domingo/ \
+    --custom-apus data/pricing/custom_apus/ \
+    --output proyecto_torre_x/pricing_snapshot.json \
+    --region "santo_domingo" \
+    --date "2026-04-10"
+```
+
+#### RF-PU-13: Estructura del pricing snapshot
+
+```json
+{
+  "metadata": {
+    "source": "construcosto",
+    "period": "2026_Q1",
+    "region": "santo_domingo",
+    "snapshot_date": "2026-04-10",
+    "currency": "RD$",
+    "construcosto_files": [
+      "materiales_insumos.json",
+      "mano_obra.json",
+      "analisis_costos.json",
+      "equipos_mov_tierra.json"
+    ]
+  },
+  "insumos": {
+    "hormigon_premezclado_210": {
+      "descripcion": "Hormigón 210 Kg/cm2 (incluye bomba y colocación)",
+      "unidad": "m3",
+      "precio": 7330.51,
+      "precio_bruto": 8650.00,
+      "fuente": "construcosto_materiales"
+    },
+    "cemento_gris": {
+      "descripcion": "Cemento Portland Gris",
+      "unidad": "fda",
+      "precio": 461.86,
+      "fuente": "construcosto_materiales"
+    },
+    "arena_itabo_gruesa": {
+      "descripcion": "Arena Itabo gruesa lavada",
+      "unidad": "m3",
+      "precio": 1449.15,
+      "fuente": "construcosto_materiales"
+    },
+    "grava_3_4": {
+      "descripcion": "Grava 3/4\"",
+      "unidad": "m3",
+      "precio": 1398.31,
+      "fuente": "construcosto_materiales"
+    }
+  },
+  "mano_obra": {
+    "maestro_albañil": {"jornal": 2500.00, "unidad": "dia", "fuente": "construcosto_mo"},
+    "oficial": {"jornal": 1800.00, "unidad": "dia", "fuente": "construcosto_mo"},
+    "ayudante": {"jornal": 1200.00, "unidad": "dia", "fuente": "construcosto_mo"},
+    "plomero": {"jornal": 2200.00, "unidad": "dia", "fuente": "construcosto_mo"},
+    "electricista": {"jornal": 2200.00, "unidad": "dia", "fuente": "construcosto_mo"}
+  },
+  "equipos": {
+    "bombeado_hormigon": {
+      "descripcion": "Bombeado y colocación de hormigón",
+      "unidad": "m3",
+      "precio": 2700.00,
+      "fuente": "construcosto_equipos"
+    },
+    "instalacion_bomba": {
+      "descripcion": "Instalación de bomba en sitio",
+      "unidad": "ud",
+      "precio": 14580.00,
+      "fuente": "construcosto_equipos"
+    }
+  },
+  "apus": {
+    "hormigon_simple_1_3_5_ligadora": {
+      "codigo": "102.02",
+      "descripcion": "Hormigón 1:3:5 con ligadora",
+      "unidad": "m3",
+      "fuente": "construcosto_analisis",
+      "componentes": [
+        {"tipo": "material", "insumo_key": "cemento_gris", "cantidad": 6.50, "unidad": "fda"},
+        {"tipo": "material", "insumo_key": "arena_itabo_gruesa", "cantidad": 0.52, "unidad": "m3"},
+        {"tipo": "material", "insumo_key": "grava_3_4", "cantidad": 0.86, "unidad": "m3"},
+        {"tipo": "material", "insumo_key": "agua", "cantidad": 60.0, "unidad": "gl"},
+        {"tipo": "mano_obra", "descripcion": "Ligado y vaciado con ligadora", "cantidad": 1.0, "unidad": "m3", "precio": 1018.48}
+      ],
+      "subtotal_materiales": 6066.68,
+      "subtotal_mano_obra": 966.43,
+      "subtotal_equipos": 0.0,
+      "total": 7033.11
+    }
+  },
+  "overrides": {}
+}
+```
+
+#### RF-PU-14: Flujo de resolución de precios en el pipeline
+
+Cuando el pipeline necesita asignar un precio a una partida cuantificada:
+
+```text
+1. ¿Existe APU override en el proyecto?     → Usar override
+2. ¿Existe APU en el snapshot (Construcosto)? → Usar APU de Construcosto
+3. ¿Existe match BC3 con score alto?          → Usar precio del BC3
+4. ¿Existe partida similar en PRES?           → Usar precio histórico de PRES
+5. Ninguna de las anteriores                  → Marcar como "precio pendiente"
+```
+
+Cada precio asignado lleva metadata de su fuente:
+
+| Campo | Descripción |
+|-------|-------------|
+| `price_source` | `apu_override` / `construcosto_apu` / `construcosto_insumo` / `bc3_catalog` / `pres_historical` / `pending` |
+| `price_confidence` | Alto (APU propio/Construcosto), Medio (BC3), Bajo (PRES/estimación) |
+| `price_region` | Región del precio aplicado |
+| `price_period` | Periodo de referencia del precio |
+
+#### RF-PU-15: Ventajas de la estrategia stateless con snapshots
+
+- **Reproducibilidad**: Correr el mismo proyecto meses después produce el mismo resultado con el snapshot original
+- **Independencia**: Cada proyecto es auto-contenido, no depende de base de datos externa
+- **Override por proyecto**: Si un cliente tiene precios negociados con un proveedor, se modifica el snapshot sin afectar otros proyectos
+- **Auditoría**: El snapshot es un archivo JSON versionable que documenta exactamente qué precios se usaron
+- **Migración futura**: Si Dupla evoluciona a webapp, el catálogo maestro migra a base de datos sin cambiar el pipeline
+
 ---
 
 ## 6. Cuantificación y trazabilidad
@@ -560,6 +785,9 @@ Zapata:  perímetro × profundidad
 | **`engines/plumbing.py`** | Motor de análisis sanitario | **Por implementar** |
 | **`pricing/apu_engine.py`** | Motor de análisis de precios unitarios compuestos | **Por implementar** |
 | **`pricing/price_catalog.py`** | Catálogo maestro de precios (materiales, MO, equipos) | **Por implementar** |
+| **`pricing/snapshot.py`** | Generador de pricing snapshots por proyecto desde catálogo maestro | **Por implementar** |
+| **`pricing/construcosto_loader.py`** | Importador de archivos Construcosto (materiales, MO, APUs, equipos) | **Por implementar** |
+| **`pricing/price_resolver.py`** | Resolución de precios con fallback (APU → BC3 → PRES → pendiente) | **Por implementar** |
 | **Validador DWG** | Verificación de limpieza y organización de DWGs | **Por implementar** |
 | **Router de disciplina** | Clasificación y enrutamiento de PDFs al motor correcto | **Por implementar** |
 
@@ -829,6 +1057,9 @@ Variables sensibles (CLIENT_ID, CLIENT_SECRET, OPENAI_API_KEY, APS_BUCKET_NAME) 
 | Validación DWG | Sin validación de limpieza | Validación de layers, ruido, vistas |
 | Acero de refuerzo | Ratios genéricos (kg/m³) | Despiece por diámetro con traslapes y desperdicio |
 | Precios unitarios | Solo precio plano del BC3 | APU compuesto (materiales + MO + equipos + overhead) |
+| Fuente de precios | BC3 estático cargado por corrida | Construcosto (4 archivos: materiales, MO, APUs, equipos) + BC3 + PRES como fallback |
+| Persistencia de precios | Sin persistencia (stateless puro) | Pricing snapshots congelados por proyecto con metadata de región/periodo |
+| Regionalización | Sin soporte | Precios por región (Santo Domingo, Punta Cana, Santiago, etc.) con advertencia de mezcla |
 | Volumetría estructural | Fórmulas básicas de sección × longitud | Cubicación detallada con intersecciones, nervaduras, capiteles |
 | Acabados | Reglas genéricas de caras | Acabado diferenciado por zona, alturas parciales en húmedos |
 | Eléctrico/sanitario | Solo conteo de fixtures | Longitudes de tubería/cableado, circuitos, diámetros |

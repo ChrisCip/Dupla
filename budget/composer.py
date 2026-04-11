@@ -28,6 +28,12 @@ from .chapter_rules import (
     select_strong_candidate,
 )
 
+try:
+    from pricing.construcosto_loader import ConstrucostoSnapshot, find_best_price
+except ImportError:
+    ConstrucostoSnapshot = None  # type: ignore[assignment,misc]
+    find_best_price = None  # type: ignore[assignment]
+
 DATA_START_ROW = 4
 
 
@@ -111,32 +117,46 @@ def _guard_budget_candidate(
 def _extract_unit_price(
     candidate: BudgetCandidate | None,
     bc3_catalog: dict[str, Any] | None,
+    *,
+    construcosto_snapshot: Any | None = None,
+    summary: str = "",
+    unit: str = "",
 ) -> float | None:
-    """Extract unit price from a BC3 candidate.
+    """Extract unit price with fallback chain: rationale → BC3 → ConstruCosto.
 
     Checks candidate.rationale first (GPT-4o classifier stores JSON there),
-    then falls back to a direct BC3 catalog lookup by code.
+    then falls back to a direct BC3 catalog lookup by code, and finally
+    attempts a fuzzy match against the ConstruCosto price database.
     """
-    if candidate is None:
-        return None
+    # 1) GPT-4o classifier rationale
+    if candidate is not None:
+        rationale = getattr(candidate, "rationale", "") or ""
+        if rationale.startswith("{"):
+            try:
+                data = json.loads(rationale)
+                price = data.get("unit_price")
+                if price:
+                    return float(price)
+            except (json.JSONDecodeError, ValueError, TypeError):
+                pass
 
-    # GPT-4o classifier stores: rationale='{"unit_price": 12345.00, "match_type": "exacto"}'
-    rationale = getattr(candidate, "rationale", "") or ""
-    if rationale.startswith("{"):
-        try:
-            data = json.loads(rationale)
-            price = data.get("unit_price")
-            if price:
-                return float(price)
-        except (json.JSONDecodeError, ValueError, TypeError):
-            pass
-
-    # Fallback: look up price in BC3 catalog by code
-    if bc3_catalog and candidate.bc3_code:
+    # 2) BC3 catalog lookup by code
+    if candidate is not None and bc3_catalog and candidate.bc3_code:
         concept = bc3_catalog.get("concepts_by_code", {}).get(candidate.bc3_code, {})
         price = concept.get("price")
         if price:
             return float(price)
+
+    # 3) ConstruCosto fuzzy match on description
+    if construcosto_snapshot is not None and find_best_price is not None and summary:
+        match = find_best_price(construcosto_snapshot, summary, unit)
+        if match is not None:
+            logger.debug(
+                "ConstruCosto price for '%s': RD$%.2f (score=%.2f, matched='%s')",
+                summary[:60], match.unit_price, match.score,
+                match.entry.description[:60],
+            )
+            return match.unit_price
 
     return None
 
@@ -508,6 +528,7 @@ def compose_budget_rows(
     candidates_by_takeoff: dict[str, list[BudgetCandidate]],
     *,
     bc3_catalog: dict[str, Any] | None = None,
+    construcosto_snapshot: Any | None = None,
 ) -> tuple[list[BudgetChapter], list[BudgetLine], list[BudgetRow]]:
     takeoff_list = list(takeoffs)
     derived_from_keys, concrete_volume_prefixes = budget_filter_sets(takeoff_list)
@@ -591,7 +612,13 @@ def compose_budget_rows(
             unit=prepared.takeoff.unit,
             summary=prepared.summary,
             quantity=prepared.takeoff.quantity,
-            unit_price=_extract_unit_price(prepared.candidate, bc3_catalog),
+            unit_price=_extract_unit_price(
+                prepared.candidate,
+                bc3_catalog,
+                construcosto_snapshot=construcosto_snapshot,
+                summary=prepared.summary,
+                unit=prepared.takeoff.unit,
+            ),
             candidate_code=prepared.candidate.bc3_code if prepared.candidate else None,
             candidate_score=prepared.candidate.score if prepared.candidate else None,
             source_refs=list(prepared.takeoff.source_refs),
@@ -621,6 +648,7 @@ def compose_budget(
     candidates_by_takeoff: dict[str, list[BudgetCandidate]],
     *,
     bc3_catalog: dict[str, Any] | None = None,
+    construcosto_snapshot: Any | None = None,
 ) -> dict[str, Any]:
     takeoff_list = list(takeoffs)
     derived_from_keys, concrete_volume_prefixes = budget_filter_sets(takeoff_list)
@@ -640,7 +668,9 @@ def compose_budget(
         logger.debug("Exclusion reasons: %s", diagnostics["excluded_by_reason"])
 
     chapters, lines, rows = compose_budget_rows(
-        context, takeoff_list, candidates_by_takeoff, bc3_catalog=bc3_catalog
+        context, takeoff_list, candidates_by_takeoff,
+        bc3_catalog=bc3_catalog,
+        construcosto_snapshot=construcosto_snapshot,
     )
     logger.info("Budget composed: %d chapters, %d lines, %d rows", len(chapters), len(lines), len(rows))
     return {
