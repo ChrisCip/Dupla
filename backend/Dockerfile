@@ -9,7 +9,8 @@ COPY . .
 
 ENV PYTHONPATH=/app
 
-RUN chmod +x /app/docker-entrypoint.sh
+# Strip CRLF from checkout/editor on Windows; shebangs break if \r remains
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 8000
 
