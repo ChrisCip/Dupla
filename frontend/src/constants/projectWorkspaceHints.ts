@@ -6,6 +6,7 @@ export type PhaseHint = {
     | 'flujo'
     | 'archivos'
     | 'revisiones'
+    | 'entregaPlanos'
     | 'especificaciones'
     | 'presupuesto'
     | 'eventos'

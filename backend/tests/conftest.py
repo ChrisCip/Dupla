@@ -19,6 +19,7 @@ from app.models.chat_conversation import (
     ChatConversationKind,
 )
 from app.models.module import Module
+from app.models.plan_delivery_request import PlanDeliveryRequest  # noqa: F401 — metadata for create_all
 from app.models.project_member import ProjectMember  # noqa: F401 — metadata for create_all
 from app.models.task_board import TaskList
 from app.models.user import User, UserModule, UserRole
@@ -64,7 +65,7 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
         await s.execute(
             text(
                 "TRUNCATE subcontract_quote_lines, subcontract_quotes, user_notifications, architecture_revisions, "
-                "project_files, project_events, project_members, chat_messages, chat_conversation_members, chat_conversations, "
+                "plan_delivery_requests, project_files, project_events, project_members, chat_messages, chat_conversation_members, chat_conversations, "
                 "task_cards, task_lists, project_architecture_data, projects, user_modules, users, modules "
                 "RESTART IDENTITY CASCADE"
             )

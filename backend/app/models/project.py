@@ -68,6 +68,12 @@ class Project(Base):
         back_populates="project",
         cascade="all, delete-orphan",
     )
+    plan_delivery_requests: Mapped[list["PlanDeliveryRequest"]] = relationship(
+        "PlanDeliveryRequest",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        order_by="PlanDeliveryRequest.sequence_number",
+    )
 
 
 class ProjectArchitectureData(Base):

@@ -3,9 +3,11 @@ import { Link, useParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
 import { Card } from '../components/Card'
+import { PliegoCondicionesForm } from '../components/PliegoCondicionesForm'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { StatusBadge } from '../components/StatusBadge'
 import { Tabs } from '../components/Tabs'
+import { PLAN_DELIVERY_STATUS_OPTIONS } from '../constants/planDeliveryStatus'
 import { PHASE_WORKSPACE_HINTS } from '../constants/projectWorkspaceHints'
 import { visibleWorkspaceTabs } from '../constants/projectWorkspaceTabs'
 import {
@@ -13,8 +15,11 @@ import {
   WORKFLOW_PHASE_LABELS,
   WORKFLOW_PHASE_ORDER,
 } from '../constants/workflowPhases'
+import { mergePliegoItemStates } from '../lib/pliegoFormState'
 import { useAuthStore } from '../store/authStore'
 import { useWorkspaceStore } from '../store/workspaceStore'
+import type { PlanDeliveryRow } from '../types/planDelivery'
+import type { PliegoItemState } from '../types/pliegoForm'
 import type { BootstrapCriterion, Project } from '../types/project'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -114,6 +119,10 @@ export function ProjectWorkspacePage() {
   const [flowBusy, setFlowBusy] = useState(false)
   const [bootstrapDraft, setBootstrapDraft] = useState<BootstrapCriterion[]>([])
   const [specSummary, setSpecSummary] = useState('')
+  const [pliegoItemStates, setPliegoItemStates] = useState<Record<string, PliegoItemState>>(() =>
+    mergePliegoItemStates(undefined),
+  )
+  const [specSaveBusy, setSpecSaveBusy] = useState(false)
   const [files, setFiles] = useState<ProjectFileRow[]>([])
   const [revisions, setRevisions] = useState<RevisionRow[]>([])
   const [events, setEvents] = useState<ProjectEventRow[]>([])
@@ -133,6 +142,8 @@ export function ProjectWorkspacePage() {
   const [membersBusy, setMembersBusy] = useState(false)
   const [membersMsg, setMembersMsg] = useState<string | null>(null)
   const [memberSelection, setMemberSelection] = useState<Set<string>>(new Set())
+  const [planDeliveryRows, setPlanDeliveryRows] = useState<PlanDeliveryRow[]>([])
+  const [planDeliveryMsg, setPlanDeliveryMsg] = useState<string | null>(null)
 
   const workspaceTabs = useMemo(
     () =>
@@ -155,6 +166,12 @@ export function ProjectWorkspacePage() {
     setBootstrapDraft(body.project_bootstrap_criteria ?? [])
     const spec = body.specifications_document ?? {}
     setSpecSummary(typeof spec.summary === 'string' ? spec.summary : '')
+    const ga = spec.ga_fo_01_arquitectura
+    const rawPliegoStates =
+      ga && typeof ga === 'object' && ga !== null && 'item_states' in ga
+        ? (ga as { item_states?: Record<string, unknown> }).item_states
+        : undefined
+    setPliegoItemStates(mergePliegoItemStates(rawPliegoStates))
     setBpDraft(budgetPipeline(body.workflow_meta ?? {}))
     setClientVersion(
       typeof budgetPipeline(body.workflow_meta ?? {}).client_approved_version_label === 'string'
@@ -194,6 +211,62 @@ export function ProjectWorkspacePage() {
     if (ev.ok) setEvents((await ev.json()) as ProjectEventRow[])
   }, [token, projectUuid])
 
+  const loadPlanDelivery = useCallback(async () => {
+    if (!token || !projectUuid) return
+    setPlanDeliveryMsg(null)
+    const res = await apiFetch(`/api/projects/${projectUuid}/plan-delivery-requests`, { token })
+    if (!res.ok) {
+      setPlanDeliveryMsg('No se pudo cargar el control de entrega de planos')
+      return
+    }
+    setPlanDeliveryRows((await res.json()) as PlanDeliveryRow[])
+  }, [token, projectUuid])
+
+  async function addPlanDeliveryRow() {
+    if (!token || !projectUuid) return
+    setPlanDeliveryMsg(null)
+    const res = await apiFetch(`/api/projects/${projectUuid}/plan-delivery-requests`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ description: '', status: 'SOLICITADO' }),
+    })
+    if (!res.ok) {
+      setPlanDeliveryMsg('No se pudo crear la solicitud')
+      return
+    }
+    const row = (await res.json()) as PlanDeliveryRow
+    setPlanDeliveryRows((prev) => [...prev, row])
+  }
+
+  async function patchPlanDeliveryRow(rowUuid: string, patch: Record<string, unknown>) {
+    if (!token || !projectUuid) return
+    const res = await apiFetch(`/api/projects/${projectUuid}/plan-delivery-requests/${rowUuid}`, {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify(patch),
+    })
+    if (!res.ok) {
+      setPlanDeliveryMsg('No se pudo guardar el registro')
+      return
+    }
+    const updated = (await res.json()) as PlanDeliveryRow
+    setPlanDeliveryRows((prev) => prev.map((r) => (r.uuid === rowUuid ? updated : r)))
+  }
+
+  async function deletePlanDeliveryRow(rowUuid: string) {
+    if (!token || !projectUuid) return
+    setPlanDeliveryMsg(null)
+    const res = await apiFetch(`/api/projects/${projectUuid}/plan-delivery-requests/${rowUuid}`, {
+      method: 'DELETE',
+      token,
+    })
+    if (!res.ok) {
+      setPlanDeliveryMsg('No se pudo eliminar el registro')
+      return
+    }
+    setPlanDeliveryRows((prev) => prev.filter((r) => r.uuid !== rowUuid))
+  }
+
   useEffect(() => {
     if (!projectUuid || !token) return
     if (
@@ -205,6 +278,11 @@ export function ProjectWorkspacePage() {
       void loadAuxLists()
     }
   }, [tab, projectUuid, token, loadAuxLists])
+
+  useEffect(() => {
+    if (tab !== 'entregaPlanos' || !projectUuid || !token) return
+    void loadPlanDelivery()
+  }, [tab, projectUuid, token, loadPlanDelivery])
 
   useEffect(() => {
     const ids = new Set(workspaceTabs.map((t) => t.id))
@@ -295,18 +373,30 @@ export function ProjectWorkspacePage() {
   async function saveSpecifications() {
     if (!token || !project) return
     setFlowMsg(null)
-    const doc = { ...project.specifications_document, summary: specSummary }
-    const res = await apiFetch(`/api/projects/${projectUuid}/specifications`, {
-      method: 'PUT',
-      token,
-      body: JSON.stringify({ document: doc }),
-    })
-    const j = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setFlowMsg((j as { detail?: string }).detail ?? 'Error al guardar el pliego de condiciones')
-      return
+    setSpecSaveBusy(true)
+    try {
+      const doc = {
+        ...project.specifications_document,
+        summary: specSummary,
+        ga_fo_01_arquitectura: {
+          schema_version: 1 as const,
+          item_states: pliegoItemStates,
+        },
+      }
+      const res = await apiFetch(`/api/projects/${projectUuid}/specifications`, {
+        method: 'PUT',
+        token,
+        body: JSON.stringify({ document: doc }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setFlowMsg((j as { detail?: string }).detail ?? 'Error al guardar el pliego de condiciones')
+        return
+      }
+      setProject(j as Project)
+    } finally {
+      setSpecSaveBusy(false)
     }
-    setProject(j as Project)
   }
 
   async function saveBudgetPipeline() {
@@ -753,6 +843,147 @@ export function ProjectWorkspacePage() {
           </Card>
         ) : null}
 
+        {tab === 'entregaPlanos' ? (
+          <Card className="space-y-4 p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-ink">Control entrega de planos</h2>
+                <p className="mt-1 max-w-2xl text-sm text-muted">
+                  Registro tipo GA-FO-03. Cada solicitud recibe un número <span className="font-mono">SDP NNNN</span>{' '}
+                  único en este proyecto. La columna «Cantidad días» muestra el valor registrado o la diferencia entre
+                  fechas de solicitud y entrega.
+                </p>
+              </div>
+              <PrimaryButton
+                type="button"
+                disabled={!token || !projectUuid}
+                onClick={() => void addPlanDeliveryRow()}
+              >
+                Nueva solicitud
+              </PrimaryButton>
+            </div>
+            {planDeliveryMsg ? <p className="text-sm text-primary">{planDeliveryMsg}</p> : null}
+            <div className="overflow-x-auto rounded border border-black/10">
+              <table className="w-full min-w-[960px] text-left text-sm">
+                <thead className="bg-black/[0.04] text-xs uppercase text-muted">
+                  <tr>
+                    <th className="px-3 py-2">No.</th>
+                    <th className="px-3 py-2">Fecha solicitud</th>
+                    <th className="px-3 py-2">Proyecto</th>
+                    <th className="px-3 py-2">No. solicitud</th>
+                    <th className="px-3 py-2">Descripción</th>
+                    <th className="px-3 py-2">Fecha entrega</th>
+                    <th className="px-3 py-2">Cant. días</th>
+                    <th className="px-3 py-2">Estado</th>
+                    <th className="px-3 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {planDeliveryRows.map((row, idx) => (
+                    <tr key={row.uuid} className="border-t border-black/5 odd:bg-black/[0.015]">
+                      <td className="px-3 py-2 align-top tabular-nums text-muted">{idx + 1}</td>
+                      <td className="px-3 py-2 align-top">
+                        <input
+                          type="date"
+                          className="du-input w-[10.5rem] py-1.5 text-sm"
+                          value={row.request_date ? row.request_date.slice(0, 10) : ''}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            void patchPlanDeliveryRow(row.uuid, {
+                              request_date: v ? v : null,
+                            })
+                          }}
+                          aria-label="Fecha de solicitud"
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top text-sm text-ink">{project?.name ?? '—'}</td>
+                      <td className="px-3 py-2 align-top font-mono text-xs text-ink">{row.request_number}</td>
+                      <td className="px-3 py-2 align-top">
+                        <input
+                          className="du-input min-w-[200px] py-1.5 text-sm"
+                          value={row.description}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            setPlanDeliveryRows((prev) =>
+                              prev.map((r) => (r.uuid === row.uuid ? { ...r, description: v } : r)),
+                            )
+                          }}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim()
+                            void patchPlanDeliveryRow(row.uuid, { description: v })
+                          }}
+                          aria-label="Descripción"
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <input
+                          type="date"
+                          className="du-input w-[10.5rem] py-1.5 text-sm"
+                          value={row.delivery_date ? row.delivery_date.slice(0, 10) : ''}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            void patchPlanDeliveryRow(row.uuid, {
+                              delivery_date: v ? v : null,
+                            })
+                          }}
+                          aria-label="Fecha de entrega"
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <input
+                          type="number"
+                          min={0}
+                          className="du-input w-20 py-1.5 text-sm"
+                          placeholder="Auto"
+                          defaultValue={row.days_count ?? ''}
+                          key={`${row.uuid}-days-${row.updated_at}`}
+                          onBlur={(e) => {
+                            const raw = e.target.value.trim()
+                            const n = raw === '' ? null : Number(raw)
+                            void patchPlanDeliveryRow(row.uuid, {
+                              days_count: n === null || Number.isNaN(n) ? null : n,
+                            })
+                          }}
+                          aria-label="Cantidad de días"
+                        />
+                        {row.days_resolved != null ? (
+                          <div className="du-meta mt-0.5">Calc: {row.days_resolved}</div>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <select
+                          className="du-input py-1.5 text-sm"
+                          value={row.status}
+                          onChange={(e) => void patchPlanDeliveryRow(row.uuid, { status: e.target.value })}
+                          aria-label="Estado"
+                        >
+                          {PLAN_DELIVERY_STATUS_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <button
+                          type="button"
+                          className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+                          onClick={() => void deletePlanDeliveryRow(row.uuid)}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {planDeliveryRows.length === 0 ? (
+              <p className="text-sm text-muted">No hay solicitudes. Usa «Nueva solicitud» para crear la primera.</p>
+            ) : null}
+          </Card>
+        ) : null}
+
         {tab === 'revisiones' ? (
           <Card className="space-y-4 p-6">
             <h2 className="text-lg font-semibold text-ink">Revisiones de arquitectura</h2>
@@ -800,28 +1031,20 @@ export function ProjectWorkspacePage() {
         ) : null}
 
         {tab === 'especificaciones' ? (
-          <Card className="space-y-4 p-6">
-            <h2 className="text-lg font-semibold text-ink">Pliego de condiciones</h2>
-            <p className="text-sm text-muted">
-              Este paso va <span className="font-medium text-ink">antes del presupuesto</span>: documenta aquí las
-              condiciones del contrato / obra (alcance, exclusiones, normas, plazos, etc.). El resumen debe tener al menos
-              10 caracteres para poder avanzar la fase a Presupuesto en <strong className="text-ink">Flujo</strong>.
-            </p>
-            {flowMsg ? <p className="text-sm text-primary">{flowMsg}</p> : null}
-            <label htmlFor="spec-summary" className="du-label">
-              Resumen del pliego de condiciones
-            </label>
-            <textarea
-              id="spec-summary"
-              className="du-input min-h-[160px] w-full text-sm"
-              value={specSummary}
-              onChange={(e) => setSpecSummary(e.target.value)}
-              aria-label="Resumen del pliego de condiciones"
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-ink">Pliego de condiciones (GA-FO-01)</h2>
+            <PliegoCondicionesForm
+              projectUuid={projectUuid}
+              token={token}
+              specSummary={specSummary}
+              onSpecSummaryChange={setSpecSummary}
+              itemStates={pliegoItemStates}
+              onItemStatesChange={setPliegoItemStates}
+              onPersist={saveSpecifications}
+              persistBusy={specSaveBusy}
+              flowMsg={flowMsg}
             />
-            <PrimaryButton type="button" onClick={() => void saveSpecifications()}>
-              Guardar pliego de condiciones
-            </PrimaryButton>
-          </Card>
+          </div>
         ) : null}
 
         {tab === 'presupuesto' ? (

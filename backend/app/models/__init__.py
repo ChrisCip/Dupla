@@ -2,6 +2,7 @@ from app.models.architecture_revision import ArchitectureRevision
 from app.models.chat_conversation import ChatConversation, ChatConversationMember
 from app.models.chat_message import ChatMessage
 from app.models.module import Module
+from app.models.plan_delivery_request import PlanDeliveryRequest
 from app.models.project import Project, ProjectArchitectureData
 from app.models.project_member import ProjectMember
 from app.models.project_event import ProjectEvent
@@ -17,6 +18,7 @@ __all__ = [
     "ChatConversationMember",
     "ChatMessage",
     "Module",
+    "PlanDeliveryRequest",
     "Project",
     "ProjectArchitectureData",
     "ProjectMember",

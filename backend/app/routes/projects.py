@@ -9,6 +9,11 @@ from app.db.session import get_db
 from app.dependencies import get_current_user, require_master
 from app.models.user import User
 from app.schemas.architecture import ArchitectureDataResponse, ArchitectureDocumentPayload
+from app.schemas.plan_delivery import (
+    PlanDeliveryRequestCreate,
+    PlanDeliveryRequestPatch,
+    PlanDeliveryRequestResponse,
+)
 from app.schemas.project import (
     ProjectCreateRequest,
     ProjectMemberEntry,
@@ -16,6 +21,7 @@ from app.schemas.project import (
     ProjectResponse,
 )
 from app.services.export_service import ExportService
+from app.services.plan_delivery_service import PlanDeliveryService
 from app.services.project_service import ProjectService
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -144,6 +150,68 @@ async def put_architecture(
     svc = ProjectService(session)
     await svc.put_architecture(current, project_uuid, body)
     await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{project_uuid}/plan-delivery-requests",
+    response_model=list[PlanDeliveryRequestResponse],
+    summary="Control entrega de planos — listar solicitudes",
+)
+async def list_plan_delivery_requests(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[PlanDeliveryRequestResponse]:
+    svc = PlanDeliveryService(session)
+    return await svc.list_rows(current, project_uuid)
+
+
+@router.post(
+    "/{project_uuid}/plan-delivery-requests",
+    response_model=PlanDeliveryRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Control entrega de planos — nueva solicitud (SDP n+1)",
+)
+async def create_plan_delivery_request(
+    project_uuid: UUID,
+    body: PlanDeliveryRequestCreate,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> PlanDeliveryRequestResponse:
+    svc = PlanDeliveryService(session)
+    return await svc.create_row(current, project_uuid, body)
+
+
+@router.patch(
+    "/{project_uuid}/plan-delivery-requests/{row_uuid}",
+    response_model=PlanDeliveryRequestResponse,
+    summary="Control entrega de planos — actualizar solicitud",
+)
+async def patch_plan_delivery_request(
+    project_uuid: UUID,
+    row_uuid: UUID,
+    body: PlanDeliveryRequestPatch,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> PlanDeliveryRequestResponse:
+    svc = PlanDeliveryService(session)
+    return await svc.patch_row(current, project_uuid, row_uuid, body)
+
+
+@router.delete(
+    "/{project_uuid}/plan-delivery-requests/{row_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Control entrega de planos — eliminar solicitud",
+)
+async def delete_plan_delivery_request(
+    project_uuid: UUID,
+    row_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    svc = PlanDeliveryService(session)
+    await svc.delete_row(current, project_uuid, row_uuid)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
