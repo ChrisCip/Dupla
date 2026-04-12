@@ -381,6 +381,9 @@ class ProjectLifecycleService:
             WorkflowPhase.AWAITING_FILES,
             WorkflowPhase.FILES_INGESTED,
             WorkflowPhase.ARCHITECTURE_REVIEW,
+            WorkflowPhase.SPECIFICATIONS,
+            WorkflowPhase.BUDGETING_PIPELINE,
+            WorkflowPhase.BUDGET_APPROVED,
         ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
