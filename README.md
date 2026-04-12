@@ -1,4 +1,4 @@
-# Grupo Dupla — Módulo Arquitectura
+# Grupo Dupla — Core
 
 Monorepo: **FastAPI** (PostgreSQL + Redis) + **Vite/React** (Tailwind, Zod, Zustand).
 
