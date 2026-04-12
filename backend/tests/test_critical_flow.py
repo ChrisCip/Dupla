@@ -48,10 +48,20 @@ async def test_modules_cached_flow(client, auth_headers_async: dict[str, str]):
 
 
 @pytest.mark.asyncio
-async def test_project_architecture_flow(client, auth_headers_async: dict[str, str]):
-    create = await client.post(
+async def test_coordinator_cannot_create_project(client, auth_headers_async: dict[str, str]):
+    res = await client.post(
         "/api/projects",
         headers={**auth_headers_async, "Content-Type": "application/json"},
+        json={"name": "No debe existir", "client_name": None},
+    )
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_project_architecture_flow(client, master_auth_headers_async: dict[str, str]):
+    create = await client.post(
+        "/api/projects",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
         json={"name": "Obra demo", "client_name": "Cliente"},
     )
     assert create.status_code == 201, create.text
@@ -62,7 +72,7 @@ async def test_project_architecture_flow(client, auth_headers_async: dict[str, s
 
     get_empty = await client.get(
         f"/api/projects/{project_uuid}/architecture",
-        headers=auth_headers_async,
+        headers=master_auth_headers_async,
     )
     assert get_empty.status_code == 200
     assert get_empty.json()["document"]["groups"] == []
@@ -91,34 +101,34 @@ async def test_project_architecture_flow(client, auth_headers_async: dict[str, s
 
     put = await client.put(
         f"/api/projects/{project_uuid}/architecture",
-        headers={**auth_headers_async, "Content-Type": "application/json"},
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
         json=payload,
     )
     assert put.status_code == 204, put.text
 
     get_full = await client.get(
         f"/api/projects/{project_uuid}/architecture",
-        headers=auth_headers_async,
+        headers=master_auth_headers_async,
     )
     assert get_full.status_code == 200
     assert len(get_full.json()["document"]["groups"]) == 1
 
 
 @pytest.mark.asyncio
-async def test_exports_return_bytes(client, auth_headers_async: dict[str, str]):
+async def test_exports_return_bytes(client, master_auth_headers_async: dict[str, str]):
     create = await client.post(
         "/api/projects",
-        headers={**auth_headers_async, "Content-Type": "application/json"},
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
         json={"name": "Export demo", "client_name": None},
     )
     assert create.status_code == 201
     assert create.json()["workflow_phase"] == "BOOTSTRAPPING"
     pid = uuid.UUID(create.json()["uuid"])
 
-    xlsx = await client.get(f"/api/projects/{pid}/exports/pliego.xlsx", headers=auth_headers_async)
+    xlsx = await client.get(f"/api/projects/{pid}/exports/pliego.xlsx", headers=master_auth_headers_async)
     assert xlsx.status_code == 200
     assert xlsx.content[:2] == b"PK"
 
-    pdf = await client.get(f"/api/projects/{pid}/exports/pliego.pdf", headers=auth_headers_async)
+    pdf = await client.get(f"/api/projects/{pid}/exports/pliego.pdf", headers=master_auth_headers_async)
     assert pdf.status_code == 200
     assert pdf.content[:4] == b"%PDF"

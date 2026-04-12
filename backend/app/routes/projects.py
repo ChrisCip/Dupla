@@ -6,10 +6,15 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_master
 from app.models.user import User
 from app.schemas.architecture import ArchitectureDataResponse, ArchitectureDocumentPayload
-from app.schemas.project import ProjectCreateRequest, ProjectResponse
+from app.schemas.project import (
+    ProjectCreateRequest,
+    ProjectMemberEntry,
+    ProjectMembersPutRequest,
+    ProjectResponse,
+)
 from app.services.export_service import ExportService
 from app.services.project_service import ProjectService
 
@@ -40,7 +45,7 @@ async def list_projects(
 )
 async def create_project(
     body: ProjectCreateRequest,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_master)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectResponse:
     svc = ProjectService(session)
@@ -64,6 +69,40 @@ async def get_project(
     svc = ProjectService(session)
     project = await svc.get_project(current, project_uuid)
     return ProjectResponse.from_project(project)
+
+
+@router.get(
+    "/{project_uuid}/members",
+    response_model=list[ProjectMemberEntry],
+    summary="Miembros con acceso al proyecto",
+    description="Usuarios que pueden abrir el proyecto (además del creador). MASTER y miembros pueden listar.",
+)
+async def list_project_members(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[ProjectMemberEntry]:
+    svc = ProjectService(session)
+    rows = await svc.list_project_members(current, project_uuid)
+    return [ProjectMemberEntry(uuid=u, email=e) for u, e in rows]
+
+
+@router.put(
+    "/{project_uuid}/members",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Configurar miembros del proyecto",
+    description="Solo MASTER. El creador del proyecto siempre permanece con acceso.",
+)
+async def put_project_members(
+    project_uuid: UUID,
+    body: ProjectMembersPutRequest,
+    current: Annotated[User, Depends(require_master)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    svc = ProjectService(session)
+    await svc.set_project_members(current, project_uuid, body.member_user_uuids)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

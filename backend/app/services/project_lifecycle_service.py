@@ -337,11 +337,6 @@ class ProjectLifecycleService:
         checklist: dict[str, Any],
     ) -> ArchitectureRevision:
         project = await self._project_svc.get_project(user, project_uuid)
-        if WorkflowPhase(project.workflow_phase) != WorkflowPhase.ARCHITECTURE_REVIEW:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Revisiones solo en fase ARCHITECTURE_REVIEW",
-            )
         ver = await self._next_revision_version(project.id)
         rev = ArchitectureRevision(
             id=uuid.uuid4(),

@@ -93,10 +93,10 @@ async def create_task_card(
 async def patch_task_card(
     card_uuid: UUID,
     body: TaskCardPatchRequest,
-    _: Annotated[User, Depends(require_task_operator)],
+    current: Annotated[User, Depends(require_task_operator)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TaskCardResponse:
     svc = TaskBoardService(session)
-    card = await svc.patch_card(card_uuid, body)
+    card = await svc.patch_card(current, card_uuid, body)
     await session.commit()
     return TaskCardResponse.from_card(card)

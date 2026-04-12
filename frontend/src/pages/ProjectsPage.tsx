@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/authStore'
 export function ProjectsPage() {
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)
+  const role = useAuthStore((s) => s.role)
   const [projects, setProjects] = useState<Project[]>([])
   const [name, setName] = useState('Nuevo proyecto')
   const [client, setClient] = useState('')
@@ -108,8 +109,16 @@ export function ProjectsPage() {
           </p>
           <ol className="mt-5 max-w-md list-none space-y-2 border-l-2 border-primary/25 pl-4 text-sm text-ink">
             <li>
-              <span className="font-semibold text-primary">1.</span> Completa el nombre (y el cliente si quieres) y crea el
-              proyecto.
+              <span className="font-semibold text-primary">1.</span>{' '}
+              {role === 'MASTER' ? (
+                <>
+                  Completa el nombre (y el cliente si quieres) y crea el proyecto.
+                </>
+              ) : (
+                <>
+                  Solo un administrador crea proyectos; los que te asignen aparecen en la tabla.
+                </>
+              )}
             </li>
             <li>
               <span className="font-semibold text-primary">2.</span> En la tabla, abre el workspace con un clic en la
@@ -121,46 +130,56 @@ export function ProjectsPage() {
             </li>
           </ol>
         </div>
-        <Card className="w-full max-w-md p-4 shadow-md ring-1 ring-black/[0.04]">
-          <form onSubmit={createProject} className="space-y-3">
-            <div className="text-sm font-semibold text-ink">Nuevo proyecto</div>
-            <p className="du-meta leading-relaxed">
-              El nombre puede ser el código interno o la obra; el cliente ayuda a filtrar después.
+        {role === 'MASTER' ? (
+          <Card className="w-full max-w-md p-4 shadow-md ring-1 ring-black/[0.04]">
+            <form onSubmit={createProject} className="space-y-3">
+              <div className="text-sm font-semibold text-ink">Nuevo proyecto</div>
+              <p className="du-meta leading-relaxed">
+                El nombre puede ser el código interno o la obra; el cliente ayuda a filtrar después.
+              </p>
+              <div>
+                <label htmlFor="project-name" className="du-label">
+                  Nombre
+                </label>
+                <input
+                  id="project-name"
+                  className="du-input mt-1"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  aria-label="Nombre del proyecto"
+                  disabled={submitting}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="project-client" className="du-label">
+                  Cliente <span className="font-normal text-muted">(opcional)</span>
+                </label>
+                <input
+                  id="project-client"
+                  className="du-input mt-1"
+                  placeholder="Ej. Constructora …"
+                  value={client}
+                  onChange={(e) => setClient(e.target.value)}
+                  aria-label="Cliente"
+                  disabled={submitting}
+                />
+              </div>
+              {error ? <p className="text-sm font-medium text-primary">{error}</p> : null}
+              <PrimaryButton className="w-full" type="submit" disabled={submitting}>
+                {submitting ? 'Creando…' : 'Crear proyecto'}
+              </PrimaryButton>
+            </form>
+          </Card>
+        ) : (
+          <Card className="w-full max-w-md p-4 text-sm text-muted shadow-md ring-1 ring-black/[0.04]">
+            <p className="font-medium text-ink">Acceso a proyectos</p>
+            <p className="mt-2 leading-relaxed">
+              Un administrador debe crear el proyecto y asignarte acceso. Después lo verás en la tabla y podrás abrir el
+              workspace, el tablero de tareas y el chat.
             </p>
-            <div>
-              <label htmlFor="project-name" className="du-label">
-                Nombre
-              </label>
-              <input
-                id="project-name"
-                className="du-input mt-1"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                aria-label="Nombre del proyecto"
-                disabled={submitting}
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="project-client" className="du-label">
-                Cliente <span className="font-normal text-muted">(opcional)</span>
-              </label>
-              <input
-                id="project-client"
-                className="du-input mt-1"
-                placeholder="Ej. Constructora …"
-                value={client}
-                onChange={(e) => setClient(e.target.value)}
-                aria-label="Cliente"
-                disabled={submitting}
-              />
-            </div>
-            {error ? <p className="text-sm font-medium text-primary">{error}</p> : null}
-            <PrimaryButton className="w-full" type="submit" disabled={submitting}>
-              {submitting ? 'Creando…' : 'Crear proyecto'}
-            </PrimaryButton>
-          </form>
-        </Card>
+          </Card>
+        )}
       </div>
 
       <Card className="mt-10 overflow-hidden p-0">
@@ -220,8 +239,9 @@ export function ProjectsPage() {
                     <div className="mx-auto max-w-md rounded-lg border border-dashed border-black/15 bg-black/[0.02] px-6 py-8 text-center">
                       <p className="text-sm font-medium text-ink">Todavía no hay proyectos</p>
                       <p className="mt-2 text-sm text-muted">
-                        Usa el formulario de la derecha (o arriba en el móvil): nombre obligatorio, cliente opcional.
-                        Después el proyecto aparece aquí para abrir el workspace.
+                        {role === 'MASTER'
+                          ? 'Usa el formulario de la derecha (o arriba en el móvil): nombre obligatorio, cliente opcional. Después el proyecto aparece aquí para abrir el workspace.'
+                          : 'Cuando un administrador te dé acceso, el proyecto aparecerá aquí.'}
                       </p>
                     </div>
                   </td>

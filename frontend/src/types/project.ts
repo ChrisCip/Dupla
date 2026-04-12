@@ -14,4 +14,5 @@ export type Project = {
   workflow_meta: Record<string, unknown>
   project_bootstrap_criteria: BootstrapCriterion[]
   specifications_document: Record<string, unknown>
+  created_by_user_uuid?: string | null
 }

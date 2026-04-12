@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
@@ -7,6 +7,7 @@ import { PrimaryButton } from '../components/PrimaryButton'
 import { StatusBadge } from '../components/StatusBadge'
 import { Tabs } from '../components/Tabs'
 import { PHASE_WORKSPACE_HINTS } from '../constants/projectWorkspaceHints'
+import { visibleWorkspaceTabs } from '../constants/projectWorkspaceTabs'
 import {
   NEXT_WORKFLOW_PHASE,
   WORKFLOW_PHASE_LABELS,
@@ -42,18 +43,6 @@ function filenameFromContentDisposition(res: Response, fallback: string) {
   if (plain?.[1]) return plain[1].replace(/^"|"$/g, '')
   return fallback
 }
-
-const WORKSPACE_TABS = [
-  { id: 'detalles', label: 'Detalles' },
-  { id: 'flujo', label: 'Flujo' },
-  { id: 'archivos', label: 'Archivos' },
-  { id: 'revisiones', label: 'Revisiones' },
-  { id: 'especificaciones', label: 'Pliego de condiciones' },
-  { id: 'presupuesto', label: 'Presupuesto' },
-  { id: 'eventos', label: 'Eventos' },
-  { id: 'pliegos', label: 'Pliegos' },
-  { id: 'materiales', label: 'Materiales' },
-] as const
 
 type ProjectEventRow = {
   uuid: string
@@ -139,6 +128,19 @@ export function ProjectWorkspacePage() {
   const [linePrice, setLinePrice] = useState('')
   const [activeQuote, setActiveQuote] = useState('')
   const [exportBusy, setExportBusy] = useState<string | null>(null)
+  const [memberRows, setMemberRows] = useState<{ uuid: string; email: string }[]>([])
+  const [adminUsers, setAdminUsers] = useState<{ uuid: string; email: string }[]>([])
+  const [membersBusy, setMembersBusy] = useState(false)
+  const [membersMsg, setMembersMsg] = useState<string | null>(null)
+  const [memberSelection, setMemberSelection] = useState<Set<string>>(new Set())
+
+  const workspaceTabs = useMemo(
+    () =>
+      visibleWorkspaceTabs(project?.workflow_phase ?? 'BOOTSTRAPPING', {
+        isMaster: role === 'MASTER',
+      }),
+    [project?.workflow_phase, role],
+  )
 
   const refreshProject = useCallback(async () => {
     if (!projectUuid || !token) return
@@ -203,6 +205,39 @@ export function ProjectWorkspacePage() {
       void loadAuxLists()
     }
   }, [tab, projectUuid, token, loadAuxLists])
+
+  useEffect(() => {
+    const ids = new Set(workspaceTabs.map((t) => t.id))
+    if (!ids.has(tab)) {
+      setTab(workspaceTabs[0]?.id ?? 'detalles')
+    }
+  }, [workspaceTabs, tab])
+
+  useEffect(() => {
+    if (!token || !projectUuid || role !== 'MASTER' || !project) return
+    let cancelled = false
+    void (async () => {
+      const [m, u] = await Promise.all([
+        apiFetch(`/api/projects/${projectUuid}/members`, { token }),
+        apiFetch('/api/admin/users', { token }),
+      ])
+      if (cancelled) return
+      if (m.ok) setMemberRows((await m.json()) as { uuid: string; email: string }[])
+      if (u.ok) setAdminUsers((await u.json()) as { uuid: string; email: string }[])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token, projectUuid, role, project])
+
+  useEffect(() => {
+    const creator = project?.created_by_user_uuid
+    if (!creator) return
+    const next = new Set(
+      memberRows.map((r) => r.uuid).filter((id) => id !== creator),
+    )
+    setMemberSelection(next)
+  }, [memberRows, project?.created_by_user_uuid])
 
   async function exportFile(path: string, filename: string, busyKey: string) {
     if (!token) return
@@ -371,67 +406,72 @@ export function ProjectWorkspacePage() {
           <h1 id="workspace-heading" className="mt-2 text-xl font-bold tracking-tight text-ink">
             {displayTitle}
           </h1>
-          <p className="mt-1 du-meta">Workspace del proyecto</p>
+          <p className="mt-1 du-meta">
+            {phaseLabel ? `Fase: ${phaseLabel}` : 'Cargando fase…'}
+          </p>
         </div>
         <div className="flex w-full flex-col gap-4 sm:w-auto sm:items-end">
           <StatusBadge status={status} lastSavedAt={lastSavedAt} errorMessage={lastError} />
-          <p className="w-full text-left text-xs text-muted sm:text-right">
-            Las exportaciones pueden tardar unos segundos; el botón muestra «Generando…» mientras descarga.
-          </p>
-          <div className="flex w-full flex-wrap gap-2 sm:justify-end">
-            <PrimaryButton
-              type="button"
-              disabled={exportBusy !== null}
-              onClick={() =>
-                void exportFile(
-                  `/api/projects/${projectUuid}/exports/pliego.xlsx`,
-                  `pliego-${projectUuid}.xlsx`,
-                  'pliego-xlsx',
-                )
-              }
-            >
-              {exportBusy === 'pliego-xlsx' ? 'Generando…' : 'Pliego (Excel)'}
-            </PrimaryButton>
-            <PrimaryButton
-              type="button"
-              disabled={exportBusy !== null}
-              onClick={() =>
-                void exportFile(
-                  `/api/projects/${projectUuid}/exports/pliego.pdf`,
-                  `pliego-${projectUuid}.pdf`,
-                  'pliego-pdf',
-                )
-              }
-            >
-              {exportBusy === 'pliego-pdf' ? 'Generando…' : 'Pliego (PDF)'}
-            </PrimaryButton>
-            <PrimaryButton
-              type="button"
-              disabled={exportBusy !== null}
-              onClick={() =>
-                void exportFile(
-                  `/api/projects/${projectUuid}/exports/control-planos.xlsx`,
-                  `control-planos-${projectUuid}.xlsx`,
-                  'control-xlsx',
-                )
-              }
-            >
-              {exportBusy === 'control-xlsx' ? 'Generando…' : 'Control planos (Excel)'}
-            </PrimaryButton>
-            <PrimaryButton
-              type="button"
-              disabled={exportBusy !== null}
-              onClick={() =>
-                void exportFile(
-                  `/api/projects/${projectUuid}/exports/control-planos.pdf`,
-                  `control-planos-${projectUuid}.pdf`,
-                  'control-pdf',
-                )
-              }
-            >
-              {exportBusy === 'control-pdf' ? 'Generando…' : 'Control planos (PDF)'}
-            </PrimaryButton>
-          </div>
+          <details className="w-full max-w-md rounded-md border border-black/10 bg-white px-3 py-2 text-left text-sm shadow-[var(--shadow-card)] sm:max-w-lg">
+            <summary className="cursor-pointer font-medium text-ink">Exportaciones (Excel / PDF)</summary>
+            <p className="mt-2 text-xs text-muted">
+              Pueden tardar unos segundos; el botón muestra «Generando…» mientras descarga.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <PrimaryButton
+                type="button"
+                disabled={exportBusy !== null}
+                onClick={() =>
+                  void exportFile(
+                    `/api/projects/${projectUuid}/exports/pliego.xlsx`,
+                    `pliego-${projectUuid}.xlsx`,
+                    'pliego-xlsx',
+                  )
+                }
+              >
+                {exportBusy === 'pliego-xlsx' ? 'Generando…' : 'Pliego (Excel)'}
+              </PrimaryButton>
+              <PrimaryButton
+                type="button"
+                disabled={exportBusy !== null}
+                onClick={() =>
+                  void exportFile(
+                    `/api/projects/${projectUuid}/exports/pliego.pdf`,
+                    `pliego-${projectUuid}.pdf`,
+                    'pliego-pdf',
+                  )
+                }
+              >
+                {exportBusy === 'pliego-pdf' ? 'Generando…' : 'Pliego (PDF)'}
+              </PrimaryButton>
+              <PrimaryButton
+                type="button"
+                disabled={exportBusy !== null}
+                onClick={() =>
+                  void exportFile(
+                    `/api/projects/${projectUuid}/exports/control-planos.xlsx`,
+                    `control-planos-${projectUuid}.xlsx`,
+                    'control-xlsx',
+                  )
+                }
+              >
+                {exportBusy === 'control-xlsx' ? 'Generando…' : 'Control planos (Excel)'}
+              </PrimaryButton>
+              <PrimaryButton
+                type="button"
+                disabled={exportBusy !== null}
+                onClick={() =>
+                  void exportFile(
+                    `/api/projects/${projectUuid}/exports/control-planos.pdf`,
+                    `control-planos-${projectUuid}.pdf`,
+                    'control-pdf',
+                  )
+                }
+              >
+                {exportBusy === 'control-pdf' ? 'Generando…' : 'Control planos (PDF)'}
+              </PrimaryButton>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -485,7 +525,7 @@ export function ProjectWorkspacePage() {
         </div>
       ) : null}
 
-      <Tabs tabs={[...WORKSPACE_TABS]} value={tab} onChange={setTab} labelledBy="workspace-heading">
+      <Tabs tabs={workspaceTabs} value={tab} onChange={setTab} labelledBy="workspace-heading">
         {tab === 'detalles' ? (
           <Card className="p-6">
             <h2 className="text-lg font-semibold text-ink">Detalles del proyecto</h2>
@@ -528,6 +568,80 @@ export function ProjectWorkspacePage() {
                     Chat del proyecto
                   </button>
                 </div>
+                {role === 'MASTER' ? (
+                  <div className="mt-8 border-t border-black/10 pt-6">
+                    <h3 className="text-md font-semibold text-ink">Quién puede ver este proyecto</h3>
+                    <p className="mt-1 text-sm text-muted">
+                      El creador del proyecto siempre tiene acceso. Marca usuarios con módulo Arquitectura que deben ver
+                      el workspace.
+                    </p>
+                    {membersMsg ? <p className="mt-2 text-sm text-primary">{membersMsg}</p> : null}
+                    <ul className="mt-4 max-h-56 space-y-2 overflow-y-auto rounded-md border border-black/10 p-3 text-sm">
+                      {adminUsers.map((u) => {
+                        const isCreator = u.uuid === project.created_by_user_uuid
+                        const checked = isCreator || memberSelection.has(u.uuid)
+                        return (
+                          <li key={u.uuid} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`pm-${u.uuid}`}
+                              className="mt-0.5"
+                              checked={checked}
+                              disabled={isCreator || membersBusy}
+                              onChange={() => {
+                                if (isCreator) return
+                                setMemberSelection((prev) => {
+                                  const next = new Set(prev)
+                                  if (next.has(u.uuid)) next.delete(u.uuid)
+                                  else next.add(u.uuid)
+                                  return next
+                                })
+                              }}
+                            />
+                            <label htmlFor={`pm-${u.uuid}`} className={isCreator ? 'text-muted' : 'text-ink'}>
+                              {u.email}
+                              {isCreator ? <span className="du-meta"> (creador)</span> : null}
+                            </label>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                    <PrimaryButton
+                      type="button"
+                      className="mt-4"
+                      disabled={membersBusy}
+                      onClick={() => {
+                        if (!token || !projectUuid) return
+                        setMembersBusy(true)
+                        setMembersMsg(null)
+                        void (async () => {
+                          try {
+                            const res = await apiFetch(`/api/projects/${projectUuid}/members`, {
+                              method: 'PUT',
+                              token,
+                              body: JSON.stringify({
+                                member_user_uuids: Array.from(memberSelection),
+                              }),
+                            })
+                            if (!res.ok) {
+                              setMembersMsg('No se pudo guardar la lista de miembros')
+                              return
+                            }
+                            setMembersMsg('Lista de acceso actualizada')
+                            const m = await apiFetch(`/api/projects/${projectUuid}/members`, { token })
+                            if (m.ok) {
+                              setMemberRows((await m.json()) as { uuid: string; email: string }[])
+                            }
+                          } finally {
+                            setMembersBusy(false)
+                          }
+                        })()
+                      }}
+                    >
+                      {membersBusy ? 'Guardando…' : 'Guardar acceso'}
+                    </PrimaryButton>
+                  </div>
+                ) : null}
               </>
             ) : null}
           </Card>
@@ -642,34 +756,37 @@ export function ProjectWorkspacePage() {
         {tab === 'revisiones' ? (
           <Card className="space-y-4 p-6">
             <h2 className="text-lg font-semibold text-ink">Revisiones de arquitectura</h2>
+            <p className="text-sm text-muted">
+              Puedes registrar una revisión en cualquier fase del proyecto. Para avanzar a «Pliego de condiciones» sigue
+              siendo necesaria una revisión <span className="font-medium text-ink">aprobada</span> cuando el flujo esté
+              en revisión de arquitectura.
+            </p>
             {flowMsg ? <p className="text-sm text-primary">{flowMsg}</p> : null}
-            {project?.workflow_phase === 'ARCHITECTURE_REVIEW' ? (
-              <div className="space-y-3 border-b border-black/10 pb-4">
-                <label className="block text-sm text-muted">
-                  Decisión
-                  <select
-                    className="du-input mt-1"
-                    value={revDecision}
-                    onChange={(e) => setRevDecision(e.target.value)}
-                  >
-                    <option value="APPROVED">APPROVED</option>
-                    <option value="REJECTED">REJECTED</option>
-                    <option value="PARTIAL">PARTIAL</option>
-                  </select>
-                </label>
-                <label className="block text-sm text-muted">
-                  Notas
-                  <textarea
-                    className="du-input mt-1 min-h-[80px]"
-                    value={revNotes}
-                    onChange={(e) => setRevNotes(e.target.value)}
-                  />
-                </label>
-                <PrimaryButton type="button" onClick={() => void submitRevision()}>
-                  Registrar revisión
-                </PrimaryButton>
-              </div>
-            ) : null}
+            <div className="space-y-3 border-b border-black/10 pb-4">
+              <label className="block text-sm text-muted">
+                Decisión
+                <select
+                  className="du-input mt-1"
+                  value={revDecision}
+                  onChange={(e) => setRevDecision(e.target.value)}
+                >
+                  <option value="APPROVED">APPROVED</option>
+                  <option value="REJECTED">REJECTED</option>
+                  <option value="PARTIAL">PARTIAL</option>
+                </select>
+              </label>
+              <label className="block text-sm text-muted">
+                Notas
+                <textarea
+                  className="du-input mt-1 min-h-[80px]"
+                  value={revNotes}
+                  onChange={(e) => setRevNotes(e.target.value)}
+                />
+              </label>
+              <PrimaryButton type="button" onClick={() => void submitRevision()}>
+                Registrar revisión
+              </PrimaryButton>
+            </div>
             <ul className="space-y-2 text-sm">
               {revisions.map((r) => (
                 <li key={r.uuid} className="rounded border border-black/10 px-3 py-2">

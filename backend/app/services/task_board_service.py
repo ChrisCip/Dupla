@@ -10,8 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
+from app.models.project import Project
 from app.models.task_board import TaskCard, TaskList
 from app.models.user import User, UserModule
+from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.task_board import (
     TaskAssigneeOption,
@@ -27,6 +29,22 @@ class TaskBoardService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._users = UserRepository(session)
+        self._projects = ProjectRepository(session)
+
+    async def _require_project_access_for_card(self, actor: User, project_id: Optional[uuid.UUID]) -> None:
+        if project_id is None:
+            return
+        project = await self._session.get(Project, project_id)
+        if project is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Proyecto no encontrado",
+            )
+        if not await self._projects.user_has_access_to_project(actor, project):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Sin acceso a este proyecto",
+            )
 
     async def list_assignees(self) -> list[TaskAssigneeOption]:
         settings = get_settings()
@@ -110,6 +128,7 @@ class TaskBoardService:
 
     async def create_card(self, actor: User, body: TaskCardCreateRequest) -> TaskCard:
         await self._validate_assignee(body.assignee_uuid)
+        await self._require_project_access_for_card(actor, body.project_uuid)
 
         lst = await self._session.get(TaskList, body.list_uuid)
         if lst is None:
@@ -137,10 +156,12 @@ class TaskBoardService:
         await self._session.refresh(card, attribute_names=["creator", "assignee"])
         return card
 
-    async def patch_card(self, card_uuid: uuid.UUID, body: TaskCardPatchRequest) -> TaskCard:
+    async def patch_card(self, actor: User, card_uuid: uuid.UUID, body: TaskCardPatchRequest) -> TaskCard:
         card = await self._session.get(TaskCard, card_uuid)
         if card is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
+
+        await self._require_project_access_for_card(actor, card.project_id)
 
         updates = body.model_dump(exclude_unset=True)
 
@@ -149,6 +170,7 @@ class TaskBoardService:
             card.assignee_id = updates["assignee_uuid"]
 
         if "project_uuid" in updates:
+            await self._require_project_access_for_card(actor, updates["project_uuid"])
             card.project_id = updates["project_uuid"]
 
         if "title" in updates and updates["title"] is not None:

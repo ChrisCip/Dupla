@@ -3,6 +3,7 @@ from app.models.chat_conversation import ChatConversation, ChatConversationMembe
 from app.models.chat_message import ChatMessage
 from app.models.module import Module
 from app.models.project import Project, ProjectArchitectureData
+from app.models.project_member import ProjectMember
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
 from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
@@ -18,6 +19,7 @@ __all__ = [
     "Module",
     "Project",
     "ProjectArchitectureData",
+    "ProjectMember",
     "ProjectEvent",
     "ProjectFile",
     "SubcontractQuote",

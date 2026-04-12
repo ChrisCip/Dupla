@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.models.project import Project
 
@@ -22,6 +22,7 @@ class ProjectResponse(BaseModel):
     workflow_meta: dict[str, Any]
     project_bootstrap_criteria: list[Any]
     specifications_document: dict[str, Any]
+    created_by_user_uuid: Optional[UUID] = None
 
     @classmethod
     def from_project(cls, project: Project) -> ProjectResponse:
@@ -34,4 +35,14 @@ class ProjectResponse(BaseModel):
             workflow_meta=project.workflow_meta or {},
             project_bootstrap_criteria=project.project_bootstrap_criteria or [],
             specifications_document=project.specifications_document or {},
+            created_by_user_uuid=project.created_by,
         )
+
+
+class ProjectMemberEntry(BaseModel):
+    uuid: UUID
+    email: EmailStr
+
+
+class ProjectMembersPutRequest(BaseModel):
+    member_user_uuids: list[UUID] = Field(default_factory=list)

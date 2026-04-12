@@ -36,6 +36,11 @@ class ProjectService:
 
     async def create_project(self, user: User, body: ProjectCreateRequest) -> Project:
         await self.ensure_architecture_access(user)
+        if user.role != UserRole.MASTER:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo MASTER puede crear proyectos",
+            )
         return await self._projects.create_with_architecture(
             name=body.name,
             client_name=body.client_name,
@@ -47,13 +52,40 @@ class ProjectService:
         project = await self._projects.get_by_uuid(project_uuid)
         if project is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+        if not await self._projects.user_has_access_to_project(user, project):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
         return project
 
+    async def list_project_members(self, user: User, project_uuid: UUID) -> list[tuple[UUID, str]]:
+        project = await self.get_project(user, project_uuid)
+        return await self._projects.list_project_members_with_emails(project.id)
+
+    async def set_project_members(self, master: User, project_uuid: UUID, member_user_uuids: list[UUID]) -> None:
+        if master.role != UserRole.MASTER:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo MASTER puede configurar quién ve el proyecto",
+            )
+        project = await self.get_project(master, project_uuid)
+        ids = set(member_user_uuids)
+        if project.created_by is not None:
+            ids.add(project.created_by)
+        for uid in ids:
+            u = await self._users.get_by_uuid(uid)
+            if u is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Uno o más usuarios no existen",
+                )
+            if not await self._users.has_module(uid, settings.architecture_module_id):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Todos los miembros deben tener acceso al módulo Arquitectura",
+                )
+        await self._projects.replace_project_members(project.id, ids)
+
     async def get_architecture(self, user: User, project_uuid: UUID) -> Tuple[dict, Optional[datetime]]:
-        await self.ensure_architecture_access(user)
-        project = await self._projects.get_by_uuid(project_uuid)
-        if project is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+        project = await self.get_project(user, project_uuid)
         if project.architecture_data is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Architecture data missing")
         doc = project.architecture_data.document or {}
@@ -69,10 +101,7 @@ class ProjectService:
         project_uuid: UUID,
         payload: ArchitectureDocumentPayload,
     ) -> None:
-        await self.ensure_architecture_access(user)
-        project = await self._projects.get_by_uuid(project_uuid)
-        if project is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+        project = await self.get_project(user, project_uuid)
         groups = [g.model_dump(mode="json") for g in payload.groups]
         materiales = [m.model_dump(mode="json") for m in payload.materiales]
         document = {"groups": groups}

@@ -1,8 +1,9 @@
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -11,6 +12,8 @@ from app.domain.workflow_phase import WorkflowPhase
 from app.models.project import Project, ProjectArchitectureData
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
+from app.models.project_member import ProjectMember
+from app.models.user import User, UserRole
 
 
 def _default_workflow_meta() -> dict[str, Any]:
@@ -35,9 +38,48 @@ class ProjectRepository:
     async def list_for_user(self, user_uuid: UUID, *, is_master: bool) -> list[Project]:
         stmt = select(Project).order_by(Project.created_at.desc())
         if not is_master:
-            stmt = stmt.where(Project.created_by == user_uuid)
+            member_projects = select(ProjectMember.project_id).where(ProjectMember.user_id == user_uuid)
+            stmt = stmt.where(or_(Project.created_by == user_uuid, Project.id.in_(member_projects)))
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
+
+    async def is_project_member(self, project_id: UUID, user_id: UUID) -> bool:
+        q = select(ProjectMember.id).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == user_id,
+        )
+        return (await self._session.execute(q)).scalar_one_or_none() is not None
+
+    async def user_has_access_to_project(self, user: User, project: Project) -> bool:
+        if user.role == UserRole.MASTER:
+            return True
+        if project.created_by is not None and project.created_by == user.id:
+            return True
+        return await self.is_project_member(project.id, user.id)
+
+    async def add_project_member(self, project_id: UUID, user_id: UUID) -> None:
+        if await self.is_project_member(project_id, user_id):
+            return
+        self._session.add(
+            ProjectMember(id=uuid.uuid4(), project_id=project_id, user_id=user_id),
+        )
+        await self._session.flush()
+
+    async def replace_project_members(self, project_id: UUID, user_ids: set[UUID]) -> None:
+        await self._session.execute(delete(ProjectMember).where(ProjectMember.project_id == project_id))
+        for uid in user_ids:
+            self._session.add(ProjectMember(id=uuid.uuid4(), project_id=project_id, user_id=uid))
+        await self._session.flush()
+
+    async def list_project_members_with_emails(self, project_id: UUID) -> list[tuple[UUID, str]]:
+        q = (
+            select(User.id, User.email)
+            .join(ProjectMember, ProjectMember.user_id == User.id)
+            .where(ProjectMember.project_id == project_id)
+            .order_by(User.email)
+        )
+        rows = (await self._session.execute(q)).all()
+        return [(r[0], r[1]) for r in rows]
 
     async def get_by_uuid(self, project_uuid: UUID) -> Optional[Project]:
         result = await self._session.execute(
@@ -73,6 +115,7 @@ class ProjectRepository:
         )
         self._session.add(arch)
         await self._session.flush()
+        await self.add_project_member(project.id, created_by)
         await self._session.refresh(project, ["architecture_data"])
         return project
 
