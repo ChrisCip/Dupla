@@ -1,0 +1,105 @@
+Metadata-Version: 2.4
+Name: dupla-api
+Version: 0.1.0
+Summary: Async DWG processing API (APS extraction + CAD normalization)
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.26
+Requires-Dist: openai>=1.0
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: requests>=2.31
+Requires-Dist: openpyxl>=3.1
+Requires-Dist: pymupdf>=1.24.0
+Requires-Dist: fastapi>=0.109
+Requires-Dist: uvicorn[standard]>=0.27
+Requires-Dist: python-multipart>=0.0.9
+Requires-Dist: pydantic-settings>=2.2
+Requires-Dist: redis>=5.0
+Requires-Dist: rq>=1.16
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: httpx>=0.27; extra == "dev"
+
+# Dupla API
+
+Small FastAPI service that accepts a **DWG** upload, enqueues **Autodesk Platform Services (APS) extraction + CAD normalization** asynchronously, and exposes job status and **normalized CAD JSON** via HTTP.
+
+Phase 2 (not implemented here) can extend the same job layout with PDF, BC3, and full budget/vision stages using packages under `lib/`.
+
+## Layout
+
+- `app/` — HTTP layer (FastAPI, job metadata, RQ enqueue).
+- `lib/` — Dupla domain packages (`core`, `aps_integration`, `agents`, …) copied from the main repo for a self-contained deploy.
+- `worker/` — RQ worker process (`python -m worker`).
+- `data/jobs/{uuid}/` — Per-job `inputs/`, `outputs/`, and `meta.json` (ignored by git except `.gitkeep`).
+
+## Requirements
+
+- Python 3.11+
+- Redis (for RQ), local or Docker
+- `.env` with APS credentials (same variables as `lib/aps_integration/aps_auth.py`): `CLIENT_ID`, `CLIENT_SECRET`, and `APS_BUCKET_NAME` in `lib/aps_integration/oss_manager.py` / env
+
+## Local setup
+
+```bash
+cd api
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env   # fill APS_* and any other keys
+```
+
+Start Redis (example with Homebrew): `redis-server`
+
+Run API:
+
+```bash
+export JOB_DATA_DIR="$PWD/data"
+export REDIS_URL="redis://127.0.0.1:6379/0"
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Run worker (separate terminal, same `cwd` and env):
+
+```bash
+export PYTHONPATH="$PWD:$PWD/lib"
+export JOB_DATA_DIR="$PWD/data"
+export REDIS_URL="redis://127.0.0.1:6379/0"
+python -m worker
+```
+
+## HTTP
+
+- `GET /health` — liveness.
+- `POST /api/v1/projects` — `multipart/form-data` field **`dwg`** (`.dwg` file). Returns **202** with `job_id` and `status_url`.
+- `GET /api/v1/projects/{job_id}/results` — job status; when `succeeded`, includes **`cad_facts`** (normalized JSON) and output filenames under `outputs`.
+
+### curl
+
+```bash
+# Upload
+curl -sS -X POST "http://127.0.0.1:8000/api/v1/projects" \
+  -F "dwg=@/path/to/file.dwg"
+
+# Poll results (replace JOB_ID)
+curl -sS "http://127.0.0.1:8000/api/v1/projects/JOB_ID/results"
+```
+
+## Docker Compose
+
+From `api/`:
+
+```bash
+cp .env.example .env   # add secrets
+docker compose up --build
+```
+
+Services: **redis**, **api** (port 8000), **worker**. Job files persist under `./data`.
+
+## Tests
+
+```bash
+cd api
+pip install -e ".[dev]"
+pytest tests/ -v
+```

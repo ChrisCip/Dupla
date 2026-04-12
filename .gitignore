@@ -19,3 +19,4 @@ demo_files/
 !examples/*.json
 !rules_engine/
 !rules_engine/*.json
+venv/
