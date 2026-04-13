@@ -2,10 +2,10 @@
 Vision agent for normalized building inventory extraction.
 
 Two-step approach:
-1. GPT-4o Vision returns a simple flat count of visible elements.
+1. The configured vision model (default: gpt-5.1 via OPENAI_VISION_MODEL) returns a simple flat count of visible elements.
 2. Python adapter converts that simple inventory to the full LevelInventory schema.
 
-This avoids asking GPT-4o to fill a complex 15-field schema, which causes it to
+This avoids asking the model to fill a complex 15-field schema, which causes it to
 return mostly null/empty data. The simpler prompt produces useful counts.
 """
 
@@ -25,7 +25,15 @@ from core.schemas import LevelInventory, level_inventory_from_dict
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
+# Vision Chat Completions (.env overrides):
+#   OPENAI_VISION_MODEL — default gpt-5.1 (e.g. gpt-5.1-2025-11-13 for a snapshot)
+#   OPENAI_VISION_MAX_OUTPUT — max output tokens (default 4096)
+#   OPENAI_VISION_REASONING_EFFORT — gpt-5.x only: none | low | medium | high (default none)
+#   OPENAI_VISION_TEMPERATURE — gpt-4 family only (default 0.1)
+
 logger = logging.getLogger("dupla.vision")
+
+_DEFAULT_VISION_MODEL = "gpt-5.1"
 
 try:
     from openai import OpenAI
@@ -43,6 +51,59 @@ def get_client() -> "OpenAI":
     if not api_key:
         raise ValueError("OPENAI_API_KEY is not configured in the project .env file.")
     return OpenAI(api_key=api_key)
+
+
+def vision_model_id(explicit: str | None = None) -> str:
+    """Resolved vision model id (OPENAI_VISION_MODEL or default gpt-5.1)."""
+    if explicit is not None:
+        s = explicit.strip()
+        return s or _DEFAULT_VISION_MODEL
+    raw = (os.getenv("OPENAI_VISION_MODEL") or "").strip()
+    return raw or _DEFAULT_VISION_MODEL
+
+
+def _vision_max_output_tokens() -> int:
+    raw = (os.getenv("OPENAI_VISION_MAX_OUTPUT") or "4096").strip()
+    try:
+        n = int(raw)
+    except ValueError:
+        return 4096
+    return max(256, min(n, 128_000))
+
+
+def _vision_reasoning_effort() -> str:
+    return (os.getenv("OPENAI_VISION_REASONING_EFFORT") or "none").strip() or "none"
+
+
+def _uses_gpt5_completion_params(model: str) -> bool:
+    return model.lower().startswith("gpt-5")
+
+
+def _vision_chat_completion(
+    client: "OpenAI",
+    *,
+    model: str,
+    messages: list[dict[str, Any]],
+) -> Any:
+    """Chat Completions with kwargs compatible with GPT-5.x vs GPT-4 family."""
+    max_out = _vision_max_output_tokens()
+    if _uses_gpt5_completion_params(model):
+        return client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_completion_tokens=max_out,
+            reasoning_effort=_vision_reasoning_effort(),
+        )
+    try:
+        temp = float((os.getenv("OPENAI_VISION_TEMPERATURE") or "0.1").strip() or "0.1")
+    except ValueError:
+        temp = 0.1
+    return client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=max_out,
+        temperature=temp,
+    )
 
 
 def encode_image(image_path: Path) -> str:
@@ -83,7 +144,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Step 1: Simple prompt — GPT-4o counts visible elements
+# Step 1: Simple prompt — vision model counts visible elements
 # ---------------------------------------------------------------------------
 
 _MAX_OFFICE_METHODOLOGY_CHARS = 12000
@@ -102,12 +163,13 @@ REGLAS OBLIGATORIAS:
 4. Notaciones tipo "e=0.20" o "esp. 0.15" = espesor en metros.
 5. Si ves cotas entre líneas de nivel (NPT+0.00, NPT+2.80) = altura de entrepiso.
 6. CADA tipo diferente de elemento va en una entrada separada. No agrupes bloques de 6 con bloques de 8.
-7. Extrae ABSOLUTAMENTE TODO lo visible: estructura, albañilería, acabados, instalaciones eléctricas, sanitarias, carpintería.
+7. Enfócate en elementos ARQUITECTÓNICOS: albañilería, acabados, carpintería, pisos, cielos.
 8. Para baños: cuenta CADA pieza sanitaria (inodoro, lavamanos, ducha, bañera, bidet, gabinete).
 9. Para cocinas: identifica gabinetes, fregaderos, conexiones de gas si son visibles.
 10. Para instalaciones eléctricas: tomacorrientes, interruptores, luminarias, paneles, salidas especiales.
 11. Para instalaciones sanitarias: tuberías visibles, registros, trampas, válvulas, puntos de agua.
 12. Identifica el TIPO DE PLANO: arquitectónico, estructural, eléctrico, sanitario, corte, elevación, detalle.
+13. IMPORTANTE: Si el plano es ARQUITECTÓNICO, NO cuantifiques volúmenes de hormigón, acero de refuerzo ni encofrado. Esos elementos se presupuestan desde los planos ESTRUCTURALES. Solo anota las secciones visibles de columnas/vigas como referencia, sin calcular cantidades.
 
 Return ONLY valid JSON — no markdown, no explanation, no text."""
 
@@ -332,9 +394,9 @@ def _build_simple_user_prompt(
 
 INSTRUCCIONES DE EXTRACCIÓN EXHAUSTIVA:
 
-1. ESTRUCTURA: Busca cuadros de columnas/vigas/zapatas/losas. Lee CADA notación 
-   (V-1, C-1, Z-1, L-1) con su sección (ancho x alto). Si ves "0.30x0.60" cerca 
-   de una viga, esa es la sección. Cuenta CADA elemento individualmente.
+1. ESTRUCTURA (solo referencia): Si ves notaciones de columnas/vigas (V-1, C-1), anótalas 
+   con su sección en structural_elements, pero NO calcules volúmenes de hormigón ni 
+   acero de refuerzo — eso corresponde a los planos estructurales, no arquitectónicos.
 
 2. MUROS: Diferencia CADA tipo: bloque 6" (B-6, 0.15m), bloque 8" (B-8, 0.20m), 
    concreto armado (muro cortante), drywall. Mide longitudes de las cotas o estima 
@@ -386,7 +448,7 @@ def _simple_to_level_inventory(
     level_id: str,
     image_name: str,
 ) -> dict[str, Any]:
-    """Convert GPT-4o simple inventory output to a LevelInventory-compatible dict."""
+    """Convert simple vision JSON inventory to a LevelInventory-compatible dict."""
 
     _BLOCK_THICKNESS: dict[str, float] = {
         "block_6in": 0.15, "block_8in": 0.20, "block_4in": 0.10,
@@ -801,36 +863,32 @@ def analyze_plan(
     extension = image_path.suffix.lower().replace(".", "")
     mime = f"image/{extension}" if extension in {"png", "jpg", "jpeg", "webp"} else "image/png"
 
-    # Step 1: Ask GPT-4o to return a simple flat inventory
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": _SIMPLE_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": _build_simple_user_prompt(
-                            image_path,
-                            level_name,
-                            cad_summary,
-                            office_methodology=office_methodology,
-                        ),
+    model = vision_model_id()
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": _SIMPLE_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": _build_simple_user_prompt(
+                        image_path,
+                        level_name,
+                        cad_summary,
+                        office_methodology=office_methodology,
+                    ),
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{mime};base64,{image_b64}",
+                        "detail": "high",
                     },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:{mime};base64,{image_b64}",
-                            "detail": "high",
-                        },
-                    },
-                ],
-            },
-        ],
-        max_tokens=4096,
-        temperature=0.1,
-    )
+                },
+            ],
+        },
+    ]
+    response = _vision_chat_completion(client, model=model, messages=messages)
 
     raw_text = response.choices[0].message.content or ""
     simple_payload = _extract_json(raw_text)
@@ -842,6 +900,7 @@ def analyze_plan(
             "_metadata": {
                 "file": image_path.name,
                 "timestamp": datetime.now().isoformat(),
+                "model": model,
             },
         }
 
@@ -858,6 +917,7 @@ def analyze_plan(
         "file": image_path.name,
         "timestamp": datetime.now().isoformat(),
         "office_methodology_chars": len(office_methodology or ""),
+        "model": model,
     }
     return result
 

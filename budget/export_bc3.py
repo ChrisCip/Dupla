@@ -57,9 +57,15 @@ def _coerce_row(row: BudgetRow | Mapping[str, object]) -> BudgetRow:
     )
 
 
-def _sanitize_code(code: str) -> str:
-    """BC3 codes must not contain # or | characters."""
-    return code.replace("#", "").replace("|", "").strip()
+def _sanitize_code(code: str, max_len: int = 20) -> str:
+    """BC3 codes must not contain # or | and fit within FIEBDC limits."""
+    clean = code.replace("#", "").replace("|", "").strip()
+    if clean.startswith("DUP-CH-"):
+        parts = clean.replace("DUP-CH-", "").split("-", 1)
+        num = parts[0]
+        label = parts[1][:max_len - 3 - len(num)] if len(parts) > 1 else ""
+        clean = f"D{num}{label}"
+    return clean[:max_len]
 
 
 def export_budget_bc3(

@@ -215,6 +215,7 @@ def takeoff_budget_eligibility(
     derived_from_keys: set[str],
     concrete_volume_prefixes: set[str],
     budget_inclusive: bool = True,
+    allowed_item_types: set[str] | None = None,
 ) -> tuple[bool, str]:
     """Whether this takeoff becomes a budget line, and a short reason if not."""
     item_type = takeoff.item_type.lower()
@@ -224,6 +225,9 @@ def takeoff_budget_eligibility(
 
     if item_type == "pres_reference_line":
         return True, ""
+
+    if allowed_item_types is not None and item_type not in allowed_item_types:
+        return False, "discipline_filter"
 
     always_skip = {
         "wall_gross_area",
@@ -314,12 +318,14 @@ def _budgetable_takeoff(
     derived_from_keys: set[str],
     concrete_volume_prefixes: set[str],
     budget_inclusive: bool = True,
+    allowed_item_types: set[str] | None = None,
 ) -> bool:
     ok, _reason = takeoff_budget_eligibility(
         takeoff,
         derived_from_keys=derived_from_keys,
         concrete_volume_prefixes=concrete_volume_prefixes,
         budget_inclusive=budget_inclusive,
+        allowed_item_types=allowed_item_types,
     )
     return ok
 
@@ -534,6 +540,9 @@ def compose_budget_rows(
     derived_from_keys, concrete_volume_prefixes = budget_filter_sets(takeoff_list)
     inclusive = _budget_inclusive_flag(context)
 
+    raw_allowed = context.metadata.get("allowed_item_types") if context.metadata else None
+    allowed_item_types: set[str] | None = set(raw_allowed) if raw_allowed else None
+
     prepared_lines: list[_PreparedLine] = []
     for takeoff in takeoff_list:
         if not _budgetable_takeoff(
@@ -541,6 +550,7 @@ def compose_budget_rows(
             derived_from_keys=derived_from_keys,
             concrete_volume_prefixes=concrete_volume_prefixes,
             budget_inclusive=inclusive,
+            allowed_item_types=allowed_item_types,
         ):
             continue
 

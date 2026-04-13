@@ -38,8 +38,8 @@ from pathlib import Path
 from openpyxl import Workbook
 
 # ========= CONFIG: EDIT THIS SECTION =========
-PROJECT_NAME = "Torre Giualca I"
-PROJECT_ID = "torre_giualca_i"
+PROJECT_NAME = "Presupuesto Dupla"
+PROJECT_ID = "presupuesto_dupla"
 
 # Input files
 DWG_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\2- PLANTAS ARQUITECTONICAS.dwg"
@@ -65,6 +65,11 @@ FAILED_MANIFEST_GRACE_SLEEP_SECONDS = 20
 # Autodesk OSS upload naming
 UPLOAD_OBJECT_NAME = None  # Set a string to override the uploaded Autodesk object name
 AUTO_UNIQUE_OBJECT_NAME = True
+
+# Discipline filter — controls which takeoff types enter the budget.
+# Set to "arquitectura" to exclude structural volumes/kg/formwork from the budget.
+# Set to None to include everything (legacy behavior).
+DISCIPLINE = "arquitectura"
 
 # Office methodology (step 1 evolution loop) — markdown injected into every vision page prompt.
 # Edit knowledge/office_methodology.md between runs; set to "" to disable.
@@ -110,6 +115,7 @@ from core.logging_config import setup_logging
 from core.pipeline import build_budget_from_sources
 from core.schemas import ProjectContext
 from core.stage import PipelineRunner
+from disciplines import get_engine
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.methodology_generator import generate_methodology_context
 from knowledge.training_data import extract_training_pairs
@@ -359,6 +365,16 @@ def stage_build_budget(
     )
     logger.info("Building budget with %d rendered pages", len(page_paths))
 
+    discipline_meta: dict = {}
+    if DISCIPLINE:
+        try:
+            engine = get_engine(DISCIPLINE)
+            discipline_meta["discipline_id"] = DISCIPLINE
+            discipline_meta["allowed_item_types"] = sorted(engine.config.item_types)
+            logger.info("Discipline filter active: %s (%d allowed item types)", DISCIPLINE, len(engine.config.item_types))
+        except KeyError:
+            logger.warning("Unknown discipline '%s', running without filter", DISCIPLINE)
+
     context = ProjectContext(
         project_id=PROJECT_ID,
         project_name=PROJECT_NAME,
@@ -381,6 +397,7 @@ def stage_build_budget(
             "failed_manifest_grace_sleep_seconds": FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
             "xlsx_path": xlsx_path,
             "pres_template_takeoffs": PRES_TEMPLATE_TAKEOFFS,
+            **discipline_meta,
         },
     )
 
