@@ -8,6 +8,7 @@ Small FastAPI service that accepts a **DWG** upload, enqueues **Autodesk Platfor
 - `lib/` — Dupla domain packages (`core`, `aps_integration`, `agents`, …) copied from the main repo for a self-contained deploy.
 - `worker/` — RQ worker process (`python -m worker`).
 - `data/TGIU.bc3` — bundled BC3 catalog for the budget endpoint.
+- `data/pliego.xlsx` — reference template for the pliego-fill endpoint (hoja **RESUMEN**).
 - `data/jobs/{uuid}/` — Per-job `inputs/`, `outputs/`, and `meta.json` (`jobs/` ignored by git).
 
 ## Requirements
@@ -51,6 +52,7 @@ python -m worker
 - `POST /api/v1/projects` — `multipart/form-data` field **`dwg`** (`.dwg` file). Returns **202** with `job_id` and `status_url`.
 - `GET /api/v1/projects/{job_id}/results` — job status; when `succeeded`, includes **`cad_facts`** (normalized JSON) and output filenames under `outputs`.
 - `POST /api/v1/projects/{job_id}/budget` — no body. Requires job `succeeded`. Loads **`api/data/TGIU.bc3`** (or **`BC3_CATALOG_PATH`**). Returns the composed budget JSON (chapters, lines, takeoffs, etc.).
+- `GET /api/v1/projects/{job_id}/pliego-fill` — requires job `succeeded`. Returns JSON con sugerencias para rellenar **`data/pliego.xlsx`** (hoja `RESUMEN`) a partir del CAD normalizado (proyecto, heurística de ubicación desde textos, suma de m² en sombreados, capas, marcadores de nivel, etc.).
 
 ### curl
 
@@ -64,6 +66,9 @@ curl -sS "http://127.0.0.1:8000/api/v1/projects/JOB_ID/results"
 
 # Budget (after job succeeded; uses api/data/TGIU.bc3)
 curl -sS -X POST "http://127.0.0.1:8000/api/v1/projects/JOB_ID/budget"
+
+# Pliego (hints for data/pliego.xlsx RESUMEN from normalized CAD)
+curl -sS "http://127.0.0.1:8000/api/v1/projects/JOB_ID/pliego-fill"
 ```
 
 ## Docker Compose

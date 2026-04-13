@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.models.schemas import JobCreateResponse, JobResultsResponse
 from app.queue import get_task_queue
 from app.services.job_store import JobStore
+from app.services.pliego_fill_service import PliegoFillError, build_pliego_fill_payload
 
 logger = logging.getLogger("dupla.api.projects")
 
@@ -96,3 +97,25 @@ def get_project_results(job_id: str) -> JobResultsResponse:
         cad_fact_keys=record.cad_fact_keys,
         uploaded_object_name=record.uploaded_object_name,
     )
+
+
+def _map_pliego_error(exc: PliegoFillError) -> HTTPException:
+    if exc.code == "not_found":
+        return HTTPException(status_code=404, detail=exc.message)
+    if exc.code == "job_not_ready":
+        return HTTPException(status_code=409, detail=exc.message)
+    if exc.code in ("no_normalized_json", "normalized_missing", "invalid_normalized_json"):
+        return HTTPException(status_code=500, detail=exc.message)
+    return HTTPException(status_code=500, detail=exc.message)
+
+
+@router.get("/{job_id}/pliego-fill")
+def get_project_pliego_fill(job_id: str) -> dict[str, object]:
+    """
+    Sugerencias para rellenar la hoja RESUMEN de ``data/pliego.xlsx`` a partir del CAD normalizado del job.
+    """
+    settings = get_settings()
+    try:
+        return build_pliego_fill_payload(job_id, settings.job_data_dir)
+    except PliegoFillError as exc:
+        raise _map_pliego_error(exc) from exc
