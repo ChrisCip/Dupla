@@ -2,7 +2,7 @@
 BC3 chapter configuration for the architectural discipline.
 
 Extracted from agents/classifier_agent.py -- these definitions drive
-how takeoffs are grouped for GPT-4o classification and which BC3 items
+how takeoffs are grouped for OpenAI classification and which BC3 items
 are filtered per chapter.
 """
 

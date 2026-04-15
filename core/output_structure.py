@@ -64,6 +64,12 @@ class RunOutputDir:
     def discipline_budget_json(self, discipline_id: str) -> Path:
         return self.discipline_dir(discipline_id) / "budget_output.json"
 
+    def discipline_quality_json(self, discipline_id: str) -> Path:
+        return self.discipline_dir(discipline_id) / "quality_report.json"
+
+    def discipline_input_gaps_md(self, discipline_id: str) -> Path:
+        return self.discipline_dir(discipline_id) / "INPUT_GAPS.md"
+
     def discipline_vision_json(self, discipline_id: str) -> Path:
         return self.discipline_dir(discipline_id) / "vision_inventory.json"
 

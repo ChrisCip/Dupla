@@ -25,6 +25,7 @@ from .chapter_rules import (
     ChapterSegment,
     build_budget_summary,
     chapter_path_for_takeoff,
+    default_bc3_code_for_takeoff,
     select_strong_candidate,
 )
 
@@ -118,17 +119,13 @@ def _extract_unit_price(
     candidate: BudgetCandidate | None,
     bc3_catalog: dict[str, Any] | None,
     *,
+    fallback_bc3_code: str | None = None,
     construcosto_snapshot: Any | None = None,
     summary: str = "",
     unit: str = "",
 ) -> float | None:
-    """Extract unit price with fallback chain: rationale → BC3 → ConstruCosto.
-
-    Checks candidate.rationale first (GPT-4o classifier stores JSON there),
-    then falls back to a direct BC3 catalog lookup by code, and finally
-    attempts a fuzzy match against the ConstruCosto price database.
-    """
-    # 1) GPT-4o classifier rationale
+    """Extract unit price with fallback chain: rationale -> BC3 candidate -> BC3 deterministic -> ConstruCosto."""
+    # 1) Classifier rationale
     if candidate is not None:
         rationale = getattr(candidate, "rationale", "") or ""
         if rationale.startswith("{"):
@@ -140,14 +137,21 @@ def _extract_unit_price(
             except (json.JSONDecodeError, ValueError, TypeError):
                 pass
 
-    # 2) BC3 catalog lookup by code
+    # 2) BC3 catalog lookup by candidate code
     if candidate is not None and bc3_catalog and candidate.bc3_code:
         concept = bc3_catalog.get("concepts_by_code", {}).get(candidate.bc3_code, {})
         price = concept.get("price")
         if price:
             return float(price)
 
-    # 3) ConstruCosto fuzzy match on description
+    # 3) BC3 catalog lookup by deterministic fallback code
+    if fallback_bc3_code and bc3_catalog:
+        concept = bc3_catalog.get("concepts_by_code", {}).get(fallback_bc3_code, {})
+        price = concept.get("price")
+        if price:
+            return float(price)
+
+    # 4) ConstruCosto fuzzy match on description
     if construcosto_snapshot is not None and find_best_price is not None and summary:
         match = find_best_price(construcosto_snapshot, summary, unit)
         if match is not None:
@@ -594,11 +598,16 @@ def compose_budget_rows(
         leaf_chapter_id = _ensure_chapter_path(chapter_nodes, chapters, prepared.chapter_path)
         chapter_nodes[leaf_chapter_id].chapter.line_keys.append(prepared.takeoff.item_key)
 
+        deterministic_bc3_code: str | None = None
         if prepared.candidate is not None:
             line_code = prepared.candidate.bc3_code.strip()
         else:
-            line_code = f"DUP-{internal_code_counter:04d}"
-            internal_code_counter += 1
+            deterministic_bc3_code = default_bc3_code_for_takeoff(prepared.takeoff)
+            if deterministic_bc3_code:
+                line_code = deterministic_bc3_code
+            else:
+                line_code = f"DUP-{internal_code_counter:04d}"
+                internal_code_counter += 1
 
         line_metadata: dict[str, Any] = {
             "item_type": prepared.takeoff.item_type,
@@ -625,11 +634,12 @@ def compose_budget_rows(
             unit_price=_extract_unit_price(
                 prepared.candidate,
                 bc3_catalog,
+                fallback_bc3_code=deterministic_bc3_code,
                 construcosto_snapshot=construcosto_snapshot,
                 summary=prepared.summary,
                 unit=prepared.takeoff.unit,
             ),
-            candidate_code=prepared.candidate.bc3_code if prepared.candidate else None,
+            candidate_code=prepared.candidate.bc3_code if prepared.candidate else deterministic_bc3_code,
             candidate_score=prepared.candidate.score if prepared.candidate else None,
             source_refs=list(prepared.takeoff.source_refs),
             assumptions=list(prepared.takeoff.assumptions),

@@ -74,7 +74,7 @@ class DisciplineEngine(Protocol):
         cad_summary: dict[str, Any],
         methodology: str,
     ) -> tuple[str, str]:
-        """Return (system_message, user_message) for GPT-4o vision."""
+        """Return (system_message, user_message) for OpenAI vision."""
         ...
 
     def build_inventory(

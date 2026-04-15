@@ -12,6 +12,7 @@ from agents.classifier_agent import match_takeoffs_to_bc3
 from agents.quantifier_agent import quantify_inventory
 from budget.composer import compose_budget
 from core.inventory_builder import build_level_inventory
+from core.quality_engine import evaluate_semantic_quality
 from core.schemas import (
     BudgetCandidate,
     LevelInventory,
@@ -19,6 +20,8 @@ from core.schemas import (
     QuantityTakeoff,
     level_inventory_from_dict,
 )
+from core.semantic_adapter import adapt_semantic_to_inventory
+from core.semantic_enrichment import enrich_architecture_semantics
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.pres_expansion import synthetic_takeoffs_from_pres
 from knowledge.training_data import extract_training_pairs
@@ -161,6 +164,34 @@ def _coerce_vision_payloads(
     return list(vision_payloads)
 
 
+def _extract_level_markers(cad_facts: dict[str, Any]) -> list[str]:
+    """Pull unique level names from inventory_hints.level_markers."""
+    markers = cad_facts.get("inventory_hints", {}).get("level_markers", [])
+    seen: set[str] = set()
+    unique: list[str] = []
+    for marker in markers:
+        text = str(marker.get("content", "") if isinstance(marker, Mapping) else marker).strip()
+        if text and text not in seen:
+            seen.add(text)
+            unique.append(text)
+    return unique
+
+
+def _build_cad_only_levels(cad_facts: dict[str, Any]) -> list[LevelInventory]:
+    """Build one LevelInventory per detected level marker, or a single fallback."""
+    markers = _extract_level_markers(cad_facts)
+    if not markers:
+        fallback_name = str(cad_facts.get("project") or "level_01")
+        return [
+            build_level_inventory(cad_facts, None, level_id="level_01", level_name=fallback_name)
+        ]
+    levels: list[LevelInventory] = []
+    for idx, name in enumerate(markers, start=1):
+        level_id = f"level_{idx:02d}"
+        levels.append(build_level_inventory(cad_facts, None, level_id=level_id, level_name=name))
+    return levels
+
+
 def build_hybrid_inventory(
     cad_facts: dict[str, Any],
     vision_payloads: Iterable[LevelInventory | Mapping[str, Any]] | LevelInventory | Mapping[str, Any] | None,
@@ -170,19 +201,12 @@ def build_hybrid_inventory(
 
     Each vision payload is normalized to a `LevelInventory`, then merged with the
     CAD-derived inventory via `build_level_inventory(...)`.
+    Falls back to CAD-only when vision payloads are absent or ALL contain errors.
     """
     coerced_payloads = _coerce_vision_payloads(vision_payloads)
     if not coerced_payloads:
-        fallback_name = str(cad_facts.get("project") or "level_01")
-        logger.info("No vision payloads — building CAD-only inventory for %r", fallback_name)
-        return [
-            build_level_inventory(
-                cad_facts,
-                None,
-                level_id="level_01",
-                level_name=fallback_name,
-            )
-        ]
+        logger.info("No vision payloads — building CAD-only inventory")
+        return _build_cad_only_levels(cad_facts)
 
     error_count = 0
     hybrid_levels: list[LevelInventory] = []
@@ -210,6 +234,13 @@ def build_hybrid_inventory(
                 level_name=vision_level.level_name,
             )
         )
+
+    if not hybrid_levels and cad_facts:
+        logger.warning(
+            "All %d vision payloads failed — falling back to CAD-only inventory",
+            error_count,
+        )
+        return _build_cad_only_levels(cad_facts)
 
     logger.info(
         "Hybrid inventory built: %d levels (%d vision errors skipped)",
@@ -254,10 +285,47 @@ def build_budget_from_sources(
     training_pairs: list[Any] | None = None,
 ) -> dict[str, Any]:
     logger.info("build_budget_from_sources: starting hybrid inventory + takeoffs")
-    hybrid_inventory, base_takeoffs, expanded_takeoffs = build_expanded_takeoffs_from_sources(
-        cad_facts,
-        vision_payloads,
-        rules_engine=rules_engine,
+    hybrid_inventory = build_hybrid_inventory(cad_facts, vision_payloads)
+
+    # --- Semantic layer + quality (architecture pilot) ---
+    semantic_building_dict: dict[str, Any] | None = None
+    quality_report_obj = None
+    disc_id = (context.metadata or {}).get("discipline_id", "")
+    enable_semantic = bool((context.metadata or {}).get("enable_semantic_layer", False))
+
+    if enable_semantic and disc_id == "arquitectura":
+        logger.info("[semantic] Enriching architecture semantics (%d levels)...", len(hybrid_inventory))
+        sem_building = enrich_architecture_semantics(
+            project_id=context.project_id,
+            project_name=context.project_name,
+            levels=hybrid_inventory,
+        )
+        semantic_building_dict = sem_building.to_dict()
+        logger.info(
+            "[semantic] Building: %d elements, avg confidence %.3f",
+            len(sem_building.elements),
+            sem_building.confidence_score,
+        )
+
+        quality_report_obj = evaluate_semantic_quality(sem_building)
+        logger.info(
+            "[quality] OK=%d WARNING=%d BLOCKED=%d",
+            quality_report_obj.ok_count,
+            quality_report_obj.warning_count,
+            quality_report_obj.blocked_count,
+        )
+
+        if quality_report_obj.blocked_count > 0:
+            hybrid_inventory = adapt_semantic_to_inventory(
+                sem_building, quality_report_obj, hybrid_inventory,
+            )
+            logger.info(
+                "[semantic] Adapted inventory: %d BLOCKED entities filtered out",
+                quality_report_obj.blocked_count,
+            )
+
+    base_takeoffs, expanded_takeoffs = build_expanded_takeoffs_from_inventory(
+        hybrid_inventory, rules_engine=rules_engine,
     )
     logger.info(
         "Takeoffs: %d base -> %d expanded (rules applied)",
@@ -291,6 +359,10 @@ def build_budget_from_sources(
     )
     budget["hybrid_inventory"] = [level.to_dict() for level in hybrid_inventory]
     budget["base_takeoffs"] = [takeoff.to_dict() for takeoff in base_takeoffs]
+    if semantic_building_dict is not None:
+        budget["semantic_building"] = semantic_building_dict
+    if quality_report_obj is not None:
+        budget["quality_report"] = quality_report_obj.to_dict()
 
     logger.info(
         "Budget built: %d chapters, %d lines, %d rows",

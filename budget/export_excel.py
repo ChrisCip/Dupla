@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Any, Iterable, Mapping
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -79,12 +79,70 @@ def _save_workbook(workbook: Workbook, output: Path, *, max_fallback_attempts: i
     ) from last_error
 
 
+def _append_quality_sheet(workbook: Workbook, quality_report: Mapping[str, Any], *, sheet_name: str = "Quality_Report") -> None:
+    worksheet = workbook.create_sheet(title=sheet_name)
+    headers = (
+        "status",
+        "code",
+        "discipline",
+        "element_id",
+        "level_id",
+        "unit_id",
+        "space_id",
+        "confidence",
+        "message",
+        "evidence",
+        "suggested_action",
+    )
+    for idx, header in enumerate(headers, start=1):
+        cell = worksheet.cell(row=1, column=idx, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = HEADER_FILL
+        cell.border = ALL_BORDER
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    issues = list(quality_report.get("issues", []))
+    for row_index, issue in enumerate(issues, start=2):
+        evidence = issue.get("evidence_refs") or []
+        values = (
+            issue.get("status", ""),
+            issue.get("code", ""),
+            issue.get("discipline", ""),
+            issue.get("element_id", ""),
+            issue.get("level_id", ""),
+            issue.get("unit_id", ""),
+            issue.get("space_id", ""),
+            issue.get("confidence_score", ""),
+            issue.get("message", ""),
+            ", ".join(str(item) for item in evidence if item),
+            issue.get("suggested_action", ""),
+        )
+        for col_index, value in enumerate(values, start=1):
+            cell = worksheet.cell(row=row_index, column=col_index, value=value)
+            cell.border = ALL_BORDER
+            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+    worksheet.freeze_panes = "A2"
+    worksheet.column_dimensions["A"].width = 12
+    worksheet.column_dimensions["B"].width = 22
+    worksheet.column_dimensions["C"].width = 14
+    worksheet.column_dimensions["D"].width = 20
+    worksheet.column_dimensions["E"].width = 14
+    worksheet.column_dimensions["F"].width = 14
+    worksheet.column_dimensions["G"].width = 14
+    worksheet.column_dimensions["H"].width = 12
+    worksheet.column_dimensions["I"].width = 58
+    worksheet.column_dimensions["J"].width = 46
+    worksheet.column_dimensions["K"].width = 46
+
+
 def export_budget_workbook(
     context: ProjectContext,
     rows: Iterable[BudgetRow | Mapping[str, object]],
     output_path: str | Path,
     *,
     sheet_name: str = "Presupuesto",
+    quality_report: Mapping[str, Any] | None = None,
 ) -> Path:
     workbook = Workbook()
     worksheet = workbook.active
@@ -151,6 +209,9 @@ def export_budget_workbook(
     worksheet.column_dimensions["E"].width = 14
     worksheet.column_dimensions["F"].width = 14
     worksheet.column_dimensions["G"].width = 16
+
+    if quality_report:
+        _append_quality_sheet(workbook, quality_report)
 
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)

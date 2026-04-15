@@ -81,6 +81,7 @@ from budget.export_bc3 import export_budget_bc3
 from budget.export_excel import export_budget_workbook
 from core.output_structure import RunOutputDir
 from core.pipeline import build_budget_from_sources
+from core.quality_engine import write_input_gaps_markdown, write_quality_report_json
 from core.schemas import ProjectContext
 from disciplines import get_engine
 from disciplines.domain_rules import load_domain_rules_for_discipline
@@ -322,6 +323,7 @@ def process_discipline(
             "allowed_item_types": allowed_types,
             "xlsx_path": shared.get("xlsx_path"),
             "pres_template_takeoffs": False,
+            "enable_semantic_layer": disc_id == "arquitectura",
         },
     )
 
@@ -342,10 +344,14 @@ def process_discipline(
         context, budget["rows"],
         run_dir.discipline_excel(disc_id),
         sheet_name=disc_id.upper(),
+        quality_report=budget.get("quality_report"),
     )
     logger.info("[%s] Excel: %s", disc_id, excel_path)
 
-    bc3_path = export_budget_bc3(context, budget["rows"], run_dir.discipline_bc3(disc_id))
+    bc3_path = export_budget_bc3(
+        context, budget["rows"], run_dir.discipline_bc3(disc_id),
+        bc3_catalog=shared["bc3_catalog"],
+    )
     logger.info("[%s] BC3: %s", disc_id, bc3_path)
 
     # --- Save budget JSON ---
@@ -353,6 +359,12 @@ def process_discipline(
     budget_json_path.write_text(
         json.dumps(budget, indent=2, ensure_ascii=False, default=str), encoding="utf-8"
     )
+
+    # --- Quality report artifacts ---
+    if budget.get("quality_report"):
+        write_quality_report_json(budget["quality_report"], run_dir.discipline_quality_json(disc_id))
+        write_input_gaps_markdown(budget["quality_report"], run_dir.discipline_input_gaps_md(disc_id))
+        logger.info("[%s] Quality report + INPUT_GAPS written", disc_id)
 
     elapsed = time.time() - t0
     logger.info("[%s] Completed in %.1fs", disc_id, elapsed)

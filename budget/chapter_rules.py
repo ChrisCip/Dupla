@@ -71,6 +71,198 @@ def select_strong_candidate(
     return None
 
 
+_DEFAULT_BC3_MAP: dict[str, str] = {
+    "wall_net_area": "P0501101",
+    "wall_finish_tile": "P08R1012",
+    "wall_waterproofing": "P1103101",
+    "floor_waterproofing": "P1103101",
+    "ceiling_area": "P0501107",
+    "ceiling_finish_plaster": "P0501107",
+    "ceiling_finish_paint": "P1801111",
+    "window_count": "P1601045",
+    "window_area": "P1601045",
+    "window_installation_count": "P1601045",
+    "window_sealant_area": "P1601045",
+    "wet_area_waterproofing": "P1103101",
+    "stair_count": "P1201101",
+    "fixture_count": "P130CON",
+}
+
+# --- Wall masonry by thickness (from catalog GIV00001) ---
+_WALL_10CM = "P0415006"     # Muro bloques 10x20x40 SNP          $945.60
+_WALL_15CM_SNP = "P0415005" # Muro bloques 15x20x40 SNP 3/8@40   $1,266.35
+_WALL_15CM_BNP = "P0415010" # Muro bloques 15x20x40 BNP 3/8@20   $1,643.48
+_WALL_20CM_BNP = "P0420004" # Muro bloques 20x20x40 BNP 3/8@20   $1,979.74
+_WALL_20CM_SNP = "P0420009" # Muro bloques 20x20x40 SNP           $2,015.86
+_WALL_CONCRETE = "P0303251" # Muro H.A. e=0.15m                   $41,943.84
+
+# --- Plaster/stucco ---
+_PLASTER_INT = "P0501101"   # Panete liso muros interiores        $327.63
+_PLASTER_EXT = "P0501102"   # Panete liso muros exteriores        $602.90
+_PLASTER_COL = "P0501105"   # Panete liso columnas                $447.63
+_PLASTER_BEAM = "P0501106"  # Panete liso vigas                   $512.63
+_PLASTER_CEIL = "P0501107"  # Panete liso losa techo              $512.63
+
+# --- Paint ---
+_PAINT_INT = "P1801101"     # Pintura acrilica interior           $159.60
+_PAINT_EXT = "P1801102"     # Pintura acrilica exterior           $303.60
+_PAINT_CEIL = "P1801111"    # Pintura economica losas/vigas       $247.80
+
+# --- Doors ---
+_DOOR_ANDIROBA_STD = "P1501011"   # Andiroba 0.90x2.10            $16,501.12
+_DOOR_ANDIROBA_DBL = "P1501012"   # Andiroba 1.0x2.10             $21,206.12
+_DOOR_ALU_BATIENTE = "P1501004"   # Aluminio y vidrio batiente     $2,283.73
+_DOOR_ALU_CORREDIZA = "P1501005"  # Aluminio y vidrio corrediza    $419.48
+_DOOR_POLIMETALICA = "P1501105"   # Polimetalica 0.70-0.90x2.10   $7,411.12
+_DOOR_PVC = "P1502013"            # PVC blanca door tech           $9,181.12
+_DOOR_CLOSET = "P1520002"         # Puerta despensa/ropa blanca    $611.62
+
+# --- Floors ---
+_FLOOR_PORCELANATO = "P0610001"   # Piso porcelanato interior      $1,660.86
+_FLOOR_CERAMICA = "P06EE001"      # Piso ceramica area lavado      $1,214.66
+_FLOOR_HORMIGON = "P0303150"      # H.A.B/Piso chapeado e=0.08    $650.61
+
+# --- Wet areas ---
+_WET_CERAMICA_BANO = "P08R1012"   # Revestimiento ceramica bano    $1,510.28
+_WET_CERAMICA_LAVADO = "P08R1013" # Revestimiento ceramica lavado  $1,090.28
+_WET_CERAMICA_COCINA = "P08R1014" # Revestimiento ceramica cocina  $1,510.28
+
+# --- Kitchen / stairs ---
+_KITCHEN_PARED = "P0609001"       # Gabinete cocina pared          $3,950
+_KITCHEN_PISO = "P0609002"        # Gabinete cocina piso           $4,190
+_ESCALONES = "P1201101"           # Escalones en escalera          $3,424.90
+_BARANDA_ESC = "P1201301"         # Baranda escalera               $5,500
+
+
+def _item_key_layer(takeoff: QuantityTakeoff) -> str:
+    """Extract the CAD layer slug from item_key (e.g. 'json-wall-a-wall:volume' -> 'a-wall')."""
+    key = takeoff.item_key.lower()
+    for prefix in ("json-wall-", "json-door-", "json-window-"):
+        if key.startswith(prefix):
+            rest = key[len(prefix):]
+            return rest.split(":")[0]
+    return ""
+
+
+def _input_thickness(takeoff: QuantityTakeoff) -> float | None:
+    raw = takeoff.inputs.get("thickness_m")
+    if raw is not None:
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def _input_block_name(takeoff: QuantityTakeoff) -> str:
+    return str(takeoff.inputs.get("block_name") or "").strip()
+
+
+def _wall_bc3_code(takeoff: QuantityTakeoff) -> str:
+    """Select wall masonry code by thickness and material."""
+    material = _material_hint(takeoff)
+    if material == "concrete":
+        return _WALL_CONCRETE
+
+    thickness = _input_thickness(takeoff)
+    if thickness is not None:
+        if thickness <= 0.11:
+            return _WALL_10CM
+        if thickness <= 0.16:
+            return _WALL_15CM_SNP
+        return _WALL_20CM_BNP
+    return _WALL_15CM_SNP
+
+
+def _door_bc3_code(takeoff: QuantityTakeoff) -> str:
+    """Select door code by block name, layer, and material hints."""
+    block = _input_block_name(takeoff)
+    layer = _item_key_layer(takeoff)
+    material = _material_hint(takeoff)
+
+    if "doble" in block.lower():
+        return _DOOR_ANDIROBA_DBL
+    if "ventana" in layer:
+        return _DOOR_ALU_CORREDIZA
+    if "closet" in layer:
+        return _DOOR_CLOSET
+    if material == "steel":
+        return _DOOR_POLIMETALICA
+    if material == "aluminum" or material == "aluminium":
+        return _DOOR_ALU_BATIENTE
+    if material == "pvc":
+        return _DOOR_PVC
+    return _DOOR_ANDIROBA_STD
+
+
+def _floor_bc3_code(takeoff: QuantityTakeoff) -> str:
+    """Select floor code by space type hints."""
+    tags = _takeoff_tags(takeoff)
+    layer = _item_key_layer(takeoff)
+    if "lavado" in tags or "laundry" in tags or "lavado" in layer:
+        return _FLOOR_CERAMICA
+    return _FLOOR_PORCELANATO
+
+
+def _wet_area_bc3_code(takeoff: QuantityTakeoff) -> str:
+    """Select wet area code by space context."""
+    tags = _takeoff_tags(takeoff)
+    layer = _item_key_layer(takeoff)
+    if "cocina" in tags or "kitchen" in tags or "cocina" in layer:
+        return _WET_CERAMICA_COCINA
+    if "lavado" in tags or "laundry" in tags:
+        return _WET_CERAMICA_LAVADO
+    return _WET_CERAMICA_BANO
+
+
+def default_bc3_code_for_takeoff(takeoff: QuantityTakeoff) -> str | None:
+    """Deterministic fallback: map item_type to a BC3 code from GIV00001 catalog.
+
+    Uses CAD layer names, block names, thickness, and space hints to select
+    the most specific catalog code available.
+    """
+    item_type = takeoff.item_type.lower()
+    tags = _takeoff_tags(takeoff)
+
+    # --- Walls ---
+    if item_type in ("wall_volume", "wall_length", "wall_gross_area"):
+        return _wall_bc3_code(takeoff)
+    if item_type == "wall_finish_plaster":
+        return _PLASTER_EXT if "exterior" in tags else _PLASTER_INT
+    if item_type == "wall_finish_paint":
+        return _PAINT_EXT if "exterior" in tags else _PAINT_INT
+    if item_type == "wall_net_area":
+        return _PLASTER_INT
+
+    # --- Structural finish (plaster on columns / beams) ---
+    if item_type.startswith("column_") and "finish" in item_type:
+        return _PLASTER_COL
+    if item_type.startswith("beam_") and "finish" in item_type:
+        return _PLASTER_BEAM
+
+    # --- Doors ---
+    if item_type.startswith("door_"):
+        return _door_bc3_code(takeoff)
+
+    # --- Floors ---
+    if item_type in ("floor_area", "floor_finish", "floor_finish_tile"):
+        return _floor_bc3_code(takeoff)
+    if item_type == "floor_screed":
+        return _FLOOR_HORMIGON
+
+    # --- Wet areas ---
+    if item_type in ("wet_area_count", "wet_area_area", "wet_area_finish"):
+        return _wet_area_bc3_code(takeoff)
+
+    # --- Kitchen ---
+    if item_type == "kitchen_count":
+        return _KITCHEN_PARED
+    if item_type == "kitchen_area":
+        return _KITCHEN_PISO
+
+    return _DEFAULT_BC3_MAP.get(item_type)
+
+
 def chapter_path_for_takeoff(takeoff: QuantityTakeoff) -> list[ChapterSegment]:
     item_type = takeoff.item_type.lower()
     tags = _takeoff_tags(takeoff)
@@ -323,89 +515,123 @@ def _wall_summary(takeoff: QuantityTakeoff) -> str:
     item_type = takeoff.item_type.lower()
     tags = _takeoff_tags(takeoff)
     material_hint = _material_hint(takeoff)
+    layer = _item_key_layer(takeoff)
+    thickness = _input_thickness(takeoff)
 
     if item_type == "wall_waterproofing":
-        return "Impermeabilizacion en muros de areas humedas"
+        return "Impermeabilizante en muros areas humedas"
     if item_type == "wall_finish_paint":
-        if "interior" in tags:
-            return "Pintura en muros interiores"
         if "exterior" in tags:
-            return "Pintura en muros exteriores"
-        return "Pintura en muros"
+            return "Pintura acrilica muros exteriores"
+        return "Pintura acrilica muros interiores"
     if item_type == "wall_finish_plaster":
-        if "interior" in tags:
-            return "Revoque en muros interiores"
-        return "Revoque en muros"
-    if item_type == "wall_volume":
-        if material_hint == "masonry":
-            return "Muro de mamposteria"
-        if material_hint == "concrete":
-            return "Muro de hormigon"
-        return "Muro o division"
+        if "exterior" in tags:
+            return "Panete liso en muros exteriores e=2.00cm"
+        return "Panete liso en muros interiores e=1.75cm"
+    if item_type == "wall_finish_tile":
+        return "Revestimiento ceramica en muros"
     if item_type == "wall_net_area":
-        return "Muro o division"
-    if item_type == "wall_area":
-        return "Superficie de muros"
-    if item_type == "wall_length":
-        return "Longitud de muros (ml)"
-    return "Trabajo en muros"
+        return "Panete liso en muros interiores e=1.75cm"
+
+    # Wall volume/length/area: differentiate by thickness and layer
+    if item_type in ("wall_volume", "wall_length", "wall_gross_area", "wall_area"):
+        if material_hint == "concrete":
+            return "Muro de hormigon armado e=0.15m"
+
+        size_label = "15x20x40"
+        kind = "SNP"
+        if thickness is not None:
+            if thickness <= 0.11:
+                size_label = "10x20x40"
+                kind = "SNP"
+            elif thickness <= 0.16:
+                size_label = "15x20x40"
+                kind = "SNP"
+            else:
+                size_label = "20x20x40"
+                kind = "BNP"
+
+        layer_tag = ""
+        if layer and layer not in ("a-wall", "muros", "muro", "muross"):
+            layer_tag = f" (capa {layer.upper()})"
+
+        return f"Muro bloques {size_label} {kind}{layer_tag}"
+
+    return "Muro de bloques 15x20x40 SNP"
 
 
 def _floor_summary(takeoff: QuantityTakeoff) -> str:
     item_type = takeoff.item_type.lower()
     tags = _takeoff_tags(takeoff)
+    layer = _item_key_layer(takeoff)
 
     if item_type == "floor_waterproofing" or "waterproofing" in tags:
-        return "Impermeabilizacion en pisos de areas humedas"
-    if item_type == "floor_finish":
-        return "Terminacion de pisos"
-    return "Trabajo en pisos"
+        return "Impermeabilizante en pisos areas humedas"
+    if item_type == "floor_screed":
+        return "Base de piso hormigon chapeado e=0.08"
+    if "lavado" in tags or "laundry" in tags or "lavado" in layer:
+        return "Piso ceramica area lavado"
+    return "Piso porcelanato interior apartamento"
 
 
 def _ceiling_summary(takeoff: QuantityTakeoff) -> str:
     item_type = takeoff.item_type.lower()
     if item_type == "ceiling_finish_paint":
-        return "Pintura en cielos y techos"
-    if item_type == "ceiling_area":
-        return "Acabado de cielos y techos"
-    return "Trabajo en cielos y techos"
+        return "Pintura economica losas y vigas"
+    if item_type in ("ceiling_area", "ceiling_finish_plaster"):
+        return "Panete liso en losa de techo"
+    return "Panete liso en losa de techo"
 
 
 def _door_summary(takeoff: QuantityTakeoff) -> str:
     item_type = takeoff.item_type.lower()
     material_hint = _material_hint(takeoff)
+    block = _input_block_name(takeoff)
+    layer = _item_key_layer(takeoff)
 
-    if item_type == "door_leaf_wood_count":
-        return "Puerta de madera"
-    if item_type == "door_leaf_metal_count":
-        return "Puerta metalica"
-    if item_type == "door_frame_count":
-        return "Marco de puerta"
     if item_type == "door_hardware_set":
-        return "Juego de herrajes para puerta"
-    if material_hint == "wood":
-        return "Puerta de madera"
+        return "Juego herrajes puerta"
+    if item_type == "door_frame_count":
+        return "Puerta aluminio y vidrio batiente"
+
+    if "doble" in block.lower():
+        return "Puerta andiroba pintura natural (1.0x2.10) batiente"
+    if "ventana" in layer:
+        return "Puerta corrediza aluminio y vidrio"
+    if "closet" in layer:
+        return "Puerta madera despensa y ropa blanca"
     if material_hint == "steel":
-        return "Puerta metalica"
-    return "Puerta"
+        return "Puerta polimetalica (0.90x2.10) batiente"
+    if material_hint == "pvc":
+        return "Puerta PVC blanca tipo door tech (0.90x2.10)"
+    if material_hint == "aluminum":
+        return "Puerta aluminio y vidrio batiente"
+    if item_type == "door_leaf_metal_count":
+        return "Puerta polimetalica (0.90x2.10) batiente"
+    return "Puerta andiroba pintura natural (0.90x2.10) batiente"
 
 
 def _window_summary(takeoff: QuantityTakeoff) -> str:
     item_type = takeoff.item_type.lower()
     if item_type == "window_installation_count":
-        return "Colocacion de ventanas"
+        return "Ventana corredera aluminio y vidrio"
     if item_type == "window_sealant_area":
         return "Sellado y tratamiento de ventanas"
-    return "Ventanas"
+    return "Ventana corredera aluminio y vidrio"
 
 
 def _wet_area_summary(takeoff: QuantityTakeoff) -> str:
     item_type = takeoff.item_type.lower()
+    tags = _takeoff_tags(takeoff)
+    layer = _item_key_layer(takeoff)
+
     if "waterproofing" in item_type:
-        return "Impermeabilizacion en areas humedas"
-    if "finish" in item_type:
-        return "Terminaciones en areas humedas"
-    return "Area humeda"
+        return "Impermeabilizante en areas humedas"
+    if "cocina" in tags or "kitchen" in tags or "cocina" in layer:
+        return "Revestimiento ceramica en cocina"
+    if "lavado" in tags or "laundry" in tags:
+        return "Revestimiento ceramica area lavado"
+    return "Revestimiento ceramica en bano"
 
 
 def build_budget_summary(
@@ -436,5 +662,14 @@ def build_budget_summary(
         return _window_summary(takeoff)
     if item_type.startswith("wet_area_"):
         return _wet_area_summary(takeoff)
+
+    if item_type == "kitchen_count":
+        return "Gabinete de cocina"
+    if item_type == "kitchen_area":
+        return "Gabinete de cocina"
+    if item_type == "stair_count":
+        return "Escalones en escalera"
+    if item_type == "fixture_count":
+        return "Juego accesorios de banos"
 
     return takeoff.item_type.replace("_", " ").strip().capitalize()
