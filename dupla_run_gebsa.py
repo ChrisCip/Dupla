@@ -323,7 +323,7 @@ def process_discipline(
             "allowed_item_types": allowed_types,
             "xlsx_path": shared.get("xlsx_path"),
             "pres_template_takeoffs": False,
-            "enable_semantic_layer": disc_id == "arquitectura",
+            "enable_semantic_layer": True,
         },
     )
 

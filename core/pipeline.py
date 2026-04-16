@@ -21,7 +21,7 @@ from core.schemas import (
     level_inventory_from_dict,
 )
 from core.semantic_adapter import adapt_semantic_to_inventory
-from core.semantic_enrichment import enrich_architecture_semantics
+from core.semantic_enrichment import enrich_semantics
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.pres_expansion import synthetic_takeoffs_from_pres
 from knowledge.training_data import extract_training_pairs
@@ -287,17 +287,18 @@ def build_budget_from_sources(
     logger.info("build_budget_from_sources: starting hybrid inventory + takeoffs")
     hybrid_inventory = build_hybrid_inventory(cad_facts, vision_payloads)
 
-    # --- Semantic layer + quality (architecture pilot) ---
+    # --- Semantic layer + quality ---
     semantic_building_dict: dict[str, Any] | None = None
     quality_report_obj = None
     disc_id = (context.metadata or {}).get("discipline_id", "")
     enable_semantic = bool((context.metadata or {}).get("enable_semantic_layer", False))
 
-    if enable_semantic and disc_id == "arquitectura":
-        logger.info("[semantic] Enriching architecture semantics (%d levels)...", len(hybrid_inventory))
-        sem_building = enrich_architecture_semantics(
+    if enable_semantic and disc_id:
+        logger.info("[semantic] Enriching %s semantics (%d levels)...", disc_id, len(hybrid_inventory))
+        sem_building = enrich_semantics(
             project_id=context.project_id,
             project_name=context.project_name,
+            discipline=disc_id,
             levels=hybrid_inventory,
         )
         semantic_building_dict = sem_building.to_dict()

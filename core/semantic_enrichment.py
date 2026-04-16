@@ -1,5 +1,9 @@
 """
-Deterministic semantic enrichment for architecture pilot.
+Deterministic semantic enrichment for all disciplines.
+
+Builds a SemanticBuilding hierarchy from merged level inventories,
+assigning confidence scores and spatial context to each entity.
+Phase 1: deterministic only (no LLM).
 """
 
 from __future__ import annotations
@@ -16,7 +20,7 @@ from core.semantic_models import (
     SemanticUnit,
 )
 
-_ARCH_ENTITY_GROUPS = (
+_ALL_ENTITY_GROUPS = (
     ("wall", "walls"),
     ("opening", "openings"),
     ("door", "doors"),
@@ -25,7 +29,32 @@ _ARCH_ENTITY_GROUPS = (
     ("kitchen", "kitchens"),
     ("stair", "stairs"),
     ("fixture", "fixtures"),
+    ("structural_element", "structural_elements"),
 )
+
+_DISCIPLINE_ENTITY_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {
+    "arquitectura": (
+        ("wall", "walls"),
+        ("opening", "openings"),
+        ("door", "doors"),
+        ("window", "windows"),
+        ("wet_area", "wet_areas"),
+        ("kitchen", "kitchens"),
+        ("stair", "stairs"),
+        ("fixture", "fixtures"),
+    ),
+    "estructura": (
+        ("wall", "walls"),
+        ("structural_element", "structural_elements"),
+    ),
+    "electrico": (
+        ("fixture", "fixtures"),
+    ),
+    "sanitario": (
+        ("fixture", "fixtures"),
+        ("wet_area", "wet_areas"),
+    ),
+}
 
 
 def _normalize_token(value: str) -> str:
@@ -70,6 +99,10 @@ def _infer_space_name(entity: InventoryEntity, level: LevelInventory) -> str:
             return "living_room"
         if token in {"bedroom", "habitacion", "dormitorio"}:
             return "bedroom"
+        if token in {"electrical", "electrico", "panel", "tablero"}:
+            return "electrical_room"
+        if token in {"plumbing", "sanitario", "agua", "desague"}:
+            return "wet_area"
 
     if entity.id.startswith("json-door") or entity.id.startswith("json-window"):
         return "circulation"
@@ -104,17 +137,21 @@ def _entity_to_semantic_element(
     )
 
 
-def enrich_architecture_semantics(
+def enrich_semantics(
     *,
     project_id: str | None,
     project_name: str | None,
+    discipline: str,
     levels: list[LevelInventory],
 ) -> SemanticBuilding:
     """
-    Build architecture semantic hierarchy from merged level inventories.
+    Build semantic hierarchy from merged level inventories for any discipline.
 
-    This phase is deterministic only (no LLM).
+    Selects the relevant entity groups per discipline and assigns confidence,
+    spatial context, and evidence to each element. Deterministic only (no LLM).
     """
+    entity_groups = _DISCIPLINE_ENTITY_GROUPS.get(discipline, _ALL_ENTITY_GROUPS)
+
     sem_levels: list[SemanticLevel] = []
     sem_spaces: list[SemanticSpace] = []
     sem_elements: list[SemanticElement] = []
@@ -148,8 +185,8 @@ def enrich_architecture_semantics(
             )
             spaces_by_name[key] = space
 
-        for entity_type, attr_name in _ARCH_ENTITY_GROUPS:
-            for entity in getattr(level, attr_name):
+        for entity_type, attr_name in entity_groups:
+            for entity in getattr(level, attr_name, []):
                 inferred_space = _normalize_token(_infer_space_name(entity, level))
                 space_id: str | None = None
                 if inferred_space != "unknown":
@@ -170,7 +207,7 @@ def enrich_architecture_semantics(
                 sem_element = _entity_to_semantic_element(
                     entity_type,
                     entity,
-                    discipline="arquitectura",
+                    discipline=discipline,
                     level=level,
                     unit_id=default_unit_id,
                     space_id=space_id,
@@ -200,10 +237,25 @@ def enrich_architecture_semantics(
     return SemanticBuilding(
         project_id=project_id,
         project_name=project_name,
-        discipline="arquitectura",
+        discipline=discipline,
         confidence_score=round(confidence, 3),
         levels=sem_levels,
         spaces=sem_spaces,
         elements=sem_elements,
         metadata={"mode": "deterministic_phase1"},
+    )
+
+
+def enrich_architecture_semantics(
+    *,
+    project_id: str | None,
+    project_name: str | None,
+    levels: list[LevelInventory],
+) -> SemanticBuilding:
+    """Backward-compatible wrapper for architecture discipline."""
+    return enrich_semantics(
+        project_id=project_id,
+        project_name=project_name,
+        discipline="arquitectura",
+        levels=levels,
     )
