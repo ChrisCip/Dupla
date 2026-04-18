@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { FilePlus, Filter, FolderPlus, LayoutGrid, List, Trash2 } from 'lucide-react'
+import { FilePlus, Filter, FolderPlus, LayoutGrid, List, Pencil, Trash2 } from 'lucide-react'
 
 import { apiFetch } from '../../../api/client'
+import {
+  filterAllowedProjectFiles,
+  formatAllowedProjectExtensionsHint,
+  isAllowedProjectFileName,
+} from '../../../constants/projectAllowedFiles'
 import {
   PROJECT_FILE_DISCIPLINE_LABELS,
   PROJECT_FILE_DISCIPLINE_VALUES,
@@ -68,6 +73,12 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
   const [searchBusy, setSearchBusy] = useState(false)
   const [dragFileId, setDragFileId] = useState<string | null>(null)
   const [fileView, setFileView] = useState<'grid' | 'list'>('grid')
+  const [fileNotice, setFileNotice] = useState<string | null>(null)
+  const [editingFile, setEditingFile] = useState<ProjectFileRow | ProjectFileSearchRow | null>(null)
+  const [editFileName, setEditFileName] = useState('')
+  const [editFileDescription, setEditFileDescription] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!token || !projectUuid) return
@@ -211,6 +222,48 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
     await load()
   }
 
+  function openEditFile(f: ProjectFileRow | ProjectFileSearchRow) {
+    setEditingFile(f)
+    setEditFileName(f.original_name)
+    setEditFileDescription(f.description ?? '')
+    setEditError(null)
+  }
+
+  async function saveFileEdit() {
+    if (!token || !editingFile) return
+    const name = editFileName.trim()
+    if (!name) {
+      setEditError('El nombre es obligatorio')
+      return
+    }
+    if (!isAllowedProjectFileName(name)) {
+      setEditError(`La extensión debe ser una de: ${formatAllowedProjectExtensionsHint()}`)
+      return
+    }
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const res = await apiFetch(`/api/projects/${projectUuid}/files/${editingFile.uuid}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({
+          original_name: name,
+          description: editFileDescription.trim() || null,
+        }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setEditError((j as { detail?: string }).detail ?? 'No se pudo guardar')
+        return
+      }
+      setEditingFile(null)
+      if (hasActiveFilters) await loadSearchResults()
+      await load()
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   const currentFolderLabel = trail[trail.length - 1]?.name ?? 'Raíz'
 
   const fileHasPrevPage = filePageOffset > 0
@@ -223,8 +276,17 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
       <div className="shrink-0">
         <h2 className="text-lg font-semibold text-ink">Archivos del proyecto</h2>
         <p className="text-sm text-muted">
-          Explorador por carpetas con descripción y disciplina. Arrastra archivos al área inferior o usa el botón Crear archivo.
+          Formatos de subida: {formatAllowedProjectExtensionsHint()}. Explorador por carpetas; puedes editar nombre y
+          descripción tras subir. Los cambios quedan en el historial del proyecto.
         </p>
+        {fileNotice ? (
+          <p className="mt-2 text-sm font-medium text-primary" role="status">
+            {fileNotice}{' '}
+            <button type="button" className="du-link text-sm font-normal" onClick={() => setFileNotice(null)}>
+              Cerrar
+            </button>
+          </p>
+        ) : null}
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
@@ -415,8 +477,18 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
           e.stopPropagation()
           setDropHighlight(false)
           if (e.dataTransfer.files?.length) {
-            setPendingDropFiles(Array.from(e.dataTransfer.files))
-            setWizardOpen(true)
+            const { allowed, rejected } = filterAllowedProjectFiles(Array.from(e.dataTransfer.files))
+            if (rejected.length) {
+              setFileNotice(
+                `Solo ${formatAllowedProjectExtensionsHint()}. Se ignoraron ${rejected.length} archivo(s).`,
+              )
+            } else {
+              setFileNotice(null)
+            }
+            if (allowed.length) {
+              setPendingDropFiles(allowed)
+              setWizardOpen(true)
+            }
             return
           }
           if (hasActiveFilters) return
@@ -469,6 +541,14 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                   <div className="flex flex-wrap gap-2 border-t border-black/5 pt-2">
                     <button
                       type="button"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-ink hover:underline"
+                      onClick={() => openEditFile(f)}
+                    >
+                      <Pencil className="h-3 w-3" aria-hidden />
+                      Editar
+                    </button>
+                    <button
+                      type="button"
                       className="text-xs font-semibold text-primary hover:underline"
                       onClick={() => void downloadFile(f)}
                     >
@@ -492,7 +572,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                   <tr className="border-b border-black/10 text-[11px] font-semibold uppercase tracking-wide text-muted">
                     <th className="py-2 pr-2">Nombre</th>
                     <th className="py-2 pr-2">Ubicación / datos</th>
-                    <th className="w-32 py-2 text-right">Acciones</th>
+                    <th className="w-40 py-2 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -524,6 +604,14 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                         {f.description ? <p className="mt-1 line-clamp-2 text-muted">{f.description}</p> : null}
                       </td>
                       <td className="whitespace-nowrap py-2 text-right align-top">
+                        <button
+                          type="button"
+                          className="mr-2 inline-flex items-center gap-1 font-semibold text-ink hover:underline"
+                          onClick={() => openEditFile(f)}
+                        >
+                          <Pencil className="h-3 w-3" aria-hidden />
+                          Editar
+                        </button>
                         <button
                           type="button"
                           className="font-semibold text-primary hover:underline"
@@ -636,6 +724,14 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                 <div className="flex flex-wrap gap-2 border-t border-black/5 pt-2">
                   <button
                     type="button"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-ink hover:underline"
+                    onClick={() => openEditFile(f)}
+                  >
+                    <Pencil className="h-3 w-3" aria-hidden />
+                    Editar
+                  </button>
+                  <button
+                    type="button"
                     className="text-xs font-semibold text-primary hover:underline"
                     onClick={() => void downloadFile(f)}
                   >
@@ -659,7 +755,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                 <tr className="border-b border-black/10 text-[11px] font-semibold uppercase tracking-wide text-muted">
                   <th className="py-2 pr-2">Nombre</th>
                   <th className="py-2 pr-2">Detalles</th>
-                  <th className="w-32 py-2 text-right">Acciones</th>
+                  <th className="w-40 py-2 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -744,6 +840,14 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                     <td className="whitespace-nowrap py-2 text-right align-top">
                       <button
                         type="button"
+                        className="mr-2 inline-flex items-center gap-1 font-semibold text-ink hover:underline"
+                        onClick={() => openEditFile(f)}
+                      >
+                        <Pencil className="h-3 w-3" aria-hidden />
+                        Editar
+                      </button>
+                      <button
+                        type="button"
                         className="font-semibold text-primary hover:underline"
                         onClick={() => void downloadFile(f)}
                       >
@@ -786,6 +890,70 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
         initialFiles={pendingDropFiles}
         onCompleted={() => void load()}
       />
+
+      {editingFile ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setEditingFile(null)
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-black/10 bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-labelledby="file-edit-title"
+            aria-modal="true"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 id="file-edit-title" className="text-lg font-semibold text-ink">
+              Editar archivo
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              El nombre debe conservar una extensión permitida ({formatAllowedProjectExtensionsHint()}).
+            </p>
+            <label htmlFor="file-edit-name" className="du-label mt-4 block text-xs">
+              Nombre
+            </label>
+            <input
+              id="file-edit-name"
+              className="du-input mt-1 w-full text-sm"
+              value={editFileName}
+              onChange={(e) => setEditFileName(e.target.value)}
+              autoFocus
+            />
+            <label htmlFor="file-edit-desc" className="du-label mt-4 block text-xs">
+              Descripción
+            </label>
+            <textarea
+              id="file-edit-desc"
+              className="du-input mt-1 min-h-[100px] w-full resize-y text-sm"
+              value={editFileDescription}
+              onChange={(e) => setEditFileDescription(e.target.value)}
+              maxLength={8000}
+              placeholder="Opcional"
+            />
+            {editError ? (
+              <p className="mt-3 text-sm font-medium text-primary" role="alert">
+                {editError}
+              </p>
+            ) : null}
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-black/15 px-4 py-2 text-sm font-medium hover:bg-black/5"
+                disabled={editSaving}
+                onClick={() => setEditingFile(null)}
+              >
+                Cancelar
+              </button>
+              <PrimaryButton type="button" disabled={editSaving} onClick={() => void saveFileEdit()}>
+                {editSaving ? 'Guardando…' : 'Guardar'}
+              </PrimaryButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {folderModalOpen ? (
         <div

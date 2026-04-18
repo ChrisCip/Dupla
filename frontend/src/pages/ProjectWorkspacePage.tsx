@@ -77,10 +77,7 @@ export function ProjectWorkspacePage() {
   const [configOpen, setConfigOpen] = useState(false)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
 
-  const workspaceTabs = useMemo(
-    () => projectWorkspaceTabs(project?.workflow_phase ?? 'BOOTSTRAPPING'),
-    [project?.workflow_phase],
-  )
+  const workspaceTabs = useMemo(() => projectWorkspaceTabs(), [])
 
   const refreshProject = useCallback(async () => {
     if (!projectUuid || !token) return

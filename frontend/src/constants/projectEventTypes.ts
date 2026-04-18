@@ -4,6 +4,8 @@ export const PROJECT_EVENT_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'ARCHITECTURE_SAVED', label: 'Pliego / cubicación guardados' },
   { value: 'BOOTSTRAP_UPDATED', label: 'Checklist de arranque' },
   { value: 'FILE_UPLOADED', label: 'Archivo subido' },
+  { value: 'FILE_UPDATED', label: 'Archivo actualizado' },
+  { value: 'FILE_DELETED', label: 'Archivo eliminado' },
   { value: 'NOTIFICATION_ARCHITECTURE_COMPLETE', label: 'Notificación: arquitectura' },
   { value: 'NOTIFICATION_BUDGET_APPROVED', label: 'Notificación: presupuesto' },
   { value: 'PLAN_DELIVERY_CREATED', label: 'Entrega de planos: creado' },
@@ -41,7 +43,7 @@ export function projectEventSearchPlaceholder(eventType: string): string {
   if (eventType === 'WORKFLOW_TRANSITION') {
     return 'Fase origen o destino (texto o código), dirección…'
   }
-  if (eventType === 'FILE_UPLOADED') {
+  if (eventType === 'FILE_UPLOADED' || eventType === 'FILE_UPDATED' || eventType === 'FILE_DELETED') {
     return 'Nombre de archivo…'
   }
   if (eventType === 'ARCHITECTURE_REVISION') {

@@ -149,6 +149,7 @@ class ProjectFileFolderPatchRequest(BaseModel):
 
 
 class ProjectFilePatchRequest(BaseModel):
+    original_name: Optional[str] = Field(default=None, min_length=1, max_length=512)
     description: Optional[str] = Field(default=None, max_length=8000)
     discipline: Optional[str] = Field(default=None, max_length=32)
     folder_uuid: Optional[UUID] = None

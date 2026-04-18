@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { DuplaLogo } from '../DuplaLogo'
 import { PrimaryButton } from '../PrimaryButton'
+import {
+  filterAllowedProjectFiles,
+  formatAllowedProjectExtensionsHint,
+  PROJECT_FILE_ACCEPT_ATTR,
+} from '../../constants/projectAllowedFiles'
 import { PROJECT_KIND_OPTIONS, type ProjectKindValue } from '../../constants/projectKind'
 
 const STEP = {
@@ -20,7 +25,7 @@ const STEP = {
   archivos: {
     title: 'Archivos de licitación',
     description:
-      'Adjunta uno o más archivos (pliegos, PDF, DWG, etc.). Son obligatorios para crear el proyecto de licitación.',
+      'Adjunta uno o más archivos .dwg, .dxf o .pdf. Son obligatorios para crear el proyecto de licitación.',
     footerHint: 'Archivos',
   },
   participantes: {
@@ -126,6 +131,7 @@ export function CreateProjectModal({
   submitting,
 }: CreateProjectModalProps) {
   const [step, setStep] = useState(1)
+  const [tenderFileRejectNote, setTenderFileRejectNote] = useState<string | null>(null)
 
   const maxStep = projectKindMaxStep(projectKind)
   const stepNumbers = useMemo(() => Array.from({ length: maxStep }, (_, i) => i + 1), [maxStep])
@@ -286,12 +292,25 @@ export function CreateProjectModal({
                       type="file"
                       className="mt-1 block w-full text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-primary/12 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink"
                       multiple
+                      accept={PROJECT_FILE_ACCEPT_ATTR}
                       disabled={submitting}
                       onChange={(e) => {
-                        const list = e.target.files
-                        setCreateFiles(list ? Array.from(list) : [])
+                        const list = e.target.files ? Array.from(e.target.files) : []
+                        const { allowed, rejected } = filterAllowedProjectFiles(list)
+                        setCreateFiles(allowed)
+                        setTenderFileRejectNote(
+                          rejected.length
+                            ? `Se omitieron ${rejected.length} archivo(s). Solo ${formatAllowedProjectExtensionsHint()}.`
+                            : null,
+                        )
+                        e.target.value = ''
                       }}
                     />
+                    {tenderFileRejectNote ? (
+                      <p className="mt-2 text-xs font-medium text-primary" role="status">
+                        {tenderFileRejectNote}
+                      </p>
+                    ) : null}
                     {createFiles.length > 0 ? (
                       <ul className="mt-2 list-inside list-disc text-xs text-muted">
                         {createFiles.map((f) => (
@@ -299,7 +318,9 @@ export function CreateProjectModal({
                         ))}
                       </ul>
                     ) : (
-                      <p className="mt-1 text-xs text-muted">Selecciona uno o más archivos (DWG, PDF, etc.).</p>
+                      <p className="mt-1 text-xs text-muted">
+                        Formatos permitidos: {formatAllowedProjectExtensionsHint()}.
+                      </p>
                     )}
                   </div>
                 ) : null}

@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 from app.config import get_settings
 from app.domain.file_discipline import FileIngestStatus, parse_discipline
 from app.domain.project_updated import touch_project_updated_at
+from app.domain.project_uploads import sanitize_project_original_filename, validate_project_file_extension
 from app.domain.task_board_constants import TASK_LIST_DONE_UUID
 from app.domain.workflow_phase import LINEAR_NEXT, LINEAR_PREV, WorkflowPhase
 from app.models.architecture_revision import ArchitectureRevision, ArchitectureRevisionDecision
@@ -528,7 +529,8 @@ class ProjectLifecycleService:
         root = Path(self._settings.upload_root)
         dest_dir = root / str(project.id)
         dest_dir.mkdir(parents=True, exist_ok=True)
-        safe_name = Path(upload.filename or "file").name.replace("..", "_")
+        safe_name = sanitize_project_original_filename(upload.filename or "file")
+        validate_project_file_extension(safe_name)
         storage_key = str(dest_dir / f"{fid}_{safe_name}")
         Path(storage_key).write_bytes(raw)
 
@@ -770,13 +772,26 @@ class ProjectLifecycleService:
         if pf is None or pf.project_id != project.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
 
+        changes: dict[str, Any] = {}
+
+        if "original_name" in patch and patch["original_name"] is not None:
+            new_name = sanitize_project_original_filename(str(patch["original_name"]))
+            validate_project_file_extension(new_name)
+            if new_name != pf.original_name:
+                changes["original_name"] = {"from": pf.original_name, "to": new_name}
+                pf.original_name = new_name
+
         if "description" in patch:
-            pf.description = patch["description"]
+            new_desc = patch["description"]
+            old_desc = pf.description
+            if (old_desc or "") != (new_desc if new_desc is not None else ""):
+                changes["description"] = {"from": old_desc, "to": new_desc}
+            pf.description = new_desc
 
         if "discipline" in patch:
             raw = patch["discipline"]
             if raw is None or (isinstance(raw, str) and raw.strip() == ""):
-                pf.discipline = None
+                new_val = None
             elif isinstance(raw, str):
                 d = parse_discipline(raw)
                 if d is None:
@@ -784,14 +799,23 @@ class ProjectLifecycleService:
                         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                         detail="discipline no válida",
                     )
-                pf.discipline = d.value
+                new_val = d.value
+            else:
+                new_val = pf.discipline
+            if new_val != pf.discipline:
+                changes["discipline"] = {"from": pf.discipline, "to": new_val}
+            pf.discipline = new_val
 
         if "folder_uuid" in patch:
             fu = patch["folder_uuid"]
+            old_folder = pf.folder_id
             if fu is None:
-                pf.folder_id = None
+                new_folder_id = None
             else:
-                pf.folder_id = await self._require_folder_in_project(project.id, fu)
+                new_folder_id = await self._require_folder_in_project(project.id, fu)
+            if old_folder != new_folder_id:
+                changes["folder_uuid"] = {"from": str(old_folder) if old_folder else None, "to": str(new_folder_id) if new_folder_id else None}
+            pf.folder_id = new_folder_id
 
         if "ingest_status" in patch and patch["ingest_status"] is not None:
             s = str(patch["ingest_status"]).strip().upper()
@@ -800,7 +824,21 @@ class ProjectLifecycleService:
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail="ingest_status debe ser DRAFT o PUBLISHED",
                 )
+            if s != pf.ingest_status:
+                changes["ingest_status"] = {"from": pf.ingest_status, "to": s}
             pf.ingest_status = s
+
+        if changes:
+            await self._projects.record_event(
+                project_id=project.id,
+                actor_user_id=user.id,
+                event_type="FILE_UPDATED",
+                payload={
+                    "file_uuid": str(file_uuid),
+                    "name": pf.original_name,
+                    "changes": changes,
+                },
+            )
 
         touch_project_updated_at(project)
         await self._session.flush()
@@ -812,6 +850,13 @@ class ProjectLifecycleService:
         pf = await self._session.get(ProjectFile, file_uuid)
         if pf is None or pf.project_id != project.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
+        display_name = pf.original_name
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="FILE_DELETED",
+            payload={"file_uuid": str(file_uuid), "name": display_name},
+        )
         path = Path(pf.storage_key)
         await self._session.delete(pf)
         if path.is_file():

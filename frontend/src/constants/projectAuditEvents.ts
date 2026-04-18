@@ -12,6 +12,8 @@ export const PROJECT_EVENT_LABELS: Record<string, string> = {
   ARCHITECTURE_SAVED: 'Documento arquitectónico guardado',
   ARCHITECTURE_REVISION: 'Revisión de arquitectura registrada',
   FILE_UPLOADED: 'Archivo subido',
+  FILE_UPDATED: 'Archivo actualizado',
+  FILE_DELETED: 'Archivo eliminado',
   TASK_CARD_CREATED: 'Tarea creada en el tablero',
   TASK_CARD_UPDATED: 'Tarea actualizada',
   TASK_CARD_LINKED: 'Tarea vinculada al proyecto',
@@ -80,6 +82,32 @@ function linesForPayload(eventType: string, payload: Payload): string[] {
       out.push(`Versión ${String(payload.version ?? '')}, decisión: ${String(payload.decision ?? '')}`)
       break
     case 'FILE_UPLOADED':
+      out.push(`Archivo: ${String(payload.name ?? '')}`)
+      break
+    case 'FILE_UPDATED': {
+      out.push(`Archivo: ${String(payload.name ?? '')}`)
+      const ch = payload.changes as Record<string, { from?: unknown; to?: unknown }> | undefined
+      if (ch?.original_name) {
+        const o = ch.original_name
+        out.push(`Nombre: «${String(o.from ?? '')}» → «${String(o.to ?? '')}»`)
+      }
+      if (ch?.description) {
+        out.push('Descripción modificada')
+      }
+      if (ch?.discipline) {
+        const d = ch.discipline
+        out.push(`Disciplina: ${String(d.from ?? '—')} → ${String(d.to ?? '—')}`)
+      }
+      if (ch?.folder_uuid) {
+        out.push('Ubicación (carpeta) modificada')
+      }
+      if (ch?.ingest_status) {
+        const s = ch.ingest_status
+        out.push(`Estado: ${String(s.from ?? '')} → ${String(s.to ?? '')}`)
+      }
+      break
+    }
+    case 'FILE_DELETED':
       out.push(`Archivo: ${String(payload.name ?? '')}`)
       break
     case 'BOOTSTRAP_UPDATED':

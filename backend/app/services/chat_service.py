@@ -15,6 +15,12 @@ from app.models.chat_conversation import (
     ChatConversationKind,
     ChatConversationMember,
 )
+from app.cache.redis_client import (
+    cache_get_json,
+    cache_set_json,
+    chat_message_epoch_get,
+)
+from app.config import get_settings
 from app.models.chat_message import ChatMessage
 from app.models.project import Project
 from app.models.user import User
@@ -26,6 +32,16 @@ from app.schemas.chat import (
     ChatPostRequest,
     ChatUserDirectoryItem,
 )
+
+
+def _chat_messages_cache_key(
+    conversation_uuid: uuid.UUID,
+    epoch: int,
+    after_uuid: Optional[uuid.UUID],
+    limit: int,
+) -> str:
+    after_part = str(after_uuid) if after_uuid is not None else "none"
+    return f"chat:messages:{conversation_uuid}:{epoch}:{after_part}:{limit}"
 
 
 class ChatService:
@@ -359,6 +375,15 @@ class ChatService:
         conv = await self._get_conversation(conversation_uuid)
         await self._assert_can_access(user, conv)
         cap = min(max(limit, 1), 200)
+        settings = get_settings()
+        epoch = await chat_message_epoch_get(conv.id)
+        cache_key = _chat_messages_cache_key(conv.id, epoch, after_uuid, cap)
+        cached = await cache_get_json(cache_key)
+        if isinstance(cached, list):
+            out = [ChatMessageResponse.model_validate(x) for x in cached]
+            await self._mark_conversation_read(user, conv)
+            await self._session.flush()
+            return out
         if after_uuid is None:
             q = (
                 select(ChatMessage)
@@ -397,6 +422,8 @@ class ChatService:
             out.append(ChatMessageResponse.from_row(msg, author))
         await self._mark_conversation_read(user, conv)
         await self._session.flush()
+        payload = [m.model_dump(mode="json") for m in out]
+        await cache_set_json(cache_key, payload, settings.cache_ttl_seconds)
         return out
 
     async def post_conversation_message(

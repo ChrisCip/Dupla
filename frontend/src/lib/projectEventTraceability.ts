@@ -121,6 +121,37 @@ export function describeProjectEvent(ev: ProjectEventRow): ProjectEventTrace {
       )
       return { title: 'Archivo subido al proyecto', rows }
     }
+    case 'FILE_UPDATED': {
+      rows.push(
+        { label: 'Nombre mostrado', value: str(p.name) },
+        { label: 'ID archivo', value: str(p.file_uuid) },
+      )
+      const ch = p.changes as Record<string, unknown> | undefined
+      if (ch && typeof ch === 'object') {
+        if (ch.original_name && typeof ch.original_name === 'object') {
+          const o = ch.original_name as { from?: unknown; to?: unknown }
+          rows.push({ label: 'Nombre', value: `${str(o.from)} → ${str(o.to)}` })
+        }
+        if (ch.description) rows.push({ label: 'Descripción', value: 'Actualizada' })
+        if (ch.discipline && typeof ch.discipline === 'object') {
+          const d = ch.discipline as { from?: unknown; to?: unknown }
+          rows.push({ label: 'Disciplina', value: `${str(d.from)} → ${str(d.to)}` })
+        }
+        if (ch.folder_uuid) rows.push({ label: 'Carpeta', value: 'Movida o cambiada' })
+        if (ch.ingest_status && typeof ch.ingest_status === 'object') {
+          const s = ch.ingest_status as { from?: unknown; to?: unknown }
+          rows.push({ label: 'Estado ingesta', value: `${str(s.from)} → ${str(s.to)}` })
+        }
+      }
+      return { title: 'Metadatos de archivo actualizados', rows }
+    }
+    case 'FILE_DELETED': {
+      rows.push(
+        { label: 'Archivo', value: str(p.name) },
+        { label: 'ID archivo', value: str(p.file_uuid) },
+      )
+      return { title: 'Archivo eliminado del proyecto', rows }
+    }
     case 'ARCHITECTURE_SAVED': {
       rows.push(
         { label: 'Secciones / grupos', value: str(p.groups_count) },

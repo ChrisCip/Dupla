@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { Upload } from 'lucide-react'
 
 import { apiFetch } from '../../api/client'
+import {
+  filterAllowedProjectFiles,
+  formatAllowedProjectExtensionsHint,
+  PROJECT_FILE_ACCEPT_ATTR,
+} from '../../constants/projectAllowedFiles'
 import { PrimaryButton } from '../PrimaryButton'
 import { DuplaLogo } from '../DuplaLogo'
 import {
@@ -16,7 +21,7 @@ const STEP_META = [
   {
     title: 'Archivos',
     description:
-      'Selecciona o arrastra uno o más archivos. En el siguiente paso se generará una descripción sugerida y disciplina (sin leer el contenido de DWG/DXF).',
+      'Solo .dwg, .dxf o .pdf. En el siguiente paso se sugiere descripción y disciplina (sin leer el binario de CAD).',
     footerHint: 'Selección',
   },
   {
@@ -132,6 +137,18 @@ export function ProjectFilesUploadWizard({
   }, [open, step, loadLocFolders])
 
   const stepMeta = STEP_META[step - 1]
+
+  function addPickedFiles(incoming: File[]) {
+    const { allowed, rejected } = filterAllowedProjectFiles(incoming)
+    if (allowed.length) setPicked((prev) => [...prev, ...allowed])
+    if (rejected.length) {
+      setUploadError(
+        `Solo se admiten ${formatAllowedProjectExtensionsHint()}. Se ignoraron ${rejected.length} archivo(s).`,
+      )
+    } else if (allowed.length) {
+      setUploadError(null)
+    }
+  }
 
   const canNextFrom1 = picked.length > 0 && !uploadBusy
 
@@ -327,8 +344,7 @@ export function ProjectFilesUploadWizard({
                   onDrop={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    if (e.dataTransfer.files?.length)
-                      setPicked((prev) => [...prev, ...Array.from(e.dataTransfer.files)])
+                    if (e.dataTransfer.files?.length) addPickedFiles(Array.from(e.dataTransfer.files))
                   }}
                 >
                   <Upload className="h-10 w-10 text-primary/80" strokeWidth={1.25} aria-hidden />
@@ -339,9 +355,11 @@ export function ProjectFilesUploadWizard({
                     type="file"
                     className="sr-only"
                     multiple
+                    accept={PROJECT_FILE_ACCEPT_ATTR}
                     onChange={(e) => {
                       const list = e.target.files
-                      if (list?.length) setPicked((prev) => [...prev, ...Array.from(list)])
+                      if (list?.length) addPickedFiles(Array.from(list))
+                      e.target.value = ''
                     }}
                   />
                 </label>
