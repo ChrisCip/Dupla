@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
 import { Card } from '../components/Card'
+import { ChatComposer } from '../components/chat/ChatComposer'
+import { ChatConversationSidebar } from '../components/chat/ChatConversationSidebar'
+import { ChatMessageList } from '../components/chat/ChatMessageList'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
@@ -12,6 +15,7 @@ export function ChatPage() {
   const [searchParams] = useSearchParams()
   const token = useAuthStore((s) => s.token)
   const userUuid = useAuthStore((s) => s.userUuid)
+  const email = useAuthStore((s) => s.email)
   const conversations = useChatStore((s) => s.conversations)
   const activeConversationUuid = useChatStore((s) => s.activeConversationUuid)
   const setActiveConversationUuid = useChatStore((s) => s.setActiveConversationUuid)
@@ -29,7 +33,8 @@ export function ChatPage() {
   const [showGroup, setShowGroup] = useState(false)
   const [dmTarget, setDmTarget] = useState('')
   const [groupTitle, setGroupTitle] = useState('')
-  const [groupMembers, setGroupMembers] = useState<Record<string, boolean>>({})
+  const [groupMemberSearch, setGroupMemberSearch] = useState('')
+  const [groupSelectedUuids, setGroupSelectedUuids] = useState<string[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const refreshConversations = useCallback(async () => {
@@ -79,12 +84,13 @@ export function ChatPage() {
       if (!res.ok || cancelled) return
       if (useChatStore.getState().activeConversationUuid !== conv) return
       setMessages((await res.json()) as ChatMessage[])
+      void refreshConversations()
     }
     void load()
     return () => {
       cancelled = true
     }
-  }, [token, activeConversationUuid, setMessages])
+  }, [token, activeConversationUuid, setMessages, refreshConversations])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -112,9 +118,7 @@ export function ChatPage() {
 
   async function createGroup() {
     if (!token) return
-    const uuids = Object.entries(groupMembers)
-      .filter(([, v]) => v)
-      .map(([k]) => k)
+    const uuids = groupSelectedUuids
     if (!groupTitle.trim() || uuids.length < 1) {
       setError('Indica nombre del grupo y al menos un miembro.')
       return
@@ -135,14 +139,42 @@ export function ChatPage() {
     setActiveConversationUuid(row.uuid)
     setShowGroup(false)
     setGroupTitle('')
-    setGroupMembers({})
+    setGroupMemberSearch('')
+    setGroupSelectedUuids([])
   }
 
-  async function send(e: React.FormEvent) {
-    e.preventDefault()
+  const groupPickerCandidates = useMemo(() => {
+    const q = groupMemberSearch.trim().toLowerCase()
+    const selected = new Set(groupSelectedUuids)
+    return directory
+      .filter((u) => !selected.has(u.uuid))
+      .filter((u) => q === '' || u.email.toLowerCase().includes(q))
+      .slice(0, 50)
+  }, [directory, groupMemberSearch, groupSelectedUuids])
+
+  function addGroupMember(uuid: string) {
+    setGroupSelectedUuids((prev) => (prev.includes(uuid) ? prev : [...prev, uuid]))
+    setGroupMemberSearch('')
+  }
+
+  function removeGroupMember(uuid: string) {
+    setGroupSelectedUuids((prev) => prev.filter((id) => id !== uuid))
+  }
+
+  const send = useCallback(async () => {
     const text = draft.trim()
-    if (!token || !text || !activeConversationUuid) return
+    if (!token || !text || !activeConversationUuid || !userUuid) return
     setError(null)
+    const optimisticUuid = `optimistic-${crypto.randomUUID()}`
+    const optimistic: ChatMessage = {
+      uuid: optimisticUuid,
+      conversation_uuid: activeConversationUuid,
+      body: text,
+      created_at: new Date().toISOString(),
+      author: { uuid: userUuid, email: email ?? '' },
+    }
+    appendMessages([optimistic])
+    setDraft('')
     setSending(true)
     try {
       const res = await apiFetch(`/api/chat/conversations/${activeConversationUuid}/messages`, {
@@ -153,16 +185,29 @@ export function ChatPage() {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         setError((body as { detail?: string }).detail ?? 'No se pudo enviar')
+        const prev = useChatStore.getState().messages
+        setMessages(prev.filter((m) => m.uuid !== optimisticUuid))
+        setDraft(text)
         return
       }
       const msg = (await res.json()) as ChatMessage
-      appendMessages([msg])
-      setDraft('')
+      const prev = useChatStore.getState().messages
+      const without = prev.filter((m) => m.uuid !== optimisticUuid)
+      setMessages(without.some((m) => m.uuid === msg.uuid) ? without : [...without, msg])
       void refreshConversations()
     } finally {
       setSending(false)
     }
-  }
+  }, [
+    token,
+    draft,
+    activeConversationUuid,
+    userUuid,
+    email,
+    appendMessages,
+    setMessages,
+    refreshConversations,
+  ])
 
   const activeMeta = conversations.find((c) => c.uuid === activeConversationUuid)
 
@@ -177,118 +222,63 @@ export function ChatPage() {
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-        <aside className="w-full shrink-0 lg:w-72">
-          <Card className="p-4">
-            <div className="flex flex-wrap gap-2">
-              <PrimaryButton
-                type="button"
-                className="!px-3 !py-1.5 !text-xs"
-                onClick={() => {
-                  setError(null)
-                  setShowDm(true)
-                }}
-              >
-                Chat con…
-              </PrimaryButton>
-              <button
-                type="button"
-                className="rounded-md border border-black/15 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ink shadow-sm hover:border-primary/30"
-                onClick={() => {
-                  setError(null)
-                  setShowGroup(true)
-                }}
-              >
-                Nuevo grupo
-              </button>
-            </div>
-            <div className="du-label mt-4">Conversaciones</div>
-            <ul className="mt-2 space-y-1">
-              {conversations.map((c) => (
-                <li key={c.uuid}>
-                  <button
-                    type="button"
-                    onClick={() => setActiveConversationUuid(c.uuid)}
-                    className={`w-full rounded-md border px-3 py-2 text-left text-sm transition ${
-                      c.uuid === activeConversationUuid
-                        ? 'border-primary/40 bg-primary/5 text-ink'
-                        : 'border-black/10 bg-white hover:border-primary/25'
-                    }`}
-                  >
-                    <div className="font-medium leading-snug">{c.display_title}</div>
-                    <div className="du-meta mt-0.5">
-                      {c.kind === 'GENERAL'
-                        ? 'Avisos'
-                        : c.kind === 'DIRECT'
-                          ? 'Directo'
-                          : 'Grupo'}
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </aside>
+        <ChatConversationSidebar
+          conversations={conversations}
+          activeConversationUuid={activeConversationUuid}
+          onSelect={setActiveConversationUuid}
+          onNewChat={() => {
+            setError(null)
+            setShowDm(true)
+          }}
+          onNewGroup={() => {
+            setError(null)
+            setGroupTitle('')
+            setGroupMemberSearch('')
+            setGroupSelectedUuids([])
+            setShowGroup(true)
+          }}
+        />
 
         <Card className="flex min-h-[min(70vh,560px)] min-w-0 flex-1 flex-col overflow-hidden p-0">
           <div className="border-b border-black/10 bg-black/2 px-4 py-3">
-            <h2 className="text-sm font-semibold text-ink">{activeMeta?.display_title ?? 'Chat'}</h2>
-            {activeMeta?.kind === 'GENERAL' ? (
-              <p className="du-meta mt-0.5">Mensajes visibles para todo el equipo.</p>
+            <h2 className="text-base font-semibold text-ink">
+              {activeMeta?.display_title ?? 'Chat'}
+            </h2>
+            {activeMeta ? (
+              <p className="du-meta mt-1">
+                {activeMeta.kind === 'GENERAL' && 'Mensajes visibles para todo el equipo.'}
+                {activeMeta.kind === 'DIRECT' && 'Chat directo entre dos personas.'}
+                {activeMeta.kind === 'GROUP' &&
+                  (activeMeta.participant_count != null
+                    ? `Grupo · ${activeMeta.participant_count} personas`
+                    : 'Grupo')}
+                {activeMeta.kind === 'PROJECT' && 'Chat vinculado al proyecto.'}
+              </p>
             ) : null}
           </div>
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-            {!activeConversationUuid ? (
+          {!activeConversationUuid ? (
+            <div className="flex flex-1 items-center justify-center px-4 py-8">
               <p className="text-sm text-muted">Cargando conversaciones…</p>
-            ) : messages.length === 0 ? (
-              <p className="text-sm text-muted">Aún no hay mensajes. Escribe el primero.</p>
-            ) : null}
-            {messages.map((m) => {
-              const mine = userUuid !== null && m.author.uuid === userUuid
-              return (
-                <div
-                  key={m.uuid}
-                  className={`flex flex-col rounded-lg border px-3 py-2 text-sm ${
-                    mine ? 'ml-8 border-primary/25 bg-primary/5' : 'mr-8 border-black/10 bg-white'
-                  }`}
-                >
-                  <div className="du-meta flex justify-between gap-2">
-                    <span className={mine ? 'text-primary' : ''}>{m.author.email}</span>
-                    <time dateTime={m.created_at}>
-                      {new Date(m.created_at).toLocaleString(undefined, {
-                        dateStyle: 'short',
-                        timeStyle: 'short',
-                      })}
-                    </time>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap text-ink">{m.body}</p>
-                </div>
-              )
-            })}
-            <div ref={bottomRef} />
-          </div>
-          <form
-            className="border-t border-black/10 bg-black/2 px-4 py-3"
-            onSubmit={(e) => void send(e)}
-          >
-            {error ? <p className="mb-2 text-sm text-primary">{error}</p> : null}
-            <label className="du-label sr-only" htmlFor="chat-input">
-              Mensaje
-            </label>
-            <textarea
-              id="chat-input"
-              className="du-input min-h-[88px] resize-y"
-              placeholder="Escribe un mensaje…"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              disabled={sending || !activeConversationUuid}
-              maxLength={4000}
-            />
-            <div className="mt-2 flex justify-end">
-              <PrimaryButton type="submit" disabled={sending || !draft.trim() || !activeConversationUuid}>
-                {sending ? 'Enviando…' : 'Enviar'}
-              </PrimaryButton>
             </div>
-          </form>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col">
+              {messages.length === 0 ? (
+                <div className="flex flex-1 items-center justify-center px-4 py-8">
+                  <p className="text-sm text-muted">Aún no hay mensajes. Escribe el primero.</p>
+                </div>
+              ) : (
+                <ChatMessageList messages={messages} userUuid={userUuid} bottomRef={bottomRef} />
+              )}
+              <ChatComposer
+                value={draft}
+                onChange={setDraft}
+                onSend={send}
+                disabled={!activeConversationUuid}
+                sending={sending}
+                error={error}
+              />
+            </div>
+          )}
         </Card>
       </div>
 
@@ -356,6 +346,9 @@ export function ChatPage() {
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) {
               setError(null)
+              setGroupTitle('')
+              setGroupMemberSearch('')
+              setGroupSelectedUuids([])
               setShowGroup(false)
             }
           }}
@@ -381,22 +374,78 @@ export function ChatPage() {
               maxLength={120}
             />
             <div className="du-label mt-4">Miembros</div>
-            <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-md border border-black/10 p-2">
-              {directory.map((u) => (
-                <li key={u.uuid}>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
-                    <input
-                      type="checkbox"
-                      className="rounded border-black/20"
-                      checked={Boolean(groupMembers[u.uuid])}
-                      onChange={(e) =>
-                        setGroupMembers((prev) => ({ ...prev, [u.uuid]: e.target.checked }))
-                      }
-                    />
-                    {u.email}
-                  </label>
+            <p className="mt-1 text-xs text-muted">
+              Busca por correo y elige de la lista para añadir. Puedes quitar miembros con la ×.
+            </p>
+            <label className="du-label mt-3 block" htmlFor="group-member-search">
+              Buscar usuario
+            </label>
+            <input
+              id="group-member-search"
+              type="search"
+              autoComplete="off"
+              className="du-input mt-1 w-full"
+              placeholder="Escribe para filtrar…"
+              value={groupMemberSearch}
+              onChange={(e) => setGroupMemberSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && groupPickerCandidates[0]) {
+                  e.preventDefault()
+                  addGroupMember(groupPickerCandidates[0].uuid)
+                }
+              }}
+            />
+            {groupSelectedUuids.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {groupSelectedUuids.map((id) => {
+                  const label = directory.find((u) => u.uuid === id)?.email ?? id
+                  return (
+                    <span
+                      key={id}
+                      className="inline-flex max-w-full items-center gap-1 rounded-full border border-primary/30 bg-primary/[0.08] py-1 pl-2.5 pr-1 text-xs text-ink"
+                    >
+                      <span className="truncate">{label}</span>
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-full px-1.5 py-0.5 text-muted hover:bg-black/10 hover:text-ink"
+                        aria-label={`Quitar ${label}`}
+                        onClick={() => removeGroupMember(id)}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted">Nadie añadido aún.</p>
+            )}
+            <div className="du-label mt-3">Resultados</div>
+            <ul
+              className="mt-1 max-h-48 overflow-y-auto rounded-md border border-black/10 bg-white p-1 shadow-inner"
+              role="listbox"
+              aria-label="Usuarios disponibles"
+            >
+              {groupPickerCandidates.length === 0 ? (
+                <li className="px-2 py-3 text-center text-sm text-muted">
+                  {directory.length === 0
+                    ? 'No hay usuarios en el directorio.'
+                    : 'Sin coincidencias o todos ya están en el grupo.'}
                 </li>
-              ))}
+              ) : (
+                groupPickerCandidates.map((u) => (
+                  <li key={u.uuid}>
+                    <button
+                      type="button"
+                      role="option"
+                      className="w-full rounded px-2 py-2 text-left text-sm text-ink hover:bg-primary/[0.08]"
+                      onClick={() => addGroupMember(u.uuid)}
+                    >
+                      {u.email}
+                    </button>
+                  </li>
+                ))
+              )}
             </ul>
             {error ? <p className="mt-2 text-sm text-primary">{error}</p> : null}
             <div className="mt-6 flex justify-end gap-2">
@@ -405,6 +454,9 @@ export function ChatPage() {
                 className="rounded-md px-3 py-2 text-sm text-muted hover:text-ink"
                 onClick={() => {
                   setError(null)
+                  setGroupTitle('')
+                  setGroupMemberSearch('')
+                  setGroupSelectedUuids([])
                   setShowGroup(false)
                 }}
               >

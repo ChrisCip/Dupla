@@ -6,6 +6,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+from sqlalchemy.inspection import inspect
 
 from app.models.architecture_revision import ArchitectureRevision
 from app.models.project_event import ProjectEvent
@@ -40,15 +41,19 @@ class ProjectEventResponse(BaseModel):
     event_type: str
     payload: dict[str, Any]
     actor_user_uuid: Optional[UUID]
+    actor_email: Optional[str]
     created_at: datetime
 
     @classmethod
     def from_row(cls, row: ProjectEvent) -> ProjectEventResponse:
+        st = inspect(row)
+        actor = None if "actor" in st.unloaded else row.actor
         return cls(
             uuid=row.id,
             event_type=row.event_type,
             payload=row.payload or {},
             actor_user_uuid=row.actor_user_id,
+            actor_email=actor.email if actor is not None else None,
             created_at=row.created_at,
         )
 
@@ -129,7 +134,9 @@ class SubcontractQuoteResponse(BaseModel):
 
     @classmethod
     def from_row(cls, row: SubcontractQuote) -> SubcontractQuoteResponse:
-        lines = sorted(row.lines, key=lambda x: str(x.id))
+        st = inspect(row)
+        raw_lines = [] if "lines" in st.unloaded else row.lines
+        lines = sorted(raw_lines, key=lambda x: str(x.id))
         return cls(
             uuid=row.id,
             title=row.title,

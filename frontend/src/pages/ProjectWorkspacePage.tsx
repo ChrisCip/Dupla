@@ -7,14 +7,10 @@ import { PliegoCondicionesForm } from '../components/PliegoCondicionesForm'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { StatusBadge } from '../components/StatusBadge'
 import { Tabs } from '../components/Tabs'
+import { TaskboardView } from '../components/TaskboardView'
 import { PLAN_DELIVERY_STATUS_OPTIONS } from '../constants/planDeliveryStatus'
-import { PHASE_WORKSPACE_HINTS } from '../constants/projectWorkspaceHints'
-import { visibleWorkspaceTabs } from '../constants/projectWorkspaceTabs'
-import {
-  NEXT_WORKFLOW_PHASE,
-  WORKFLOW_PHASE_LABELS,
-  WORKFLOW_PHASE_ORDER,
-} from '../constants/workflowPhases'
+import { projectWorkspaceTabs } from '../constants/projectWorkspaceTabs'
+import { NEXT_WORKFLOW_PHASE, WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
 import { mergePliegoItemStates } from '../lib/pliegoFormState'
 import { useAuthStore } from '../store/authStore'
 import { useWorkspaceStore } from '../store/workspaceStore'
@@ -146,11 +142,8 @@ export function ProjectWorkspacePage() {
   const [planDeliveryMsg, setPlanDeliveryMsg] = useState<string | null>(null)
 
   const workspaceTabs = useMemo(
-    () =>
-      visibleWorkspaceTabs(project?.workflow_phase ?? 'BOOTSTRAPPING', {
-        isMaster: role === 'MASTER',
-      }),
-    [project?.workflow_phase, role],
+    () => projectWorkspaceTabs(project?.workflow_phase ?? 'BOOTSTRAPPING'),
+    [project?.workflow_phase],
   )
 
   const refreshProject = useCallback(async () => {
@@ -292,7 +285,7 @@ export function ProjectWorkspacePage() {
   }, [workspaceTabs, tab])
 
   useEffect(() => {
-    if (!token || !projectUuid || role !== 'MASTER' || !project) return
+    if (!token || !projectUuid || role !== 'GERENCIA' || !project) return
     let cancelled = false
     void (async () => {
       const [m, u] = await Promise.all([
@@ -473,16 +466,6 @@ export function ProjectWorkspacePage() {
   const displayTitle = project?.name ?? 'Proyecto'
   const phaseLabel = project ? WORKFLOW_PHASE_LABELS[project.workflow_phase] ?? project.workflow_phase : ''
   const nextPhase = project ? NEXT_WORKFLOW_PHASE[project.workflow_phase] : undefined
-  const phaseOrderList = WORKFLOW_PHASE_ORDER as readonly string[]
-  const activePhaseIndex = project ? phaseOrderList.indexOf(project.workflow_phase) : -1
-  const workspaceHint = project
-    ? (PHASE_WORKSPACE_HINTS[project.workflow_phase] ?? {
-        title: 'Workspace',
-        body: 'Usa las pestañas para archivos, flujo, pliegos y materiales.',
-        tabId: 'detalles' as const,
-        cta: 'Ir a Detalles',
-      })
-    : null
 
   return (
     <>
@@ -565,53 +548,38 @@ export function ProjectWorkspacePage() {
         </div>
       </div>
 
-      {project && workspaceHint ? (
+      {projectUuid ? (
         <div className="mb-6 space-y-4">
-          <div
-            className="flex gap-1 overflow-x-auto border border-black/10 bg-white px-2 py-2 text-[11px] shadow-[var(--shadow-card)] sm:text-xs"
-            aria-label="Progreso del flujo por fases"
-          >
-            {WORKFLOW_PHASE_ORDER.map((phaseKey, i) => {
-              const label = WORKFLOW_PHASE_LABELS[phaseKey] ?? phaseKey
-              const isCurrent = project.workflow_phase === phaseKey
-              const isPast = activePhaseIndex >= 0 && i < activePhaseIndex
-              return (
-                <div
-                  key={phaseKey}
-                  className={`shrink-0 rounded-md px-2 py-1.5 font-medium transition-colors duration-150 ${
-                    isCurrent
-                      ? 'bg-primary/12 text-ink ring-1 ring-primary/30'
-                      : isPast
-                        ? 'bg-black/[0.05] text-muted'
-                        : 'text-muted'
-                  }`}
-                  title={label}
-                >
-                  {label}
-                </div>
-              )
-            })}
-          </div>
-          <div className="du-callout flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-ink">Siguiente paso sugerido</div>
-              <p className="mt-1 text-sm leading-relaxed text-muted">
-                <span className="font-medium text-ink">{workspaceHint.title}.</span> {workspaceHint.body}
-              </p>
+          <Card className="overflow-hidden p-0">
+            <div className="border-b border-black/10 bg-black/2 px-4 py-2">
+              <h2 className="text-sm font-semibold text-ink">Tareas del proyecto</h2>
+              <p className="du-meta mt-0.5">Arrastra tarjetas entre columnas; abre una tarea para editar o comentar.</p>
             </div>
-            <PrimaryButton
-              type="button"
-              className="shrink-0 sm:min-w-[10rem]"
-              disabled={tab === workspaceHint.tabId}
-              onClick={() => setTab(workspaceHint.tabId)}
-            >
-              {tab === workspaceHint.tabId ? 'En esta pestaña' : workspaceHint.cta}
-            </PrimaryButton>
-          </div>
-        </div>
-      ) : !project && !projectError ? (
-        <div className="du-callout mb-6 border-black/15 bg-black/[0.03] text-muted">
-          Cargando datos del proyecto… Cuando estén listos verás la franja de fases y una sugerencia de siguiente paso.
+            <div className="min-h-[min(420px,55vh)] min-w-0">
+              <TaskboardView projectUuid={projectUuid} variant="embedded" />
+            </div>
+          </Card>
+          <Card className="p-4">
+            <h2 className="text-sm font-semibold text-ink">Acciones rápidas</h2>
+            <p className="mt-1 text-xs text-muted">
+              Atajos al tablero completo, chat del proyecto y a la pestaña Flujo (avance de fase sin duplicar controles
+              aquí).
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                className="du-pill-action"
+                to={`/app/tasks?project_uuid=${encodeURIComponent(projectUuid)}`}
+              >
+                Tablero completo
+              </Link>
+              <button type="button" className="du-pill-action" onClick={() => void openProjectChat()}>
+                Chat del proyecto
+              </button>
+              <button type="button" className="du-pill-action" onClick={() => setTab('flujo')}>
+                Ir a Flujo
+              </button>
+            </div>
+          </Card>
         </div>
       ) : null}
 
@@ -658,7 +626,7 @@ export function ProjectWorkspacePage() {
                     Chat del proyecto
                   </button>
                 </div>
-                {role === 'MASTER' ? (
+                {role === 'GERENCIA' ? (
                   <div className="mt-8 border-t border-black/10 pt-6">
                     <h3 className="text-md font-semibold text-ink">Quién puede ver este proyecto</h3>
                     <p className="mt-1 text-sm text-muted">
@@ -785,9 +753,9 @@ export function ProjectWorkspacePage() {
                 ) : (
                   <p className="text-sm text-muted">El proyecto completó el flujo definido.</p>
                 )}
-                {nextPhase === 'BUDGET_APPROVED' && role !== 'MASTER' ? (
+                {nextPhase === 'BUDGET_APPROVED' && role !== 'GERENCIA' ? (
                   <p className="text-sm text-primary">
-                    Solo un usuario MASTER puede marcar la aprobación final del presupuesto.
+                    Solo un usuario de Gerencia puede marcar la aprobación final del presupuesto.
                   </p>
                 ) : null}
               </>

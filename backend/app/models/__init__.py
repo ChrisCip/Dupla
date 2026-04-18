@@ -8,7 +8,7 @@ from app.models.project_member import ProjectMember
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
 from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
-from app.models.task_board import TaskCard, TaskList
+from app.models.task_board import TaskCard, TaskCardComment, TaskList
 from app.models.user import User, UserModule
 from app.models.user_notification import UserNotification
 
@@ -27,6 +27,7 @@ __all__ = [
     "SubcontractQuote",
     "SubcontractQuoteLine",
     "TaskCard",
+    "TaskCardComment",
     "TaskList",
     "User",
     "UserModule",

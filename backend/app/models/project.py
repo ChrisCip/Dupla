@@ -33,6 +33,7 @@ class Project(Base):
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     creator: Mapped[Optional["User"]] = relationship(
         "User",

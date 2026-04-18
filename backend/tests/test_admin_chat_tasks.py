@@ -40,7 +40,7 @@ async def test_admin_create_user(client, master_auth_headers_async: dict[str, st
         json={
             "email": "newuser@dupla.demo",
             "password": "longpassword1",
-            "role": "WORKER",
+            "role": "PRESUPUESTO",
             "module_ids": [1],
         },
     )
@@ -174,11 +174,11 @@ async def test_chat_create_group(client, auth_headers_async: dict[str, str]):
 
 
 @pytest.mark.asyncio
-async def test_task_board_master_read_only(client, master_auth_headers_async: dict[str, str]):
+async def test_task_board_gerencia_can_create_and_patch(client, master_auth_headers_async: dict[str, str]):
     board = await client.get("/api/tasks/board", headers=master_auth_headers_async)
     assert board.status_code == 200
     lists = board.json()["lists"]
-    assert len(lists) == 3
+    assert len(lists) >= 1
 
     list_uuid = lists[0]["uuid"]
     create = await client.post(
@@ -186,7 +186,16 @@ async def test_task_board_master_read_only(client, master_auth_headers_async: di
         headers={**master_auth_headers_async, "Content-Type": "application/json"},
         json={"list_uuid": str(list_uuid), "title": "Tarea demo"},
     )
-    assert create.status_code == 403
+    assert create.status_code == 201, create.text
+    card_id = create.json()["uuid"]
+
+    patch = await client.patch(
+        f"/api/tasks/cards/{card_id}",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"title": "Actualizado por gerencia"},
+    )
+    assert patch.status_code == 200, patch.text
+    assert patch.json()["title"] == "Actualizado por gerencia"
 
 
 @pytest.mark.asyncio

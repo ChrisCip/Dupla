@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy import intersect, select
+from sqlalchemy import func, intersect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -66,13 +66,102 @@ class ChatService:
         if row is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversación no encontrada")
 
-    async def _conversation_to_response(self, conv: ChatConversation, user: User) -> ChatConversationResponse:
+    async def _ensure_general_membership(self, user: User) -> None:
+        stmt = select(ChatConversationMember).where(
+            ChatConversationMember.conversation_id == GENERAL_CONVERSATION_UUID,
+            ChatConversationMember.user_id == user.id,
+        )
+        if (await self._session.execute(stmt)).scalar_one_or_none() is None:
+            self._session.add(
+                ChatConversationMember(
+                    conversation_id=GENERAL_CONVERSATION_UUID,
+                    user_id=user.id,
+                )
+            )
+            await self._session.flush()
+
+    async def _ensure_member(self, user: User, conv: ChatConversation) -> ChatConversationMember:
+        stmt = select(ChatConversationMember).where(
+            ChatConversationMember.conversation_id == conv.id,
+            ChatConversationMember.user_id == user.id,
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        if row is not None:
+            return row
+        m = ChatConversationMember(conversation_id=conv.id, user_id=user.id)
+        self._session.add(m)
+        await self._session.flush()
+        return m
+
+    async def _last_message_preview(self, conversation_id: uuid.UUID) -> Optional[str]:
+        q = (
+            select(ChatMessage.body)
+            .where(ChatMessage.conversation_id == conversation_id)
+            .order_by(ChatMessage.created_at.desc())
+            .limit(1)
+        )
+        raw = (await self._session.execute(q)).scalar_one_or_none()
+        if raw is None:
+            return None
+        text = " ".join(raw.strip().split())
+        if len(text) <= 140:
+            return text
+        return text[:137] + "…"
+
+    async def _participant_count(self, conversation_id: uuid.UUID) -> int:
+        q = select(func.count()).select_from(ChatConversationMember).where(
+            ChatConversationMember.conversation_id == conversation_id
+        )
+        return int((await self._session.execute(q)).scalar_one() or 0)
+
+    async def _unread_count(self, user: User, conv: ChatConversation) -> int:
+        await self._ensure_member(user, conv)
+        stmt = select(ChatConversationMember).where(
+            ChatConversationMember.conversation_id == conv.id,
+            ChatConversationMember.user_id == user.id,
+        )
+        mem = (await self._session.execute(stmt)).scalar_one_or_none()
+        if mem is None:
+            return 0
+        threshold = mem.last_read_at
+        if threshold is None:
+            threshold = datetime(1970, 1, 1, tzinfo=timezone.utc)
+        q = (
+            select(func.count())
+            .select_from(ChatMessage)
+            .where(
+                ChatMessage.conversation_id == conv.id,
+                ChatMessage.author_id != user.id,
+                ChatMessage.created_at > threshold,
+            )
+        )
+        return int((await self._session.execute(q)).scalar_one() or 0)
+
+    async def _mark_conversation_read(self, user: User, conv: ChatConversation) -> None:
+        mem = await self._ensure_member(user, conv)
+        sub = select(func.max(ChatMessage.created_at)).where(ChatMessage.conversation_id == conv.id)
+        mx = (await self._session.execute(sub)).scalar_one_or_none()
+        if mx is not None:
+            mem.last_read_at = mx
+
+    async def _conversation_to_response(
+        self,
+        conv: ChatConversation,
+        user: User,
+        *,
+        last_message_preview: Optional[str] = None,
+        unread_count: int = 0,
+        participant_count: Optional[int] = None,
+    ) -> ChatConversationResponse:
         if conv.kind == ChatConversationKind.GENERAL:
             return ChatConversationResponse(
                 uuid=conv.id,
                 kind=conv.kind.value,
                 display_title="Avisos generales",
                 last_message_at=conv.last_message_at,
+                last_message_preview=last_message_preview,
+                unread_count=unread_count,
+                participant_count=participant_count,
             )
         if conv.kind == ChatConversationKind.GROUP:
             return ChatConversationResponse(
@@ -80,6 +169,9 @@ class ChatService:
                 kind=conv.kind.value,
                 display_title=(conv.title or "Grupo").strip() or "Grupo",
                 last_message_at=conv.last_message_at,
+                last_message_preview=last_message_preview,
+                unread_count=unread_count,
+                participant_count=participant_count,
             )
         if conv.kind == ChatConversationKind.PROJECT:
             title = "Proyecto"
@@ -92,6 +184,9 @@ class ChatService:
                 kind=conv.kind.value,
                 display_title=f"Chat · {title}",
                 last_message_at=conv.last_message_at,
+                last_message_preview=last_message_preview,
+                unread_count=unread_count,
+                participant_count=participant_count,
             )
         stmt = (
             select(User)
@@ -108,9 +203,13 @@ class ChatService:
             kind=conv.kind.value,
             display_title=label,
             last_message_at=conv.last_message_at,
+            last_message_preview=last_message_preview,
+            unread_count=unread_count,
+            participant_count=participant_count,
         )
 
     async def list_conversations(self, user: User) -> list[ChatConversationResponse]:
+        await self._ensure_general_membership(user)
         member_subq = select(ChatConversationMember.conversation_id).where(
             ChatConversationMember.user_id == user.id
         )
@@ -128,7 +227,18 @@ class ChatService:
         rows.sort(key=sort_key)
         out: list[ChatConversationResponse] = []
         for conv in rows:
-            out.append(await self._conversation_to_response(conv, user))
+            preview = await self._last_message_preview(conv.id)
+            unread = await self._unread_count(user, conv)
+            pcount = await self._participant_count(conv.id)
+            out.append(
+                await self._conversation_to_response(
+                    conv,
+                    user,
+                    last_message_preview=preview,
+                    unread_count=unread,
+                    participant_count=pcount,
+                )
+            )
         return out
 
     async def list_directory(self, user: User) -> list[ChatUserDirectoryItem]:
@@ -250,6 +360,8 @@ class ChatService:
             if author is None:
                 continue
             out.append(ChatMessageResponse.from_row(msg, author))
+        await self._mark_conversation_read(user, conv)
+        await self._session.flush()
         return out
 
     async def post_conversation_message(

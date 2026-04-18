@@ -1,36 +1,22 @@
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useCallback, useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
 
 import { apiFetch } from '../api/client'
+import { AdminUserModal } from '../components/AdminUserModal'
 import { Card } from '../components/Card'
 import { PrimaryButton } from '../components/PrimaryButton'
-import { adminCreateUserSchema, type AdminCreateUserForm } from '../schemas/adminUser'
+import { ROLE_LABELS, type UserRole } from '../constants/userRoles'
 import { useAuthStore } from '../store/authStore'
 
-type ListedUser = { uuid: string; email: string; role: string }
+type ListedUser = { uuid: string; email: string; role: string; module_ids: number[] }
 
 export function AdminUsersPage() {
   const token = useAuthStore((s) => s.token)
   const [users, setUsers] = useState<ListedUser[]>([])
   const [listError, setListError] = useState<string | null>(null)
-  const [submitError, setSubmitError] = useState<string | null>(null)
   const [loadingList, setLoadingList] = useState(true)
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<AdminCreateUserForm>({
-    resolver: zodResolver(adminCreateUserSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      role: 'WORKER',
-      architectureAccess: true,
-    },
-  })
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
+  const [editingUser, setEditingUser] = useState<ListedUser | null>(null)
 
   const refresh = useCallback(async () => {
     if (!token) return
@@ -56,136 +42,92 @@ export function AdminUsersPage() {
     }
   }, [refresh])
 
-  async function onSubmit(values: AdminCreateUserForm) {
-    if (!token) return
-    setSubmitError(null)
-    const module_ids = values.architectureAccess ? [1] : []
-    const res = await apiFetch('/api/admin/users', {
-      method: 'POST',
-      token,
-      body: JSON.stringify({
-        email: values.email,
-        password: values.password,
-        role: values.role,
-        module_ids,
-      }),
-    })
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      const detail = (body as { detail?: string }).detail
-      setSubmitError(detail ?? 'No se pudo crear el usuario')
-      return
-    }
-    reset({
-      email: '',
-      password: '',
-      role: 'WORKER',
-      architectureAccess: true,
-    })
-    await refresh()
+  function openCreate() {
+    setModalMode('create')
+    setEditingUser(null)
+    setModalOpen(true)
+  }
+
+  function openEdit(u: ListedUser) {
+    setModalMode('edit')
+    setEditingUser(u)
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    setModalOpen(false)
+    setEditingUser(null)
+  }
+
+  function roleLabel(role: string): string {
+    return ROLE_LABELS[role as UserRole] ?? role
   }
 
   return (
     <>
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-ink">Administración de usuarios</h1>
-        <p className="mt-2 max-w-prose text-sm text-muted">
-          Alta de credenciales, rol y permisos de acceso a la plataforma. Solo usuarios MASTER.
-        </p>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink">Usuarios</h1>
+          <p className="mt-2 max-w-prose text-sm text-muted">
+            Alta y edición de credenciales, rol y acceso al workspace. Solo rol Gerencia.
+          </p>
+        </div>
+        <PrimaryButton type="button" className="shrink-0 self-start" onClick={openCreate}>
+          Nuevo usuario
+        </PrimaryButton>
       </div>
 
-      <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold text-ink">Crear usuario</h2>
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-            <div>
-              <label className="du-label" htmlFor="admin-email">
-                Correo
-              </label>
-              <input
-                id="admin-email"
-                type="email"
-                autoComplete="off"
-                className="du-input mt-1"
-                {...register('email')}
-              />
-              {errors.email ? <p className="mt-1 text-sm text-primary">{errors.email.message}</p> : null}
-            </div>
-            <div>
-              <label className="du-label" htmlFor="admin-password">
-                Contraseña inicial
-              </label>
-              <input
-                id="admin-password"
-                type="password"
-                autoComplete="new-password"
-                className="du-input mt-1"
-                {...register('password')}
-              />
-              {errors.password ? (
-                <p className="mt-1 text-sm text-primary">{errors.password.message}</p>
-              ) : (
-                <p className="du-meta mt-1">Mínimo 8 caracteres. El usuario podrá cambiarla si implementas flujo de reset.</p>
-              )}
-            </div>
-            <div>
-              <label className="du-label" htmlFor="admin-role">
-                Rol
-              </label>
-              <select id="admin-role" className="du-input mt-1" {...register('role')}>
-                <option value="WORKER">Operario (WORKER)</option>
-                <option value="COORDINATOR">Coordinador (COORDINATOR)</option>
-                <option value="MASTER">Administrador (MASTER)</option>
-              </select>
-              {errors.role ? <p className="mt-1 text-sm text-primary">{errors.role.message}</p> : null}
-            </div>
-            <label className="flex items-center gap-2 text-sm text-ink">
-              <input type="checkbox" className="rounded border-black/20" {...register('architectureAccess')} />
-              Acceso a proyectos y workspace
-            </label>
-            {errors.architectureAccess ? (
-              <p className="text-sm text-primary">{errors.architectureAccess.message}</p>
-            ) : null}
-            {submitError ? <p className="text-sm text-primary">{submitError}</p> : null}
-            <PrimaryButton type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creando…' : 'Crear usuario'}
-            </PrimaryButton>
-          </form>
-        </Card>
-
-        <Card className="overflow-hidden p-0">
-          <div className="border-b border-black/10 px-4 py-3 text-sm font-semibold text-ink">
-            Usuarios registrados
-          </div>
-          {listError ? <p className="px-4 py-3 text-sm text-primary">{listError}</p> : null}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-black/4 text-xs uppercase text-muted">
+      <Card className="overflow-hidden p-0">
+        <div className="border-b border-black/10 px-4 py-3 text-sm font-semibold text-ink">Usuarios registrados</div>
+        {listError ? <p className="px-4 py-3 text-sm text-primary">{listError}</p> : null}
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed text-left text-sm">
+            <thead className="bg-black/4 text-xs uppercase text-muted">
+              <tr>
+                <th className="px-4 py-3">Correo</th>
+                <th className="w-40 px-4 py-3">Rol</th>
+                <th className="w-32 px-4 py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingList ? (
                 <tr>
-                  <th className="px-4 py-3">Correo</th>
-                  <th className="px-4 py-3">Rol</th>
+                  <td className="px-4 py-8 text-muted" colSpan={3}>
+                    Cargando…
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loadingList ? (
-                  <tr>
-                    <td className="px-4 py-8 text-muted" colSpan={2}>
-                      Cargando…
+              ) : null}
+              {!loadingList &&
+                users.map((u) => (
+                  <tr key={u.uuid} className="border-t border-black/5">
+                    <td className="truncate px-4 py-3 text-ink">{u.email}</td>
+                    <td className="px-4 py-3 text-muted">{roleLabel(u.role)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        className="du-link text-xs font-medium uppercase tracking-wide"
+                        onClick={() => openEdit(u)}
+                      >
+                        Editar
+                      </button>
                     </td>
                   </tr>
-                ) : null}
-                {!loadingList &&
-                  users.map((u) => (
-                    <tr key={u.uuid} className="border-t border-black/5">
-                      <td className="px-4 py-3 text-ink">{u.email}</td>
-                      <td className="px-4 py-3 text-muted">{u.role}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {token ? (
+        <AdminUserModal
+          token={token}
+          open={modalOpen}
+          mode={modalMode}
+          user={editingUser}
+          onClose={closeModal}
+          onSaved={() => void refresh()}
+        />
+      ) : null}
     </>
   )
 }

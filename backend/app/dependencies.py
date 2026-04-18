@@ -26,19 +26,38 @@ async def get_current_user(
     return await auth.get_user_for_token(token)
 
 
-async def require_master(current: Annotated[User, Depends(get_current_user)]) -> User:
-    if current.role != UserRole.MASTER:
+async def require_gerencia(current: Annotated[User, Depends(get_current_user)]) -> User:
+    if current.role != UserRole.GERENCIA:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Se requiere rol administrador (MASTER)",
+            detail="Se requiere rol Gerencia",
+        )
+    return current
+
+
+async def require_task_creator(current: Annotated[User, Depends(get_current_user)]) -> User:
+    if current.role not in (
+        UserRole.GERENCIA,
+        UserRole.CONTROL,
+        UserRole.PRESUPUESTO,
+        UserRole.ARQUITECTURA,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No autorizado",
         )
     return current
 
 
 async def require_task_operator(current: Annotated[User, Depends(get_current_user)]) -> User:
-    if current.role == UserRole.MASTER:
+    if current.role not in (
+        UserRole.GERENCIA,
+        UserRole.CONTROL,
+        UserRole.PRESUPUESTO,
+        UserRole.ARQUITECTURA,
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Los administradores solo pueden ver el tablero; coordinadores y operarios gestionan tareas",
+            detail="No autorizado",
         )
     return current

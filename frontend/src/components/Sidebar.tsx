@@ -43,12 +43,12 @@ export function Sidebar() {
         >
           Tablero
         </NavLink>
-        {role === 'MASTER' ? (
+        {role === 'GERENCIA' ? (
           <NavLink
             to="/app/admin"
             className={({ isActive }) => `${linkClass} ${isActive ? activeClass : ''}`}
           >
-            Administración
+            Usuarios
           </NavLink>
         ) : null}
       </nav>

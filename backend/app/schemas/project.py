@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
@@ -11,6 +12,10 @@ from app.models.project import Project
 class ProjectCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     client_name: Optional[str] = Field(default=None, max_length=255)
+    member_user_uuids: Optional[list[UUID]] = Field(
+        default=None,
+        description="Usuarios con acceso al proyecto (además del creador). Opcional al crear.",
+    )
 
 
 class ProjectResponse(BaseModel):
@@ -23,6 +28,7 @@ class ProjectResponse(BaseModel):
     project_bootstrap_criteria: list[Any]
     specifications_document: dict[str, Any]
     created_by_user_uuid: Optional[UUID] = None
+    updated_at: datetime
 
     @classmethod
     def from_project(cls, project: Project) -> ProjectResponse:
@@ -36,6 +42,7 @@ class ProjectResponse(BaseModel):
             project_bootstrap_criteria=project.project_bootstrap_criteria or [],
             specifications_document=project.specifications_document or {},
             created_by_user_uuid=project.created_by,
+            updated_at=project.updated_at,
         )
 
 

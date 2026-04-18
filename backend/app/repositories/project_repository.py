@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.domain.bootstrap_defaults import default_bootstrap_criteria
+from app.domain.project_updated import touch_project_updated_at
 from app.domain.workflow_phase import WorkflowPhase
 from app.models.project import Project, ProjectArchitectureData
 from app.models.project_event import ProjectEvent
@@ -36,7 +37,7 @@ class ProjectRepository:
         self._session = session
 
     async def list_for_user(self, user_uuid: UUID, *, is_master: bool) -> list[Project]:
-        stmt = select(Project).order_by(Project.created_at.desc())
+        stmt = select(Project).order_by(Project.updated_at.desc())
         if not is_master:
             member_projects = select(ProjectMember.project_id).where(ProjectMember.user_id == user_uuid)
             stmt = stmt.where(or_(Project.created_by == user_uuid, Project.id.in_(member_projects)))
@@ -51,7 +52,7 @@ class ProjectRepository:
         return (await self._session.execute(q)).scalar_one_or_none() is not None
 
     async def user_has_access_to_project(self, user: User, project: Project) -> bool:
-        if user.role == UserRole.MASTER:
+        if user.role == UserRole.GERENCIA:
             return True
         if project.created_by is not None and project.created_by == user.id:
             return True
@@ -80,6 +81,25 @@ class ProjectRepository:
         )
         rows = (await self._session.execute(q)).all()
         return [(r[0], r[1]) for r in rows]
+
+    async def list_team_with_emails_for_project(self, project_uuid: UUID) -> list[tuple[UUID, str]]:
+        project = await self.get_by_uuid(project_uuid)
+        if project is None:
+            return []
+        by_id: dict[UUID, str] = {}
+        if project.created_by is not None:
+            q_creator = select(User).where(User.id == project.created_by)
+            creator = (await self._session.execute(q_creator)).scalar_one_or_none()
+            if creator is not None:
+                by_id[creator.id] = creator.email
+        for uid, email in await self.list_project_members_with_emails(project.id):
+            by_id[uid] = email
+        return sorted(by_id.items(), key=lambda x: x[1].lower())
+
+    async def user_is_project_team_member(self, project: Project, user_id: UUID) -> bool:
+        if project.created_by is not None and project.created_by == user_id:
+            return True
+        return await self.is_project_member(project.id, user_id)
 
     async def get_by_uuid(self, project_uuid: UUID) -> Optional[Project]:
         result = await self._session.execute(
@@ -115,6 +135,8 @@ class ProjectRepository:
         )
         self._session.add(arch)
         await self._session.flush()
+        project.updated_at = project.created_at
+        await self._session.flush()
         await self.add_project_member(project.id, created_by)
         await self._session.refresh(project, ["architecture_data"])
         return project
@@ -136,6 +158,9 @@ class ProjectRepository:
         row.materiales = materiales
         row.last_updated_by = user_uuid
         row.updated_at = datetime.now(timezone.utc)
+        proj = await self._session.get(Project, project_uuid)
+        if proj is not None:
+            touch_project_updated_at(proj)
         await self._session.flush()
         await self._session.refresh(row)
         return row

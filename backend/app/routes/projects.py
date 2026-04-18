@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user, require_master
+from app.dependencies import get_current_user, require_gerencia
 from app.models.user import User
 from app.schemas.architecture import ArchitectureDataResponse, ArchitectureDocumentPayload
 from app.schemas.plan_delivery import (
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
     "",
     response_model=list[ProjectResponse],
     summary="List projects",
-    description="MASTER sees all projects; others see projects they created.",
+    description="Gerencia ve todos los proyectos; el resto ve los que creó o le compartieron.",
 )
 async def list_projects(
     current: Annotated[User, Depends(get_current_user)],
@@ -51,7 +51,7 @@ async def list_projects(
 )
 async def create_project(
     body: ProjectCreateRequest,
-    current: Annotated[User, Depends(require_master)],
+    current: Annotated[User, Depends(require_gerencia)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectResponse:
     svc = ProjectService(session)
@@ -81,7 +81,7 @@ async def get_project(
     "/{project_uuid}/members",
     response_model=list[ProjectMemberEntry],
     summary="Miembros con acceso al proyecto",
-    description="Usuarios que pueden abrir el proyecto (además del creador). MASTER y miembros pueden listar.",
+    description="Usuarios que pueden abrir el proyecto (además del creador). Gerencia y miembros pueden listar.",
 )
 async def list_project_members(
     project_uuid: UUID,
@@ -97,12 +97,12 @@ async def list_project_members(
     "/{project_uuid}/members",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Configurar miembros del proyecto",
-    description="Solo MASTER. El creador del proyecto siempre permanece con acceso.",
+    description="Solo Gerencia. El creador del proyecto siempre permanece con acceso.",
 )
 async def put_project_members(
     project_uuid: UUID,
     body: ProjectMembersPutRequest,
-    current: Annotated[User, Depends(require_master)],
+    current: Annotated[User, Depends(require_gerencia)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     svc = ProjectService(session)

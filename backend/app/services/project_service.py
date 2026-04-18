@@ -1,11 +1,12 @@
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.domain.project_updated import touch_project_updated_at
 from app.models.project import Project
 from app.models.user import User, UserRole
 from app.repositories.project_repository import ProjectRepository
@@ -31,21 +32,30 @@ class ProjectService:
 
     async def list_projects(self, user: User) -> list[Project]:
         await self.ensure_architecture_access(user)
-        is_master = user.role == UserRole.MASTER
+        is_master = user.role == UserRole.GERENCIA
         return await self._projects.list_for_user(user.id, is_master=is_master)
 
     async def create_project(self, user: User, body: ProjectCreateRequest) -> Project:
         await self.ensure_architecture_access(user)
-        if user.role != UserRole.MASTER:
+        if user.role != UserRole.GERENCIA:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo MASTER puede crear proyectos",
+                detail="Solo Gerencia puede crear proyectos",
             )
-        return await self._projects.create_with_architecture(
+        project = await self._projects.create_with_architecture(
             name=body.name,
             client_name=body.client_name,
             created_by=user.id,
         )
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="PROJECT_CREATED",
+            payload={"name": project.name, "client_name": project.client_name},
+        )
+        if body.member_user_uuids is not None:
+            await self.set_project_members(user, project.id, body.member_user_uuids)
+        return project
 
     async def get_project(self, user: User, project_uuid: UUID) -> Project:
         await self.ensure_architecture_access(user)
@@ -61,10 +71,10 @@ class ProjectService:
         return await self._projects.list_project_members_with_emails(project.id)
 
     async def set_project_members(self, master: User, project_uuid: UUID, member_user_uuids: list[UUID]) -> None:
-        if master.role != UserRole.MASTER:
+        if master.role != UserRole.GERENCIA:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo MASTER puede configurar quién ve el proyecto",
+                detail="Solo Gerencia puede configurar quién ve el proyecto",
             )
         project = await self.get_project(master, project_uuid)
         ids = set(member_user_uuids)
@@ -83,6 +93,17 @@ class ProjectService:
                     detail="Todos los miembros deben tener acceso al módulo Arquitectura",
                 )
         await self._projects.replace_project_members(project.id, ids)
+        pairs = await self._projects.list_project_members_with_emails(project.id)
+        member_payload: list[dict[str, Any]] = [
+            {"user_uuid": str(u), "email": e} for u, e in sorted(pairs, key=lambda x: x[1].lower())
+        ]
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=master.id,
+            event_type="PROJECT_MEMBERS_UPDATED",
+            payload={"member_count": len(member_payload), "members": member_payload},
+        )
+        touch_project_updated_at(project)
 
     async def get_architecture(self, user: User, project_uuid: UUID) -> Tuple[dict, Optional[datetime]]:
         project = await self.get_project(user, project_uuid)
@@ -113,3 +134,9 @@ class ProjectService:
         )
         if row is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Architecture data missing")
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="ARCHITECTURE_SAVED",
+            payload={"groups_count": len(groups), "materiales_count": len(materiales)},
+        )

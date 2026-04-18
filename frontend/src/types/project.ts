@@ -15,4 +15,6 @@ export type Project = {
   project_bootstrap_criteria: BootstrapCriterion[]
   specifications_document: Record<string, unknown>
   created_by_user_uuid?: string | null
+  /** ISO 8601 — última actividad registrada en el proyecto */
+  updated_at: string
 }

@@ -14,6 +14,8 @@ export type TaskCardDto = {
   assignee_email: string | null
   archived: boolean
   archived_at: string | null
+  /** Fase del flujo ISO al crear la tarea (si estaba vinculada a un proyecto). */
+  created_in_phase: string | null
 }
 
 export type TaskListDto = {
@@ -26,4 +28,12 @@ export type TaskListDto = {
 export type TaskBoardDto = {
   lists: TaskListDto[]
   archived_cards: TaskCardDto[]
+}
+
+export type TaskCardCommentDto = {
+  uuid: string
+  body: string
+  created_at: string
+  author_uuid: string | null
+  author_email: string | null
 }

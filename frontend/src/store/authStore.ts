@@ -2,9 +2,10 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 import { apiFetch } from '../api/client'
+import type { UserRole } from '../constants/userRoles'
 import { AUTH_PERSIST_KEY } from './authConstants'
 
-type Role = 'MASTER' | 'COORDINATOR' | 'WORKER'
+type Role = UserRole
 
 type AuthState = {
   token: string | null

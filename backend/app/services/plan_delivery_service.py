@@ -6,9 +6,11 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.project_updated import touch_project_updated_at
 from app.models.plan_delivery_request import PlanDeliveryRequest
 from app.models.user import User
 from app.repositories.plan_delivery_repository import PlanDeliveryRepository
+from app.repositories.project_repository import ProjectRepository
 from app.schemas.plan_delivery import (
     PlanDeliveryRequestCreate,
     PlanDeliveryRequestPatch,
@@ -23,6 +25,7 @@ class PlanDeliveryService:
         self._session = session
         self._repo = PlanDeliveryRepository(session)
         self._projects = ProjectService(session)
+        self._project_repo = ProjectRepository(session)
 
     async def list_rows(self, user: User, project_uuid: UUID) -> list[PlanDeliveryRequestResponse]:
         project = await self._projects.get_project(user, project_uuid)
@@ -47,6 +50,18 @@ class PlanDeliveryService:
             status=body.status.value,
         )
         await self._repo.add(row)
+        touch_project_updated_at(project)
+        await self._project_repo.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="PLAN_DELIVERY_CREATED",
+            payload={
+                "row_uuid": str(row.id),
+                "sequence_number": row.sequence_number,
+                "request_number": row.request_number,
+                "description": (row.description or "")[:300],
+            },
+        )
         await self._session.commit()
         await self._session.refresh(row)
         return PlanDeliveryRequestResponse.from_row(row)
@@ -75,6 +90,20 @@ class PlanDeliveryService:
             s = raw["status"]
             row.status = s.value if isinstance(s, PlanDeliveryStatus) else str(s)
         row.updated_at = datetime.now(timezone.utc)
+        touch_project_updated_at(project)
+        if raw:
+            diff = body.model_dump(exclude_unset=True, mode="json")
+            await self._project_repo.record_event(
+                project_id=project.id,
+                actor_user_id=user.id,
+                event_type="PLAN_DELIVERY_UPDATED",
+                payload={
+                    "row_uuid": str(row.id),
+                    "sequence_number": row.sequence_number,
+                    "request_number": row.request_number,
+                    "changes": diff,
+                },
+            )
         await self._session.commit()
         await self._session.refresh(row)
         return PlanDeliveryRequestResponse.from_row(row)
@@ -84,7 +113,20 @@ class PlanDeliveryService:
         row = await self._repo.get_by_uuid(project.id, row_uuid)
         if row is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solicitud no encontrada")
+        payload = {
+            "row_uuid": str(row.id),
+            "sequence_number": row.sequence_number,
+            "request_number": row.request_number,
+            "description": (row.description or "")[:300],
+        }
         await self._repo.delete(row)
+        touch_project_updated_at(project)
+        await self._project_repo.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="PLAN_DELIVERY_DELETED",
+            payload=payload,
+        )
         await self._session.commit()
 
     async def list_models_for_export(self, user: User, project_uuid: UUID) -> tuple[str, list[PlanDeliveryRequest]]:

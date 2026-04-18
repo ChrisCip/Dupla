@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
+import type { UserRole } from '../constants/userRoles'
 import { useChatSync } from '../hooks/useChatSync'
 import { useAuthStore } from '../store/authStore'
 import { Sidebar } from './Sidebar'
 
-type MeRole = 'MASTER' | 'COORDINATOR' | 'WORKER'
+type MeRole = UserRole
 
 export function MainLayout() {
   useChatSync()
@@ -45,7 +46,7 @@ export function MainLayout() {
   return (
     <div className="flex min-h-screen bg-surface text-ink">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="border-b border-black/10 bg-white">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
             <div className="du-meta">
@@ -66,7 +67,7 @@ export function MainLayout() {
             </button>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
+        <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-6 py-6">
           <Outlet />
         </main>
       </div>

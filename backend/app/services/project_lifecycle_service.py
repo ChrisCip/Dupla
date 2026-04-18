@@ -13,9 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
-from app.domain.workflow_phase import LINEAR_NEXT, WorkflowPhase
+from app.domain.project_updated import touch_project_updated_at
+from app.domain.task_board_constants import TASK_LIST_DONE_UUID
+from app.domain.workflow_phase import LINEAR_NEXT, LINEAR_PREV, WorkflowPhase
 from app.models.architecture_revision import ArchitectureRevision, ArchitectureRevisionDecision
 from app.models.project import Project
+from app.models.task_board import TaskCard
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
 from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
@@ -86,7 +89,7 @@ class ProjectLifecycleService:
 
     async def _assert_transition_guards(
         self,
-        user: User,
+        _user: User,
         project: Project,
         target: WorkflowPhase,
     ) -> None:
@@ -119,12 +122,21 @@ class ProjectLifecycleService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Completa el pliego de condiciones (resumen mínimo 10 caracteres) antes de presupuesto",
                 )
-        if current == WorkflowPhase.BUDGETING_PIPELINE and target == WorkflowPhase.BUDGET_APPROVED:
-            if user.role != UserRole.MASTER:
+        if current == WorkflowPhase.BUDGETING_PIPELINE and target == WorkflowPhase.MANAGEMENT_APPROVAL:
+            await self._sync_subcontracts_flag(project)
+            meta = dict(project.workflow_meta or {})
+            bp = _budget_pipeline(meta)
+            if not (
+                bp.get("subcontracts_done")
+                and bp.get("volumetry_done")
+                and bp.get("cost_analysis_done")
+                and bp.get("budget_marked_complete")
+            ):
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Solo MASTER puede marcar presupuesto aprobado por el cliente",
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Completa el pipeline de presupuesto antes de enviar a gerencia",
                 )
+        if current == WorkflowPhase.MANAGEMENT_APPROVAL and target == WorkflowPhase.BUDGET_APPROVED:
             await self._sync_subcontracts_flag(project)
             meta = dict(project.workflow_meta or {})
             bp = _budget_pipeline(meta)
@@ -140,6 +152,18 @@ class ProjectLifecycleService:
                     detail="Completa el pipeline de presupuesto y la versión aprobada por el cliente",
                 )
 
+    async def _count_pending_tasks_for_project(self, project_id: UUID) -> int:
+        q = (
+            select(func.count())
+            .select_from(TaskCard)
+            .where(
+                TaskCard.project_id == project_id,
+                TaskCard.archived.is_(False),
+                TaskCard.list_id != TASK_LIST_DONE_UUID,
+            )
+        )
+        return int((await self._session.execute(q)).scalar_one())
+
     async def transition_phase(
         self,
         user: User,
@@ -148,37 +172,65 @@ class ProjectLifecycleService:
     ) -> Project:
         project = await self._project_svc.get_project(user, project_uuid)
         current = WorkflowPhase(project.workflow_phase)
-        expected = LINEAR_NEXT.get(current)
-        if expected is None:
+        expected_next = LINEAR_NEXT.get(current)
+        expected_prev = LINEAR_PREV.get(current)
+
+        is_forward = expected_next == target_phase
+        is_backward = expected_prev == target_phase
+
+        if not is_forward and not is_backward:
+            hint = expected_next.value if expected_next is not None else None
+            prev_hint = expected_prev.value if expected_prev is not None else None
+            parts = []
+            if hint is not None:
+                parts.append(f"siguiente válida: {hint}")
+            if prev_hint is not None:
+                parts.append(f"anterior válida: {prev_hint}")
+            detail = "Transición inválida."
+            if parts:
+                detail = f"Transición inválida ({'; '.join(parts)})."
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="El proyecto ya está en la fase final",
+                detail=detail,
             )
-        if expected != target_phase:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Transición inválida: la siguiente fase es {expected.value}",
-            )
-        await self._assert_transition_guards(user, project, target_phase)
+
+        if is_forward:
+            pending = await self._count_pending_tasks_for_project(project.id)
+            if pending > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "Hay tareas del proyecto pendientes en el tablero (fuera de «Hecho»). "
+                        "Complétalas o archívalas antes de avanzar de fase."
+                    ),
+                )
+            await self._assert_transition_guards(user, project, target_phase)
+
         prev = project.workflow_phase
         project.workflow_phase = target_phase.value
         await self._projects.record_event(
             project_id=project.id,
             actor_user_id=user.id,
             event_type="WORKFLOW_TRANSITION",
-            payload={"from_phase": prev, "to_phase": target_phase.value},
+            payload={
+                "from_phase": prev,
+                "to_phase": target_phase.value,
+                "direction": "forward" if is_forward else "backward",
+            },
         )
-        if target_phase == WorkflowPhase.SPECIFICATIONS:
-            await self._notify_architecture_complete(project)
-        if target_phase == WorkflowPhase.BUDGET_APPROVED:
-            await self._notify_budget_approved(project)
+        if is_forward:
+            if target_phase == WorkflowPhase.SPECIFICATIONS:
+                await self._notify_architecture_complete(project)
+            if target_phase == WorkflowPhase.BUDGET_APPROVED:
+                await self._notify_budget_approved(project)
+        touch_project_updated_at(project)
         await self._session.flush()
         return project
 
     async def _notify_architecture_complete(self, project: Project) -> None:
         mids = await self._users.list_ids_by_module_and_roles(
             self._settings.architecture_module_id,
-            [UserRole.MASTER, UserRole.COORDINATOR],
+            [UserRole.GERENCIA, UserRole.CONTROL],
         )
         title = "Fase de arquitectura completada"
         body = f"El proyecto «{project.name}» completó la definición arquitectónica."
@@ -203,7 +255,7 @@ class ProjectLifecycleService:
     async def _notify_budget_approved(self, project: Project) -> None:
         mids = await self._users.list_ids_by_module_and_roles(
             self._settings.architecture_module_id,
-            [UserRole.MASTER],
+            [UserRole.GERENCIA],
         )
         title = "Presupuesto aprobado por el cliente"
         body = f"El proyecto «{project.name}» tiene una versión de presupuesto aprobada."
@@ -234,10 +286,23 @@ class ProjectLifecycleService:
         client_name: Optional[str] = None,
     ) -> Project:
         project = await self._project_svc.get_project(user, project_uuid)
+        payload: dict[str, Any] = {}
         if name is not None:
+            payload["name"] = {"from": project.name, "to": name.strip()}
             project.name = name.strip()
         if client_name is not None:
-            project.client_name = client_name.strip() or None
+            prev = project.client_name
+            nxt = client_name.strip() or None
+            payload["client_name"] = {"from": prev, "to": nxt}
+            project.client_name = nxt
+        if payload:
+            await self._projects.record_event(
+                project_id=project.id,
+                actor_user_id=user.id,
+                event_type="PROJECT_META_UPDATED",
+                payload=payload,
+            )
+        touch_project_updated_at(project)
         await self._session.flush()
         return project
 
@@ -260,6 +325,7 @@ class ProjectLifecycleService:
             event_type="BOOTSTRAP_UPDATED",
             payload={"items": len(criteria)},
         )
+        touch_project_updated_at(project)
         await self._session.flush()
         return project
 
@@ -275,6 +341,7 @@ class ProjectLifecycleService:
             WorkflowPhase.ARCHITECTURE_REVIEW,
             WorkflowPhase.SPECIFICATIONS,
             WorkflowPhase.BUDGETING_PIPELINE,
+            WorkflowPhase.MANAGEMENT_APPROVAL,
             WorkflowPhase.BUDGET_APPROVED,
         }
         if wf not in allowed:
@@ -283,12 +350,16 @@ class ProjectLifecycleService:
                 detail="El pliego de condiciones no es editable en esta fase",
             )
         project.specifications_document = document
+        summary = ""
+        if isinstance(document, dict):
+            summary = str((document.get("summary") or "")).strip()
         await self._projects.record_event(
             project_id=project.id,
             actor_user_id=user.id,
             event_type="SPECIFICATIONS_UPDATED",
-            payload={},
+            payload={"summary_chars": len(summary)},
         )
+        touch_project_updated_at(project)
         await self._session.flush()
         return project
 
@@ -314,6 +385,10 @@ class ProjectLifecycleService:
             event_type="WORKFLOW_META_PATCHED",
             payload={"keys": list(patch.keys())},
         )
+        if p is not None:
+            touch_project_updated_at(p)
+        else:
+            touch_project_updated_at(project)
         await self._session.flush()
         return await self._project_svc.get_project(user, project_uuid)
 
@@ -321,9 +396,10 @@ class ProjectLifecycleService:
         project = await self._project_svc.get_project(user, project_uuid)
         q = (
             select(ProjectEvent)
+            .options(selectinload(ProjectEvent.actor))
             .where(ProjectEvent.project_id == project.id)
             .order_by(ProjectEvent.created_at.desc())
-            .limit(200)
+            .limit(500)
         )
         return list((await self._session.execute(q)).scalars().all())
 
@@ -355,6 +431,7 @@ class ProjectLifecycleService:
             event_type="ARCHITECTURE_REVISION",
             payload={"version": ver, "decision": decision.value},
         )
+        touch_project_updated_at(project)
         await self._session.flush()
         await self._session.refresh(rev)
         return rev
@@ -383,6 +460,7 @@ class ProjectLifecycleService:
             WorkflowPhase.ARCHITECTURE_REVIEW,
             WorkflowPhase.SPECIFICATIONS,
             WorkflowPhase.BUDGETING_PIPELINE,
+            WorkflowPhase.MANAGEMENT_APPROVAL,
             WorkflowPhase.BUDGET_APPROVED,
         ):
             raise HTTPException(
@@ -416,6 +494,7 @@ class ProjectLifecycleService:
             event_type="FILE_UPLOADED",
             payload={"file_uuid": str(fid), "name": pf.original_name},
         )
+        touch_project_updated_at(project)
         await self._session.flush()
         await self._session.refresh(pf)
         return pf
@@ -462,9 +541,18 @@ class ProjectLifecycleService:
         self._session.add(q)
         await self._session.flush()
         await self._session.refresh(q, ["lines"])
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="SUBCONTRACT_QUOTE_CREATED",
+            payload={"quote_uuid": str(q.id), "title": q.title},
+        )
         p2 = await self._load_project_full(project_uuid)
         if p2 is not None:
             await self._sync_subcontracts_flag(p2)
+            touch_project_updated_at(p2)
+        else:
+            touch_project_updated_at(project)
         return q
 
     async def add_subcontract_line(
@@ -494,9 +582,24 @@ class ProjectLifecycleService:
         )
         self._session.add(line)
         await self._session.flush()
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="SUBCONTRACT_LINE_ADDED",
+            payload={
+                "quote_uuid": str(quote.id),
+                "line_uuid": str(line.id),
+                "item_label": line.item_label,
+                "price": str(line.price),
+                "currency": line.currency,
+            },
+        )
         p2 = await self._load_project_full(project_uuid)
         if p2 is not None:
             await self._sync_subcontracts_flag(p2)
+            touch_project_updated_at(p2)
+        else:
+            touch_project_updated_at(project)
         return line
 
     async def get_subcontract_quote_with_lines(
@@ -524,11 +627,20 @@ class ProjectLifecycleService:
         quote = await self._session.get(SubcontractQuote, quote_uuid)
         if quote is None or quote.project_id != project.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cotización no encontrada")
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="SUBCONTRACT_QUOTE_DELETED",
+            payload={"quote_uuid": str(quote.id), "title": quote.title},
+        )
         await self._session.delete(quote)
         await self._session.flush()
         p2 = await self._load_project_full(project_uuid)
         if p2 is not None:
             await self._sync_subcontracts_flag(p2)
+            touch_project_updated_at(p2)
+        else:
+            touch_project_updated_at(project)
 
     async def list_my_notifications(self, user: User, *, unread_only: bool) -> list[UserNotification]:
         q = select(UserNotification).where(UserNotification.user_id == user.id)

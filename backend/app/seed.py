@@ -23,11 +23,11 @@ _MISSING_SCHEMA_HINT = (
     "Luego vuelve a ejecutar: python -m app.seed"
 )
 
-# Demo users: MASTER (admin + tablero lectura), COORDINATOR (tablero y proyectos), WORKER (operario).
+# Demo: Gerencia (admin total), Control (proyectos), Presupuesto (operario ejemplo).
 SEED_USERS: Tuple[Tuple[str, str, UserRole], ...] = (
-    ("master@dupla.demo", "master123", UserRole.MASTER),
-    ("tester@dupla.demo", "testpass123", UserRole.COORDINATOR),
-    ("worker@dupla.demo", "workerpass123", UserRole.WORKER),
+    ("master@dupla.demo", "master123", UserRole.GERENCIA),
+    ("tester@dupla.demo", "testpass123", UserRole.CONTROL),
+    ("worker@dupla.demo", "workerpass123", UserRole.PRESUPUESTO),
 )
 
 

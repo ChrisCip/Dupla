@@ -5,8 +5,9 @@ from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+from sqlalchemy.inspection import inspect
 
-from app.models.task_board import TaskCard, TaskList
+from app.models.task_board import TaskCard, TaskCardComment, TaskList
 
 
 class TaskAssigneeOption(BaseModel):
@@ -28,11 +29,13 @@ class TaskCardResponse(BaseModel):
     assignee_email: Optional[str]
     archived: bool
     archived_at: Optional[datetime]
+    created_in_phase: Optional[str]
 
     @classmethod
     def from_card(cls, card: TaskCard) -> TaskCardResponse:
-        creator = getattr(card, "creator", None)
-        assignee = getattr(card, "assignee", None)
+        st = inspect(card)
+        creator = None if "creator" in st.unloaded else card.creator
+        assignee = None if "assignee" in st.unloaded else card.assignee
         return cls(
             uuid=card.id,
             title=card.title,
@@ -47,6 +50,7 @@ class TaskCardResponse(BaseModel):
             assignee_email=assignee.email if assignee is not None else None,
             archived=card.archived,
             archived_at=card.archived_at,
+            created_in_phase=card.created_in_phase,
         )
 
 
@@ -88,3 +92,27 @@ class TaskCardPatchRequest(BaseModel):
     assignee_uuid: Optional[UUID] = None
     archived: Optional[bool] = None
     project_uuid: Optional[UUID] = None
+
+
+class TaskCardCommentResponse(BaseModel):
+    uuid: UUID
+    body: str
+    created_at: datetime
+    author_uuid: Optional[UUID]
+    author_email: Optional[str]
+
+    @classmethod
+    def from_row(cls, row: TaskCardComment) -> TaskCardCommentResponse:
+        st = inspect(row)
+        author = None if "author" in st.unloaded else row.author
+        return cls(
+            uuid=row.id,
+            body=row.body,
+            created_at=row.created_at,
+            author_uuid=row.author_id,
+            author_email=author.email if author is not None else None,
+        )
+
+
+class TaskCardCommentCreateRequest(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)

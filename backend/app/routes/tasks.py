@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user, require_task_operator
+from app.dependencies import get_current_user, require_task_creator, require_task_operator
 from app.models.user import User
 from app.schemas.task_board import (
     TaskAssigneeOption,
     TaskBoardResponse,
+    TaskCardCommentCreateRequest,
+    TaskCardCommentResponse,
     TaskCardCreateRequest,
     TaskCardPatchRequest,
     TaskCardResponse,
@@ -23,14 +25,21 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
     "/assignees",
     response_model=list[TaskAssigneeOption],
     summary="Usuarios asignables",
-    description="Usuarios con acceso al módulo Arquitectura (para asignar tareas).",
+    description=(
+        "Por defecto: usuarios con módulo Arquitectura. "
+        "Con `project_uuid`, solo el equipo del proyecto (creador + miembros)."
+    ),
 )
 async def list_task_assignees(
-    _: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    project_uuid: Annotated[
+        Optional[UUID],
+        Query(description="Limitar al equipo de este proyecto"),
+    ] = None,
 ) -> list[TaskAssigneeOption]:
     svc = TaskBoardService(session)
-    return await svc.list_assignees()
+    return await svc.list_assignees(current, project_uuid)
 
 
 @router.get(
@@ -71,24 +80,58 @@ async def get_task_board(
     response_model=TaskCardResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Crear tarjeta",
-    description="COORDINATOR y WORKER. MASTER solo lectura.",
+    description="Gerencia, Control, Presupuesto y Arquitectura.",
 )
 async def create_task_card(
     body: TaskCardCreateRequest,
-    current: Annotated[User, Depends(require_task_operator)],
+    current: Annotated[User, Depends(require_task_creator)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TaskCardResponse:
     svc = TaskBoardService(session)
     card = await svc.create_card(current, body)
     await session.commit()
-    return TaskCardResponse.from_card(card)
+    loaded = await svc.get_card_for_response(card.id)
+    return TaskCardResponse.from_card(loaded)
+
+
+@router.get(
+    "/cards/{card_uuid}/comments",
+    response_model=list[TaskCardCommentResponse],
+    summary="Comentarios de la tarjeta",
+)
+async def list_task_card_comments(
+    card_uuid: UUID,
+    current: Annotated[User, Depends(require_task_operator)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[TaskCardCommentResponse]:
+    svc = TaskBoardService(session)
+    rows = await svc.list_card_comments(current, card_uuid)
+    return [TaskCardCommentResponse.from_row(r) for r in rows]
+
+
+@router.post(
+    "/cards/{card_uuid}/comments",
+    response_model=TaskCardCommentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Añadir comentario a la tarjeta",
+)
+async def create_task_card_comment(
+    card_uuid: UUID,
+    body: TaskCardCommentCreateRequest,
+    current: Annotated[User, Depends(require_task_operator)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TaskCardCommentResponse:
+    svc = TaskBoardService(session)
+    row = await svc.add_card_comment(current, card_uuid, body.body)
+    await session.commit()
+    return TaskCardCommentResponse.from_row(row)
 
 
 @router.patch(
     "/cards/{card_uuid}",
     response_model=TaskCardResponse,
     summary="Actualizar, mover, archivar o asignar tarjeta",
-    description="COORDINATOR y WORKER. MASTER solo lectura.",
+    description="Gerencia, Control, Presupuesto y Arquitectura.",
 )
 async def patch_task_card(
     card_uuid: UUID,
@@ -97,6 +140,7 @@ async def patch_task_card(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TaskCardResponse:
     svc = TaskBoardService(session)
-    card = await svc.patch_card(current, card_uuid, body)
+    await svc.patch_card(current, card_uuid, body)
     await session.commit()
-    return TaskCardResponse.from_card(card)
+    loaded = await svc.get_card_for_response(card_uuid)
+    return TaskCardResponse.from_card(loaded)
