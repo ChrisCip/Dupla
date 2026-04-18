@@ -45,7 +45,7 @@ export function ProjectWorkspaceHeader({
   }
 
   return (
-    <header className="shrink-0 space-y-3 border-b border-black/10 pb-3">
+    <header className="shrink-0 space-y-2 border-b border-black/10 pb-2 md:space-y-3 md:pb-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="du-meta">
@@ -53,7 +53,10 @@ export function ProjectWorkspaceHeader({
               ← Volver a proyectos
             </Link>
           </div>
-          <h1 id="workspace-heading" className="mt-1 text-xl font-bold tracking-tight text-ink">
+          <h1
+            id="workspace-heading"
+            className="mt-1 text-lg font-bold tracking-tight text-ink md:text-xl"
+          >
             {displayTitle}
           </h1>
           <p className="mt-0.5 du-meta">{phaseLabel ? `Fase: ${phaseLabel}` : 'Cargando fase…'}</p>

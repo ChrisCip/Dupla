@@ -167,7 +167,7 @@ export function WorkspacePliegosTab({
                   ))}
                   {g.items.length === 0 ? (
                     <tr>
-                      <td className="px-4 py-6 text-sm text-muted" colSpan={7}>
+                      <td className="px-4 py-4 text-sm text-muted md:py-6" colSpan={7}>
                         No hay ítems en esta sección.
                       </td>
                     </tr>
@@ -179,7 +179,7 @@ export function WorkspacePliegosTab({
         ))}
 
         {data.groups.length === 0 ? (
-          <Card className="border-2 border-dashed border-black/12 bg-black/[0.02] p-10 text-center">
+          <Card className="border-2 border-dashed border-black/12 bg-black/[0.02] p-6 text-center md:p-10">
             <p className="text-sm font-medium text-ink">Empieza por una sección</p>
             <p className="mt-2 text-sm text-muted">
               Elige tipo y título arriba y pulsa «Agregar sección». El tablero de ítems aparece dentro de cada bloque.

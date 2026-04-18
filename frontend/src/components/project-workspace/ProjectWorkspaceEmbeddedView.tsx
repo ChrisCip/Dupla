@@ -29,8 +29,8 @@ export function ProjectWorkspaceEmbeddedView({
   onOpenWorkspace,
 }: ProjectWorkspaceEmbeddedViewProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden lg:flex-row lg:items-stretch">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden md:flex-row md:items-stretch md:gap-3">
+      <div className="flex min-h-[min(50dvh,22rem)] min-w-0 flex-1 flex-col overflow-hidden md:min-h-0">
         <p className="du-meta shrink-0 text-xs">
           Tareas del proyecto · arrastra entre columnas;
         </p>
@@ -45,20 +45,29 @@ export function ProjectWorkspaceEmbeddedView({
           ) : null}
         </div>
       </div>
-      <aside className="flex w-full shrink-0 flex-col gap-3 overflow-y-auto lg:w-80">
-        <Card className="p-4">
+      <aside className="flex w-full shrink-0 flex-col gap-2 overflow-y-auto md:w-52 lg:w-56 xl:w-64">
+        <Card className="p-3 md:p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Estado del flujo</h2>
           <p className="mt-2 text-sm font-medium text-ink">{phaseLabel || '—'}</p>
           {nextPhase ? (
             <PrimaryButton
               type="button"
-              className="mt-3 w-full"
+              className="mt-2 w-full flex-col gap-0.5 px-2.5 py-2 text-xs font-semibold normal-case leading-tight tracking-normal"
               disabled={flowBusy}
               onClick={onAdvancePhase}
             >
-              {flowBusy
-                ? 'Procesando…'
-                : `Avanzar a: ${WORKFLOW_PHASE_LABELS[nextPhase] ?? nextPhase}`}
+              {flowBusy ? (
+                'Procesando…'
+              ) : (
+                <>
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-white/90">
+                    Avanzar a
+                  </span>
+                  <span className="text-center text-[11px] font-semibold leading-snug">
+                    {WORKFLOW_PHASE_LABELS[nextPhase] ?? nextPhase}
+                  </span>
+                </>
+              )}
             </PrimaryButton>
           ) : (
             <p className="du-meta mt-2 text-sm">Última fase alcanzada.</p>
@@ -70,7 +79,7 @@ export function ProjectWorkspaceEmbeddedView({
           ) : null}
           {flowMsg ? <p className="mt-2 text-sm text-primary">{flowMsg}</p> : null}
         </Card>
-        <Card className="p-4">
+        <Card className="p-3 md:p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Acciones rápidas</h2>
           <div className="mt-3 flex flex-col gap-2">
             <Link

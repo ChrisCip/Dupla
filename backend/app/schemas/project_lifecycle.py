@@ -94,6 +94,34 @@ class ProjectFileResponse(BaseModel):
         )
 
 
+class ProjectFilesListResponse(BaseModel):
+    items: list[ProjectFileResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class ProjectFileSearchResponse(BaseModel):
+    """Archivo con ruta legible desde la raíz del proyecto (para resultados de búsqueda)."""
+
+    uuid: UUID
+    original_name: str
+    mime: Optional[str]
+    category: Optional[str]
+    folder_uuid: Optional[UUID]
+    description: Optional[str]
+    discipline: Optional[str]
+    ingest_status: str
+    created_by_uuid: Optional[UUID]
+    created_at: datetime
+    path: str
+
+    @classmethod
+    def from_row_with_path(cls, row: ProjectFile, path: str) -> ProjectFileSearchResponse:
+        base = ProjectFileResponse.from_row(row)
+        return cls(**base.model_dump(), path=path)
+
+
 class ProjectFileFolderResponse(BaseModel):
     uuid: UUID
     name: str

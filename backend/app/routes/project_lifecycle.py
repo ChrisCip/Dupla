@@ -23,6 +23,8 @@ from app.schemas.project_lifecycle import (
     ProjectFileFolderResponse,
     ProjectFilePatchRequest,
     ProjectFileResponse,
+    ProjectFilesListResponse,
+    ProjectFileSearchResponse,
     ProjectPatchRequest,
     ProjectTransitionRequest,
     SpecificationsReplaceRequest,
@@ -302,16 +304,43 @@ async def post_project_file(
     return ProjectFileResponse.from_row(row)
 
 
-@router.get("/{project_uuid}/files", response_model=list[ProjectFileResponse], summary="Listar archivos")
+@router.get("/{project_uuid}/files", response_model=ProjectFilesListResponse, summary="Listar archivos (paginado)")
 async def get_project_files(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
     folder_uuid: Annotated[Optional[UUID], Query(description="Omitir para raíz del proyecto")] = None,
-) -> list[ProjectFileResponse]:
+    limit: Annotated[int, Query(le=50, ge=1, description="Máximo 50 por página")] = 50,
+    offset: Annotated[int, Query(ge=0, description="Desplazamiento")] = 0,
+) -> ProjectFilesListResponse:
     svc = ProjectLifecycleService(session)
-    rows = await svc.list_files(current, project_uuid, folder_uuid)
-    return [ProjectFileResponse.from_row(r) for r in rows]
+    rows, total = await svc.list_files(
+        current, project_uuid, folder_uuid, limit=limit, offset=offset
+    )
+    return ProjectFilesListResponse(
+        items=[ProjectFileResponse.from_row(r) for r in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/{project_uuid}/files/search",
+    response_model=list[ProjectFileSearchResponse],
+    summary="Buscar archivos en todo el proyecto",
+    description="Filtra por texto (nombre o descripción) y/o disciplina. Cada resultado incluye la ruta desde Raíz.",
+)
+async def search_project_files(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    q: Annotated[Optional[str], Query(description="Texto en nombre o descripción")] = None,
+    discipline: Annotated[Optional[str], Query(description="Disciplina (slug)")] = None,
+) -> list[ProjectFileSearchResponse]:
+    svc = ProjectLifecycleService(session)
+    pairs = await svc.search_project_files(current, project_uuid, q, discipline)
+    return [ProjectFileSearchResponse.from_row_with_path(pf, path) for pf, path in pairs]
 
 
 @router.patch(

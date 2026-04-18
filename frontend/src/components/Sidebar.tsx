@@ -13,9 +13,9 @@ export function Sidebar() {
   const hasUnread = useChatStore((s) => s.hasUnread)
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-black/10 bg-white">
-      <div className="border-b border-black/10 px-4 py-6">
-        <DuplaLogo className="h-14 w-auto max-w-[min(100%,320px)] object-contain object-left" />
+    <aside className="flex w-52 shrink-0 flex-col border-r border-black/10 bg-white md:w-56">
+      <div className="border-b border-black/10 px-3 py-4 md:px-4 md:py-6">
+        <DuplaLogo className="h-10 w-auto max-w-[min(100%,320px)] object-contain object-left md:h-12" />
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 p-3" aria-label="Principal">
         <NavLink

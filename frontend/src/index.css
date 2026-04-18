@@ -11,12 +11,19 @@
   --font-sans: ui-sans-serif, system-ui, sans-serif;
 }
 
+html {
+  font-size: clamp(0.875rem, 0.82rem + 0.2vw, 1rem);
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-surface);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  line-height: 1.5;
 }
 
 @layer components {

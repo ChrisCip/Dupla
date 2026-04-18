@@ -224,7 +224,7 @@ export function ProjectsPage() {
       ) : null}
       <div className="flex shrink-0 flex-col gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-ink">Proyectos</h1>
+          <h1 className="text-xl font-semibold text-ink md:text-2xl">Proyectos</h1>
           <p className="mt-1 text-sm text-muted">
             {role === 'GERENCIA'
               ? 'Tablero de proyectos. Arrastra una tarjeta a la columna de al lado para ir a la fase anterior o siguiente.'

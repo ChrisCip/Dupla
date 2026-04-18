@@ -175,8 +175,8 @@ export function TaskboardView({
 
   const boardViewportMaxWidth = useMemo(() => {
     if (!embedded || maxVisibleColumns == null || maxVisibleColumns < 1) return undefined
-    const colRem = 17.5
-    const gapRem = 0.75
+    const colRem = 14
+    const gapRem = 0.5
     const gaps = Math.max(0, maxVisibleColumns - 1)
     return `calc(${maxVisibleColumns} * ${colRem}rem + ${gaps} * ${gapRem}rem)`
   }, [embedded, maxVisibleColumns])
@@ -186,7 +186,7 @@ export function TaskboardView({
       {!embedded ? (
         <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-ink">Tablero de tareas</h1>
+            <h1 className="text-xl font-semibold text-ink md:text-2xl">Tablero de tareas</h1>
             <p className="mt-2 text-sm text-muted">
               Asigna personas, descripciones breves y archiva lo completado. Clic en una tarjeta para el detalle.
             </p>
@@ -257,7 +257,7 @@ export function TaskboardView({
             <div
               className={
                 embedded
-                  ? 'mx-auto min-h-0 w-full flex-1 overflow-x-auto overflow-y-hidden p-2'
+                  ? 'mx-auto min-h-0 w-full flex-1 overflow-x-auto overflow-y-hidden p-1.5'
                   : 'min-h-0 flex-1 overflow-x-auto overflow-y-hidden p-2'
               }
               style={boardViewportMaxWidth ? { maxWidth: boardViewportMaxWidth } : undefined}
@@ -265,7 +265,7 @@ export function TaskboardView({
               <div
                 className={
                   embedded
-                    ? 'flex h-full min-h-[10rem] w-max min-w-full items-stretch gap-2 sm:gap-3'
+                    ? 'flex h-full min-h-[10rem] w-max min-w-full items-stretch gap-1.5 sm:gap-2'
                     : 'flex h-full min-h-0 w-max min-w-full items-stretch gap-2 sm:gap-3 md:grid md:w-full md:min-w-0 md:gap-2 lg:gap-3'
                 }
                 style={
@@ -281,16 +281,24 @@ export function TaskboardView({
                     key={list.uuid}
                     className={
                       embedded
-                        ? 'flex h-full min-h-0 w-[260px] shrink-0 flex-col rounded-lg border border-black/10 bg-black/2 sm:w-[280px]'
+                        ? 'flex h-full min-h-0 w-52 shrink-0 flex-col rounded-lg border border-black/10 bg-black/2 sm:w-56'
                         : 'flex h-full min-h-0 w-[min(100%,17.5rem)] shrink-0 flex-col rounded-lg border border-black/10 bg-black/2 sm:w-72 md:min-w-0 md:max-w-none md:w-auto md:min-w-[17.5rem]'
                     }
                     onDragOver={onDragOver}
                     onDrop={(e) => onDropOnColumn(e, list)}
                   >
-                    <div className="shrink-0 border-b border-black/10 bg-white px-2.5 py-2 text-sm font-semibold text-ink">
+                    <div
+                      className={`shrink-0 border-b border-black/10 bg-white font-semibold text-ink ${
+                        embedded ? 'px-2 py-1.5 text-xs' : 'px-2.5 py-2 text-sm'
+                      }`}
+                    >
                       {list.title}
                     </div>
-                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+                    <div
+                      className={`min-h-0 flex-1 overflow-y-auto ${
+                        embedded ? 'space-y-1.5 p-1.5' : 'space-y-2 p-2'
+                      }`}
+                    >
                       {sortedCards(list).map((card, index) => {
                         const createdPhaseLabel = labelForCreatedPhase(card.created_in_phase)
                         return (
@@ -301,14 +309,25 @@ export function TaskboardView({
                             onDragEnd={onDragEnd}
                             onDragOver={onDragOver}
                             onDrop={(e) => onDropOnCard(e, list, index)}
-                            className="flex min-w-0 gap-2 rounded-md border border-black/10 bg-white px-2 py-2 text-left text-sm shadow-card transition hover:border-primary/30"
+                            className={`flex min-w-0 rounded-md border border-black/10 bg-white text-left shadow-card transition hover:border-primary/30 ${
+                              embedded
+                                ? 'gap-1.5 px-1.5 py-1.5 text-xs'
+                                : 'gap-2 px-2 py-2 text-sm'
+                            }`}
                           >
                             <div
-                              className="mt-0.5 shrink-0 cursor-grab text-black/35 active:cursor-grabbing"
+                              className={`shrink-0 cursor-grab text-black/35 active:cursor-grabbing ${
+                                embedded ? 'mt-0 h-3.5 w-3' : 'mt-0.5'
+                              }`}
                               aria-hidden
                               title="Arrastrar para mover"
                             >
-                              <svg width="16" height="20" viewBox="0 0 16 20" className="block">
+                              <svg
+                                width="16"
+                                height="20"
+                                viewBox="0 0 16 20"
+                                className={embedded ? 'block h-full w-full' : 'block'}
+                              >
                                 <circle cx="5" cy="5" r="1.5" fill="currentColor" />
                                 <circle cx="11" cy="5" r="1.5" fill="currentColor" />
                                 <circle cx="5" cy="10" r="1.5" fill="currentColor" />
@@ -328,11 +347,23 @@ export function TaskboardView({
                                 }
                               }}
                             >
-                              <div className="font-medium text-ink">{card.title}</div>
+                              <div className={`font-medium text-ink ${embedded ? 'text-xs' : ''}`}>
+                                {card.title}
+                              </div>
                               {card.description ? (
-                                <p className="mt-1 line-clamp-2 text-xs text-muted">{card.description}</p>
+                                <p
+                                  className={`mt-1 line-clamp-2 text-muted ${
+                                    embedded ? 'text-[10px] leading-snug' : 'text-xs'
+                                  }`}
+                                >
+                                  {card.description}
+                                </p>
                               ) : null}
-                              <div className="mt-2 space-y-2 border-t border-black/8 pt-2 text-[11px]">
+                              <div
+                                className={`border-t border-black/8 text-[11px] ${
+                                  embedded ? 'mt-1.5 space-y-1 pt-1.5' : 'mt-2 space-y-2 pt-2'
+                                }`}
+                              >
                                 {createdPhaseLabel ? (
                                   <div className="flex flex-col gap-0.5">
                                     <span className="font-semibold uppercase tracking-wide text-muted">
@@ -355,7 +386,11 @@ export function TaskboardView({
                             </button>
                             <button
                               type="button"
-                              className="shrink-0 self-start rounded-md border border-primary/50 bg-primary/[0.06] px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-primary hover:bg-primary/[0.12]"
+                              className={`shrink-0 self-start rounded-md border border-primary/50 bg-primary/[0.06] font-semibold uppercase tracking-wide text-primary hover:bg-primary/[0.12] ${
+                                embedded
+                                  ? 'px-1.5 py-0.5 text-[10px]'
+                                  : 'px-2.5 py-1 text-xs'
+                              }`}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 openCard(card)

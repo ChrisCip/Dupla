@@ -574,16 +574,87 @@ class ProjectLifecycleService:
         user: User,
         project_uuid: UUID,
         folder_uuid: Optional[UUID] = None,
-    ) -> list[ProjectFile]:
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[ProjectFile], int]:
         project = await self._project_svc.get_project(user, project_uuid)
-        q = select(ProjectFile).where(ProjectFile.project_id == project.id)
-        if folder_uuid is None:
-            q = q.where(ProjectFile.folder_id.is_(None))
-        else:
+        if folder_uuid is not None:
             await self._require_folder_in_project(project.id, folder_uuid)
-            q = q.where(ProjectFile.folder_id == folder_uuid)
-        q = q.order_by(ProjectFile.created_at.desc())
-        return list((await self._session.execute(q)).scalars().all())
+        conds = [ProjectFile.project_id == project.id]
+        if folder_uuid is None:
+            conds.append(ProjectFile.folder_id.is_(None))
+        else:
+            conds.append(ProjectFile.folder_id == folder_uuid)
+        where_clause = and_(*conds)
+        count_q = select(func.count()).select_from(ProjectFile).where(where_clause)
+        total = int((await self._session.execute(count_q)).scalar_one())
+        q = (
+            select(ProjectFile)
+            .where(where_clause)
+            .order_by(ProjectFile.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = list((await self._session.execute(q)).scalars().all())
+        return rows, total
+
+    async def _folder_path_parts(self, project_id: UUID, folder_id: Optional[UUID]) -> list[str]:
+        if folder_id is None:
+            return []
+        parts: list[str] = []
+        cur: Optional[UUID] = folder_id
+        for _ in range(128):
+            if cur is None:
+                break
+            row = await self._session.get(ProjectFileFolder, cur)
+            if row is None or row.project_id != project_id:
+                break
+            parts.append(row.name)
+            cur = row.parent_id
+        parts.reverse()
+        return parts
+
+    async def search_project_files(
+        self,
+        user: User,
+        project_uuid: UUID,
+        q_raw: Optional[str],
+        discipline_raw: Optional[str],
+    ) -> list[tuple[ProjectFile, str]]:
+        project = await self._project_svc.get_project(user, project_uuid)
+        has_q = bool(q_raw and q_raw.strip())
+        has_d = bool(discipline_raw and discipline_raw.strip())
+        if not has_q and not has_d:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Indica al menos un criterio: q (texto) o discipline",
+            )
+        stmt = select(ProjectFile).where(ProjectFile.project_id == project.id)
+        if has_d:
+            d = parse_discipline(discipline_raw.strip())
+            if d is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="discipline no válida",
+                )
+            stmt = stmt.where(ProjectFile.discipline == d.value)
+        if has_q:
+            term = f"%{q_raw.strip()}%"
+            stmt = stmt.where(
+                or_(
+                    ProjectFile.original_name.ilike(term),
+                    ProjectFile.description.ilike(term),
+                )
+            )
+        stmt = stmt.order_by(ProjectFile.created_at.desc())
+        rows = list((await self._session.execute(stmt)).scalars().all())
+        out: list[tuple[ProjectFile, str]] = []
+        for pf in rows:
+            parts = await self._folder_path_parts(project.id, pf.folder_id)
+            path_display = "Raíz" if not parts else "Raíz / " + " / ".join(parts)
+            out.append((pf, path_display))
+        return out
 
     async def list_file_folders(
         self,

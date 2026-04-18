@@ -48,7 +48,7 @@ export function MainLayout() {
       <Sidebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="border-b border-black/10 bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-3.5 md:px-6 md:py-4">
             <div className="du-meta">
               <span className="text-ink">{email}</span>
               {role ? <span> · {role}</span> : null}
@@ -67,7 +67,7 @@ export function MainLayout() {
             </button>
           </div>
         </header>
-        <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-6 py-6">
+        <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-4 py-4 sm:px-5 sm:py-5 md:px-6 md:py-6">
           <Outlet />
         </main>
       </div>

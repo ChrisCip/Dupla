@@ -10,6 +10,11 @@ export type ProjectFileRow = {
   created_at: string
 }
 
+/** Respuesta de GET .../files/search (incluye ruta desde Raíz). */
+export type ProjectFileSearchRow = ProjectFileRow & {
+  path: string
+}
+
 export type ProjectFileFolderRow = {
   uuid: string
   name: string

@@ -213,16 +213,16 @@ export function ChatPage() {
   const activeMeta = conversations.find((c) => c.uuid === activeConversationUuid)
 
   return (
-    <>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-ink">Chat interno</h1>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-4 shrink-0 md:mb-6">
+        <h1 className="text-xl font-semibold text-ink md:text-2xl">Chat interno</h1>
         <p className="mt-2 text-sm text-muted">
           Canal general para avisos del equipo, chats uno a uno y grupos. El menú avisa si hay actividad nueva
           mientras navegas otras secciones.
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch">
         <ChatConversationSidebar
           conversations={conversations}
           activeConversationUuid={activeConversationUuid}
@@ -240,7 +240,7 @@ export function ChatPage() {
           }}
         />
 
-        <Card className="flex min-h-[min(70vh,560px)] min-w-0 flex-1 flex-col overflow-hidden p-0">
+        <Card className="flex min-h-[min(40dvh,320px)] min-w-0 flex-1 flex-col overflow-hidden p-0 lg:min-h-0">
           <div className="border-b border-black/10 bg-black/2 px-4 py-3">
             <h2 className="text-base font-semibold text-ink">
               {activeMeta?.display_title ?? 'Chat'}
@@ -328,6 +328,6 @@ export function ChatPage() {
         onRemoveMember={removeGroupMember}
         onCreateGroup={createGroup}
       />
-    </>
+    </div>
   )
 }

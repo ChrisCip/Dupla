@@ -35,7 +35,7 @@ export function ChatConversationSidebar({
         </div>
         <div>
           <div className="du-label">Conversaciones</div>
-          <ul className="mt-2 max-h-[min(60vh,520px)] space-y-1 overflow-y-auto pr-0.5">
+          <ul className="mt-2 max-h-[min(50dvh,420px)] space-y-1 overflow-y-auto pr-0.5 lg:max-h-[min(60dvh,520px)]">
             {conversations.map((c) => {
               const active = c.uuid === activeConversationUuid
               const unread = (c.unread_count ?? 0) > 0
