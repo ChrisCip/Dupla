@@ -20,6 +20,7 @@ from app.models.project import Project
 from app.models.user import User
 from app.services.project_service import ProjectService
 from app.schemas.chat import (
+    ChatAuthorResponse,
     ChatConversationResponse,
     ChatMessageResponse,
     ChatPostRequest,
@@ -114,6 +115,23 @@ class ChatService:
         )
         return int((await self._session.execute(q)).scalar_one() or 0)
 
+    async def _participants_by_conversation(
+        self, conversation_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, list[ChatAuthorResponse]]:
+        if not conversation_ids:
+            return {}
+        q = (
+            select(ChatConversationMember.conversation_id, User.id, User.email)
+            .join(User, User.id == ChatConversationMember.user_id)
+            .where(ChatConversationMember.conversation_id.in_(conversation_ids))
+            .order_by(User.email.asc())
+        )
+        rows = list((await self._session.execute(q)).all())
+        out: dict[uuid.UUID, list[ChatAuthorResponse]] = {}
+        for conv_id, uid, email in rows:
+            out.setdefault(conv_id, []).append(ChatAuthorResponse(uuid=uid, email=email))
+        return out
+
     async def _unread_count(self, user: User, conv: ChatConversation) -> int:
         await self._ensure_member(user, conv)
         stmt = select(ChatConversationMember).where(
@@ -152,6 +170,7 @@ class ChatService:
         last_message_preview: Optional[str] = None,
         unread_count: int = 0,
         participant_count: Optional[int] = None,
+        participants: Optional[list[ChatAuthorResponse]] = None,
     ) -> ChatConversationResponse:
         if conv.kind == ChatConversationKind.GENERAL:
             return ChatConversationResponse(
@@ -162,6 +181,7 @@ class ChatService:
                 last_message_preview=last_message_preview,
                 unread_count=unread_count,
                 participant_count=participant_count,
+                participants=None,
             )
         if conv.kind == ChatConversationKind.GROUP:
             return ChatConversationResponse(
@@ -172,6 +192,7 @@ class ChatService:
                 last_message_preview=last_message_preview,
                 unread_count=unread_count,
                 participant_count=participant_count,
+                participants=participants,
             )
         if conv.kind == ChatConversationKind.PROJECT:
             title = "Proyecto"
@@ -187,6 +208,7 @@ class ChatService:
                 last_message_preview=last_message_preview,
                 unread_count=unread_count,
                 participant_count=participant_count,
+                participants=None,
             )
         stmt = (
             select(User)
@@ -206,6 +228,7 @@ class ChatService:
             last_message_preview=last_message_preview,
             unread_count=unread_count,
             participant_count=participant_count,
+            participants=None,
         )
 
     async def list_conversations(self, user: User) -> list[ChatConversationResponse]:
@@ -225,11 +248,14 @@ class ChatService:
             return (primary, -ts)
 
         rows.sort(key=sort_key)
+        group_ids = [c.id for c in rows if c.kind == ChatConversationKind.GROUP]
+        participants_map = await self._participants_by_conversation(group_ids)
         out: list[ChatConversationResponse] = []
         for conv in rows:
             preview = await self._last_message_preview(conv.id)
             unread = await self._unread_count(user, conv)
             pcount = await self._participant_count(conv.id)
+            parts = participants_map.get(conv.id) if conv.kind == ChatConversationKind.GROUP else None
             out.append(
                 await self._conversation_to_response(
                     conv,
@@ -237,6 +263,7 @@ class ChatService:
                     last_message_preview=preview,
                     unread_count=unread,
                     participant_count=pcount,
+                    participants=parts,
                 )
             )
         return out
@@ -312,7 +339,15 @@ class ChatService:
         for uid in ids_set:
             self._session.add(ChatConversationMember(conversation_id=conv.id, user_id=uid))
         await self._session.flush()
-        return await self._conversation_to_response(conv, user)
+        pcount = await self._participant_count(conv.id)
+        pmap = await self._participants_by_conversation([conv.id])
+        parts = pmap.get(conv.id)
+        return await self._conversation_to_response(
+            conv,
+            user,
+            participant_count=pcount,
+            participants=parts,
+        )
 
     async def list_conversation_messages(
         self,

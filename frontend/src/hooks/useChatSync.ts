@@ -14,6 +14,7 @@ function conversationsFingerprint(conversations: ChatConversationSummary[]): str
       c.last_message_preview,
       c.unread_count,
       c.participant_count,
+      c.participants?.map((p) => `${p.uuid}:${p.email}`).sort(),
     ]),
   )
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { FilePlus, Filter, FolderPlus, Trash2 } from 'lucide-react'
+import { FilePlus, Filter, FolderPlus, LayoutGrid, List, Trash2 } from 'lucide-react'
 
 import { apiFetch } from '../../../api/client'
 import {
@@ -67,6 +67,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
   const [searchHits, setSearchHits] = useState<ProjectFileSearchRow[] | null>(null)
   const [searchBusy, setSearchBusy] = useState(false)
   const [dragFileId, setDragFileId] = useState<string | null>(null)
+  const [fileView, setFileView] = useState<'grid' | 'list'>('grid')
 
   const load = useCallback(async () => {
     if (!token || !projectUuid) return
@@ -220,10 +221,9 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
   return (
     <Card className="space-y-4 p-6">
       <div>
-        <h2 className="text-lg font-semibold text-ink">Archivos / planos</h2>
+        <h2 className="text-lg font-semibold text-ink">Archivos del proyecto</h2>
         <p className="text-sm text-muted">
-          Explorador por carpetas con descripción y disciplina. Arrastra archivos al área inferior o usa Crear
-          archivo.
+          Explorador por carpetas con descripción y disciplina. Arrastra archivos al área inferior o usa el botón Crear archivo.
         </p>
       </div>
 
@@ -281,6 +281,38 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
             <FolderPlus className="h-4 w-4 text-muted" aria-hidden />
             Crear carpeta
           </button>
+          <div
+            className="inline-flex shrink-0 rounded-lg border border-black/15 bg-white p-0.5 shadow-sm"
+            role="group"
+            aria-label="Vista de archivos"
+          >
+            <button
+              type="button"
+              aria-pressed={fileView === 'grid'}
+              title="Vista de cuadrícula"
+              className={`rounded-md p-2 outline-none transition ${
+                fileView === 'grid'
+                  ? 'bg-primary/10 text-primary shadow-sm'
+                  : 'text-muted hover:bg-black/[0.04] hover:text-ink'
+              } focus-visible:ring-2 focus-visible:ring-primary/35`}
+              onClick={() => setFileView('grid')}
+            >
+              <LayoutGrid className="h-4 w-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              aria-pressed={fileView === 'list'}
+              title="Vista de lista"
+              className={`rounded-md p-2 outline-none transition ${
+                fileView === 'list'
+                  ? 'bg-primary/10 text-primary shadow-sm'
+                  : 'text-muted hover:bg-black/[0.04] hover:text-ink'
+              } focus-visible:ring-2 focus-visible:ring-primary/35`}
+              onClick={() => setFileView('list')}
+            >
+              <List className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -395,51 +427,51 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
             <p className="py-8 text-center text-sm text-muted">
               Ningún archivo coincide con los filtros. Prueba otro texto o disciplina.
             </p>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          ) : fileView === 'grid' ? (
+            <div className="grid gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {(searchHits ?? []).map((f) => (
                 <div
                   key={f.uuid}
-                  className="group relative flex flex-col gap-2 rounded-xl border border-black/10 bg-white p-4 shadow-[var(--shadow-card)] transition hover:border-primary/25"
+                  className="group relative flex flex-col gap-1.5 rounded-lg border border-black/10 bg-white p-2.5 shadow-[var(--shadow-card)] transition hover:border-primary/25"
                 >
-                  <div className="flex items-start gap-3">
-                    <ProjectWorkspaceFileIcon name={f.original_name} className="h-11 w-11 shrink-0 text-primary" />
+                  <div className="flex items-start gap-2">
+                    <ProjectWorkspaceFileIcon name={f.original_name} className="h-8 w-8 shrink-0 text-primary" />
                     <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 font-medium text-ink">{f.original_name}</p>
-                      <p className="mt-1 text-[11px] leading-snug text-primary" title={f.path}>
+                      <p className="line-clamp-2 text-sm font-medium leading-snug text-ink">{f.original_name}</p>
+                      <p className="mt-0.5 text-[10px] leading-snug text-primary" title={f.path}>
                         {f.path}
                       </p>
-                      <p className="mt-1 text-[11px] text-muted">Subido: {formatUploadedAt(f.created_at)}</p>
-                      {f.ingest_status === 'DRAFT' ? (
-                        <span className="mt-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-900">
-                          Borrador
-                        </span>
-                      ) : null}
-                      {disciplineLabel(f.discipline) ? (
-                        <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                          {disciplineLabel(f.discipline)}
-                        </span>
-                      ) : (
-                        <span className="mt-1 inline-block text-[11px] text-muted">Sin clasificar</span>
-                      )}
+                      <p className="mt-0.5 text-[10px] text-muted">Subido: {formatUploadedAt(f.created_at)}</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {f.ingest_status === 'DRAFT' ? (
+                          <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase text-amber-900">
+                            Borrador
+                          </span>
+                        ) : null}
+                        {disciplineLabel(f.discipline) ? (
+                          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                            {disciplineLabel(f.discipline)}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-muted">Sin clasificar</span>
+                        )}
+                      </div>
                       {f.description ? (
-                        <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted">{f.description}</p>
-                      ) : (
-                        <p className="mt-2 text-xs italic text-muted">Sin descripción</p>
-                      )}
+                        <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted">{f.description}</p>
+                      ) : null}
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 border-t border-black/5 pt-2">
+                  <div className="flex flex-wrap gap-2 border-t border-black/5 pt-1.5">
                     <button
                       type="button"
-                      className="text-xs font-semibold text-primary hover:underline"
+                      className="text-[11px] font-semibold text-primary hover:underline"
                       onClick={() => void downloadFile(f)}
                     >
                       Descargar
                     </button>
                     <button
                       type="button"
-                      className="text-xs font-semibold text-red-700 hover:underline"
+                      className="text-[11px] font-semibold text-red-700 hover:underline"
                       onClick={() => void deleteFile(f)}
                     >
                       Eliminar
@@ -448,6 +480,66 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[min(100%,28rem)] border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-b border-black/10 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                    <th className="py-2 pr-2">Nombre</th>
+                    <th className="py-2 pr-2">Ubicación / datos</th>
+                    <th className="w-32 py-2 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(searchHits ?? []).map((f) => (
+                    <tr key={f.uuid} className="border-b border-black/5 hover:bg-black/[0.02]">
+                      <td className="max-w-[12rem] py-2 pr-2 align-top">
+                        <div className="flex items-start gap-2">
+                          <ProjectWorkspaceFileIcon name={f.original_name} className="h-7 w-7 shrink-0 text-primary" />
+                          <span className="min-w-0 font-medium leading-snug text-ink">{f.original_name}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 pr-2 align-top text-[11px] text-muted">
+                        <p className="text-primary" title={f.path}>
+                          {f.path}
+                        </p>
+                        <p>Subido: {formatUploadedAt(f.created_at)}</p>
+                        {f.ingest_status === 'DRAFT' ? (
+                          <span className="mt-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-900">
+                            Borrador
+                          </span>
+                        ) : null}
+                        {disciplineLabel(f.discipline) ? (
+                          <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                            {disciplineLabel(f.discipline)}
+                          </span>
+                        ) : (
+                          <span className="mt-1 block text-[11px]">Sin clasificar</span>
+                        )}
+                        {f.description ? <p className="mt-1 line-clamp-2 text-muted">{f.description}</p> : null}
+                      </td>
+                      <td className="whitespace-nowrap py-2 text-right align-top">
+                        <button
+                          type="button"
+                          className="font-semibold text-primary hover:underline"
+                          onClick={() => void downloadFile(f)}
+                        >
+                          Descargar
+                        </button>
+                        <span className="mx-1 text-black/15">·</span>
+                        <button
+                          type="button"
+                          className="font-semibold text-red-700 hover:underline"
+                          onClick={() => void deleteFile(f)}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )
         ) : busy ? (
           <p className="text-sm text-muted">Cargando…</p>
@@ -455,14 +547,14 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
           <p className="py-8 text-center text-sm text-muted">
             Carpeta vacía. Crea una carpeta, un archivo o arrastra aquí.
           </p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        ) : fileView === 'grid' ? (
+          <div className="grid gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {folders.map((fo) => (
               <div
                 key={fo.uuid}
                 role="button"
                 tabIndex={0}
-                className="group relative flex flex-col gap-2 rounded-xl border border-black/10 bg-white p-4 text-left shadow-[var(--shadow-card)] transition hover:border-primary/25"
+                className="group relative flex flex-col gap-1.5 rounded-lg border border-black/10 bg-white p-2.5 text-left shadow-[var(--shadow-card)] transition hover:border-primary/25"
                 onDoubleClick={() => enterFolder(fo)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') enterFolder(fo)
@@ -477,11 +569,11 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                   if (id && dragFileId) void moveFileToFolder(id, fo.uuid)
                 }}
               >
-                <div className="flex items-start gap-3">
-                  <ProjectWorkspaceFileIcon isFolder name={fo.name} className="h-11 w-11 shrink-0 text-amber-600/90" />
+                <div className="flex items-start gap-2">
+                  <ProjectWorkspaceFileIcon isFolder name={fo.name} className="h-8 w-8 shrink-0 text-amber-600/90" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-ink">{fo.name}</p>
-                    <p className="text-xs text-muted">Carpeta</p>
+                    <p className="truncate text-sm font-medium text-ink">{fo.name}</p>
+                    <p className="text-[10px] text-muted">Carpeta · doble clic</p>
                   </div>
                   <button
                     type="button"
@@ -492,7 +584,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                       void deleteFolder(fo)
                     }}
                   >
-                    <Trash2 className="h-4 w-4" aria-hidden />
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </div>
               </div>
@@ -502,7 +594,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
               <div
                 key={f.uuid}
                 draggable
-                className="group relative flex flex-col gap-2 rounded-xl border border-black/10 bg-white p-4 shadow-[var(--shadow-card)] transition hover:border-primary/25"
+                className="group relative flex flex-col gap-1.5 rounded-lg border border-black/10 bg-white p-2.5 shadow-[var(--shadow-card)] transition hover:border-primary/25"
                 onDragStart={(e) => {
                   setDragFileId(f.uuid)
                   e.dataTransfer.setData('text/plain', f.uuid)
@@ -510,41 +602,43 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                 }}
                 onDragEnd={() => setDragFileId(null)}
               >
-                <div className="flex items-start gap-3">
-                  <ProjectWorkspaceFileIcon name={f.original_name} className="h-11 w-11 shrink-0 text-primary" />
+                <div className="flex items-start gap-2">
+                  <ProjectWorkspaceFileIcon name={f.original_name} className="h-8 w-8 shrink-0 text-primary" />
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 font-medium text-ink">{f.original_name}</p>
-                    <p className="mt-1 text-[11px] text-muted">Subido: {formatUploadedAt(f.created_at)}</p>
-                    {f.ingest_status === 'DRAFT' ? (
-                      <span className="mt-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-900">
-                        Borrador
-                      </span>
-                    ) : null}
-                    {disciplineLabel(f.discipline) ? (
-                      <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                        {disciplineLabel(f.discipline)}
-                      </span>
-                    ) : (
-                      <span className="mt-1 inline-block text-[11px] text-muted">Sin clasificar</span>
-                    )}
+                    <p className="line-clamp-2 text-sm font-medium leading-snug text-ink">{f.original_name}</p>
+                    <p className="mt-0.5 text-[10px] text-muted">Subido: {formatUploadedAt(f.created_at)}</p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {f.ingest_status === 'DRAFT' ? (
+                        <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase text-amber-900">
+                          Borrador
+                        </span>
+                      ) : null}
+                      {disciplineLabel(f.discipline) ? (
+                        <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                          {disciplineLabel(f.discipline)}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted">Sin clasificar</span>
+                      )}
+                    </div>
                     {f.description ? (
-                      <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted">{f.description}</p>
+                      <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted">{f.description}</p>
                     ) : (
-                      <p className="mt-2 text-xs italic text-muted">Sin descripción</p>
+                      <p className="mt-1 text-[10px] italic text-muted">Sin descripción</p>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 border-t border-black/5 pt-2">
+                <div className="flex flex-wrap gap-2 border-t border-black/5 pt-1.5">
                   <button
                     type="button"
-                    className="text-xs font-semibold text-primary hover:underline"
+                    className="text-[11px] font-semibold text-primary hover:underline"
                     onClick={() => void downloadFile(f)}
                   >
                     Descargar
                   </button>
                   <button
                     type="button"
-                    className="text-xs font-semibold text-red-700 hover:underline"
+                    className="text-[11px] font-semibold text-red-700 hover:underline"
                     onClick={() => void deleteFile(f)}
                   >
                     Eliminar
@@ -552,6 +646,117 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                 </div>
               </div>
             ))}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[min(100%,32rem)] border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-black/10 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                  <th className="py-2 pr-2">Nombre</th>
+                  <th className="py-2 pr-2">Detalles</th>
+                  <th className="w-32 py-2 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {folders.map((fo) => (
+                  <tr
+                    key={fo.uuid}
+                    role="button"
+                    tabIndex={0}
+                    className="cursor-pointer border-b border-black/5 hover:bg-black/[0.02]"
+                    onDoubleClick={() => enterFolder(fo)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') enterFolder(fo)
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      if (dragFileId) e.dataTransfer.dropEffect = 'move'
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      const id = e.dataTransfer.getData('text/plain')
+                      if (id && dragFileId) void moveFileToFolder(id, fo.uuid)
+                    }}
+                  >
+                    <td className="max-w-[14rem] py-2 pr-2 align-middle">
+                      <div className="flex items-center gap-2">
+                        <ProjectWorkspaceFileIcon isFolder name={fo.name} className="h-7 w-7 shrink-0 text-amber-600/90" />
+                        <span className="min-w-0 font-medium text-ink">{fo.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 pr-2 align-middle text-[11px] text-muted">
+                      Carpeta · doble clic para abrir
+                    </td>
+                    <td className="py-2 text-right align-middle">
+                      <button
+                        type="button"
+                        className="rounded p-1 text-muted hover:bg-red-50 hover:text-red-700"
+                        title="Eliminar carpeta"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void deleteFolder(fo)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {files.map((f) => (
+                  <tr
+                    key={f.uuid}
+                    draggable
+                    className="border-b border-black/5 hover:bg-black/[0.02]"
+                    onDragStart={(e) => {
+                      setDragFileId(f.uuid)
+                      e.dataTransfer.setData('text/plain', f.uuid)
+                      e.dataTransfer.effectAllowed = 'move'
+                    }}
+                    onDragEnd={() => setDragFileId(null)}
+                  >
+                    <td className="max-w-[14rem] py-2 pr-2 align-top">
+                      <div className="flex items-start gap-2">
+                        <ProjectWorkspaceFileIcon name={f.original_name} className="h-7 w-7 shrink-0 text-primary" />
+                        <span className="min-w-0 font-medium leading-snug text-ink">{f.original_name}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 pr-2 align-top text-[11px] text-muted">
+                      <p>Subido: {formatUploadedAt(f.created_at)}</p>
+                      {f.ingest_status === 'DRAFT' ? (
+                        <span className="mt-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-900">
+                          Borrador
+                        </span>
+                      ) : null}
+                      {disciplineLabel(f.discipline) ? (
+                        <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                          {disciplineLabel(f.discipline)}
+                        </span>
+                      ) : (
+                        <span className="mt-1 block">Sin clasificar</span>
+                      )}
+                      {f.description ? <p className="mt-1 line-clamp-2 text-muted">{f.description}</p> : null}
+                    </td>
+                    <td className="whitespace-nowrap py-2 text-right align-top">
+                      <button
+                        type="button"
+                        className="font-semibold text-primary hover:underline"
+                        onClick={() => void downloadFile(f)}
+                      >
+                        Descargar
+                      </button>
+                      <span className="mx-1 text-black/15">·</span>
+                      <button
+                        type="button"
+                        className="font-semibold text-red-700 hover:underline"
+                        onClick={() => void deleteFile(f)}
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

@@ -15,7 +15,7 @@ import { WorkspaceMaterialesTab } from '../components/project-workspace/tabs/Wor
 import { WorkspacePliegosTab } from '../components/project-workspace/tabs/WorkspacePliegosTab'
 import { WorkspacePresupuestoTab } from '../components/project-workspace/tabs/WorkspacePresupuestoTab'
 import { WorkspaceRevisionesTab } from '../components/project-workspace/tabs/WorkspaceRevisionesTab'
-import { Tabs } from '../components/Tabs'
+import { WorkspaceTabsLayout } from '../components/project-workspace/WorkspaceTabsLayout'
 import { projectWorkspaceTabs } from '../constants/projectWorkspaceTabs'
 import { NEXT_WORKFLOW_PHASE, WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
 import { budgetPipeline } from '../lib/budgetPipeline'
@@ -147,20 +147,26 @@ export function ProjectWorkspacePage() {
     setPlanDeliveryRows((await res.json()) as PlanDeliveryRow[])
   }, [token, projectUuid])
 
-  async function addPlanDeliveryRow() {
-    if (!token || !projectUuid) return
+  async function addPlanDeliveryRow(payload?: { description?: string; request_date?: string | null }) {
+    if (!token || !projectUuid) return false
     setPlanDeliveryMsg(null)
+    const body: Record<string, unknown> = {
+      description: payload?.description?.trim() ?? '',
+      status: 'SOLICITADO',
+    }
+    if (payload?.request_date) body.request_date = payload.request_date
     const res = await apiFetch(`/api/projects/${projectUuid}/plan-delivery-requests`, {
       method: 'POST',
       token,
-      body: JSON.stringify({ description: '', status: 'SOLICITADO' }),
+      body: JSON.stringify(body),
     })
     if (!res.ok) {
       setPlanDeliveryMsg('No se pudo crear la solicitud')
-      return
+      return false
     }
     const row = (await res.json()) as PlanDeliveryRow
     setPlanDeliveryRows((prev) => [...prev, row])
+    return true
   }
 
   async function patchPlanDeliveryRow(rowUuid: string, patch: Record<string, unknown>) {
@@ -400,24 +406,17 @@ export function ProjectWorkspacePage() {
               ← Volver al tablero
             </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto pt-4">
-      <Tabs tabs={workspaceTabs} value={tab} onChange={setTab} labelledBy="workspace-heading">
+          <WorkspaceTabsLayout
+            tabs={workspaceTabs}
+            activeId={tab}
+            onSelect={setTab}
+            labelledBy="workspace-heading"
+          >
         {tab === 'detalles' ? (
                 <WorkspaceDetallesTab
                   project={project}
                   projectError={projectError}
-                  projectUuid={projectUuid}
-                  token={token}
-                  role={role}
                   phaseLabel={phaseLabel}
-                  adminUsers={adminUsers}
-                  memberSelection={memberSelection}
-                  setMemberSelection={setMemberSelection}
-                  membersBusy={membersBusy}
-                  setMembersBusy={setMembersBusy}
-                  membersMsg={membersMsg}
-                  setMembersMsg={setMembersMsg}
-                  setMemberRows={setMemberRows}
                   onOpenChat={() => void openProjectChat()}
                 />
         ) : null}
@@ -445,11 +444,10 @@ export function ProjectWorkspacePage() {
                 <WorkspaceEntregaPlanosTab
                   projectUuid={projectUuid}
                   token={token}
-                  projectName={project?.name}
                   planDeliveryRows={planDeliveryRows}
                   planDeliveryMsg={planDeliveryMsg}
                   setPlanDeliveryRows={setPlanDeliveryRows}
-                  onAddRow={() => void addPlanDeliveryRow()}
+                  onAddRow={(payload) => addPlanDeliveryRow(payload)}
                   onPatchRow={(rowUuid, patch) => void patchPlanDeliveryRow(rowUuid, patch)}
                   onDeleteRow={(rowUuid) => void deletePlanDeliveryRow(rowUuid)}
                 />
@@ -527,9 +525,8 @@ export function ProjectWorkspacePage() {
                   removeMaterial={removeMaterial}
                 />
                         ) : null}
-            </Tabs>
-                  </div>
-            </div>
+          </WorkspaceTabsLayout>
+        </div>
       )}
 
       <ProjectConfigModal

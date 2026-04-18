@@ -1,5 +1,10 @@
 export type ChatConversationKind = 'GENERAL' | 'DIRECT' | 'GROUP' | 'PROJECT'
 
+export type ChatParticipantRef = {
+  uuid: string
+  email: string
+}
+
 export type ChatConversationSummary = {
   uuid: string
   kind: ChatConversationKind
@@ -8,6 +13,7 @@ export type ChatConversationSummary = {
   last_message_preview?: string | null
   unread_count?: number
   participant_count?: number | null
+  participants?: ChatParticipantRef[] | null
 }
 
 export type ChatMessage = {

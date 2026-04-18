@@ -1,4 +1,4 @@
-import type { ChatConversationKind, ChatMessage } from '../types/chat'
+import type { ChatConversationKind, ChatMessage, ChatParticipantRef } from '../types/chat'
 
 const GROUP_MS = 5 * 60 * 1000
 
@@ -6,6 +6,13 @@ export type MessageDisplayGroup = {
   key: string
   author: { uuid: string; email: string }
   messages: ChatMessage[]
+}
+
+export function formatGroupParticipantEmails(
+  participants: ChatParticipantRef[] | null | undefined,
+): string {
+  if (!participants?.length) return ''
+  return participants.map((p) => p.email).join(', ')
 }
 
 export function chatKindLabel(kind: ChatConversationKind): string {

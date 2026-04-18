@@ -1,6 +1,10 @@
 import { Card } from '../Card'
 import { PrimaryButton } from '../PrimaryButton'
-import { chatKindLabel, formatRelativeChatTime } from '../../lib/chatUi'
+import {
+  chatKindLabel,
+  formatGroupParticipantEmails,
+  formatRelativeChatTime,
+} from '../../lib/chatUi'
 import type { ChatConversationSummary } from '../../types/chat'
 
 type ChatConversationSidebarProps = {
@@ -19,9 +23,9 @@ export function ChatConversationSidebar({
   onNewGroup,
 }: ChatConversationSidebarProps) {
   return (
-    <aside className="w-full shrink-0 lg:w-80">
-      <Card className="flex flex-col gap-4 p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <aside className="flex h-full min-h-0 w-full shrink-0 flex-col lg:w-80">
+      <Card className="flex h-full min-h-0 flex-col gap-4 overflow-hidden border-0 bg-transparent p-4 shadow-none">
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
           <PrimaryButton type="button" className="w-full sm:flex-1" onClick={onNewChat}>
             Nuevo chat
           </PrimaryButton>
@@ -33,9 +37,9 @@ export function ChatConversationSidebar({
             Nuevo grupo
           </button>
         </div>
-        <div>
+        <div className="flex min-h-0 flex-1 flex-col">
           <div className="du-label">Conversaciones</div>
-          <ul className="mt-2 max-h-[min(50dvh,420px)] space-y-1 overflow-y-auto pr-0.5 lg:max-h-[min(60dvh,520px)]">
+          <ul className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto pr-0.5">
             {conversations.map((c) => {
               const active = c.uuid === activeConversationUuid
               const unread = (c.unread_count ?? 0) > 0
@@ -65,11 +69,18 @@ export function ChatConversationSidebar({
                     </div>
                     <div className="du-meta mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span>{chatKindLabel(c.kind)}</span>
-                      {c.participant_count != null && c.kind !== 'DIRECT' ? (
+                      {c.participant_count != null && c.kind !== 'DIRECT' && c.kind !== 'GROUP' ? (
                         <span>· {c.participant_count} en el chat</span>
                       ) : null}
                       {when ? <span>· {when}</span> : null}
                     </div>
+                    {c.kind === 'GROUP' && formatGroupParticipantEmails(c.participants) ? (
+                      <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-muted">
+                        {formatGroupParticipantEmails(c.participants)}
+                      </p>
+                    ) : c.kind === 'GROUP' && c.participant_count != null ? (
+                      <p className="mt-1 text-[11px] text-muted">{c.participant_count} personas</p>
+                    ) : null}
                     <p
                       className={`mt-1 line-clamp-2 text-xs leading-snug ${
                         unread ? 'font-medium text-ink' : 'text-muted'

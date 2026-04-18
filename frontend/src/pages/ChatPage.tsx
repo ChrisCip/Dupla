@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { PanelLeft } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
@@ -8,6 +9,7 @@ import { ChatConversationSidebar } from '../components/chat/ChatConversationSide
 import { ChatDirectModal } from '../components/chat/ChatDirectModal'
 import { ChatGroupModal } from '../components/chat/ChatGroupModal'
 import { ChatMessageList } from '../components/chat/ChatMessageList'
+import { formatGroupParticipantEmails } from '../lib/chatUi'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
 import type { ChatConversationSummary, ChatMessage } from '../types/chat'
@@ -37,6 +39,7 @@ export function ChatPage() {
   const [groupMemberSearch, setGroupMemberSearch] = useState('')
   const [groupSelectedUuids, setGroupSelectedUuids] = useState<string[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const refreshConversations = useCallback(async () => {
     if (!token) return
@@ -97,6 +100,14 @@ export function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, activeConversationUuid])
 
+  const selectConversation = useCallback(
+    (uuid: string) => {
+      setActiveConversationUuid(uuid)
+      setSidebarOpen(false)
+    },
+    [setActiveConversationUuid],
+  )
+
   async function openDirect() {
     if (!token || !dmTarget) return
     setError(null)
@@ -112,7 +123,7 @@ export function ChatPage() {
     }
     const row = (await res.json()) as ChatConversationSummary
     await refreshConversations()
-    setActiveConversationUuid(row.uuid)
+    selectConversation(row.uuid)
     setShowDm(false)
     setDmTarget('')
   }
@@ -137,7 +148,7 @@ export function ChatPage() {
     }
     const row = (await res.json()) as ChatConversationSummary
     await refreshConversations()
-    setActiveConversationUuid(row.uuid)
+    selectConversation(row.uuid)
     setShowGroup(false)
     setGroupTitle('')
     setGroupMemberSearch('')
@@ -222,64 +233,102 @@ export function ChatPage() {
         </p>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch">
-        <ChatConversationSidebar
-          conversations={conversations}
-          activeConversationUuid={activeConversationUuid}
-          onSelect={setActiveConversationUuid}
-          onNewChat={() => {
-            setError(null)
-            setShowDm(true)
-          }}
-          onNewGroup={() => {
-            setError(null)
-            setGroupTitle('')
-            setGroupMemberSearch('')
-            setGroupSelectedUuids([])
-            setShowGroup(true)
-          }}
-        />
-
-        <Card className="flex min-h-[min(40dvh,320px)] min-w-0 flex-1 flex-col overflow-hidden p-0 lg:min-h-0">
-          <div className="border-b border-black/10 bg-black/2 px-4 py-3">
-            <h2 className="text-base font-semibold text-ink">
-              {activeMeta?.display_title ?? 'Chat'}
-            </h2>
-            {activeMeta ? (
-              <p className="du-meta mt-1">
-                {activeMeta.kind === 'GENERAL' && 'Mensajes visibles para todo el equipo.'}
-                {activeMeta.kind === 'DIRECT' && 'Chat directo entre dos personas.'}
-                {activeMeta.kind === 'GROUP' &&
-                  (activeMeta.participant_count != null
-                    ? `Grupo · ${activeMeta.participant_count} personas`
-                    : 'Grupo')}
-                {activeMeta.kind === 'PROJECT' && 'Chat vinculado al proyecto.'}
-              </p>
-            ) : null}
-          </div>
-          {!activeConversationUuid ? (
-            <div className="flex flex-1 items-center justify-center px-4 py-8">
-              <p className="text-sm text-muted">Cargando conversaciones…</p>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <Card className="relative flex w-full flex-1 flex-col overflow-hidden p-0 min-h-[min(40dvh,320px)]">
+          <div className="relative z-40 flex flex-wrap items-start gap-2 border-b border-black/10 bg-black/2 px-3 py-2.5 sm:px-4 sm:py-3">
+            <button
+              type="button"
+              className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-black/12 bg-white px-2.5 py-1.5 text-sm font-medium text-ink shadow-sm outline-none transition hover:bg-black/[0.03] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
+              aria-expanded={sidebarOpen}
+              aria-controls={sidebarOpen ? 'chat-conversations-sidebar' : undefined}
+              onClick={() => setSidebarOpen((o) => !o)}
+            >
+              <PanelLeft
+                className={`h-4 w-4 shrink-0 ${sidebarOpen ? 'text-primary' : 'text-muted'}`}
+                aria-hidden
+              />
+              {sidebarOpen ? 'Ocultar conversaciones' : 'Conversaciones'}
+            </button>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-semibold text-ink">
+                {activeMeta?.display_title ?? 'Chat'}
+              </h2>
+              {activeMeta ? (
+                <p
+                  className={`du-meta mt-0.5 ${activeMeta.kind === 'GROUP' && activeMeta.participants?.length ? 'line-clamp-2' : ''}`}
+                >
+                  {activeMeta.kind === 'GENERAL' && 'Mensajes visibles para todo el equipo.'}
+                  {activeMeta.kind === 'DIRECT' && 'Chat directo entre dos personas.'}
+                  {activeMeta.kind === 'GROUP' &&
+                    (formatGroupParticipantEmails(activeMeta.participants) ||
+                      (activeMeta.participant_count != null
+                        ? `Grupo · ${activeMeta.participant_count} personas`
+                        : 'Grupo'))}
+                  {activeMeta.kind === 'PROJECT' && 'Chat vinculado al proyecto.'}
+                </p>
+              ) : null}
             </div>
-          ) : (
-            <div className="flex min-h-0 flex-1 flex-col">
-              {messages.length === 0 ? (
+          </div>
+
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {sidebarOpen ? (
+              <>
+                <button
+                  type="button"
+                  className="absolute inset-0 z-20 bg-black/30"
+                  aria-label="Cerrar lista de conversaciones"
+                  onClick={() => setSidebarOpen(false)}
+                />
+                <div
+                  id="chat-conversations-sidebar"
+                  className="absolute left-0 top-0 z-30 flex h-full w-[min(20rem,calc(100%-2rem))] max-w-[22rem] flex-col border-r border-black/10 bg-white shadow-xl"
+                >
+                  <ChatConversationSidebar
+                    conversations={conversations}
+                    activeConversationUuid={activeConversationUuid}
+                    onSelect={selectConversation}
+                    onNewChat={() => {
+                      setError(null)
+                      setShowDm(true)
+                    }}
+                    onNewGroup={() => {
+                      setError(null)
+                      setGroupTitle('')
+                      setGroupMemberSearch('')
+                      setGroupSelectedUuids([])
+                      setShowGroup(true)
+                    }}
+                  />
+                </div>
+              </>
+            ) : null}
+
+            <div className="relative z-0 flex min-h-0 flex-1 flex-col">
+              {!activeConversationUuid ? (
                 <div className="flex flex-1 items-center justify-center px-4 py-8">
-                  <p className="text-sm text-muted">Aún no hay mensajes. Escribe el primero.</p>
+                  <p className="text-sm text-muted">Cargando conversaciones…</p>
                 </div>
               ) : (
-                <ChatMessageList messages={messages} userUuid={userUuid} bottomRef={bottomRef} />
+                <div className="flex min-h-0 flex-1 flex-col">
+                  {messages.length === 0 ? (
+                    <div className="flex flex-1 items-center justify-center px-4 py-8">
+                      <p className="text-sm text-muted">Aún no hay mensajes. Escribe el primero.</p>
+                    </div>
+                  ) : (
+                    <ChatMessageList messages={messages} userUuid={userUuid} bottomRef={bottomRef} />
+                  )}
+                  <ChatComposer
+                    value={draft}
+                    onChange={setDraft}
+                    onSend={send}
+                    disabled={!activeConversationUuid}
+                    sending={sending}
+                    error={error}
+                  />
+                </div>
               )}
-              <ChatComposer
-                value={draft}
-                onChange={setDraft}
-                onSend={send}
-                disabled={!activeConversationUuid}
-                sending={sending}
-                error={error}
-              />
             </div>
-          )}
+          </div>
         </Card>
       </div>
 

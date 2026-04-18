@@ -45,6 +45,7 @@ class ChatConversationResponse(BaseModel):
     last_message_preview: Optional[str] = None
     unread_count: int = 0
     participant_count: Optional[int] = None
+    participants: Optional[list[ChatAuthorResponse]] = None
 
 
 class ChatDirectCreateRequest(BaseModel):
