@@ -2,84 +2,33 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
+import { boardQueryParams, cardMatchesSearch, CARD_MIME, labelForCreatedPhase } from '../lib/taskboard'
 import { PrimaryButton } from './PrimaryButton'
 import { TaskboardCardModal } from './TaskboardCardModal'
 import { TaskboardCreateModal } from './TaskboardCreateModal'
-import { WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
+import { TaskboardToolbar } from './TaskboardToolbar'
 import { useAuthStore } from '../store/authStore'
 import type { TaskAssigneeOption, TaskBoardDto, TaskCardDto, TaskListDto } from '../types/taskBoard'
-
-function labelForCreatedPhase(phase: string | null | undefined): string | null {
-  if (!phase) return null
-  return WORKFLOW_PHASE_LABELS[phase] ?? phase
-}
-
-const CARD_MIME = 'application/x-dupla-task-card'
-
-const AVATAR_RING = [
-  'bg-emerald-600',
-  'bg-sky-600',
-  'bg-amber-600',
-  'bg-violet-600',
-  'bg-rose-600',
-  'bg-cyan-600',
-  'bg-fuchsia-600',
-  'bg-lime-700',
-]
-
-function emailInitials(email: string): string {
-  const local = email.split('@')[0] ?? email
-  const parts = local.split(/[._\-+]+/).filter(Boolean)
-  if (parts.length >= 2) {
-    return (parts[0]!.charAt(0) + parts[1]!.charAt(0)).toUpperCase().slice(0, 2)
-  }
-  return local.slice(0, 2).toUpperCase() || '?'
-}
-
-function hueClassForUuid(uuid: string): string {
-  let h = 0
-  for (let i = 0; i < uuid.length; i += 1) h = (h + uuid.charCodeAt(i) * (i + 1)) % 997
-  return AVATAR_RING[h % AVATAR_RING.length]!
-}
-
-function cardMatchesSearch(card: TaskCardDto, needle: string): boolean {
-  if (!needle) return true
-  const t = card.title.toLowerCase()
-  const d = (card.description ?? '').toLowerCase()
-  const a = (card.assignee_email ?? '').toLowerCase()
-  const c = (card.creator_email ?? '').toLowerCase()
-  const ph = labelForCreatedPhase(card.created_in_phase)?.toLowerCase() ?? ''
-  return (
-    t.includes(needle) ||
-    d.includes(needle) ||
-    a.includes(needle) ||
-    c.includes(needle) ||
-    ph.includes(needle)
-  )
-}
-
-function boardQueryParams(
-  mine: boolean,
-  assigneeUuid: string,
-  includeArchived: boolean,
-  projectUuid: string,
-): string {
-  const p = new URLSearchParams()
-  if (includeArchived) p.set('include_archived', 'true')
-  if (mine) p.set('mine', 'true')
-  else if (assigneeUuid) p.set('assignee_uuid', assigneeUuid)
-  if (projectUuid) p.set('project_uuid', projectUuid)
-  const s = p.toString()
-  return s ? `?${s}` : ''
-}
 
 export type TaskboardViewProps = {
   /** Filtro fijo por proyecto; vacío = tablero global */
   projectUuid?: string
   variant: 'full' | 'embedded'
+  /**
+   * En modo embebido: ancho máximo del viewport del tablero en columnas (resto con scroll horizontal).
+   * Ej. 4 = se ven como mucho 4 columnas a la vez.
+   */
+  maxVisibleColumns?: number
+  /** Oculta la franja de título «Tareas del proyecto» en embebido (el padre ya muestra el encabezado). */
+  hideEmbeddedHeader?: boolean
 }
 
-export function TaskboardView({ projectUuid: projectFilter = '', variant }: TaskboardViewProps) {
+export function TaskboardView({
+  projectUuid: projectFilter = '',
+  variant,
+  maxVisibleColumns,
+  hideEmbeddedHeader = false,
+}: TaskboardViewProps) {
   const token = useAuthStore((s) => s.token)
   const [board, setBoard] = useState<TaskBoardDto | null>(null)
   const [assignees, setAssignees] = useState<TaskAssigneeOption[]>([])
@@ -224,6 +173,14 @@ export function TaskboardView({ projectUuid: projectFilter = '', variant }: Task
 
   const embedded = variant === 'embedded'
 
+  const boardViewportMaxWidth = useMemo(() => {
+    if (!embedded || maxVisibleColumns == null || maxVisibleColumns < 1) return undefined
+    const colRem = 17.5
+    const gapRem = 0.75
+    const gaps = Math.max(0, maxVisibleColumns - 1)
+    return `calc(${maxVisibleColumns} * ${colRem}rem + ${gaps} * ${gapRem}rem)`
+  }, [embedded, maxVisibleColumns])
+
   return (
     <div className={`flex min-h-0 flex-1 flex-col ${embedded ? 'gap-2 overflow-hidden' : 'gap-4'}`}>
       {!embedded ? (
@@ -255,6 +212,14 @@ export function TaskboardView({ projectUuid: projectFilter = '', variant }: Task
             </PrimaryButton>
           ) : null}
         </div>
+      ) : hideEmbeddedHeader ? (
+        board ? (
+          <div className="flex shrink-0 justify-end">
+            <PrimaryButton type="button" className="shrink-0 py-1.5 text-sm" onClick={() => setCreateOpen(true)}>
+              Añadir tarea
+            </PrimaryButton>
+          </div>
+        ) : null
       ) : (
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-ink">Tareas del proyecto</h2>
@@ -272,210 +237,30 @@ export function TaskboardView({ projectUuid: projectFilter = '', variant }: Task
         <p className="text-sm text-primary">{error ?? 'Sin datos'}</p>
       ) : (
         <>
-          <div
-            className={`flex shrink-0 flex-col gap-2 rounded-lg border border-black/8 bg-white px-2 py-2 shadow-sm sm:flex-row sm:items-center sm:gap-3 sm:px-3 ${embedded ? '' : 'gap-3 px-3 py-3 sm:gap-4 sm:px-4'}`}
-          >
-            <div className="relative min-w-0 flex-1 sm:max-w-sm">
-              <svg
-                className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.75}
-                stroke="currentColor"
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                />
-              </svg>
-              <input
-                type="search"
-                value={boardSearch}
-                onChange={(e) => setBoardSearch(e.target.value)}
-                placeholder="Buscar en el tablero"
-                className="du-input w-full rounded-md border-black/10 bg-white py-1.5 pl-9 pr-3 text-sm placeholder:text-muted/90 focus:border-primary/35 focus:ring-1 focus:ring-primary/25"
-                aria-label="Buscar en el tablero"
-              />
-            </div>
-
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:justify-end sm:gap-3">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  aria-pressed={mineOnly}
-                  onClick={() => {
-                    setMineOnly((prev) => {
-                      if (!prev) setFilterAssignee('')
-                      return !prev
-                    })
-                  }}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
-                    mineOnly
-                      ? 'border-primary/35 bg-primary/12 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]'
-                      : 'border-black/10 bg-white text-ink hover:border-black/18 hover:bg-black/[0.03]'
-                  }`}
-                >
-                  Mis tareas
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={includeArchived}
-                  onClick={() => setIncludeArchived((v) => !v)}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
-                    includeArchived
-                      ? 'border-primary/35 bg-primary/12 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]'
-                      : 'border-black/10 bg-white text-ink hover:border-black/18 hover:bg-black/[0.03]'
-                  }`}
-                >
-                  Archivadas
-                </button>
-              </div>
-
-              <div className="hidden h-7 w-px shrink-0 bg-black/10 sm:block" />
-
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="shrink-0 self-center text-[10px] font-semibold uppercase tracking-wider text-muted">
-                  Equipo
-                </span>
-                <div
-                  className="min-w-0 max-w-[min(100vw-2rem,28rem)] sm:max-w-none"
-                  role="group"
-                  aria-label="Filtrar por persona asignada"
-                >
-                  <div className="flex max-w-full items-center gap-0 overflow-x-auto py-1 [scrollbar-width:thin]">
-                    <div className="flex items-center -space-x-1.5 pr-1">
-                      <span
-                        className={`relative z-10 inline-flex h-8 w-8 shrink-0 rounded-full p-[2px] ${
-                          todosSelected
-                            ? 'bg-primary'
-                            : 'bg-white shadow-[0_0_0_1px_rgba(0,0,0,.06)]'
-                        }`}
-                      >
-                        {todosSelected ? (
-                          <span className="flex min-h-0 min-w-0 flex-1 rounded-full bg-white p-[2px]">
-                            <button
-                              type="button"
-                              title="Todos los asignados"
-                              disabled={mineOnly}
-                              onClick={() => {
-                                setFilterAssignee('')
-                                setMineOnly(false)
-                              }}
-                              className={`flex flex-1 items-center justify-center rounded-full bg-neutral-700 text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                                mineOnly ? 'cursor-not-allowed opacity-40' : ''
-                              }`}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                className="h-3.5 w-3.5"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                                aria-hidden
-                              >
-                                <rect x="3" y="3" width="7" height="7" rx="1" />
-                                <rect x="14" y="3" width="7" height="7" rx="1" />
-                                <rect x="3" y="14" width="7" height="7" rx="1" />
-                                <rect x="14" y="14" width="7" height="7" rx="1" />
-                              </svg>
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            title="Todos los asignados"
-                            disabled={mineOnly}
-                            onClick={() => {
-                              setFilterAssignee('')
-                              setMineOnly(false)
-                            }}
-                            className={`flex h-full w-full items-center justify-center rounded-full text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                              mineOnly ? 'cursor-not-allowed opacity-40' : 'bg-neutral-400 hover:bg-neutral-500'
-                            }`}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              className="h-3.5 w-3.5"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                              aria-hidden
-                            >
-                              <rect x="3" y="3" width="7" height="7" rx="1" />
-                              <rect x="14" y="3" width="7" height="7" rx="1" />
-                              <rect x="3" y="14" width="7" height="7" rx="1" />
-                              <rect x="14" y="14" width="7" height="7" rx="1" />
-                            </svg>
-                          </button>
-                        )}
-                      </span>
-                      {assignees.map((a, i) => {
-                        const selected = !mineOnly && filterAssignee === a.uuid
-                        return (
-                          <span
-                            key={a.uuid}
-                            className={`relative inline-flex h-8 w-8 shrink-0 rounded-full p-[2px] ${
-                              selected ? 'bg-primary' : 'bg-white shadow-[0_0_0_1px_rgba(0,0,0,.06)]'
-                            }`}
-                            style={{ zIndex: 20 + i }}
-                          >
-                            {selected ? (
-                              <span className="flex min-h-0 min-w-0 flex-1 rounded-full bg-white p-[2px]">
-                                <button
-                                  type="button"
-                                  title={a.email}
-                                  disabled={mineOnly}
-                                  onClick={() => {
-                                    setMineOnly(false)
-                                    setFilterAssignee(a.uuid)
-                                  }}
-                                  className={`flex flex-1 items-center justify-center rounded-full text-[10px] font-semibold uppercase text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${hueClassForUuid(a.uuid)} ${
-                                    mineOnly ? 'cursor-not-allowed opacity-40' : ''
-                                  }`}
-                                >
-                                  {emailInitials(a.email)}
-                                </button>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                title={a.email}
-                                disabled={mineOnly}
-                                onClick={() => {
-                                  setMineOnly(false)
-                                  setFilterAssignee(a.uuid)
-                                }}
-                                className={`flex h-full w-full items-center justify-center rounded-full text-[10px] font-semibold uppercase text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${hueClassForUuid(a.uuid)} hover:brightness-110 ${
-                                  mineOnly ? 'cursor-not-allowed opacity-40' : ''
-                                }`}
-                              >
-                                {emailInitials(a.email)}
-                              </button>
-                            )}
-                          </span>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <TaskboardToolbar
+            embedded={embedded}
+            boardSearch={boardSearch}
+            setBoardSearch={setBoardSearch}
+            mineOnly={mineOnly}
+            setMineOnly={setMineOnly}
+            filterAssignee={filterAssignee}
+            setFilterAssignee={setFilterAssignee}
+            includeArchived={includeArchived}
+            setIncludeArchived={setIncludeArchived}
+            assignees={assignees}
+            todosSelected={todosSelected}
+          />
 
           <div
-            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-black/10 bg-black/2 shadow-[var(--shadow-card)] ${embedded ? 'min-h-[12rem]' : ''}`}
+            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-black/10 bg-black/2 shadow-[var(--shadow-card)] ${embedded ? 'min-h-0' : ''}`}
           >
             <div
               className={
                 embedded
-                  ? 'min-h-0 flex-1 overflow-x-auto overflow-y-hidden p-2'
-                  : 'min-h-0 flex-1 overflow-x-auto overflow-y-hidden p-2 md:overflow-x-hidden'
+                  ? 'mx-auto min-h-0 w-full flex-1 overflow-x-auto overflow-y-hidden p-2'
+                  : 'min-h-0 flex-1 overflow-x-auto overflow-y-hidden p-2'
               }
+              style={boardViewportMaxWidth ? { maxWidth: boardViewportMaxWidth } : undefined}
             >
               <div
                 className={
@@ -486,7 +271,7 @@ export function TaskboardView({ projectUuid: projectFilter = '', variant }: Task
                 style={
                   !embedded && displayLists.length > 0
                     ? {
-                        gridTemplateColumns: `repeat(${displayLists.length}, minmax(0, 1fr))`,
+                        gridTemplateColumns: `repeat(${displayLists.length}, minmax(17.5rem, 1fr))`,
                       }
                     : undefined
                 }
@@ -497,7 +282,7 @@ export function TaskboardView({ projectUuid: projectFilter = '', variant }: Task
                     className={
                       embedded
                         ? 'flex h-full min-h-0 w-[260px] shrink-0 flex-col rounded-lg border border-black/10 bg-black/2 sm:w-[280px]'
-                        : 'flex h-full min-h-0 w-[min(100%,14rem)] shrink-0 flex-col rounded-lg border border-black/10 bg-black/2 sm:w-64 md:min-w-0 md:max-w-none md:w-auto'
+                        : 'flex h-full min-h-0 w-[min(100%,17.5rem)] shrink-0 flex-col rounded-lg border border-black/10 bg-black/2 sm:w-72 md:min-w-0 md:max-w-none md:w-auto md:min-w-[17.5rem]'
                     }
                     onDragOver={onDragOver}
                     onDrop={(e) => onDropOnColumn(e, list)}
@@ -516,7 +301,7 @@ export function TaskboardView({ projectUuid: projectFilter = '', variant }: Task
                             onDragEnd={onDragEnd}
                             onDragOver={onDragOver}
                             onDrop={(e) => onDropOnCard(e, list, index)}
-                            className="flex gap-2 rounded-md border border-black/10 bg-white px-2 py-2 text-left text-sm shadow-card transition hover:border-primary/30"
+                            className="flex min-w-0 gap-2 rounded-md border border-black/10 bg-white px-2 py-2 text-left text-sm shadow-card transition hover:border-primary/30"
                           >
                             <div
                               className="mt-0.5 shrink-0 cursor-grab text-black/35 active:cursor-grabbing"
@@ -547,26 +332,24 @@ export function TaskboardView({ projectUuid: projectFilter = '', variant }: Task
                               {card.description ? (
                                 <p className="mt-1 line-clamp-2 text-xs text-muted">{card.description}</p>
                               ) : null}
-                              <div className="mt-2 space-y-1.5 border-t border-black/8 pt-2 text-[11px]">
+                              <div className="mt-2 space-y-2 border-t border-black/8 pt-2 text-[11px]">
                                 {createdPhaseLabel ? (
-                                  <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
-                                    <span className="shrink-0 font-semibold uppercase tracking-wide text-muted">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-semibold uppercase tracking-wide text-muted">
                                       Creada en fase
                                     </span>
-                                    <span className="text-ink">{createdPhaseLabel}</span>
+                                    <span className="min-w-0 break-words text-ink">{createdPhaseLabel}</span>
                                   </div>
                                 ) : null}
-                                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
-                                  <span className="shrink-0 font-semibold uppercase tracking-wide text-muted">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-semibold uppercase tracking-wide text-muted">
                                     Asignado
                                   </span>
-                                  <span className="break-all text-ink">{card.assignee_email ?? '—'}</span>
+                                  <span className="min-w-0 break-words text-ink">{card.assignee_email ?? '—'}</span>
                                 </div>
-                                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
-                                  <span className="shrink-0 font-semibold uppercase tracking-wide text-muted">
-                                    Por
-                                  </span>
-                                  <span className="break-all text-ink">{card.creator_email ?? '—'}</span>
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-semibold uppercase tracking-wide text-muted">Por</span>
+                                  <span className="min-w-0 break-words text-ink">{card.creator_email ?? '—'}</span>
                                 </div>
                               </div>
                             </button>

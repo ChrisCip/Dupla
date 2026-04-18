@@ -58,6 +58,13 @@ class ProjectEventResponse(BaseModel):
         )
 
 
+class ProjectEventsPageResponse(BaseModel):
+    items: list[ProjectEventResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 class ProjectFileResponse(BaseModel):
     uuid: UUID
     original_name: str

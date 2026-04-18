@@ -1,0 +1,66 @@
+import { WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
+import type { TaskCardDto } from '../types/taskBoard'
+
+export const CARD_MIME = 'application/x-dupla-task-card'
+
+const AVATAR_RING = [
+  'bg-emerald-600',
+  'bg-sky-600',
+  'bg-amber-600',
+  'bg-violet-600',
+  'bg-rose-600',
+  'bg-cyan-600',
+  'bg-fuchsia-600',
+  'bg-lime-700',
+]
+
+export function labelForCreatedPhase(phase: string | null | undefined): string | null {
+  if (!phase) return null
+  return WORKFLOW_PHASE_LABELS[phase] ?? phase
+}
+
+export function emailInitials(email: string): string {
+  const local = email.split('@')[0] ?? email
+  const parts = local.split(/[._\-+]+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return (parts[0]!.charAt(0) + parts[1]!.charAt(0)).toUpperCase().slice(0, 2)
+  }
+  return local.slice(0, 2).toUpperCase() || '?'
+}
+
+export function hueClassForUuid(uuid: string): string {
+  let h = 0
+  for (let i = 0; i < uuid.length; i += 1) h = (h + uuid.charCodeAt(i) * (i + 1)) % 997
+  return AVATAR_RING[h % AVATAR_RING.length]!
+}
+
+export function cardMatchesSearch(card: TaskCardDto, needle: string): boolean {
+  if (!needle) return true
+  const t = card.title.toLowerCase()
+  const d = (card.description ?? '').toLowerCase()
+  const a = (card.assignee_email ?? '').toLowerCase()
+  const c = (card.creator_email ?? '').toLowerCase()
+  const ph = labelForCreatedPhase(card.created_in_phase)?.toLowerCase() ?? ''
+  return (
+    t.includes(needle) ||
+    d.includes(needle) ||
+    a.includes(needle) ||
+    c.includes(needle) ||
+    ph.includes(needle)
+  )
+}
+
+export function boardQueryParams(
+  mine: boolean,
+  assigneeUuid: string,
+  includeArchived: boolean,
+  projectUuid: string,
+): string {
+  const p = new URLSearchParams()
+  if (includeArchived) p.set('include_archived', 'true')
+  if (mine) p.set('mine', 'true')
+  else if (assigneeUuid) p.set('assignee_uuid', assigneeUuid)
+  if (projectUuid) p.set('project_uuid', projectUuid)
+  const s = p.toString()
+  return s ? `?${s}` : ''
+}

@@ -1,7 +1,7 @@
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,7 @@ from app.schemas.project_lifecycle import (
     ArchitectureRevisionResponse,
     BootstrapCriteriaReplaceRequest,
     ProjectEventResponse,
+    ProjectEventsPageResponse,
     ProjectFileResponse,
     ProjectPatchRequest,
     ProjectTransitionRequest,
@@ -130,15 +131,31 @@ async def patch_workflow_meta(
     return ProjectResponse.from_project(p)
 
 
-@router.get("/{project_uuid}/events", response_model=list[ProjectEventResponse], summary="Historial de eventos")
+@router.get("/{project_uuid}/events", response_model=ProjectEventsPageResponse, summary="Historial de eventos (paginado)")
 async def get_project_events(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> list[ProjectEventResponse]:
+    limit: int = Query(20, ge=1, le=100, description="Tamaño de página (por defecto 20)"),
+    offset: int = Query(0, ge=0, description="Desplazamiento para paginación"),
+    event_type: Optional[str] = Query(None, max_length=80, description="Filtrar por tipo de evento"),
+    q: Optional[str] = Query(None, max_length=500, description="Buscar en el payload (JSON) o correo del autor"),
+) -> ProjectEventsPageResponse:
     svc = ProjectLifecycleService(session)
-    rows = await svc.list_events(current, project_uuid)
-    return [ProjectEventResponse.from_row(r) for r in rows]
+    rows, total = await svc.list_events_page(
+        current,
+        project_uuid,
+        limit=limit,
+        offset=offset,
+        event_type=event_type,
+        q=q,
+    )
+    return ProjectEventsPageResponse(
+        items=[ProjectEventResponse.from_row(r) for r in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post(

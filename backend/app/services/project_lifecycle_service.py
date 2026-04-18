@@ -8,7 +8,8 @@ from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import func, select
+from sqlalchemy import and_, cast, func, or_, select
+from sqlalchemy.types import Text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -392,16 +393,48 @@ class ProjectLifecycleService:
         await self._session.flush()
         return await self._project_svc.get_project(user, project_uuid)
 
-    async def list_events(self, user: User, project_uuid: UUID) -> list[ProjectEvent]:
+    async def list_events_page(
+        self,
+        user: User,
+        project_uuid: UUID,
+        *,
+        limit: int,
+        offset: int,
+        event_type: Optional[str],
+        q: Optional[str],
+    ) -> tuple[list[ProjectEvent], int]:
         project = await self._project_svc.get_project(user, project_uuid)
-        q = (
-            select(ProjectEvent)
-            .options(selectinload(ProjectEvent.actor))
-            .where(ProjectEvent.project_id == project.id)
-            .order_by(ProjectEvent.created_at.desc())
-            .limit(500)
+        conditions = [ProjectEvent.project_id == project.id]
+        if event_type and event_type.strip():
+            conditions.append(ProjectEvent.event_type == event_type.strip())
+        q_clean = (q or "").strip()
+        if q_clean:
+            pat = f"%{q_clean}%"
+            conditions.append(
+                or_(
+                    cast(ProjectEvent.payload, Text).ilike(pat),
+                    User.email.ilike(pat),
+                )
+            )
+        base = and_(*conditions)
+        count_stmt = (
+            select(func.count())
+            .select_from(ProjectEvent)
+            .outerjoin(User, User.id == ProjectEvent.actor_user_id)
+            .where(base)
         )
-        return list((await self._session.execute(q)).scalars().all())
+        total = int((await self._session.execute(count_stmt)).scalar_one() or 0)
+        stmt = (
+            select(ProjectEvent)
+            .outerjoin(User, User.id == ProjectEvent.actor_user_id)
+            .where(base)
+            .order_by(ProjectEvent.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .options(selectinload(ProjectEvent.actor))
+        )
+        rows = list((await self._session.execute(stmt)).scalars().all())
+        return rows, total
 
     async def create_architecture_revision(
         self,
