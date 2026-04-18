@@ -64,11 +64,11 @@ export function ProjectsBoardView({
                     onDrop={(e) => onDropOnPhaseColumn(e, phaseKey)}
                   >
                     <div
-                      className="flex h-12 shrink-0 flex-col items-center justify-center gap-0.5 border-b border-white/25 bg-primary px-1 py-1 text-center text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)]"
+                      className="flex min-h-[5.5rem] shrink-0 flex-col items-center justify-center gap-1.5 border-b border-white/25 bg-primary px-1.5 py-2.5 text-center text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)] sm:min-h-24"
                       title={label}
                     >
-                      <PhaseIcon className="h-3 w-3 shrink-0 text-white" strokeWidth={2} aria-hidden />
-                      <span className="line-clamp-2 w-full text-[7px] font-semibold uppercase leading-tight tracking-wide sm:text-[8px]">
+                      <PhaseIcon className="h-4 w-4 shrink-0 text-white" strokeWidth={2} aria-hidden />
+                      <span className="w-full text-[10px] font-semibold uppercase leading-snug tracking-wide sm:text-xs">
                         {label}
                       </span>
                     </div>
@@ -100,17 +100,17 @@ export function ProjectsBoardView({
                               className={`absolute inset-y-1 left-0 w-0.5 rounded-full ${canMovePhase ? 'bg-primary' : 'bg-black/20'}`}
                               aria-hidden
                             />
-                            <div className="relative pl-2 pr-1.5 pb-1.5 pt-1">
-                              <p className="mb-0.5 text-[7px] font-semibold uppercase leading-tight tracking-wide text-muted">
+                            <div className="relative pl-2.5 pr-2 pb-2 pt-1.5">
+                              <p className="mb-0.5 text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted sm:text-xs">
                                 {projectKindLabel(p.project_kind)}
                               </p>
-                              <h3 className="line-clamp-2 pr-0.5 text-[10px] font-semibold leading-snug tracking-tight text-ink sm:text-[11px]">
+                              <h3 className="line-clamp-2 pr-0.5 text-xs font-semibold leading-snug tracking-tight text-ink sm:text-sm">
                                 {p.name}
                               </h3>
-                              <div className="mt-1 space-y-0.5">
-                                <div className="flex items-start gap-0.5">
-                                  <span className="du-meta w-8 shrink-0 text-[8px]">Cliente</span>
-                                  <span className="min-w-0 flex-1 text-[9px] leading-snug text-ink sm:text-[10px]">
+                              <div className="mt-1.5 space-y-1">
+                                <div className="flex items-start gap-1">
+                                  <span className="du-meta w-9 shrink-0 text-[10px] sm:text-xs">Cliente</span>
+                                  <span className="min-w-0 flex-1 text-xs leading-snug text-ink sm:text-sm">
                                     {p.client_name?.trim() ? (
                                       <span className="line-clamp-2">{p.client_name}</span>
                                     ) : (
@@ -118,29 +118,29 @@ export function ProjectsBoardView({
                                     )}
                                   </span>
                                 </div>
-                                <div className="flex items-start gap-0.5 border-t border-black/[0.06] pt-0.5">
-                                  <span className="du-meta w-8 shrink-0 text-[8px]">Act.</span>
+                                <div className="flex items-start gap-1 border-t border-black/[0.06] pt-1">
+                                  <span className="du-meta w-9 shrink-0 text-[10px] sm:text-xs">Act.</span>
                                   <time
-                                    className="min-w-0 flex-1 text-[8px] tabular-nums leading-snug text-ink sm:text-[9px]"
+                                    className="min-w-0 flex-1 text-[10px] tabular-nums leading-snug text-ink sm:text-xs"
                                     dateTime={p.updated_at}
                                   >
                                     {formatProjectUpdatedAt(p.updated_at)}
                                   </time>
                                 </div>
                               </div>
-                              <div className="mt-1 flex items-start justify-between gap-0.5 border-t border-black/[0.05] pt-1">
+                              <div className="mt-1.5 flex items-start justify-between gap-1 border-t border-black/[0.05] pt-1">
                                 {!canMovePhase ? (
-                                  <span className="rounded bg-black/[0.05] px-0.5 py-0.5 text-[7px] font-semibold uppercase leading-tight tracking-wide text-muted">
+                                  <span className="rounded bg-black/[0.05] px-1 py-0.5 text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted sm:text-xs">
                                     Fin flujo
                                   </span>
                                 ) : (
-                                  <span className="text-[7px] font-medium uppercase leading-tight tracking-wide text-muted sm:text-[8px]">
+                                  <span className="text-[10px] font-medium uppercase leading-tight tracking-wide text-muted sm:text-xs">
                                     {hasPrev ? '←' : ''}
                                     {hasPrev && hasNext ? ' ' : ''}
                                     {hasNext ? '→' : ''}
                                   </span>
                                 )}
-                                <span className="text-[8px] font-medium leading-tight text-muted opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                                <span className="text-[10px] font-medium leading-tight text-muted opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:text-xs">
                                   Abrir →
                                 </span>
                               </div>

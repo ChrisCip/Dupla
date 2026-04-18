@@ -282,6 +282,23 @@ class TaskBoardService:
         await self._audit_task_patch(actor, snap, card)
         return card
 
+    async def delete_card(self, actor: User, card_uuid: uuid.UUID) -> None:
+        card = await self._session.get(TaskCard, card_uuid)
+        if card is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
+        await self._require_project_access_for_card(actor, card.project_id)
+        pid = card.project_id
+        title = card.title
+        await self._session.delete(card)
+        await self._session.flush()
+        if pid is not None:
+            await self._projects.record_event(
+                project_id=pid,
+                actor_user_id=actor.id,
+                event_type="TASK_CARD_DELETED",
+                payload={"task_uuid": str(card_uuid), "title": title},
+            )
+
     async def get_card_for_response(self, card_uuid: uuid.UUID) -> TaskCard:
         """Load card with users for API serialization (avoids async lazy-load on relationships)."""
         result = await self._session.execute(

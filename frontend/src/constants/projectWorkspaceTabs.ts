@@ -9,12 +9,12 @@ const TAB_DEFS: { id: string; label: string; minPhaseIndex: number }[] = [
   { id: 'flujo', label: 'Flujo', minPhaseIndex: 0 },
   { id: 'archivos', label: 'Archivos', minPhaseIndex: 1 },
   { id: 'entregaPlanos', label: 'Entrega planos', minPhaseIndex: 2 },
-  { id: 'revisiones', label: 'Revisiones', minPhaseIndex: 3 },
-  { id: 'especificaciones', label: 'Especificaciones', minPhaseIndex: 4 },
-  { id: 'presupuesto', label: 'Presupuesto', minPhaseIndex: 5 },
+  { id: 'revisiones', label: 'Revisiones', minPhaseIndex: 2 },
+  { id: 'especificaciones', label: 'Especificaciones', minPhaseIndex: 3 },
+  { id: 'presupuesto', label: 'Presupuesto', minPhaseIndex: 4 },
   { id: 'eventos', label: 'Eventos', minPhaseIndex: 0 },
-  { id: 'pliegos', label: 'Pliegos', minPhaseIndex: 7 },
-  { id: 'materiales', label: 'Materiales', minPhaseIndex: 7 },
+  { id: 'pliegos', label: 'Pliegos', minPhaseIndex: 6 },
+  { id: 'materiales', label: 'Materiales', minPhaseIndex: 6 },
 ]
 
 /** Pestañas visibles según la fase ISO actual del proyecto. */

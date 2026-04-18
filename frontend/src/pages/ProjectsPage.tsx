@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
@@ -224,8 +225,8 @@ export function ProjectsPage() {
       ) : null}
       <div className="flex shrink-0 flex-col gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-ink md:text-3xl">Proyectos</h1>
-          <p className="mt-2 text-base text-muted">
+          <h1 className="text-3xl font-semibold text-ink md:text-4xl">Proyectos</h1>
+          <p className="mt-3 text-lg text-muted md:text-xl">
             {role === 'GERENCIA'
               ? 'Tablero de proyectos. Arrastra una tarjeta a la columna de al lado para ir a la fase anterior o siguiente.'
               : 'Proyectos a los que tienes acceso.'}
@@ -241,7 +242,7 @@ export function ProjectsPage() {
             <span className="sr-only">Buscar proyecto por nombre</span>
             <input
               type="search"
-              className="du-input w-full rounded-lg"
+              className="du-input h-9 w-full rounded-lg border-black/10 py-0 text-sm placeholder:text-muted/90"
               placeholder="Buscar por nombre…"
               value={projectSearch}
               onChange={(e) => setProjectSearch(e.target.value)}
@@ -250,19 +251,23 @@ export function ProjectsPage() {
             />
           </label>
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-            <div className="flex gap-1 rounded-lg border border-black/10 bg-white p-1 text-sm shadow-[var(--shadow-card)]">
+            <div
+              className="inline-flex h-9 shrink-0 items-stretch gap-0.5 rounded-lg border border-black/10 bg-white p-0.5 text-xs shadow-[var(--shadow-card)]"
+              role="group"
+              aria-label="Vista de proyectos"
+            >
               <button
                 type="button"
-                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                className={`flex min-w-0 flex-1 items-center justify-center rounded-md px-2.5 font-medium transition-colors sm:px-3 ${
                   viewMode === 'tablero' ? 'bg-primary/12 text-ink ring-1 ring-primary/25' : 'text-muted hover:text-ink'
                 }`}
                 onClick={() => setViewMode('tablero')}
               >
-                Tablero por fase
+                Tablero
               </button>
               <button
                 type="button"
-                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                className={`flex min-w-0 flex-1 items-center justify-center rounded-md px-2.5 font-medium transition-colors sm:px-3 ${
                   viewMode === 'lista' ? 'bg-primary/12 text-ink ring-1 ring-primary/25' : 'text-muted hover:text-ink'
                 }`}
                 onClick={() => setViewMode('lista')}
@@ -273,12 +278,13 @@ export function ProjectsPage() {
             {role === 'GERENCIA' ? (
               <button
                 type="button"
-                className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-medium tracking-normal text-white shadow-sm outline-none transition-[opacity,transform] hover:opacity-[0.92] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold tracking-normal text-white shadow-sm outline-none transition-[opacity,transform] hover:opacity-[0.92] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
                 onClick={() => {
                   setCreateError(null)
                   setCreateModalOpen(true)
                 }}
               >
+                <Plus className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
                 Nuevo proyecto
               </button>
             ) : null}

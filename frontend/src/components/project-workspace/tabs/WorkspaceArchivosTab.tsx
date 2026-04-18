@@ -266,10 +266,14 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
           ) : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <PrimaryButton type="button" className="shrink-0 gap-2" onClick={() => setWizardOpen(true)}>
-            <FilePlus className="h-4 w-4" aria-hidden />
+          <button
+            type="button"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
+            onClick={() => setWizardOpen(true)}
+          >
+            <FilePlus className="h-4 w-4 shrink-0" aria-hidden />
             Crear archivo
-          </PrimaryButton>
+          </button>
           <button
             type="button"
             className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-medium text-ink shadow-sm hover:bg-black/[0.03]"
@@ -429,20 +433,20 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
               Ningún archivo coincide con los filtros. Prueba otro texto o disciplina.
             </p>
           ) : fileView === 'grid' ? (
-            <div className="grid gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
               {(searchHits ?? []).map((f) => (
                 <div
                   key={f.uuid}
-                  className="group relative flex flex-col gap-1.5 rounded-lg border border-black/10 bg-white p-2.5 shadow-[var(--shadow-card)] transition hover:border-primary/25"
+                  className="group relative flex min-w-0 flex-col gap-2 rounded-lg border border-black/10 bg-white p-3.5 shadow-[var(--shadow-card)] transition hover:border-primary/25"
                 >
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-3">
                     <ProjectWorkspaceFileIcon name={f.original_name} className="h-8 w-8 shrink-0 text-primary" />
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-2 text-sm font-medium leading-snug text-ink">{f.original_name}</p>
-                      <p className="mt-0.5 text-[10px] leading-snug text-primary" title={f.path}>
+                      <p className="mt-1 text-xs leading-snug text-primary" title={f.path}>
                         {f.path}
                       </p>
-                      <p className="mt-0.5 text-[10px] text-muted">Subido: {formatUploadedAt(f.created_at)}</p>
+                      <p className="mt-1 text-xs text-muted">Subido: {formatUploadedAt(f.created_at)}</p>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {f.ingest_status === 'DRAFT' ? (
                           <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase text-amber-900">
@@ -458,21 +462,21 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                         )}
                       </div>
                       {f.description ? (
-                        <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted">{f.description}</p>
+                        <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted">{f.description}</p>
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 border-t border-black/5 pt-1.5">
+                  <div className="flex flex-wrap gap-2 border-t border-black/5 pt-2">
                     <button
                       type="button"
-                      className="text-[11px] font-semibold text-primary hover:underline"
+                      className="text-xs font-semibold text-primary hover:underline"
                       onClick={() => void downloadFile(f)}
                     >
                       Descargar
                     </button>
                     <button
                       type="button"
-                      className="text-[11px] font-semibold text-red-700 hover:underline"
+                      className="text-xs font-semibold text-red-700 hover:underline"
                       onClick={() => void deleteFile(f)}
                     >
                       Eliminar
@@ -549,13 +553,13 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
             Carpeta vacía. Crea una carpeta, un archivo o arrastra aquí.
           </p>
         ) : fileView === 'grid' ? (
-          <div className="grid gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
             {folders.map((fo) => (
               <div
                 key={fo.uuid}
                 role="button"
                 tabIndex={0}
-                className="group relative flex flex-col gap-1.5 rounded-lg border border-black/10 bg-white p-2.5 text-left shadow-[var(--shadow-card)] transition hover:border-primary/25"
+                className="group relative flex min-w-0 flex-col gap-2 rounded-lg border border-black/10 bg-white p-3.5 text-left shadow-[var(--shadow-card)] transition hover:border-primary/25"
                 onDoubleClick={() => enterFolder(fo)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') enterFolder(fo)
@@ -570,11 +574,11 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                   if (id && dragFileId) void moveFileToFolder(id, fo.uuid)
                 }}
               >
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-3">
                   <ProjectWorkspaceFileIcon isFolder name={fo.name} className="h-8 w-8 shrink-0 text-amber-600/90" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-ink">{fo.name}</p>
-                    <p className="text-[10px] text-muted">Carpeta · doble clic</p>
+                    <p className="break-words text-sm font-medium leading-snug text-ink line-clamp-2">{fo.name}</p>
+                    <p className="mt-1 text-xs text-muted">Carpeta · doble clic</p>
                   </div>
                   <button
                     type="button"
@@ -595,7 +599,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
               <div
                 key={f.uuid}
                 draggable
-                className="group relative flex flex-col gap-1.5 rounded-lg border border-black/10 bg-white p-2.5 shadow-[var(--shadow-card)] transition hover:border-primary/25"
+                className="group relative flex min-w-0 flex-col gap-2 rounded-lg border border-black/10 bg-white p-3.5 shadow-[var(--shadow-card)] transition hover:border-primary/25"
                 onDragStart={(e) => {
                   setDragFileId(f.uuid)
                   e.dataTransfer.setData('text/plain', f.uuid)
@@ -603,11 +607,11 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                 }}
                 onDragEnd={() => setDragFileId(null)}
               >
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-3">
                   <ProjectWorkspaceFileIcon name={f.original_name} className="h-8 w-8 shrink-0 text-primary" />
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-sm font-medium leading-snug text-ink">{f.original_name}</p>
-                    <p className="mt-0.5 text-[10px] text-muted">Subido: {formatUploadedAt(f.created_at)}</p>
+                    <p className="mt-1 text-xs text-muted">Subido: {formatUploadedAt(f.created_at)}</p>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {f.ingest_status === 'DRAFT' ? (
                         <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase text-amber-900">
@@ -623,23 +627,23 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                       )}
                     </div>
                     {f.description ? (
-                      <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted">{f.description}</p>
+                      <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted">{f.description}</p>
                     ) : (
-                      <p className="mt-1 text-[10px] italic text-muted">Sin descripción</p>
+                      <p className="mt-1 text-xs italic text-muted">Sin descripción</p>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 border-t border-black/5 pt-1.5">
+                <div className="flex flex-wrap gap-2 border-t border-black/5 pt-2">
                   <button
                     type="button"
-                    className="text-[11px] font-semibold text-primary hover:underline"
+                    className="text-xs font-semibold text-primary hover:underline"
                     onClick={() => void downloadFile(f)}
                   >
                     Descargar
                   </button>
                   <button
                     type="button"
-                    className="text-[11px] font-semibold text-red-700 hover:underline"
+                    className="text-xs font-semibold text-red-700 hover:underline"
                     onClick={() => void deleteFile(f)}
                   >
                     Eliminar

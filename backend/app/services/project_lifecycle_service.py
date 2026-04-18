@@ -104,7 +104,7 @@ class ProjectLifecycleService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Completa el checklist de documentos requeridos antes de continuar",
                 )
-        if current == WorkflowPhase.AWAITING_FILES and target == WorkflowPhase.FILES_INGESTED:
+        if current == WorkflowPhase.AWAITING_FILES and target == WorkflowPhase.ARCHITECTURE_REVIEW:
             n = await self._projects.count_project_files(project.id)
             if n < 1:
                 raise HTTPException(
@@ -511,7 +511,6 @@ class ProjectLifecycleService:
         wf = WorkflowPhase(project.workflow_phase)
         if wf not in (
             WorkflowPhase.AWAITING_FILES,
-            WorkflowPhase.FILES_INGESTED,
             WorkflowPhase.ARCHITECTURE_REVIEW,
             WorkflowPhase.SPECIFICATIONS,
             WorkflowPhase.BUDGETING_PIPELINE,

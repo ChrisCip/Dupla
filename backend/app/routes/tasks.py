@@ -1,7 +1,7 @@
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -144,3 +144,19 @@ async def patch_task_card(
     await session.commit()
     loaded = await svc.get_card_for_response(card_uuid)
     return TaskCardResponse.from_card(loaded)
+
+
+@router.delete(
+    "/cards/{card_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar tarjeta del tablero",
+)
+async def delete_task_card(
+    card_uuid: UUID,
+    current: Annotated[User, Depends(require_task_operator)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    svc = TaskBoardService(session)
+    await svc.delete_card(current, card_uuid)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

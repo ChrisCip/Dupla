@@ -27,6 +27,8 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
   const [commentBody, setCommentBody] = useState('')
   const [commentPosting, setCommentPosting] = useState(false)
   const [commentError, setCommentError] = useState<string | null>(null)
+  const [archiving, setArchiving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     setEditing(false)
@@ -105,6 +107,50 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
 
   const assigneeLabel =
     card.assignee_email ?? assignees.find((a) => a.uuid === card.assignee_uuid)?.email ?? 'Sin asignar'
+
+  async function archiveFromView() {
+    if (readOnly || card.archived) return
+    setError(null)
+    setArchiving(true)
+    try {
+      const res = await apiFetch(`/api/tasks/cards/${card.uuid}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({ archived: true }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setError((j as { detail?: string }).detail ?? 'No se pudo archivar')
+        return
+      }
+      onSaved()
+      onClose()
+    } finally {
+      setArchiving(false)
+    }
+  }
+
+  async function deletePermanently() {
+    if (readOnly) return
+    if (!window.confirm('¿Eliminar esta tarea de forma permanente? No se puede deshacer.')) return
+    setError(null)
+    setDeleting(true)
+    try {
+      const res = await apiFetch(`/api/tasks/cards/${card.uuid}`, {
+        method: 'DELETE',
+        token,
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setError((j as { detail?: string }).detail ?? 'No se pudo eliminar')
+        return
+      }
+      onSaved()
+      onClose()
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   async function postComment() {
     const text = commentBody.trim()
@@ -377,39 +423,69 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
           {error ? <p className="text-sm text-primary">{error}</p> : null}
         </div>
 
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
-          {!editing ? (
-            <>
+        <div
+          className={`mt-6 flex flex-wrap items-center gap-3 ${readOnly ? 'justify-end' : 'justify-between'}`}
+        >
+          {!readOnly ? (
+            <div className="flex min-w-0 flex-wrap gap-2">
+              {!editing && !card.archived ? (
+                <button
+                  type="button"
+                  className="rounded-md border border-black/15 bg-white px-3 py-2 text-sm text-ink hover:bg-black/[0.04] disabled:opacity-50"
+                  disabled={archiving || deleting}
+                  onClick={() => void archiveFromView()}
+                >
+                  {archiving ? 'Archivando…' : 'Archivar'}
+                </button>
+              ) : null}
               <button
                 type="button"
-                className="rounded-md px-3 py-2 text-sm text-muted hover:text-ink"
-                onClick={onClose}
+                className="rounded-md border border-primary/30 bg-primary/[0.06] px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+                disabled={archiving || deleting || saving}
+                onClick={() => void deletePermanently()}
               >
-                Cerrar
+                {deleting ? 'Eliminando…' : 'Eliminar'}
               </button>
-              {!readOnly ? (
-                <PrimaryButton type="button" onClick={() => setEditing(true)}>
-                  Editar
-                </PrimaryButton>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="rounded-md px-3 py-2 text-sm text-muted hover:text-ink"
-                onClick={cancelEdit}
-                disabled={saving}
-              >
-                Cancelar
-              </button>
-              {!readOnly ? (
-                <PrimaryButton type="button" disabled={saving || !title.trim()} onClick={() => void save()}>
-                  {saving ? 'Guardando…' : 'Guardar'}
-                </PrimaryButton>
-              ) : null}
-            </>
-          )}
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {!editing ? (
+              <>
+                <button
+                  type="button"
+                  className="rounded-md px-3 py-2 text-sm text-muted hover:text-ink"
+                  onClick={onClose}
+                >
+                  Cerrar
+                </button>
+                {!readOnly ? (
+                  <PrimaryButton type="button" onClick={() => setEditing(true)}>
+                    Editar
+                  </PrimaryButton>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="rounded-md px-3 py-2 text-sm text-muted hover:text-ink"
+                  onClick={cancelEdit}
+                  disabled={saving || deleting || archiving}
+                >
+                  Cancelar
+                </button>
+                {!readOnly ? (
+                  <PrimaryButton
+                    type="button"
+                    disabled={saving || deleting || archiving || !title.trim()}
+                    onClick={() => void save()}
+                  >
+                    {saving ? 'Guardando…' : 'Guardar'}
+                  </PrimaryButton>
+                ) : null}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

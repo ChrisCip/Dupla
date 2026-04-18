@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
 import { boardQueryParams, cardMatchesSearch, CARD_MIME, labelForCreatedPhase } from '../lib/taskboard'
-import { PrimaryButton } from './PrimaryButton'
 import { TaskboardCardModal } from './TaskboardCardModal'
 import { TaskboardCreateModal } from './TaskboardCreateModal'
 import { TaskboardToolbar } from './TaskboardToolbar'
@@ -184,51 +183,29 @@ export function TaskboardView({
   return (
     <div className={`flex min-h-0 flex-1 flex-col ${embedded ? 'gap-2 overflow-hidden' : 'gap-4'}`}>
       {!embedded ? (
-        <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-ink md:text-3xl">Tablero de tareas</h1>
-            <p className="mt-2 text-sm text-muted">
-              Asigna personas, descripciones breves y archiva lo completado. Clic en una tarjeta para el detalle.
+        <div className="shrink-0">
+          <h1 className="text-2xl font-semibold text-ink md:text-3xl">Tablero de tareas</h1>
+          <p className="mt-2 text-sm text-muted">
+            Asigna personas, descripciones breves y archiva lo completado. Clic en una tarjeta para el detalle.
+          </p>
+          {projectFilter ? (
+            <p className="mt-2 text-sm text-ink">
+              Filtrando por proyecto.{' '}
+              <Link className="font-semibold text-primary underline-offset-2 hover:underline" to="/app/tasks">
+                Ver tablero global
+              </Link>{' '}
+              ·{' '}
+              <Link
+                className="font-semibold text-primary underline-offset-2 hover:underline"
+                to={`/app/projects/${projectFilter}`}
+              >
+                Volver al workspace
+              </Link>
             </p>
-            {projectFilter ? (
-              <p className="mt-2 text-sm text-ink">
-                Filtrando por proyecto.{' '}
-                <Link className="font-semibold text-primary underline-offset-2 hover:underline" to="/app/tasks">
-                  Ver tablero global
-                </Link>{' '}
-                ·{' '}
-                <Link
-                  className="font-semibold text-primary underline-offset-2 hover:underline"
-                  to={`/app/projects/${projectFilter}`}
-                >
-                  Volver al workspace
-                </Link>
-              </p>
-            ) : null}
-          </div>
-          {board ? (
-            <PrimaryButton type="button" className="shrink-0 self-start" onClick={() => setCreateOpen(true)}>
-              Añadir tarea
-            </PrimaryButton>
           ) : null}
         </div>
-      ) : hideEmbeddedHeader ? (
-        board ? (
-          <div className="flex shrink-0 justify-end">
-            <PrimaryButton type="button" className="shrink-0 py-1.5 text-sm" onClick={() => setCreateOpen(true)}>
-              Añadir tarea
-            </PrimaryButton>
-          </div>
-        ) : null
-      ) : (
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-ink">Tareas del proyecto</h2>
-          {board ? (
-            <PrimaryButton type="button" className="shrink-0 py-1.5 text-sm" onClick={() => setCreateOpen(true)}>
-              Añadir tarea
-            </PrimaryButton>
-          ) : null}
-        </div>
+      ) : hideEmbeddedHeader ? null : (
+        <h2 className="shrink-0 text-sm font-semibold text-ink">Tareas del proyecto</h2>
       )}
 
       {loading ? (
@@ -239,6 +216,8 @@ export function TaskboardView({
         <>
           <TaskboardToolbar
             embedded={embedded}
+            showAddTask
+            onAddTask={() => setCreateOpen(true)}
             boardSearch={boardSearch}
             setBoardSearch={setBoardSearch}
             mineOnly={mineOnly}

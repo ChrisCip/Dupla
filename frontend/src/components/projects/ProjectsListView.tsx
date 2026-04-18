@@ -26,15 +26,15 @@ export function ProjectsListView({
   return (
     <Card className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col overflow-hidden p-0">
       <div className="min-h-0 flex-1 overflow-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="sticky top-0 z-10 bg-black/4 text-[10px] uppercase tracking-wide text-muted backdrop-blur-sm">
+        <table className="w-full text-left text-sm">
+          <thead className="sticky top-0 z-10 bg-black/4 text-sm font-semibold uppercase tracking-wide text-ink backdrop-blur-sm md:text-base">
             <tr>
-              <th className="px-2 py-2">Nombre</th>
-              <th className="px-2 py-2">Cliente</th>
-              <th className="hidden px-2 py-2 md:table-cell">Tipo</th>
-              <th className="hidden px-2 py-2 sm:table-cell">Fase</th>
-              <th className="whitespace-nowrap px-2 py-2">Modif.</th>
-              <th className="px-2 py-2" />
+              <th className="px-3 py-3">Nombre</th>
+              <th className="px-3 py-3">Cliente</th>
+              <th className="hidden px-3 py-3 md:table-cell">Tipo</th>
+              <th className="hidden px-3 py-3 sm:table-cell">Fase</th>
+              <th className="whitespace-nowrap px-3 py-3">Modif.</th>
+              <th className="px-3 py-3" />
             </tr>
           </thead>
           <tbody>
@@ -59,26 +59,26 @@ export function ProjectsListView({
                     }
                   }}
                 >
-                  <td className="max-w-[10rem] truncate px-2 py-1.5 font-medium text-ink sm:max-w-none">
+                  <td className="max-w-[10rem] truncate px-3 py-2 font-medium text-ink sm:max-w-none">
                     {p.name}
                   </td>
-                  <td className="max-w-[7rem] truncate px-2 py-1.5 text-muted sm:max-w-[9rem]">
+                  <td className="max-w-[7rem] truncate px-3 py-2 text-muted sm:max-w-[9rem]">
                     {p.client_name ?? '—'}
                   </td>
-                  <td className="hidden px-2 py-1.5 text-muted md:table-cell">
+                  <td className="hidden px-3 py-2 text-muted md:table-cell">
                     {projectKindLabel(p.project_kind)}
                   </td>
-                  <td className="hidden px-2 py-1.5 text-muted sm:table-cell">
-                    <span className="inline-block max-w-[11rem] truncate rounded bg-black/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-ink">
+                  <td className="hidden px-3 py-2 text-muted sm:table-cell">
+                    <span className="inline-block max-w-[11rem] truncate rounded bg-black/[0.06] px-2 py-0.5 text-xs font-medium text-ink">
                       {WORKFLOW_PHASE_LABELS[p.workflow_phase] ?? p.workflow_phase}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-2 py-1.5 text-[11px] tabular-nums text-muted">
+                  <td className="whitespace-nowrap px-3 py-2 text-sm tabular-nums text-muted">
                     {formatProjectUpdatedAt(p.updated_at)}
                   </td>
-                  <td className="px-2 py-1.5 text-right">
+                  <td className="px-3 py-2 text-right">
                     <Link
-                      className="du-link text-[11px]"
+                      className="du-link text-sm"
                       to={`/app/projects/${p.uuid}`}
                       onClick={(e) => e.stopPropagation()}
                     >

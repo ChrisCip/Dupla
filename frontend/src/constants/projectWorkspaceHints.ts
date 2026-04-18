@@ -14,15 +14,9 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
   },
   AWAITING_FILES: {
     title: 'Subir archivos',
-    body: 'Carga DWG/DXF o adjuntos en Documentos. Cuando estén cargados, avanza la fase.',
+    body: 'Carga DWG/DXF o adjuntos en Archivos. Con al menos un archivo cargado, puedes avanzar a revisión de arquitectura.',
     tabId: 'documentos',
-    cta: 'Ir a Documentos',
-  },
-  FILES_INGESTED: {
-    title: 'Archivos listos',
-    body: 'Revisa que los planos estén correctos y continúa hacia revisión de arquitectura.',
-    tabId: 'flujo',
-    cta: 'Ir a Flujo',
+    cta: 'Ir a Archivos',
   },
   ARCHITECTURE_REVIEW: {
     title: 'Revisión de arquitectura',
@@ -49,9 +43,15 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
     cta: 'Ir a Flujo',
   },
   BUDGET_APPROVED: {
-    title: 'Pliego y materiales',
-    body: 'Arma secciones (tiradas / planos / fases) y la cubicación en Documentos. Exporta Excel/PDF cuando convenga.',
+    title: 'Presupuesto aprobado',
+    body: 'Continúa con pliegos y materiales; cuando el proyecto esté cerrado, avanza a la fase final «Completo».',
     tabId: 'documentos',
-    cta: 'Ir a Documentos — pliegos',
+    cta: 'Ir a Pliegos',
+  },
+  COMPLETE: {
+    title: 'Proyecto completo',
+    body: 'Fase final. Puedes consultar archivos, exportaciones e historial del proyecto.',
+    tabId: 'flujo',
+    cta: 'Ir a Flujo',
   },
 }
