@@ -429,8 +429,8 @@ export function ProjectWorkspacePage() {
             </button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto pt-4">
-            <Tabs tabs={workspaceTabs} value={tab} onChange={setTab} labelledBy="workspace-heading">
-              {tab === 'detalles' ? (
+      <Tabs tabs={workspaceTabs} value={tab} onChange={setTab} labelledBy="workspace-heading">
+        {tab === 'detalles' ? (
                 <WorkspaceDetallesTab
                   project={project}
                   projectError={projectError}
@@ -448,9 +448,9 @@ export function ProjectWorkspacePage() {
                   setMemberRows={setMemberRows}
                   onOpenChat={() => void openProjectChat()}
                 />
-              ) : null}
+        ) : null}
 
-              {tab === 'flujo' ? (
+        {tab === 'flujo' ? (
                 <WorkspaceFlujoTab
                   project={project}
                   phaseLabel={phaseLabel}
@@ -463,9 +463,9 @@ export function ProjectWorkspacePage() {
                   onSaveBootstrap={() => void saveBootstrap()}
                   onAdvancePhase={() => void advancePhase()}
                 />
-              ) : null}
+        ) : null}
 
-              {tab === 'archivos' ? (
+        {tab === 'archivos' ? (
                 <WorkspaceArchivosTab
                   projectUuid={projectUuid}
                   token={token}
@@ -475,9 +475,9 @@ export function ProjectWorkspacePage() {
                   files={files}
                   onUploadFileList={uploadFileList}
                 />
-              ) : null}
+        ) : null}
 
-              {tab === 'entregaPlanos' ? (
+        {tab === 'entregaPlanos' ? (
                 <WorkspaceEntregaPlanosTab
                   projectUuid={projectUuid}
                   token={token}
@@ -489,9 +489,9 @@ export function ProjectWorkspacePage() {
                   onPatchRow={(rowUuid, patch) => void patchPlanDeliveryRow(rowUuid, patch)}
                   onDeleteRow={(rowUuid) => void deletePlanDeliveryRow(rowUuid)}
                 />
-              ) : null}
+        ) : null}
 
-              {tab === 'revisiones' ? (
+        {tab === 'revisiones' ? (
                 <WorkspaceRevisionesTab
                   flowMsg={flowMsg}
                   revDecision={revDecision}
@@ -501,23 +501,23 @@ export function ProjectWorkspacePage() {
                   revisions={revisions}
                   onSubmitRevision={() => void submitRevision()}
                 />
-              ) : null}
+        ) : null}
 
-              {tab === 'especificaciones' ? (
+        {tab === 'especificaciones' ? (
                 <WorkspaceEspecificacionesTab
-                  projectUuid={projectUuid}
-                  token={token}
-                  specSummary={specSummary}
+              projectUuid={projectUuid}
+              token={token}
+              specSummary={specSummary}
                   setSpecSummary={setSpecSummary}
                   pliegoItemStates={pliegoItemStates}
                   setPliegoItemStates={setPliegoItemStates}
                   onPersist={() => saveSpecifications()}
                   specSaveBusy={specSaveBusy}
-                  flowMsg={flowMsg}
-                />
-              ) : null}
+              flowMsg={flowMsg}
+            />
+        ) : null}
 
-              {tab === 'presupuesto' ? (
+        {tab === 'presupuesto' ? (
                 <WorkspacePresupuestoTab
                   projectUuid={projectUuid}
                   token={token}
@@ -538,11 +538,11 @@ export function ProjectWorkspacePage() {
                   quotes={quotes}
                   onLoadAuxLists={loadAuxLists}
                 />
-              ) : null}
+        ) : null}
 
               {tab === 'eventos' ? <WorkspaceEventosTab token={token} projectUuid={projectUuid} /> : null}
 
-              {tab === 'pliegos' ? (
+        {tab === 'pliegos' ? (
                 <WorkspacePliegosTab
                   kind={kind}
                   setKind={setKind}
@@ -562,10 +562,10 @@ export function ProjectWorkspacePage() {
                   updateMaterial={updateMaterial}
                   removeMaterial={removeMaterial}
                 />
-              ) : null}
+                        ) : null}
             </Tabs>
-          </div>
-        </div>
+                  </div>
+            </div>
       )}
 
       <ProjectConfigModal
@@ -590,6 +590,6 @@ export function ProjectWorkspacePage() {
         setMembersMsg={setMembersMsg}
         setMemberRows={setMemberRows}
       />
-    </div>
+              </div>
   )
 }

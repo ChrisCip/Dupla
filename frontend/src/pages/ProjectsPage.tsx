@@ -24,7 +24,8 @@ export function ProjectsPage() {
   const [client, setClient] = useState('')
   const [createMembers, setCreateMembers] = useState<Set<string>>(new Set())
   const [adminUsersCreate, setAdminUsersCreate] = useState<{ uuid: string; email: string }[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [loadingList, setLoadingList] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -45,10 +46,10 @@ export function ProjectsPage() {
 
   const refresh = useCallback(async () => {
     if (!token) return
-    setError(null)
+    setProjectsLoadError(null)
     const res = await apiFetch('/api/projects', { token })
     if (!res.ok) {
-      setError('No se pudieron cargar proyectos')
+      setProjectsLoadError('No se pudieron cargar proyectos')
       return
     }
     setProjects((await res.json()) as Project[])
@@ -91,7 +92,7 @@ export function ProjectsPage() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setCreateModalOpen(false)
-        setError(null)
+        setCreateError(null)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -100,15 +101,15 @@ export function ProjectsPage() {
 
   function closeCreateModal() {
     setCreateModalOpen(false)
-    setError(null)
+    setCreateError(null)
   }
 
-  async function createProject(e: React.FormEvent) {
-    e.preventDefault()
+  async function createProject(e?: React.FormEvent) {
+    e?.preventDefault()
     if (!token) return
-    setError(null)
+    setCreateError(null)
     if (projectKind === 'TENDER' && createFiles.length === 0) {
-      setError('Los proyectos de licitación requieren al menos un archivo al crear.')
+      setCreateError('Los proyectos de licitación requieren al menos un archivo al crear.')
       return
     }
     setSubmitting(true)
@@ -130,7 +131,7 @@ export function ProjectsPage() {
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
-        setError((j as { detail?: string }).detail ?? 'No se pudo crear el proyecto')
+        setCreateError((j as { detail?: string }).detail ?? 'No se pudo crear el proyecto')
         return
       }
       setFeedback('Proyecto creado. Ábrelo en la tabla o en el tablero, o crea otro.')
@@ -221,19 +222,26 @@ export function ProjectsPage() {
           </button>
         </div>
       ) : null}
-      <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0 flex-1">
+      <div className="flex shrink-0 flex-col gap-4">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-ink">Proyectos</h1>
           <p className="mt-1 text-sm text-muted">
             {role === 'GERENCIA'
               ? 'Tablero de proyectos. Arrastra una tarjeta a la columna de al lado para ir a la fase anterior o siguiente.'
               : 'Proyectos a los que tienes acceso.'}
           </p>
-          <label className="mt-3 block max-w-md">
+          {projectsLoadError ? (
+            <p className="mt-2 text-sm font-medium text-primary" role="alert">
+              {projectsLoadError}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+          <label className="min-w-0 flex-1">
             <span className="sr-only">Buscar proyecto por nombre</span>
             <input
               type="search"
-              className="du-input w-full"
+              className="du-input w-full rounded-lg"
               placeholder="Buscar por nombre…"
               value={projectSearch}
               onChange={(e) => setProjectSearch(e.target.value)}
@@ -241,26 +249,40 @@ export function ProjectsPage() {
               aria-label="Buscar proyecto por nombre"
             />
           </label>
-        </div>
-        <div className="flex shrink-0 gap-2 rounded-lg border border-black/10 bg-white p-1 text-sm shadow-[var(--shadow-card)]">
-          <button
-            type="button"
-            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-              viewMode === 'tablero' ? 'bg-primary/12 text-ink ring-1 ring-primary/25' : 'text-muted hover:text-ink'
-            }`}
-            onClick={() => setViewMode('tablero')}
-          >
-            Tablero por fase
-          </button>
-          <button
-            type="button"
-            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-              viewMode === 'lista' ? 'bg-primary/12 text-ink ring-1 ring-primary/25' : 'text-muted hover:text-ink'
-            }`}
-            onClick={() => setViewMode('lista')}
-          >
-            Lista
-          </button>
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+            <div className="flex gap-1 rounded-lg border border-black/10 bg-white p-1 text-sm shadow-[var(--shadow-card)]">
+              <button
+                type="button"
+                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                  viewMode === 'tablero' ? 'bg-primary/12 text-ink ring-1 ring-primary/25' : 'text-muted hover:text-ink'
+                }`}
+                onClick={() => setViewMode('tablero')}
+              >
+                Tablero por fase
+              </button>
+              <button
+                type="button"
+                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                  viewMode === 'lista' ? 'bg-primary/12 text-ink ring-1 ring-primary/25' : 'text-muted hover:text-ink'
+                }`}
+                onClick={() => setViewMode('lista')}
+              >
+                Lista
+              </button>
+            </div>
+            {role === 'GERENCIA' ? (
+              <button
+                type="button"
+                className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-medium tracking-normal text-white shadow-sm outline-none transition-[opacity,transform] hover:opacity-[0.92] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
+                onClick={() => {
+                  setCreateError(null)
+                  setCreateModalOpen(true)
+                }}
+              >
+                Nuevo proyecto
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -271,7 +293,6 @@ export function ProjectsPage() {
           filteredProjects={filteredProjects}
           projectSearch={projectSearch}
           role={role}
-          onOpenCreate={() => setCreateModalOpen(true)}
           onNavigateProject={(uuid) => navigate(`/app/projects/${uuid}`)}
         />
       ) : (
@@ -281,8 +302,6 @@ export function ProjectsPage() {
           filteredProjects={filteredProjects}
           projectSearch={projectSearch}
           boardMsg={boardMsg}
-          role={role}
-          onOpenCreate={() => setCreateModalOpen(true)}
           onDropOnPhaseColumn={onDropOnPhaseColumn}
           onDragOverBoard={onDragOverBoard}
           onDragStartProject={onDragStartProject}
@@ -307,7 +326,7 @@ export function ProjectsPage() {
           setCreateMembers={setCreateMembers}
           adminUsersCreate={adminUsersCreate}
           userUuid={userUuid}
-          error={error}
+          error={createError}
           submitting={submitting}
         />
       ) : null}

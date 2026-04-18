@@ -1,5 +1,4 @@
 import { Card } from '../Card'
-import { PrimaryButton } from '../PrimaryButton'
 import {
   NEXT_WORKFLOW_PHASE,
   PREV_WORKFLOW_PHASE,
@@ -16,8 +15,6 @@ type ProjectsBoardViewProps = {
   filteredProjects: Project[]
   projectSearch: string
   boardMsg: string | null
-  role: string | null
-  onOpenCreate: () => void
   onDropOnPhaseColumn: (e: React.DragEvent, phaseKey: string) => void
   onDragOverBoard: (e: React.DragEvent) => void
   onDragStartProject: (e: React.DragEvent, projectUuid: string) => void
@@ -31,8 +28,6 @@ export function ProjectsBoardView({
   filteredProjects,
   projectSearch,
   boardMsg,
-  role,
-  onOpenCreate,
   onDropOnPhaseColumn,
   onDragOverBoard,
   onDragStartProject,
@@ -41,24 +36,9 @@ export function ProjectsBoardView({
 }: ProjectsBoardViewProps) {
   return (
     <Card className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
-      {role === 'GERENCIA' || boardMsg ? (
-        <div
-          className={`flex shrink-0 flex-wrap items-center gap-3 border-b border-black/10 bg-white px-4 py-3 ${
-            boardMsg && role === 'GERENCIA'
-              ? 'justify-between'
-              : boardMsg
-                ? 'justify-start'
-                : 'justify-end'
-          }`}
-        >
-          {boardMsg ? (
-            <p className={`text-sm text-primary ${role === 'GERENCIA' ? 'min-w-0 flex-1' : ''}`}>{boardMsg}</p>
-          ) : null}
-          {role === 'GERENCIA' ? (
-            <PrimaryButton type="button" className="shrink-0" onClick={onOpenCreate}>
-              Nuevo proyecto
-            </PrimaryButton>
-          ) : null}
+      {boardMsg ? (
+        <div className="flex shrink-0 border-b border-black/10 bg-white px-4 py-3">
+          <p className="text-sm text-primary">{boardMsg}</p>
         </div>
       ) : null}
       {loadingList ? (

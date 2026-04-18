@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 
 import { Card } from '../Card'
-import { PrimaryButton } from '../PrimaryButton'
 import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
 import { formatProjectUpdatedAt } from '../../constants/projectsPage'
 import { projectKindLabel } from '../../constants/projectKind'
@@ -13,7 +12,6 @@ type ProjectsListViewProps = {
   filteredProjects: Project[]
   projectSearch: string
   role: string | null
-  onOpenCreate: () => void
   onNavigateProject: (uuid: string) => void
 }
 
@@ -23,18 +21,10 @@ export function ProjectsListView({
   filteredProjects,
   projectSearch,
   role,
-  onOpenCreate,
   onNavigateProject,
 }: ProjectsListViewProps) {
   return (
     <Card className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col overflow-hidden p-0">
-      {role === 'GERENCIA' ? (
-        <div className="flex shrink-0 items-center justify-end border-b border-black/10 bg-white px-3 py-2">
-          <PrimaryButton type="button" className="px-3 py-1.5 text-sm" onClick={onOpenCreate}>
-            Nuevo proyecto
-          </PrimaryButton>
-        </div>
-      ) : null}
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full text-left text-xs">
           <thead className="sticky top-0 z-10 bg-black/4 text-[10px] uppercase tracking-wide text-muted backdrop-blur-sm">
