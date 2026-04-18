@@ -8,21 +8,29 @@ from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import func, select
+from sqlalchemy import and_, cast, func, or_, select
+from sqlalchemy.types import Text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
-from app.domain.workflow_phase import LINEAR_NEXT, WorkflowPhase
+from app.domain.file_discipline import FileIngestStatus, parse_discipline
+from app.domain.project_updated import touch_project_updated_at
+from app.domain.project_uploads import sanitize_project_original_filename, validate_project_file_extension
+from app.domain.task_board_constants import TASK_LIST_DONE_UUID
+from app.domain.workflow_phase import LINEAR_NEXT, LINEAR_PREV, WorkflowPhase
 from app.models.architecture_revision import ArchitectureRevision, ArchitectureRevisionDecision
 from app.models.project import Project
+from app.models.task_board import TaskCard
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
+from app.models.project_file_folder import ProjectFileFolder
 from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
 from app.models.user import User, UserRole
 from app.models.user_notification import UserNotification
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
+from app.services.project_file_ai_service import ProjectFileAIService
 from app.services.project_service import ProjectService
 
 
@@ -86,7 +94,7 @@ class ProjectLifecycleService:
 
     async def _assert_transition_guards(
         self,
-        user: User,
+        _user: User,
         project: Project,
         target: WorkflowPhase,
     ) -> None:
@@ -97,7 +105,7 @@ class ProjectLifecycleService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Completa el checklist de documentos requeridos antes de continuar",
                 )
-        if current == WorkflowPhase.AWAITING_FILES and target == WorkflowPhase.FILES_INGESTED:
+        if current == WorkflowPhase.AWAITING_FILES and target == WorkflowPhase.ARCHITECTURE_REVIEW:
             n = await self._projects.count_project_files(project.id)
             if n < 1:
                 raise HTTPException(
@@ -119,12 +127,21 @@ class ProjectLifecycleService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Completa el pliego de condiciones (resumen mínimo 10 caracteres) antes de presupuesto",
                 )
-        if current == WorkflowPhase.BUDGETING_PIPELINE and target == WorkflowPhase.BUDGET_APPROVED:
-            if user.role != UserRole.MASTER:
+        if current == WorkflowPhase.BUDGETING_PIPELINE and target == WorkflowPhase.MANAGEMENT_APPROVAL:
+            await self._sync_subcontracts_flag(project)
+            meta = dict(project.workflow_meta or {})
+            bp = _budget_pipeline(meta)
+            if not (
+                bp.get("subcontracts_done")
+                and bp.get("volumetry_done")
+                and bp.get("cost_analysis_done")
+                and bp.get("budget_marked_complete")
+            ):
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Solo MASTER puede marcar presupuesto aprobado por el cliente",
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Completa el pipeline de presupuesto antes de enviar a gerencia",
                 )
+        if current == WorkflowPhase.MANAGEMENT_APPROVAL and target == WorkflowPhase.BUDGET_APPROVED:
             await self._sync_subcontracts_flag(project)
             meta = dict(project.workflow_meta or {})
             bp = _budget_pipeline(meta)
@@ -140,6 +157,18 @@ class ProjectLifecycleService:
                     detail="Completa el pipeline de presupuesto y la versión aprobada por el cliente",
                 )
 
+    async def _count_pending_tasks_for_project(self, project_id: UUID) -> int:
+        q = (
+            select(func.count())
+            .select_from(TaskCard)
+            .where(
+                TaskCard.project_id == project_id,
+                TaskCard.archived.is_(False),
+                TaskCard.list_id != TASK_LIST_DONE_UUID,
+            )
+        )
+        return int((await self._session.execute(q)).scalar_one())
+
     async def transition_phase(
         self,
         user: User,
@@ -148,37 +177,65 @@ class ProjectLifecycleService:
     ) -> Project:
         project = await self._project_svc.get_project(user, project_uuid)
         current = WorkflowPhase(project.workflow_phase)
-        expected = LINEAR_NEXT.get(current)
-        if expected is None:
+        expected_next = LINEAR_NEXT.get(current)
+        expected_prev = LINEAR_PREV.get(current)
+
+        is_forward = expected_next == target_phase
+        is_backward = expected_prev == target_phase
+
+        if not is_forward and not is_backward:
+            hint = expected_next.value if expected_next is not None else None
+            prev_hint = expected_prev.value if expected_prev is not None else None
+            parts = []
+            if hint is not None:
+                parts.append(f"siguiente válida: {hint}")
+            if prev_hint is not None:
+                parts.append(f"anterior válida: {prev_hint}")
+            detail = "Transición inválida."
+            if parts:
+                detail = f"Transición inválida ({'; '.join(parts)})."
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="El proyecto ya está en la fase final",
+                detail=detail,
             )
-        if expected != target_phase:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Transición inválida: la siguiente fase es {expected.value}",
-            )
-        await self._assert_transition_guards(user, project, target_phase)
+
+        if is_forward:
+            pending = await self._count_pending_tasks_for_project(project.id)
+            if pending > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "Hay tareas del proyecto pendientes en el tablero (fuera de «Hecho»). "
+                        "Complétalas o archívalas antes de avanzar de fase."
+                    ),
+                )
+            await self._assert_transition_guards(user, project, target_phase)
+
         prev = project.workflow_phase
         project.workflow_phase = target_phase.value
         await self._projects.record_event(
             project_id=project.id,
             actor_user_id=user.id,
             event_type="WORKFLOW_TRANSITION",
-            payload={"from_phase": prev, "to_phase": target_phase.value},
+            payload={
+                "from_phase": prev,
+                "to_phase": target_phase.value,
+                "direction": "forward" if is_forward else "backward",
+            },
         )
-        if target_phase == WorkflowPhase.SPECIFICATIONS:
-            await self._notify_architecture_complete(project)
-        if target_phase == WorkflowPhase.BUDGET_APPROVED:
-            await self._notify_budget_approved(project)
+        if is_forward:
+            if target_phase == WorkflowPhase.SPECIFICATIONS:
+                await self._notify_architecture_complete(project)
+            if target_phase == WorkflowPhase.BUDGET_APPROVED:
+                await self._notify_budget_approved(project)
+        touch_project_updated_at(project)
         await self._session.flush()
         return project
 
     async def _notify_architecture_complete(self, project: Project) -> None:
         mids = await self._users.list_ids_by_module_and_roles(
             self._settings.architecture_module_id,
-            [UserRole.MASTER, UserRole.COORDINATOR],
+            [UserRole.GERENCIA, UserRole.CONTROL],
         )
         title = "Fase de arquitectura completada"
         body = f"El proyecto «{project.name}» completó la definición arquitectónica."
@@ -203,7 +260,7 @@ class ProjectLifecycleService:
     async def _notify_budget_approved(self, project: Project) -> None:
         mids = await self._users.list_ids_by_module_and_roles(
             self._settings.architecture_module_id,
-            [UserRole.MASTER],
+            [UserRole.GERENCIA],
         )
         title = "Presupuesto aprobado por el cliente"
         body = f"El proyecto «{project.name}» tiene una versión de presupuesto aprobada."
@@ -234,10 +291,23 @@ class ProjectLifecycleService:
         client_name: Optional[str] = None,
     ) -> Project:
         project = await self._project_svc.get_project(user, project_uuid)
+        payload: dict[str, Any] = {}
         if name is not None:
+            payload["name"] = {"from": project.name, "to": name.strip()}
             project.name = name.strip()
         if client_name is not None:
-            project.client_name = client_name.strip() or None
+            prev = project.client_name
+            nxt = client_name.strip() or None
+            payload["client_name"] = {"from": prev, "to": nxt}
+            project.client_name = nxt
+        if payload:
+            await self._projects.record_event(
+                project_id=project.id,
+                actor_user_id=user.id,
+                event_type="PROJECT_META_UPDATED",
+                payload=payload,
+            )
+        touch_project_updated_at(project)
         await self._session.flush()
         return project
 
@@ -260,6 +330,7 @@ class ProjectLifecycleService:
             event_type="BOOTSTRAP_UPDATED",
             payload={"items": len(criteria)},
         )
+        touch_project_updated_at(project)
         await self._session.flush()
         return project
 
@@ -275,6 +346,7 @@ class ProjectLifecycleService:
             WorkflowPhase.ARCHITECTURE_REVIEW,
             WorkflowPhase.SPECIFICATIONS,
             WorkflowPhase.BUDGETING_PIPELINE,
+            WorkflowPhase.MANAGEMENT_APPROVAL,
             WorkflowPhase.BUDGET_APPROVED,
         }
         if wf not in allowed:
@@ -283,12 +355,16 @@ class ProjectLifecycleService:
                 detail="El pliego de condiciones no es editable en esta fase",
             )
         project.specifications_document = document
+        summary = ""
+        if isinstance(document, dict):
+            summary = str((document.get("summary") or "")).strip()
         await self._projects.record_event(
             project_id=project.id,
             actor_user_id=user.id,
             event_type="SPECIFICATIONS_UPDATED",
-            payload={},
+            payload={"summary_chars": len(summary)},
         )
+        touch_project_updated_at(project)
         await self._session.flush()
         return project
 
@@ -314,18 +390,55 @@ class ProjectLifecycleService:
             event_type="WORKFLOW_META_PATCHED",
             payload={"keys": list(patch.keys())},
         )
+        if p is not None:
+            touch_project_updated_at(p)
+        else:
+            touch_project_updated_at(project)
         await self._session.flush()
         return await self._project_svc.get_project(user, project_uuid)
 
-    async def list_events(self, user: User, project_uuid: UUID) -> list[ProjectEvent]:
+    async def list_events_page(
+        self,
+        user: User,
+        project_uuid: UUID,
+        *,
+        limit: int,
+        offset: int,
+        event_type: Optional[str],
+        q: Optional[str],
+    ) -> tuple[list[ProjectEvent], int]:
         project = await self._project_svc.get_project(user, project_uuid)
-        q = (
-            select(ProjectEvent)
-            .where(ProjectEvent.project_id == project.id)
-            .order_by(ProjectEvent.created_at.desc())
-            .limit(200)
+        conditions = [ProjectEvent.project_id == project.id]
+        if event_type and event_type.strip():
+            conditions.append(ProjectEvent.event_type == event_type.strip())
+        q_clean = (q or "").strip()
+        if q_clean:
+            pat = f"%{q_clean}%"
+            conditions.append(
+                or_(
+                    cast(ProjectEvent.payload, Text).ilike(pat),
+                    User.email.ilike(pat),
+                )
+            )
+        base = and_(*conditions)
+        count_stmt = (
+            select(func.count())
+            .select_from(ProjectEvent)
+            .outerjoin(User, User.id == ProjectEvent.actor_user_id)
+            .where(base)
         )
-        return list((await self._session.execute(q)).scalars().all())
+        total = int((await self._session.execute(count_stmt)).scalar_one() or 0)
+        stmt = (
+            select(ProjectEvent)
+            .outerjoin(User, User.id == ProjectEvent.actor_user_id)
+            .where(base)
+            .order_by(ProjectEvent.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .options(selectinload(ProjectEvent.actor))
+        )
+        rows = list((await self._session.execute(stmt)).scalars().all())
+        return rows, total
 
     async def create_architecture_revision(
         self,
@@ -355,6 +468,7 @@ class ProjectLifecycleService:
             event_type="ARCHITECTURE_REVISION",
             payload={"version": ver, "decision": decision.value},
         )
+        touch_project_updated_at(project)
         await self._session.flush()
         await self._session.refresh(rev)
         return rev
@@ -368,19 +482,41 @@ class ProjectLifecycleService:
         )
         return list((await self._session.execute(q)).scalars().all())
 
+    async def _require_folder_in_project(self, project_id: UUID, folder_uuid: UUID) -> UUID:
+        row = await self._session.get(ProjectFileFolder, folder_uuid)
+        if row is None or row.project_id != project_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carpeta no encontrada")
+        return row.id
+
+    async def _folder_is_descendant_of(self, folder_id: UUID, ancestor_id: UUID) -> bool:
+        cur = await self._session.get(ProjectFileFolder, folder_id)
+        while cur is not None:
+            if cur.id == ancestor_id:
+                return True
+            if cur.parent_id is None:
+                return False
+            cur = await self._session.get(ProjectFileFolder, cur.parent_id)
+        return False
+
     async def upload_file(
         self,
         user: User,
         project_uuid: UUID,
         upload: UploadFile,
         category: Optional[str],
+        *,
+        folder_uuid: Optional[UUID] = None,
+        wizard: bool = False,
     ) -> ProjectFile:
         project = await self._project_svc.get_project(user, project_uuid)
         wf = WorkflowPhase(project.workflow_phase)
         if wf not in (
             WorkflowPhase.AWAITING_FILES,
-            WorkflowPhase.FILES_INGESTED,
             WorkflowPhase.ARCHITECTURE_REVIEW,
+            WorkflowPhase.SPECIFICATIONS,
+            WorkflowPhase.BUDGETING_PIPELINE,
+            WorkflowPhase.MANAGEMENT_APPROVAL,
+            WorkflowPhase.BUDGET_APPROVED,
         ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -393,9 +529,15 @@ class ProjectLifecycleService:
         root = Path(self._settings.upload_root)
         dest_dir = root / str(project.id)
         dest_dir.mkdir(parents=True, exist_ok=True)
-        safe_name = Path(upload.filename or "file").name.replace("..", "_")
+        safe_name = sanitize_project_original_filename(upload.filename or "file")
+        validate_project_file_extension(safe_name)
         storage_key = str(dest_dir / f"{fid}_{safe_name}")
         Path(storage_key).write_bytes(raw)
+
+        resolved_folder_id: Optional[UUID] = None
+        if folder_uuid is not None:
+            resolved_folder_id = await self._require_folder_in_project(project.id, folder_uuid)
+
         pf = ProjectFile(
             id=fid,
             project_id=project.id,
@@ -403,9 +545,19 @@ class ProjectLifecycleService:
             original_name=upload.filename or "file",
             mime=upload.content_type,
             category=category,
+            folder_id=resolved_folder_id,
             created_by=user.id,
             created_at=datetime.now(timezone.utc),
         )
+        if wizard:
+            ai = ProjectFileAIService()
+            disc, desc, _used = await ai.suggest(pf.original_name, pf.mime)
+            pf.discipline = disc.value if disc else None
+            pf.description = desc if desc else None
+            pf.ingest_status = FileIngestStatus.DRAFT.value
+        else:
+            pf.ingest_status = FileIngestStatus.PUBLISHED.value
+
         self._session.add(pf)
         await self._projects.record_event(
             project_id=project.id,
@@ -413,18 +565,303 @@ class ProjectLifecycleService:
             event_type="FILE_UPLOADED",
             payload={"file_uuid": str(fid), "name": pf.original_name},
         )
+        touch_project_updated_at(project)
         await self._session.flush()
         await self._session.refresh(pf)
         return pf
 
-    async def list_files(self, user: User, project_uuid: UUID) -> list[ProjectFile]:
+    async def list_files(
+        self,
+        user: User,
+        project_uuid: UUID,
+        folder_uuid: Optional[UUID] = None,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[ProjectFile], int]:
         project = await self._project_svc.get_project(user, project_uuid)
+        if folder_uuid is not None:
+            await self._require_folder_in_project(project.id, folder_uuid)
+        conds = [ProjectFile.project_id == project.id]
+        if folder_uuid is None:
+            conds.append(ProjectFile.folder_id.is_(None))
+        else:
+            conds.append(ProjectFile.folder_id == folder_uuid)
+        where_clause = and_(*conds)
+        count_q = select(func.count()).select_from(ProjectFile).where(where_clause)
+        total = int((await self._session.execute(count_q)).scalar_one())
         q = (
             select(ProjectFile)
-            .where(ProjectFile.project_id == project.id)
+            .where(where_clause)
             .order_by(ProjectFile.created_at.desc())
+            .limit(limit)
+            .offset(offset)
         )
+        rows = list((await self._session.execute(q)).scalars().all())
+        return rows, total
+
+    async def _folder_path_parts(self, project_id: UUID, folder_id: Optional[UUID]) -> list[str]:
+        if folder_id is None:
+            return []
+        parts: list[str] = []
+        cur: Optional[UUID] = folder_id
+        for _ in range(128):
+            if cur is None:
+                break
+            row = await self._session.get(ProjectFileFolder, cur)
+            if row is None or row.project_id != project_id:
+                break
+            parts.append(row.name)
+            cur = row.parent_id
+        parts.reverse()
+        return parts
+
+    async def search_project_files(
+        self,
+        user: User,
+        project_uuid: UUID,
+        q_raw: Optional[str],
+        discipline_raw: Optional[str],
+    ) -> list[tuple[ProjectFile, str]]:
+        project = await self._project_svc.get_project(user, project_uuid)
+        has_q = bool(q_raw and q_raw.strip())
+        has_d = bool(discipline_raw and discipline_raw.strip())
+        if not has_q and not has_d:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Indica al menos un criterio: q (texto) o discipline",
+            )
+        stmt = select(ProjectFile).where(ProjectFile.project_id == project.id)
+        if has_d:
+            d = parse_discipline(discipline_raw.strip())
+            if d is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="discipline no válida",
+                )
+            stmt = stmt.where(ProjectFile.discipline == d.value)
+        if has_q:
+            term = f"%{q_raw.strip()}%"
+            stmt = stmt.where(
+                or_(
+                    ProjectFile.original_name.ilike(term),
+                    ProjectFile.description.ilike(term),
+                )
+            )
+        stmt = stmt.order_by(ProjectFile.created_at.desc())
+        rows = list((await self._session.execute(stmt)).scalars().all())
+        out: list[tuple[ProjectFile, str]] = []
+        for pf in rows:
+            parts = await self._folder_path_parts(project.id, pf.folder_id)
+            path_display = "Raíz" if not parts else "Raíz / " + " / ".join(parts)
+            out.append((pf, path_display))
+        return out
+
+    async def list_file_folders(
+        self,
+        user: User,
+        project_uuid: UUID,
+        parent_uuid: Optional[UUID],
+    ) -> list[ProjectFileFolder]:
+        project = await self._project_svc.get_project(user, project_uuid)
+        q = select(ProjectFileFolder).where(ProjectFileFolder.project_id == project.id)
+        if parent_uuid is None:
+            q = q.where(ProjectFileFolder.parent_id.is_(None))
+        else:
+            await self._require_folder_in_project(project.id, parent_uuid)
+            q = q.where(ProjectFileFolder.parent_id == parent_uuid)
+        q = q.order_by(ProjectFileFolder.name.asc())
         return list((await self._session.execute(q)).scalars().all())
+
+    async def create_file_folder(
+        self,
+        user: User,
+        project_uuid: UUID,
+        name: str,
+        parent_uuid: Optional[UUID],
+    ) -> ProjectFileFolder:
+        project = await self._project_svc.get_project(user, project_uuid)
+        parent_id: Optional[UUID] = None
+        if parent_uuid is not None:
+            parent_id = await self._require_folder_in_project(project.id, parent_uuid)
+        row = ProjectFileFolder(
+            id=uuid.uuid4(),
+            project_id=project.id,
+            parent_id=parent_id,
+            name=name.strip(),
+            created_by=user.id,
+            created_at=datetime.now(timezone.utc),
+        )
+        self._session.add(row)
+        touch_project_updated_at(project)
+        await self._session.flush()
+        await self._session.refresh(row)
+        return row
+
+    async def patch_file_folder(
+        self,
+        user: User,
+        project_uuid: UUID,
+        folder_uuid: UUID,
+        patch: dict[str, Any],
+    ) -> ProjectFileFolder:
+        project = await self._project_svc.get_project(user, project_uuid)
+        row = await self._session.get(ProjectFileFolder, folder_uuid)
+        if row is None or row.project_id != project.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carpeta no encontrada")
+
+        if "parent_uuid" in patch:
+            raw_parent = patch["parent_uuid"]
+            if raw_parent is None:
+                row.parent_id = None
+            else:
+                if raw_parent == folder_uuid:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="La carpeta no puede ser padre de sí misma",
+                    )
+                new_parent = await self._require_folder_in_project(project.id, raw_parent)
+                if await self._folder_is_descendant_of(new_parent, folder_uuid):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No se puede mover una carpeta dentro de su propia jerarquía",
+                    )
+                row.parent_id = new_parent
+
+        if "name" in patch and patch["name"] is not None:
+            row.name = str(patch["name"]).strip()
+
+        touch_project_updated_at(project)
+        await self._session.flush()
+        await self._session.refresh(row)
+        return row
+
+    async def delete_file_folder(self, user: User, project_uuid: UUID, folder_uuid: UUID) -> None:
+        project = await self._project_svc.get_project(user, project_uuid)
+        row = await self._session.get(ProjectFileFolder, folder_uuid)
+        if row is None or row.project_id != project.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carpeta no encontrada")
+        sub = await self._session.execute(
+            select(func.count()).select_from(ProjectFileFolder).where(ProjectFileFolder.parent_id == row.id)
+        )
+        if sub.scalar_one() > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La carpeta contiene subcarpetas",
+            )
+        fc = await self._session.execute(
+            select(func.count()).select_from(ProjectFile).where(ProjectFile.folder_id == row.id)
+        )
+        if fc.scalar_one() > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La carpeta contiene archivos",
+            )
+        await self._session.delete(row)
+        touch_project_updated_at(project)
+
+    async def patch_project_file(
+        self,
+        user: User,
+        project_uuid: UUID,
+        file_uuid: UUID,
+        patch: dict[str, Any],
+    ) -> ProjectFile:
+        project = await self._project_svc.get_project(user, project_uuid)
+        pf = await self._session.get(ProjectFile, file_uuid)
+        if pf is None or pf.project_id != project.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
+
+        changes: dict[str, Any] = {}
+
+        if "original_name" in patch and patch["original_name"] is not None:
+            new_name = sanitize_project_original_filename(str(patch["original_name"]))
+            validate_project_file_extension(new_name)
+            if new_name != pf.original_name:
+                changes["original_name"] = {"from": pf.original_name, "to": new_name}
+                pf.original_name = new_name
+
+        if "description" in patch:
+            new_desc = patch["description"]
+            old_desc = pf.description
+            if (old_desc or "") != (new_desc if new_desc is not None else ""):
+                changes["description"] = {"from": old_desc, "to": new_desc}
+            pf.description = new_desc
+
+        if "discipline" in patch:
+            raw = patch["discipline"]
+            if raw is None or (isinstance(raw, str) and raw.strip() == ""):
+                new_val = None
+            elif isinstance(raw, str):
+                d = parse_discipline(raw)
+                if d is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="discipline no válida",
+                    )
+                new_val = d.value
+            else:
+                new_val = pf.discipline
+            if new_val != pf.discipline:
+                changes["discipline"] = {"from": pf.discipline, "to": new_val}
+            pf.discipline = new_val
+
+        if "folder_uuid" in patch:
+            fu = patch["folder_uuid"]
+            old_folder = pf.folder_id
+            if fu is None:
+                new_folder_id = None
+            else:
+                new_folder_id = await self._require_folder_in_project(project.id, fu)
+            if old_folder != new_folder_id:
+                changes["folder_uuid"] = {"from": str(old_folder) if old_folder else None, "to": str(new_folder_id) if new_folder_id else None}
+            pf.folder_id = new_folder_id
+
+        if "ingest_status" in patch and patch["ingest_status"] is not None:
+            s = str(patch["ingest_status"]).strip().upper()
+            if s not in (FileIngestStatus.DRAFT.value, FileIngestStatus.PUBLISHED.value):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="ingest_status debe ser DRAFT o PUBLISHED",
+                )
+            if s != pf.ingest_status:
+                changes["ingest_status"] = {"from": pf.ingest_status, "to": s}
+            pf.ingest_status = s
+
+        if changes:
+            await self._projects.record_event(
+                project_id=project.id,
+                actor_user_id=user.id,
+                event_type="FILE_UPDATED",
+                payload={
+                    "file_uuid": str(file_uuid),
+                    "name": pf.original_name,
+                    "changes": changes,
+                },
+            )
+
+        touch_project_updated_at(project)
+        await self._session.flush()
+        await self._session.refresh(pf)
+        return pf
+
+    async def delete_project_file(self, user: User, project_uuid: UUID, file_uuid: UUID) -> None:
+        project = await self._project_svc.get_project(user, project_uuid)
+        pf = await self._session.get(ProjectFile, file_uuid)
+        if pf is None or pf.project_id != project.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
+        display_name = pf.original_name
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="FILE_DELETED",
+            payload={"file_uuid": str(file_uuid), "name": display_name},
+        )
+        path = Path(pf.storage_key)
+        await self._session.delete(pf)
+        if path.is_file():
+            path.unlink()
+        touch_project_updated_at(project)
 
     async def get_file_path(self, user: User, project_uuid: UUID, file_uuid: UUID) -> tuple[ProjectFile, Path]:
         project = await self._project_svc.get_project(user, project_uuid)
@@ -459,9 +896,18 @@ class ProjectLifecycleService:
         self._session.add(q)
         await self._session.flush()
         await self._session.refresh(q, ["lines"])
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="SUBCONTRACT_QUOTE_CREATED",
+            payload={"quote_uuid": str(q.id), "title": q.title},
+        )
         p2 = await self._load_project_full(project_uuid)
         if p2 is not None:
             await self._sync_subcontracts_flag(p2)
+            touch_project_updated_at(p2)
+        else:
+            touch_project_updated_at(project)
         return q
 
     async def add_subcontract_line(
@@ -491,9 +937,24 @@ class ProjectLifecycleService:
         )
         self._session.add(line)
         await self._session.flush()
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="SUBCONTRACT_LINE_ADDED",
+            payload={
+                "quote_uuid": str(quote.id),
+                "line_uuid": str(line.id),
+                "item_label": line.item_label,
+                "price": str(line.price),
+                "currency": line.currency,
+            },
+        )
         p2 = await self._load_project_full(project_uuid)
         if p2 is not None:
             await self._sync_subcontracts_flag(p2)
+            touch_project_updated_at(p2)
+        else:
+            touch_project_updated_at(project)
         return line
 
     async def get_subcontract_quote_with_lines(
@@ -521,11 +982,20 @@ class ProjectLifecycleService:
         quote = await self._session.get(SubcontractQuote, quote_uuid)
         if quote is None or quote.project_id != project.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cotización no encontrada")
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="SUBCONTRACT_QUOTE_DELETED",
+            payload={"quote_uuid": str(quote.id), "title": quote.title},
+        )
         await self._session.delete(quote)
         await self._session.flush()
         p2 = await self._load_project_full(project_uuid)
         if p2 is not None:
             await self._sync_subcontracts_flag(p2)
+            touch_project_updated_at(p2)
+        else:
+            touch_project_updated_at(project)
 
     async def list_my_notifications(self, user: User, *, unread_only: bool) -> list[UserNotification]:
         q = select(UserNotification).where(UserNotification.user_id == user.id)

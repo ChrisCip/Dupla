@@ -4,8 +4,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache.redis_client import chat_message_epoch_bump
 from app.db.session import get_db
 from app.dependencies import get_current_user
+from app.models.chat_conversation import GENERAL_CONVERSATION_UUID
 from app.models.user import User
 from app.schemas.chat import (
     ChatConversationResponse,
@@ -112,6 +114,7 @@ async def post_conversation_message(
     svc = ChatService(session)
     msg = await svc.post_conversation_message(current, conversation_uuid, body)
     await session.commit()
+    await chat_message_epoch_bump(conversation_uuid)
     return msg
 
 
@@ -145,4 +148,5 @@ async def post_chat_message(
     svc = ChatService(session)
     msg = await svc.post_message(current, body)
     await session.commit()
+    await chat_message_epoch_bump(GENERAL_CONVERSATION_UUID)
     return msg

@@ -47,13 +47,13 @@ export function LoginPage() {
             <h1 className="mt-10 text-3xl font-semibold leading-[1.15] tracking-tight xl:text-4xl">
               La operación del equipo, centralizada
             </h1>
-            <p className="mt-5 max-w-lg text-sm leading-relaxed text-white/65">
+            <p className="mt-5 max-w-lg text-base leading-relaxed text-white/65">
               Herramienta interna para coordinar proyectos, documentación, comunicación y tareas del
               equipo en un solo entorno seguro.
             </p>
             <ul className="mt-12 space-y-4">
               {FEATURES.map((line) => (
-                <li key={line} className="flex gap-3 text-sm leading-snug text-white/90">
+                <li key={line} className="flex gap-3 text-base leading-snug text-white/90">
                   <span
                     className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/35 text-[11px] font-bold text-white"
                     aria-hidden
@@ -70,15 +70,15 @@ export function LoginPage() {
           </p>
         </aside>
 
-        <div className="flex flex-col justify-center px-5 py-10 sm:px-10 lg:px-12 xl:px-16">
+        <div className="flex flex-col justify-center px-6 py-12 sm:px-10 lg:px-12 xl:px-16">
           <div className="mx-auto w-full max-w-[420px]">
             <div className="mb-10 flex flex-col items-center lg:hidden">
               <DuplaLogo className="h-14 w-auto max-w-[300px] object-contain" />
             </div>
 
-            <Card className="border-black/10 p-8 shadow-[0_8px_30px_rgba(0,0,0,0.06)] sm:p-9">
+            <Card className="border-black/10 p-9 shadow-[0_8px_30px_rgba(0,0,0,0.06)] sm:p-10">
               <header className="mb-8">
-                <h2 className="text-xl font-semibold tracking-tight text-ink">Iniciar sesión</h2>
+                <h2 className="text-2xl font-semibold tracking-tight text-ink">Iniciar sesión</h2>
                 <p className="du-meta mt-2 leading-relaxed">
                   Introduce el correo y la contraseña que te haya facilitado el administrador.
                 </p>

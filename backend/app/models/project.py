@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.domain.project_kind import ProjectKind
 from app.domain.workflow_phase import WorkflowPhase
 
 
@@ -18,6 +19,11 @@ class Project(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     client_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    project_kind: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=ProjectKind.RESIDENTIAL.value,
+    )
     status: Mapped[str] = mapped_column(String(50), default="DRAFT")
     workflow_phase: Mapped[str] = mapped_column(
         String(64),
@@ -33,6 +39,7 @@ class Project(Base):
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     creator: Mapped[Optional["User"]] = relationship(
         "User",
@@ -53,6 +60,11 @@ class Project(Base):
         back_populates="project",
         cascade="all, delete-orphan",
     )
+    file_folders: Mapped[list["ProjectFileFolder"]] = relationship(
+        "ProjectFileFolder",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
     architecture_revisions: Mapped[list["ArchitectureRevision"]] = relationship(
         "ArchitectureRevision",
         back_populates="project",
@@ -67,6 +79,12 @@ class Project(Base):
         "ProjectMember",
         back_populates="project",
         cascade="all, delete-orphan",
+    )
+    plan_delivery_requests: Mapped[list["PlanDeliveryRequest"]] = relationship(
+        "PlanDeliveryRequest",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        order_by="PlanDeliveryRequest.sequence_number",
     )
 
 

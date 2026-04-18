@@ -9,10 +9,14 @@ export type Project = {
   uuid: string
   name: string
   client_name: string | null
+  /** RESIDENTIAL = residencial, TENDER = licitación */
+  project_kind: string
   status: string
   workflow_phase: string
   workflow_meta: Record<string, unknown>
   project_bootstrap_criteria: BootstrapCriterion[]
   specifications_document: Record<string, unknown>
   created_by_user_uuid?: string | null
+  /** ISO 8601 — última actividad registrada en el proyecto */
+  updated_at: string
 }

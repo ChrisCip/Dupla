@@ -1,3 +1,4 @@
+import io
 import uuid
 
 import pytest
@@ -51,8 +52,8 @@ async def test_modules_cached_flow(client, auth_headers_async: dict[str, str]):
 async def test_coordinator_cannot_create_project(client, auth_headers_async: dict[str, str]):
     res = await client.post(
         "/api/projects",
-        headers={**auth_headers_async, "Content-Type": "application/json"},
-        json={"name": "No debe existir", "client_name": None},
+        headers=auth_headers_async,
+        data={"name": "No debe existir"},
     )
     assert res.status_code == 403
 
@@ -61,11 +62,12 @@ async def test_coordinator_cannot_create_project(client, auth_headers_async: dic
 async def test_project_architecture_flow(client, master_auth_headers_async: dict[str, str]):
     create = await client.post(
         "/api/projects",
-        headers={**master_auth_headers_async, "Content-Type": "application/json"},
-        json={"name": "Obra demo", "client_name": "Cliente"},
+        headers=master_auth_headers_async,
+        data={"name": "Obra demo", "client_name": "Cliente", "project_kind": "RESIDENTIAL"},
     )
     assert create.status_code == 201, create.text
     created = create.json()
+    assert created["project_kind"] == "RESIDENTIAL"
     assert created["workflow_phase"] == "BOOTSTRAPPING"
     pid = created["uuid"]
     project_uuid = uuid.UUID(pid)
@@ -115,13 +117,30 @@ async def test_project_architecture_flow(client, master_auth_headers_async: dict
 
 
 @pytest.mark.asyncio
+async def test_tender_project_starts_in_architecture_review_with_file(
+    client, master_auth_headers_async: dict[str, str]
+):
+    create = await client.post(
+        "/api/projects",
+        headers=master_auth_headers_async,
+        data={"name": "Licitación demo", "client_name": "Cliente", "project_kind": "TENDER"},
+        files=[("files", ("pliego.pdf", io.BytesIO(b"%PDF-1.4\n"), "application/pdf"))],
+    )
+    assert create.status_code == 201, create.text
+    created = create.json()
+    assert created["project_kind"] == "TENDER"
+    assert created["workflow_phase"] == "ARCHITECTURE_REVIEW"
+
+
+@pytest.mark.asyncio
 async def test_exports_return_bytes(client, master_auth_headers_async: dict[str, str]):
     create = await client.post(
         "/api/projects",
-        headers={**master_auth_headers_async, "Content-Type": "application/json"},
-        json={"name": "Export demo", "client_name": None},
+        headers=master_auth_headers_async,
+        data={"name": "Export demo", "project_kind": "RESIDENTIAL"},
     )
     assert create.status_code == 201
+    assert create.json()["project_kind"] == "RESIDENTIAL"
     assert create.json()["workflow_phase"] == "BOOTSTRAPPING"
     pid = uuid.UUID(create.json()["uuid"])
 

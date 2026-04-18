@@ -18,6 +18,19 @@ PLIEGO_TEMPLATE_FILENAMES: tuple[str, ...] = (
     "GA-FO-01-pliego.xlsx",
 )
 
+RESUMEN_SHEET_NAME = "RESUMEN"
+# Hoja RESUMEN GA-FO-01: columna A = N.º partida; D = Estado; F = Observaciones
+RESUMEN_COL_ESTADO = 4
+RESUMEN_COL_OBSERVACIONES = 6
+
+GA_FO_01_ESTADO_LABELS: dict[str, str] = {
+    "PENDIENTE": "Pendiente",
+    "COMPLETO": "Completo",
+    "INCOMPLETO": "Incompleto",
+    "EN_REVISION": "En revisión",
+    "NO_APLICA": "No aplica",
+}
+
 # (campo_payload, palabras clave en cabecera normalizada)
 HEADER_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("partida", ("partida", "item", "item.", "n°", "nº", "no.", "cod", "codigo", "código")),
@@ -35,6 +48,13 @@ HEADER_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
 def resolve_pliego_template_path(templates_dir: Path) -> Optional[Path]:
     for name in PLIEGO_TEMPLATE_FILENAMES:
         p = templates_dir / name
+        if p.is_file():
+            return p
+    # Repo: docs/provided_docs (plantilla oficial si aún no está copiada a app/templates)
+    repo_root = Path(__file__).resolve().parent.parent.parent.parent
+    docs_provided = repo_root / "docs" / "provided_docs"
+    for name in PLIEGO_TEMPLATE_FILENAMES:
+        p = docs_provided / name
         if p.is_file():
             return p
     return None
@@ -208,6 +228,68 @@ def _write_section(
         ws.cell(row=row, column=col_map["descripcion"], value=label)
         return
     ws.cell(row=row, column=1, value=label)
+
+
+def _lookup_ga_fo_01_item_state(cell_a: Any, item_states: dict[str, Any]) -> Optional[dict[str, Any]]:
+    if cell_a is None:
+        return None
+    if isinstance(cell_a, float):
+        s = str(cell_a).rstrip("0").rstrip(".") if cell_a == int(cell_a) else str(cell_a)
+    else:
+        s = str(cell_a).strip()
+    if not s:
+        return None
+    candidates = [s, s.rstrip("."), s if s.endswith(".") else f"{s}."]
+    for key in candidates:
+        if key in item_states:
+            row = item_states[key]
+            return row if isinstance(row, dict) else None
+    return None
+
+
+def _export_estado_label(raw: Any) -> str:
+    if raw is None:
+        return ""
+    code = str(raw).strip().upper()
+    return GA_FO_01_ESTADO_LABELS.get(code, str(raw).strip())
+
+
+def fill_resumen_pliego_ga_fo_01(wb: Workbook, item_states: dict[str, Any]) -> bool:
+    """
+    Escribe estado y observaciones en la hoja RESUMEN del Excel oficial,
+    emparejando la columna A (N.º) con las claves del JSON guardado en la app.
+    """
+    if not item_states:
+        return False
+    if RESUMEN_SHEET_NAME not in wb.sheetnames:
+        return False
+    ws = wb[RESUMEN_SHEET_NAME]
+    filled = 0
+    for row in range(1, ws.max_row + 1):
+        cell_a = ws.cell(row=row, column=1)
+        if isinstance(cell_a, MergedCell):
+            continue
+        st = _lookup_ga_fo_01_item_state(cell_a.value, item_states)
+        if st is None:
+            continue
+        estado = _export_estado_label(st.get("estado"))
+        obs_parts: list[str] = []
+        notas = st.get("notas")
+        if isinstance(notas, str) and notas.strip():
+            obs_parts.append(notas.strip())
+        fn = st.get("file_name")
+        if isinstance(fn, str) and fn.strip():
+            obs_parts.append(f"Archivo adjunto: {fn.strip()}")
+        observaciones = "\n".join(obs_parts) if obs_parts else ""
+
+        c_est = ws.cell(row=row, column=RESUMEN_COL_ESTADO)
+        if not isinstance(c_est, MergedCell):
+            c_est.value = estado
+        c_obs = ws.cell(row=row, column=RESUMEN_COL_OBSERVACIONES)
+        if not isinstance(c_obs, MergedCell):
+            c_obs.value = observaciones
+        filled += 1
+    return filled > 0
 
 
 def fill_pliego_workbook(wb: Workbook, payload: dict[str, Any]) -> bool:

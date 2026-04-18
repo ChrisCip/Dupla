@@ -11,17 +11,24 @@
   --font-sans: ui-sans-serif, system-ui, sans-serif;
 }
 
+html {
+  font-size: clamp(0.9375rem, 0.88rem + 0.35vw, 1.125rem);
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-surface);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  line-height: 1.55;
 }
 
 @layer components {
   .du-input {
-    @apply w-full rounded-md border border-black/15 bg-white px-3 py-2 text-sm text-ink outline-none transition-[border-color,box-shadow,background-color] duration-150;
+    @apply w-full rounded-md border border-black/15 bg-white px-3.5 py-2.5 text-base text-ink outline-none transition-[border-color,box-shadow,background-color] duration-150;
   }
   .du-input:hover:not(:disabled):not(:focus-visible) {
     @apply border-black/25;
@@ -33,10 +40,10 @@ body {
     @apply cursor-not-allowed bg-black/[0.03] text-muted;
   }
   .du-label {
-    @apply block text-sm font-medium text-ink;
+    @apply block text-base font-medium text-ink;
   }
   .du-meta {
-    @apply text-xs text-muted;
+    @apply text-sm text-muted;
   }
   .du-link {
     @apply rounded-sm font-semibold text-primary underline-offset-2 outline-none transition-colors duration-150 hover:underline;
@@ -48,10 +55,10 @@ body {
     @apply text-primary/85;
   }
   .du-callout {
-    @apply rounded-lg border border-primary/20 bg-primary/[0.06] px-4 py-3 text-sm text-ink;
+    @apply rounded-lg border border-primary/20 bg-primary/[0.06] px-5 py-4 text-base text-ink;
   }
   .du-pill-action {
-    @apply inline-flex items-center rounded-md border border-black/12 bg-white px-3 py-1.5 text-sm font-medium text-ink shadow-sm outline-none transition-[border-color,background-color,box-shadow] duration-150 hover:border-black/20 hover:bg-black/[0.02] active:bg-black/[0.04];
+    @apply inline-flex items-center rounded-md border border-black/12 bg-white px-3.5 py-2 text-base font-medium text-ink shadow-sm outline-none transition-[border-color,background-color,box-shadow] duration-150 hover:border-black/20 hover:bg-black/[0.02] active:bg-black/[0.04];
   }
   .du-pill-action:focus-visible {
     @apply ring-2 ring-primary/30 ring-offset-2 ring-offset-[var(--color-surface)];

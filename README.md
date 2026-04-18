@@ -2,6 +2,8 @@
 
 Monorepo: **FastAPI** (PostgreSQL + Redis) + **Vite/React** (Tailwind, Zod, Zustand).
 
+**Documentación:** índice general, módulos y referencia técnica en **[`docs/README.md`](docs/README.md)** (incluye [`docs/TECHNICAL.md`](docs/TECHNICAL.md) y [`docs/modules/`](docs/modules/)).
+
 ## Requisitos
 
 - **Docker + Docker Compose** (recomendado para demo completa)
@@ -18,11 +20,11 @@ docker compose up --build
 
 Usuarios semilla (tras `python -m app.seed` o el entrypoint Docker del backend):
 
-| Usuario | Contraseña | Rol | Uso |
-|--------|------------|-----|-----|
-| `master@dupla.demo` | `master123` | MASTER | Administración de usuarios; tablero solo lectura |
-| `tester@dupla.demo` | `testpass123` | COORDINATOR | Proyectos, chat, tablero con escritura |
-| `worker@dupla.demo` | `workerpass123` | WORKER | Proyectos, chat, tablero con escritura |
+| Usuario | Nombre | Contraseña | Rol | Uso |
+|---------|--------|------------|-----|-----|
+| `master@dupla.demo` | María López | `master123` | GERENCIA | Administración de usuarios; visión global |
+| `tester@dupla.demo` | Carlos Ruiz | `testpass123` | CONTROL | Coordinación de proyectos, chat, tablero |
+| `worker@dupla.demo` | Ana Martín | `workerpass123` | PRESUPUESTO | Operación de proyecto, chat, tablero |
 
 El seed es **idempotente**: si ya existía `master@dupla.demo` de una versión anterior, al volver a ejecutar el seed se añaden `tester` y `worker` si faltan.
 
@@ -97,4 +99,6 @@ Si no hay Postgres local, los tests se saltan con un mensaje explícito.
 - `backend/app/routes` — rutas HTTP
 - `backend/app/services` — reglas de negocio
 - `backend/app/repositories` — acceso a datos
+- `backend/app/domain` — enums y reglas compartidas (workflow, tipos de archivo, etc.)
 - `frontend/src` — UI, stores Zustand, esquemas Zod
+- `docs/` — documentación de producto ([`docs/README.md`](docs/README.md)) y por módulo ([`docs/modules/`](docs/modules/))

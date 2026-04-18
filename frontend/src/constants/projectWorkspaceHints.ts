@@ -1,16 +1,7 @@
 export type PhaseHint = {
   title: string
   body: string
-  tabId:
-    | 'detalles'
-    | 'flujo'
-    | 'archivos'
-    | 'revisiones'
-    | 'especificaciones'
-    | 'presupuesto'
-    | 'eventos'
-    | 'pliegos'
-    | 'materiales'
+  tabId: 'resumen' | 'flujo' | 'documentos' | 'revisiones' | 'historial'
   cta: string
 }
 
@@ -23,15 +14,9 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
   },
   AWAITING_FILES: {
     title: 'Subir archivos',
-    body: 'Carga DWG/DXF o adjuntos en Archivos. Cuando estén cargados, avanza la fase.',
-    tabId: 'archivos',
+    body: 'Carga DWG/DXF o adjuntos en Archivos. Con al menos un archivo cargado, puedes avanzar a revisión de arquitectura.',
+    tabId: 'documentos',
     cta: 'Ir a Archivos',
-  },
-  FILES_INGESTED: {
-    title: 'Archivos listos',
-    body: 'Revisa que los planos estén correctos y continúa hacia revisión de arquitectura.',
-    tabId: 'flujo',
-    cta: 'Ir a Flujo',
   },
   ARCHITECTURE_REVIEW: {
     title: 'Revisión de arquitectura',
@@ -42,19 +27,31 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
   SPECIFICATIONS: {
     title: 'Pliego de condiciones',
     body: 'Aquí se documenta el pliego de condiciones: es el paso obligatorio antes del presupuesto. Redacta el resumen (mín. 10 caracteres) y guarda; luego podrás avanzar la fase a Presupuesto.',
-    tabId: 'especificaciones',
-    cta: 'Ir a pliego de condiciones',
+    tabId: 'flujo',
+    cta: 'Ir a Flujo — pliego',
   },
   BUDGETING_PIPELINE: {
     title: 'Pipeline de presupuesto',
     body: 'Con el pliego de condiciones cerrado, trabaja cotizaciones, volumetría y análisis; registra subcontratos si aplica.',
-    tabId: 'presupuesto',
-    cta: 'Ir a Presupuesto',
+    tabId: 'flujo',
+    cta: 'Ir a Flujo — presupuesto',
+  },
+  MANAGEMENT_APPROVAL: {
+    title: 'Aprobación de gerencia',
+    body: 'El presupuesto interno está listo: validación formal de gerencia antes de registrar la versión aprobada por el cliente.',
+    tabId: 'flujo',
+    cta: 'Ir a Flujo',
   },
   BUDGET_APPROVED: {
-    title: 'Pliego y materiales',
-    body: 'Arma secciones (tiradas / planos / fases) en Pliegos y la cubicación en Materiales. Exporta Excel/PDF cuando convenga.',
-    tabId: 'pliegos',
+    title: 'Presupuesto aprobado',
+    body: 'Continúa con pliegos y materiales; cuando el proyecto esté cerrado, avanza a la fase final «Completo».',
+    tabId: 'documentos',
     cta: 'Ir a Pliegos',
+  },
+  COMPLETE: {
+    title: 'Proyecto completo',
+    body: 'Fase final. Puedes consultar archivos, exportaciones e historial del proyecto.',
+    tabId: 'flujo',
+    cta: 'Ir a Flujo',
   },
 }

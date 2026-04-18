@@ -19,6 +19,7 @@ from app.models.chat_conversation import (
     ChatConversationKind,
 )
 from app.models.module import Module
+from app.models.plan_delivery_request import PlanDeliveryRequest  # noqa: F401 — metadata for create_all
 from app.models.project_member import ProjectMember  # noqa: F401 — metadata for create_all
 from app.models.task_board import TaskList
 from app.models.user import User, UserModule, UserRole
@@ -64,7 +65,7 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
         await s.execute(
             text(
                 "TRUNCATE subcontract_quote_lines, subcontract_quotes, user_notifications, architecture_revisions, "
-                "project_files, project_events, project_members, chat_messages, chat_conversation_members, chat_conversations, "
+                "plan_delivery_requests, project_files, project_events, project_members, chat_messages, chat_conversation_members, chat_conversations, "
                 "task_cards, task_lists, project_architecture_data, projects, user_modules, users, modules "
                 "RESTART IDENTITY CASCADE"
             )
@@ -81,16 +82,30 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
         )
         s.add(
             TaskList(
+                id=uuid.UUID("a0000001-0000-4000-8000-000000000004"),
+                title="Bloqueado",
+                position=1,
+            )
+        )
+        s.add(
+            TaskList(
                 id=uuid.UUID("a0000001-0000-4000-8000-000000000002"),
                 title="En progreso",
-                position=1,
+                position=2,
+            )
+        )
+        s.add(
+            TaskList(
+                id=uuid.UUID("a0000001-0000-4000-8000-000000000005"),
+                title="En revisión",
+                position=3,
             )
         )
         s.add(
             TaskList(
                 id=uuid.UUID("a0000001-0000-4000-8000-000000000003"),
                 title="Hecho",
-                position=2,
+                position=4,
             )
         )
         master_id = uuid.uuid4()
@@ -98,8 +113,10 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
             User(
                 id=master_id,
                 email="master@dupla.demo",
+                first_name="María",
+                last_name="López",
                 password_hash=hash_password("master123"),
-                role=UserRole.MASTER,
+                role=UserRole.GERENCIA,
             )
         )
         s.add(UserModule(user_id=master_id, module_id=MODULE_ID))
@@ -108,8 +125,10 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
             User(
                 id=tester_id,
                 email="tester@dupla.demo",
+                first_name="Carlos",
+                last_name="Ruiz",
                 password_hash=hash_password("testpass123"),
-                role=UserRole.COORDINATOR,
+                role=UserRole.CONTROL,
             )
         )
         s.add(UserModule(user_id=tester_id, module_id=MODULE_ID))
@@ -118,8 +137,10 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
             User(
                 id=worker_id,
                 email="worker@dupla.demo",
+                first_name="Ana",
+                last_name="Martín",
                 password_hash=hash_password("workerpass123"),
-                role=UserRole.WORKER,
+                role=UserRole.PRESUPUESTO,
             )
         )
         s.add(UserModule(user_id=worker_id, module_id=MODULE_ID))
@@ -152,7 +173,7 @@ async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture()
 async def auth_headers_async(client: AsyncClient) -> dict[str, str]:
-    """COORDINATOR (tester): proyectos, chat, tablero con escritura."""
+    """Control (tester): proyectos, chat, tablero con escritura."""
     res = await client.post(
         "/api/auth/token",
         data={"username": "tester@dupla.demo", "password": "testpass123"},
@@ -164,7 +185,7 @@ async def auth_headers_async(client: AsyncClient) -> dict[str, str]:
 
 @pytest_asyncio.fixture()
 async def master_auth_headers_async(client: AsyncClient) -> dict[str, str]:
-    """MASTER: administración y tablero solo lectura."""
+    """Gerencia: administración y acceso completo al tablero."""
     res = await client.post(
         "/api/auth/token",
         data={"username": "master@dupla.demo", "password": "master123"},

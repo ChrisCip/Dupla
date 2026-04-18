@@ -1,32 +1,58 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
-import { Card } from '../components/Card'
-import { PrimaryButton } from '../components/PrimaryButton'
-import { WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
+import { CreateProjectModal } from '../components/projects/CreateProjectModal'
+import { ProjectsBoardView } from '../components/projects/ProjectsBoardView'
+import { ProjectsListView } from '../components/projects/ProjectsListView'
+import { PROJECT_CARD_MIME } from '../constants/projectsPage'
+import {
+  NEXT_WORKFLOW_PHASE,
+  PREV_WORKFLOW_PHASE,
+} from '../constants/workflowPhases'
 import type { Project } from '../types/project'
 import { useAuthStore } from '../store/authStore'
+import type { ProjectKindValue } from '../constants/projectKind'
 
 export function ProjectsPage() {
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)
   const role = useAuthStore((s) => s.role)
+  const userUuid = useAuthStore((s) => s.userUuid)
   const [projects, setProjects] = useState<Project[]>([])
   const [name, setName] = useState('Nuevo proyecto')
   const [client, setClient] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [createMembers, setCreateMembers] = useState<Set<string>>(new Set())
+  const [adminUsersCreate, setAdminUsersCreate] = useState<
+    { uuid: string; email: string; first_name: string; last_name: string }[]
+  >([])
+  const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [loadingList, setLoadingList] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const feedbackClearRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [viewMode, setViewMode] = useState<'lista' | 'tablero'>('tablero')
+  const [boardMsg, setBoardMsg] = useState<string | null>(null)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [projectKind, setProjectKind] = useState<ProjectKindValue>('RESIDENTIAL')
+  const [createFiles, setCreateFiles] = useState<File[]>([])
+  const [projectSearch, setProjectSearch] = useState('')
+  const dragRef = useRef(false)
+
+  const filteredProjects = useMemo(() => {
+    const q = projectSearch.trim().toLowerCase()
+    if (!q) return projects
+    return projects.filter((p) => p.name.toLowerCase().includes(q))
+  }, [projects, projectSearch])
 
   const refresh = useCallback(async () => {
     if (!token) return
-    setError(null)
+    setProjectsLoadError(null)
     const res = await apiFetch('/api/projects', { token })
     if (!res.ok) {
-      setError('No se pudieron cargar proyectos')
+      setProjectsLoadError('No se pudieron cargar proyectos')
       return
     }
     setProjects((await res.json()) as Project[])
@@ -46,49 +72,149 @@ export function ProjectsPage() {
   }, [refresh])
 
   useEffect(() => {
+    if (role !== 'GERENCIA' || !token) return
+    let cancelled = false
+    void (async () => {
+      const u = await apiFetch('/api/admin/users', { token })
+      if (cancelled || !u.ok) return
+      setAdminUsersCreate(
+        (await u.json()) as { uuid: string; email: string; first_name: string; last_name: string }[],
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [role, token])
+
+  useEffect(() => {
     return () => {
       if (feedbackClearRef.current) clearTimeout(feedbackClearRef.current)
     }
   }, [])
 
-  async function createProject(e: React.FormEvent) {
-    e.preventDefault()
+  useEffect(() => {
+    if (!createModalOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setCreateModalOpen(false)
+        setCreateError(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [createModalOpen])
+
+  function closeCreateModal() {
+    setCreateModalOpen(false)
+    setCreateError(null)
+  }
+
+  async function createProject(e?: React.FormEvent) {
+    e?.preventDefault()
     if (!token) return
-    setError(null)
+    setCreateError(null)
+    if (projectKind === 'TENDER' && createFiles.length === 0) {
+      setCreateError('Los proyectos de licitación requieren al menos un archivo al crear.')
+      return
+    }
     setSubmitting(true)
     try {
+      const fd = new FormData()
+      fd.append('name', name.trim())
+      fd.append('client_name', client.trim())
+      fd.append('project_kind', projectKind)
+      if (role === 'GERENCIA' && createMembers.size > 0) {
+        fd.append('member_user_uuids', JSON.stringify(Array.from(createMembers)))
+      }
+      for (const f of createFiles) {
+        fd.append('files', f)
+      }
       const res = await apiFetch('/api/projects', {
         method: 'POST',
         token,
-        body: JSON.stringify({ name, client_name: client || null }),
+        body: fd,
       })
       if (!res.ok) {
-        setError('No se pudo crear el proyecto')
+        const j = await res.json().catch(() => ({}))
+        setCreateError((j as { detail?: string }).detail ?? 'No se pudo crear el proyecto')
         return
       }
-      setFeedback('Proyecto creado. Ábrelo en la tabla (fila o enlace) o crea otro.')
+      setFeedback('Proyecto creado. Ábrelo en la tabla o en el tablero, o crea otro.')
       if (feedbackClearRef.current) clearTimeout(feedbackClearRef.current)
       feedbackClearRef.current = setTimeout(() => setFeedback(null), 6000)
       setName('Nuevo proyecto')
       setClient('')
+      setProjectKind('RESIDENTIAL')
+      setCreateFiles([])
+      setCreateMembers(new Set())
+      closeCreateModal()
       await refresh()
     } finally {
       setSubmitting(false)
     }
   }
 
+  async function transitionProjectOnBoard(p: Project, targetPhase: string) {
+    if (!token) return
+    const next = NEXT_WORKFLOW_PHASE[p.workflow_phase]
+    const prev = PREV_WORKFLOW_PHASE[p.workflow_phase]
+    if (next !== targetPhase && prev !== targetPhase) {
+      setBoardMsg('Solo puedes mover el proyecto a la fase inmediatamente anterior o siguiente.')
+      return
+    }
+    setBoardMsg(null)
+    const res = await apiFetch(`/api/projects/${p.uuid}/transitions`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ target_phase: targetPhase }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setBoardMsg((j as { detail?: string }).detail ?? 'No se pudo actualizar la fase')
+      return
+    }
+    await refresh()
+  }
+
+  function onDragEndBoard() {
+    window.setTimeout(() => {
+      dragRef.current = false
+    }, 0)
+  }
+
+  function onDragStartProject(e: React.DragEvent, projectUuid: string) {
+    dragRef.current = true
+    e.dataTransfer.setData(PROJECT_CARD_MIME, projectUuid)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function onDragOverBoard(e: React.DragEvent) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  function onDropOnPhaseColumn(e: React.DragEvent, phaseKey: string) {
+    e.preventDefault()
+    const id = e.dataTransfer.getData(PROJECT_CARD_MIME)
+    if (!id) return
+    const p = projects.find((x) => x.uuid === id)
+    if (!p) return
+    void transitionProjectOnBoard(p, phaseKey)
+  }
+
+  function openCard(projectUuid: string) {
+    if (dragRef.current) return
+    navigate(`/app/projects/${projectUuid}`)
+  }
+
   return (
-    <>
-      <div
-        className="sr-only"
-        aria-live="polite"
-        aria-atomic="true"
-      >
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
         {feedback ?? ''}
       </div>
       {feedback ? (
         <div
-          className="du-callout mb-6 flex flex-wrap items-center justify-between gap-3 border-primary/25"
+          className="du-callout flex flex-wrap items-center justify-between gap-3 border-primary/25"
           role="status"
         >
           <span>{feedback}</span>
@@ -101,156 +227,119 @@ export function ProjectsPage() {
           </button>
         </div>
       ) : null}
-      <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold text-ink">Proyectos</h1>
-          <p className="mt-2 max-w-prose text-sm text-muted">
-            Cada proyecto tiene un workspace con flujo por fases, archivos, pliego exportable y materiales.
+      <div className="flex shrink-0 flex-col gap-4">
+        <div className="min-w-0">
+          <h1 className="text-3xl font-semibold text-ink md:text-4xl">Proyectos</h1>
+          <p className="mt-3 text-lg text-muted md:text-xl">
+            {role === 'GERENCIA'
+              ? 'Tablero de proyectos. Arrastra una tarjeta a la columna de al lado para ir a la fase anterior o siguiente.'
+              : 'Proyectos a los que tienes acceso.'}
           </p>
-          <ol className="mt-5 max-w-md list-none space-y-2 border-l-2 border-primary/25 pl-4 text-sm text-ink">
-            <li>
-              <span className="font-semibold text-primary">1.</span>{' '}
-              {role === 'MASTER' ? (
-                <>
-                  Completa el nombre (y el cliente si quieres) y crea el proyecto.
-                </>
-              ) : (
-                <>
-                  Solo un administrador crea proyectos; los que te asignen aparecen en la tabla.
-                </>
-              )}
-            </li>
-            <li>
-              <span className="font-semibold text-primary">2.</span> En la tabla, abre el workspace con un clic en la
-              fila o en «Abrir».
-            </li>
-            <li>
-              <span className="font-semibold text-primary">3.</span> Sigue la pestaña <strong>Flujo</strong> y el aviso
-              de «siguiente paso» arriba del workspace.
-            </li>
-          </ol>
-        </div>
-        {role === 'MASTER' ? (
-          <Card className="w-full max-w-md p-4 shadow-md ring-1 ring-black/[0.04]">
-            <form onSubmit={createProject} className="space-y-3">
-              <div className="text-sm font-semibold text-ink">Nuevo proyecto</div>
-              <p className="du-meta leading-relaxed">
-                El nombre puede ser el código interno o la obra; el cliente ayuda a filtrar después.
-              </p>
-              <div>
-                <label htmlFor="project-name" className="du-label">
-                  Nombre
-                </label>
-                <input
-                  id="project-name"
-                  className="du-input mt-1"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  aria-label="Nombre del proyecto"
-                  disabled={submitting}
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="project-client" className="du-label">
-                  Cliente <span className="font-normal text-muted">(opcional)</span>
-                </label>
-                <input
-                  id="project-client"
-                  className="du-input mt-1"
-                  placeholder="Ej. Constructora …"
-                  value={client}
-                  onChange={(e) => setClient(e.target.value)}
-                  aria-label="Cliente"
-                  disabled={submitting}
-                />
-              </div>
-              {error ? <p className="text-sm font-medium text-primary">{error}</p> : null}
-              <PrimaryButton className="w-full" type="submit" disabled={submitting}>
-                {submitting ? 'Creando…' : 'Crear proyecto'}
-              </PrimaryButton>
-            </form>
-          </Card>
-        ) : (
-          <Card className="w-full max-w-md p-4 text-sm text-muted shadow-md ring-1 ring-black/[0.04]">
-            <p className="font-medium text-ink">Acceso a proyectos</p>
-            <p className="mt-2 leading-relaxed">
-              Un administrador debe crear el proyecto y asignarte acceso. Después lo verás en la tabla y podrás abrir el
-              workspace, el tablero de tareas y el chat.
+          {projectsLoadError ? (
+            <p className="mt-2 text-sm font-medium text-primary" role="alert">
+              {projectsLoadError}
             </p>
-          </Card>
-        )}
+          ) : null}
+        </div>
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Buscar proyecto por nombre</span>
+            <input
+              type="search"
+              className="du-input h-9 w-full rounded-lg border-black/10 py-0 text-sm placeholder:text-muted/90"
+              placeholder="Buscar por nombre…"
+              value={projectSearch}
+              onChange={(e) => setProjectSearch(e.target.value)}
+              autoComplete="off"
+              aria-label="Buscar proyecto por nombre"
+            />
+          </label>
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+            <div
+              className="inline-flex h-9 shrink-0 items-stretch gap-0.5 rounded-lg border border-black/10 bg-white p-0.5 text-xs shadow-[var(--shadow-card)]"
+              role="group"
+              aria-label="Vista de proyectos"
+            >
+              <button
+                type="button"
+                className={`flex min-w-0 flex-1 items-center justify-center rounded-md px-2.5 font-medium transition-colors sm:px-3 ${
+                  viewMode === 'tablero' ? 'bg-primary/12 text-ink ring-1 ring-primary/25' : 'text-muted hover:text-ink'
+                }`}
+                onClick={() => setViewMode('tablero')}
+              >
+                Tablero
+              </button>
+              <button
+                type="button"
+                className={`flex min-w-0 flex-1 items-center justify-center rounded-md px-2.5 font-medium transition-colors sm:px-3 ${
+                  viewMode === 'lista' ? 'bg-primary/12 text-ink ring-1 ring-primary/25' : 'text-muted hover:text-ink'
+                }`}
+                onClick={() => setViewMode('lista')}
+              >
+                Lista
+              </button>
+            </div>
+            {role === 'GERENCIA' ? (
+              <button
+                type="button"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold tracking-normal text-white shadow-sm outline-none transition-[opacity,transform] hover:opacity-[0.92] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
+                onClick={() => {
+                  setCreateError(null)
+                  setCreateModalOpen(true)
+                }}
+              >
+                <Plus className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                Nuevo proyecto
+              </button>
+            ) : null}
+          </div>
+        </div>
       </div>
 
-      <Card className="mt-10 overflow-hidden p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-black/4 text-xs uppercase text-muted">
-              <tr>
-                <th className="px-4 py-3">Nombre</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Fase</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {loadingList ? (
-                <tr>
-                  <td className="border-l-4 border-l-primary bg-primary/[0.04] px-4 py-4 text-sm text-muted" colSpan={4}>
-                    Cargando lista de proyectos…
-                  </td>
-                </tr>
-              ) : null}
-              {!loadingList &&
-                projects.map((p) => (
-                  <tr
-                    key={p.uuid}
-                    tabIndex={0}
-                    className="cursor-pointer border-t border-black/5 transition-colors duration-150 hover:bg-black/[0.04] focus-visible:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary/40"
-                    onClick={() => navigate(`/app/projects/${p.uuid}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        navigate(`/app/projects/${p.uuid}`)
-                      }
-                    }}
-                  >
-                    <td className="px-4 py-3 font-medium text-ink">{p.name}</td>
-                    <td className="px-4 py-3 text-muted">{p.client_name ?? '—'}</td>
-                    <td className="px-4 py-3 text-muted">
-                      <span className="rounded-md bg-black/[0.06] px-2 py-0.5 text-xs font-medium text-ink">
-                        {WORKFLOW_PHASE_LABELS[p.workflow_phase] ?? p.workflow_phase}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        className="du-link text-sm"
-                        to={`/app/projects/${p.uuid}`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Abrir workspace →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              {!loadingList && projects.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-10" colSpan={4}>
-                    <div className="mx-auto max-w-md rounded-lg border border-dashed border-black/15 bg-black/[0.02] px-6 py-8 text-center">
-                      <p className="text-sm font-medium text-ink">Todavía no hay proyectos</p>
-                      <p className="mt-2 text-sm text-muted">
-                        {role === 'MASTER'
-                          ? 'Usa el formulario de la derecha (o arriba en el móvil): nombre obligatorio, cliente opcional. Después el proyecto aparece aquí para abrir el workspace.'
-                          : 'Cuando un administrador te dé acceso, el proyecto aparecerá aquí.'}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </>
+      {viewMode === 'lista' ? (
+        <ProjectsListView
+          loadingList={loadingList}
+          projects={projects}
+          filteredProjects={filteredProjects}
+          projectSearch={projectSearch}
+          role={role}
+          onNavigateProject={(uuid) => navigate(`/app/projects/${uuid}`)}
+        />
+      ) : (
+        <ProjectsBoardView
+          loadingList={loadingList}
+          projects={projects}
+          filteredProjects={filteredProjects}
+          projectSearch={projectSearch}
+          boardMsg={boardMsg}
+          onDropOnPhaseColumn={onDropOnPhaseColumn}
+          onDragOverBoard={onDragOverBoard}
+          onDragStartProject={onDragStartProject}
+          onDragEndBoard={onDragEndBoard}
+          onOpenCard={openCard}
+        />
+      )}
+
+      {createModalOpen && role === 'GERENCIA' ? (
+        <CreateProjectModal
+          onClose={closeCreateModal}
+          onSubmit={createProject}
+          name={name}
+          setName={setName}
+          client={client}
+          setClient={setClient}
+          projectKind={projectKind}
+          setProjectKind={setProjectKind}
+          createFiles={createFiles}
+          setCreateFiles={setCreateFiles}
+          createMembers={createMembers}
+          setCreateMembers={setCreateMembers}
+          adminUsersCreate={adminUsersCreate}
+          userUuid={userUuid}
+          error={createError}
+          submitting={submitting}
+        />
+      ) : null}
+    </div>
   )
 }

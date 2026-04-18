@@ -65,5 +65,7 @@ class ChatConversationMember(Base):
         primary_key=True,
     )
 
+    last_read_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     conversation: Mapped["ChatConversation"] = relationship(back_populates="members")
     user: Mapped["User"] = relationship()

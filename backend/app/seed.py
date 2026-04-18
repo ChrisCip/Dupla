@@ -23,11 +23,11 @@ _MISSING_SCHEMA_HINT = (
     "Luego vuelve a ejecutar: python -m app.seed"
 )
 
-# Demo users: MASTER (admin + tablero lectura), COORDINATOR (tablero y proyectos), WORKER (operario).
-SEED_USERS: Tuple[Tuple[str, str, UserRole], ...] = (
-    ("master@dupla.demo", "master123", UserRole.MASTER),
-    ("tester@dupla.demo", "testpass123", UserRole.COORDINATOR),
-    ("worker@dupla.demo", "workerpass123", UserRole.WORKER),
+# Demo: Gerencia (admin total), Control (proyectos), Presupuesto (operario ejemplo).
+SEED_USERS: Tuple[Tuple[str, str, str, str, UserRole], ...] = (
+    ("master@dupla.demo", "María", "López", "master123", UserRole.GERENCIA),
+    ("tester@dupla.demo", "Carlos", "Ruiz", "testpass123", UserRole.CONTROL),
+    ("worker@dupla.demo", "Ana", "Martín", "workerpass123", UserRole.PRESUPUESTO),
 )
 
 
@@ -64,7 +64,14 @@ async def _ensure_general_conversation(session) -> None:
     )
 
 
-async def _ensure_user(session, email: str, password_plain: str, role: UserRole) -> None:
+async def _ensure_user(
+    session,
+    email: str,
+    first_name: str,
+    last_name: str,
+    password_plain: str,
+    role: UserRole,
+) -> None:
     result = await session.execute(select(User).where(User.email == email))
     if result.scalar_one_or_none() is not None:
         return
@@ -73,6 +80,8 @@ async def _ensure_user(session, email: str, password_plain: str, role: UserRole)
         User(
             id=uid,
             email=email,
+            first_name=first_name,
+            last_name=last_name,
             password_hash=hash_password(password_plain),
             role=role,
         )
@@ -87,8 +96,8 @@ async def _seed_impl() -> None:
         await session.commit()
 
     async with AsyncSessionLocal() as session:
-        for email, password_plain, role in SEED_USERS:
-            await _ensure_user(session, email, password_plain, role)
+        for email, first_name, last_name, password_plain, role in SEED_USERS:
+            await _ensure_user(session, email, first_name, last_name, password_plain, role)
         await session.commit()
 
 

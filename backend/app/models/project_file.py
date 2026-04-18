@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.project import Project
+    from app.models.project_file_folder import ProjectFileFolder
     from app.models.user import User
 
 
@@ -29,6 +30,15 @@ class ProjectFile(Base):
     original_name: Mapped[str] = mapped_column(String(512), nullable=False)
     mime: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     category: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    folder_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("project_file_folders.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    description: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
+    discipline: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    ingest_status: Mapped[str] = mapped_column(String(20), nullable=False, default="PUBLISHED")
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -37,4 +47,5 @@ class ProjectFile(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     project: Mapped["Project"] = relationship(back_populates="files")
+    folder: Mapped[Optional["ProjectFileFolder"]] = relationship(back_populates="files")
     creator: Mapped[Optional["User"]] = relationship()

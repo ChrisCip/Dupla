@@ -12,12 +12,13 @@ type Props = {
 
 export function Tabs({ tabs, value, onChange, children, labelledBy }: Props) {
   return (
-    <div>
-      <div
-        className="flex flex-wrap gap-1 border-b border-black/10"
-        role="tablist"
-        aria-labelledby={labelledBy}
-      >
+    <div className="min-w-0">
+      <div className="overflow-x-auto overflow-y-hidden border-b border-black/10 [scrollbar-width:thin]">
+        <div
+          className="flex min-w-0 flex-nowrap gap-1"
+          role="tablist"
+          aria-labelledby={labelledBy}
+        >
         {tabs.map((t) => {
           const selected = t.id === value
           return (
@@ -28,7 +29,7 @@ export function Tabs({ tabs, value, onChange, children, labelledBy }: Props) {
               aria-selected={selected}
               id={`tab-${t.id}`}
               tabIndex={selected ? 0 : -1}
-              className={`relative -mb-px border-b-2 px-4 py-3 text-sm font-medium outline-none transition-colors duration-150 ${
+              className={`relative -mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-base font-medium outline-none transition-colors duration-150 md:px-5 md:py-3.5 ${
                 selected
                   ? 'border-primary bg-primary/[0.06] text-ink'
                   : 'border-transparent text-muted hover:bg-black/[0.04] hover:text-ink active:bg-black/[0.06]'
@@ -39,11 +40,12 @@ export function Tabs({ tabs, value, onChange, children, labelledBy }: Props) {
             </button>
           )
         })}
+        </div>
       </div>
       <div
         role="tabpanel"
         aria-labelledby={`tab-${value}`}
-        className="pt-8"
+        className="pt-5 md:pt-7 lg:pt-9"
       >
         {children}
       </div>

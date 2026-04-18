@@ -2,8 +2,9 @@ from collections.abc import Sequence
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.user import User, UserModule, UserRole
 
@@ -17,7 +18,9 @@ class UserRepository:
         return result.scalar_one_or_none()
 
     async def get_by_uuid(self, user_uuid: UUID) -> Optional[User]:
-        result = await self._session.execute(select(User).where(User.id == user_uuid))
+        result = await self._session.execute(
+            select(User).options(selectinload(User.modules)).where(User.id == user_uuid),
+        )
         return result.scalar_one_or_none()
 
     async def has_module(self, user_uuid: UUID, module_id: int) -> bool:
@@ -30,8 +33,13 @@ class UserRepository:
         return result.scalar_one_or_none() is not None
 
     async def list_all_ordered(self) -> Sequence[User]:
-        result = await self._session.execute(select(User).order_by(User.email))
-        return result.scalars().all()
+        result = await self._session.execute(
+            select(User).options(selectinload(User.modules)).order_by(User.email)
+        )
+        return result.scalars().unique().all()
+
+    async def delete_module_links_for_user(self, user_id: UUID) -> None:
+        await self._session.execute(delete(UserModule).where(UserModule.user_id == user_id))
 
     def add(self, user: User) -> None:
         self._session.add(user)

@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,6 +44,11 @@ class Settings(BaseSettings):
             description="Directorio raíz para archivos de proyecto (DWG/DXF, etc.).",
         ),
     ]
+    openai_api_key: Annotated[
+        Optional[str],
+        Field(default=None, description="API key para clasificación y descripción de archivos."),
+    ] = None
+    openai_model: Annotated[str, Field(default="gpt-4o-mini")] = "gpt-4o-mini"
 
     @field_validator("database_url")
     @classmethod

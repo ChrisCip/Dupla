@@ -15,9 +15,9 @@ function RequireAuth() {
   return <Outlet />
 }
 
-function RequireMaster() {
+function RequireGerencia() {
   const role = useAuthStore((s) => s.role)
-  if (role !== 'MASTER') return <Navigate to="/app/projects" replace />
+  if (role !== 'GERENCIA') return <Navigate to="/app/projects" replace />
   return <Outlet />
 }
 
@@ -32,7 +32,7 @@ export default function App() {
           <Route path="/app/projects/:projectUuid" element={<ProjectWorkspacePage />} />
           <Route path="/app/chat" element={<ChatPage />} />
           <Route path="/app/tasks" element={<TaskboardPage />} />
-          <Route element={<RequireMaster />}>
+          <Route element={<RequireGerencia />}>
             <Route path="/app/admin" element={<AdminUsersPage />} />
           </Route>
         </Route>

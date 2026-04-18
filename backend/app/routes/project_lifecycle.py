@@ -1,7 +1,7 @@
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +17,14 @@ from app.schemas.project_lifecycle import (
     ArchitectureRevisionResponse,
     BootstrapCriteriaReplaceRequest,
     ProjectEventResponse,
+    ProjectEventsPageResponse,
+    ProjectFileFolderCreateRequest,
+    ProjectFileFolderPatchRequest,
+    ProjectFileFolderResponse,
+    ProjectFilePatchRequest,
     ProjectFileResponse,
+    ProjectFilesListResponse,
+    ProjectFileSearchResponse,
     ProjectPatchRequest,
     ProjectTransitionRequest,
     SpecificationsReplaceRequest,
@@ -130,15 +137,31 @@ async def patch_workflow_meta(
     return ProjectResponse.from_project(p)
 
 
-@router.get("/{project_uuid}/events", response_model=list[ProjectEventResponse], summary="Historial de eventos")
+@router.get("/{project_uuid}/events", response_model=ProjectEventsPageResponse, summary="Historial de eventos (paginado)")
 async def get_project_events(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> list[ProjectEventResponse]:
+    limit: int = Query(20, ge=1, le=100, description="Tamaño de página (por defecto 20)"),
+    offset: int = Query(0, ge=0, description="Desplazamiento para paginación"),
+    event_type: Optional[str] = Query(None, max_length=80, description="Filtrar por tipo de evento"),
+    q: Optional[str] = Query(None, max_length=500, description="Buscar en el payload (JSON) o correo del autor"),
+) -> ProjectEventsPageResponse:
     svc = ProjectLifecycleService(session)
-    rows = await svc.list_events(current, project_uuid)
-    return [ProjectEventResponse.from_row(r) for r in rows]
+    rows, total = await svc.list_events_page(
+        current,
+        project_uuid,
+        limit=limit,
+        offset=offset,
+        event_type=event_type,
+        q=q,
+    )
+    return ProjectEventsPageResponse(
+        items=[ProjectEventResponse.from_row(r) for r in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post(
@@ -181,6 +204,78 @@ async def get_architecture_revisions(
     return [ArchitectureRevisionResponse.from_row(r) for r in rows]
 
 
+@router.get(
+    "/{project_uuid}/file-folders",
+    response_model=list[ProjectFileFolderResponse],
+    summary="Listar carpetas de archivos",
+)
+async def get_project_file_folders(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    parent_uuid: Annotated[Optional[UUID], Query(description="Omitir para raíz")] = None,
+) -> list[ProjectFileFolderResponse]:
+    svc = ProjectLifecycleService(session)
+    rows = await svc.list_file_folders(current, project_uuid, parent_uuid)
+    return [ProjectFileFolderResponse.from_row(r) for r in rows]
+
+
+@router.post(
+    "/{project_uuid}/file-folders",
+    response_model=ProjectFileFolderResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear carpeta de archivos",
+)
+async def post_project_file_folder(
+    project_uuid: UUID,
+    body: ProjectFileFolderCreateRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectFileFolderResponse:
+    svc = ProjectLifecycleService(session)
+    row = await svc.create_file_folder(current, project_uuid, body.name, body.parent_uuid)
+    await session.commit()
+    await session.refresh(row)
+    return ProjectFileFolderResponse.from_row(row)
+
+
+@router.patch(
+    "/{project_uuid}/file-folders/{folder_uuid}",
+    response_model=ProjectFileFolderResponse,
+    summary="Renombrar o mover carpeta",
+)
+async def patch_project_file_folder(
+    project_uuid: UUID,
+    folder_uuid: UUID,
+    body: ProjectFileFolderPatchRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectFileFolderResponse:
+    svc = ProjectLifecycleService(session)
+    patch = body.model_dump(exclude_unset=True)
+    row = await svc.patch_file_folder(current, project_uuid, folder_uuid, patch)
+    await session.commit()
+    await session.refresh(row)
+    return ProjectFileFolderResponse.from_row(row)
+
+
+@router.delete(
+    "/{project_uuid}/file-folders/{folder_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar carpeta vacía",
+)
+async def delete_project_file_folder(
+    project_uuid: UUID,
+    folder_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    svc = ProjectLifecycleService(session)
+    await svc.delete_file_folder(current, project_uuid, folder_uuid)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post(
     "/{project_uuid}/files",
     response_model=ProjectFileResponse,
@@ -193,22 +288,96 @@ async def post_project_file(
     session: Annotated[AsyncSession, Depends(get_db)],
     file: Annotated[UploadFile, File()],
     category: Annotated[Optional[str], Form()] = None,
+    folder_uuid: Annotated[Optional[UUID], Form()] = None,
+    wizard: Annotated[bool, Form()] = False,
 ) -> ProjectFileResponse:
     svc = ProjectLifecycleService(session)
-    row = await svc.upload_file(current, project_uuid, file, category)
+    row = await svc.upload_file(
+        current,
+        project_uuid,
+        file,
+        category,
+        folder_uuid=folder_uuid,
+        wizard=wizard,
+    )
     await session.commit()
     return ProjectFileResponse.from_row(row)
 
 
-@router.get("/{project_uuid}/files", response_model=list[ProjectFileResponse], summary="Listar archivos")
+@router.get("/{project_uuid}/files", response_model=ProjectFilesListResponse, summary="Listar archivos (paginado)")
 async def get_project_files(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> list[ProjectFileResponse]:
+    folder_uuid: Annotated[Optional[UUID], Query(description="Omitir para raíz del proyecto")] = None,
+    limit: Annotated[int, Query(le=50, ge=1, description="Máximo 50 por página")] = 50,
+    offset: Annotated[int, Query(ge=0, description="Desplazamiento")] = 0,
+) -> ProjectFilesListResponse:
     svc = ProjectLifecycleService(session)
-    rows = await svc.list_files(current, project_uuid)
-    return [ProjectFileResponse.from_row(r) for r in rows]
+    rows, total = await svc.list_files(
+        current, project_uuid, folder_uuid, limit=limit, offset=offset
+    )
+    return ProjectFilesListResponse(
+        items=[ProjectFileResponse.from_row(r) for r in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/{project_uuid}/files/search",
+    response_model=list[ProjectFileSearchResponse],
+    summary="Buscar archivos en todo el proyecto",
+    description="Filtra por texto (nombre o descripción) y/o disciplina. Cada resultado incluye la ruta desde Raíz.",
+)
+async def search_project_files(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    q: Annotated[Optional[str], Query(description="Texto en nombre o descripción")] = None,
+    discipline: Annotated[Optional[str], Query(description="Disciplina (slug)")] = None,
+) -> list[ProjectFileSearchResponse]:
+    svc = ProjectLifecycleService(session)
+    pairs = await svc.search_project_files(current, project_uuid, q, discipline)
+    return [ProjectFileSearchResponse.from_row_with_path(pf, path) for pf, path in pairs]
+
+
+@router.patch(
+    "/{project_uuid}/files/{file_uuid}",
+    response_model=ProjectFileResponse,
+    summary="Actualizar metadatos de archivo",
+)
+async def patch_project_file(
+    project_uuid: UUID,
+    file_uuid: UUID,
+    body: ProjectFilePatchRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectFileResponse:
+    svc = ProjectLifecycleService(session)
+    patch = body.model_dump(exclude_unset=True)
+    row = await svc.patch_project_file(current, project_uuid, file_uuid, patch)
+    await session.commit()
+    await session.refresh(row)
+    return ProjectFileResponse.from_row(row)
+
+
+@router.delete(
+    "/{project_uuid}/files/{file_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar archivo",
+)
+async def delete_project_file(
+    project_uuid: UUID,
+    file_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    svc = ProjectLifecycleService(session)
+    await svc.delete_project_file(current, project_uuid, file_uuid)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{project_uuid}/files/{file_uuid}/download", summary="Descargar archivo")

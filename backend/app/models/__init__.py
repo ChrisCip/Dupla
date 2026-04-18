@@ -2,12 +2,14 @@ from app.models.architecture_revision import ArchitectureRevision
 from app.models.chat_conversation import ChatConversation, ChatConversationMember
 from app.models.chat_message import ChatMessage
 from app.models.module import Module
+from app.models.plan_delivery_request import PlanDeliveryRequest
 from app.models.project import Project, ProjectArchitectureData
 from app.models.project_member import ProjectMember
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
+from app.models.project_file_folder import ProjectFileFolder
 from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
-from app.models.task_board import TaskCard, TaskList
+from app.models.task_board import TaskCard, TaskCardComment, TaskList
 from app.models.user import User, UserModule
 from app.models.user_notification import UserNotification
 
@@ -17,14 +19,17 @@ __all__ = [
     "ChatConversationMember",
     "ChatMessage",
     "Module",
+    "PlanDeliveryRequest",
     "Project",
     "ProjectArchitectureData",
     "ProjectMember",
     "ProjectEvent",
     "ProjectFile",
+    "ProjectFileFolder",
     "SubcontractQuote",
     "SubcontractQuoteLine",
     "TaskCard",
+    "TaskCardComment",
     "TaskList",
     "User",
     "UserModule",

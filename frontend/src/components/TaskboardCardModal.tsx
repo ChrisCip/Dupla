@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 
 import { apiFetch } from '../api/client'
+import { WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
+import { formatPersonFullName } from '../lib/personDisplay'
 import { PrimaryButton } from './PrimaryButton'
-import type { TaskAssigneeOption, TaskCardDto } from '../types/taskBoard'
+import type { TaskAssigneeOption, TaskCardCommentDto, TaskCardDto } from '../types/taskBoard'
 
 type Props = {
   token: string
@@ -21,6 +23,13 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
   const [archived, setArchived] = useState(card.archived)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [comments, setComments] = useState<TaskCardCommentDto[]>([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [commentBody, setCommentBody] = useState('')
+  const [commentPosting, setCommentPosting] = useState(false)
+  const [commentError, setCommentError] = useState<string | null>(null)
+  const [archiving, setArchiving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     setEditing(false)
@@ -29,7 +38,28 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
     setAssigneeUuid(card.assignee_uuid ?? '')
     setArchived(card.archived)
     setError(null)
+    setCommentBody('')
+    setCommentError(null)
   }, [card])
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    async function loadComments() {
+      setCommentsLoading(true)
+      const res = await apiFetch(`/api/tasks/cards/${card.uuid}/comments`, { token })
+      if (!res.ok || cancelled) {
+        setCommentsLoading(false)
+        return
+      }
+      setComments((await res.json()) as TaskCardCommentDto[])
+      setCommentsLoading(false)
+    }
+    void loadComments()
+    return () => {
+      cancelled = true
+    }
+  }, [token, card.uuid])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -62,7 +92,6 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
       }
       onSaved()
       setEditing(false)
-      onClose()
     } finally {
       setSaving(false)
     }
@@ -77,8 +106,80 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
     setEditing(false)
   }
 
-  const assigneeLabel =
-    card.assignee_email ?? assignees.find((a) => a.uuid === card.assignee_uuid)?.email ?? 'Sin asignar'
+  const assigneeFromList = assignees.find((a) => a.uuid === card.assignee_uuid)
+  const assigneeLabel = card.assignee_email
+    ? formatPersonFullName(card.assignee_first_name, card.assignee_last_name, card.assignee_email)
+    : assigneeFromList
+      ? formatPersonFullName(assigneeFromList.first_name, assigneeFromList.last_name, assigneeFromList.email)
+      : 'Sin asignar'
+
+  async function archiveFromView() {
+    if (readOnly || card.archived) return
+    setError(null)
+    setArchiving(true)
+    try {
+      const res = await apiFetch(`/api/tasks/cards/${card.uuid}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({ archived: true }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setError((j as { detail?: string }).detail ?? 'No se pudo archivar')
+        return
+      }
+      onSaved()
+      onClose()
+    } finally {
+      setArchiving(false)
+    }
+  }
+
+  async function deletePermanently() {
+    if (readOnly) return
+    if (!window.confirm('¿Eliminar esta tarea de forma permanente? No se puede deshacer.')) return
+    setError(null)
+    setDeleting(true)
+    try {
+      const res = await apiFetch(`/api/tasks/cards/${card.uuid}`, {
+        method: 'DELETE',
+        token,
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setError((j as { detail?: string }).detail ?? 'No se pudo eliminar')
+        return
+      }
+      onSaved()
+      onClose()
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  async function postComment() {
+    const text = commentBody.trim()
+    if (!token || !text || readOnly) return
+    setCommentError(null)
+    setCommentPosting(true)
+    try {
+      const res = await apiFetch(`/api/tasks/cards/${card.uuid}/comments`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ body: text }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setCommentError((j as { detail?: string }).detail ?? 'No se pudo publicar')
+        return
+      }
+      const row = (await res.json()) as TaskCardCommentDto
+      setComments((prev) => [...prev, row])
+      setCommentBody('')
+    } finally {
+      setCommentPosting(false)
+    }
+  }
 
   return (
     <div
@@ -119,9 +220,21 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
                 <div className="du-label">Asignado a</div>
                 <p className="mt-1 text-sm text-ink">{assigneeLabel}</p>
               </div>
+              {card.created_in_phase ? (
+                <div>
+                  <div className="du-label">Fase al crear la tarea</div>
+                  <p className="mt-1 text-sm text-ink">
+                    {WORKFLOW_PHASE_LABELS[card.created_in_phase] ?? card.created_in_phase}
+                  </p>
+                </div>
+              ) : null}
               <div className="rounded-md border border-black/10 bg-black/2 px-3 py-2 text-sm">
                 <div className="du-meta">Creada por</div>
-                <div className="text-ink">{card.creator_email ?? '—'}</div>
+                <div className="text-ink">
+                  {card.creator_email
+                    ? formatPersonFullName(card.creator_first_name, card.creator_last_name, card.creator_email)
+                    : '—'}
+                </div>
                 <div className="du-meta mt-2">Creada</div>
                 <div className="text-muted">
                   {new Date(card.created_at).toLocaleString(undefined, {
@@ -133,6 +246,60 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
               {card.archived ? (
                 <p className="text-sm text-muted">Archivada (no aparece en el tablero activo).</p>
               ) : null}
+              <div className="border-t border-black/10 pt-4">
+                <div className="du-label">Comentarios</div>
+                {commentsLoading ? (
+                  <p className="mt-2 text-sm text-muted">Cargando…</p>
+                ) : comments.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted">Aún no hay comentarios.</p>
+                ) : (
+                  <ul className="mt-2 max-h-48 space-y-3 overflow-y-auto text-sm">
+                    {comments.map((c) => (
+                      <li key={c.uuid} className="rounded-md border border-black/8 bg-black/[0.02] px-3 py-2">
+                        <div className="du-meta flex flex-wrap justify-between gap-2">
+                          <span className="text-ink">
+                            {c.author_email
+                              ? formatPersonFullName(c.author_first_name, c.author_last_name, c.author_email)
+                              : '—'}
+                          </span>
+                          <time className="shrink-0" dateTime={c.created_at}>
+                            {new Date(c.created_at).toLocaleString(undefined, {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            })}
+                          </time>
+                        </div>
+                        <p className="mt-1 whitespace-pre-wrap text-ink">{c.body}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {!readOnly ? (
+                  <div className="mt-3">
+                    <label className="du-label" htmlFor="task-comment">
+                      Nuevo comentario
+                    </label>
+                    <textarea
+                      id="task-comment"
+                      className="du-input mt-1 min-h-[72px] resize-y text-sm"
+                      value={commentBody}
+                      onChange={(e) => setCommentBody(e.target.value)}
+                      maxLength={2000}
+                      rows={3}
+                      placeholder="Escribe un comentario…"
+                    />
+                    {commentError ? <p className="mt-1 text-sm text-primary">{commentError}</p> : null}
+                    <PrimaryButton
+                      type="button"
+                      className="mt-2"
+                      disabled={commentPosting || !commentBody.trim()}
+                      onClick={() => void postComment()}
+                    >
+                      {commentPosting ? 'Publicando…' : 'Publicar comentario'}
+                    </PrimaryButton>
+                  </div>
+                ) : null}
+              </div>
             </>
           ) : (
             <>
@@ -178,14 +345,26 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
                   <option value="">Sin asignar</option>
                   {assignees.map((a) => (
                     <option key={a.uuid} value={a.uuid}>
-                      {a.email}
+                      {formatPersonFullName(a.first_name, a.last_name, a.email)}
                     </option>
                   ))}
                 </select>
               </div>
+              {card.created_in_phase ? (
+                <div className="rounded-md border border-black/10 bg-black/2 px-3 py-2 text-sm">
+                  <div className="du-meta">Fase al crear la tarea</div>
+                  <div className="text-ink">
+                    {WORKFLOW_PHASE_LABELS[card.created_in_phase] ?? card.created_in_phase}
+                  </div>
+                </div>
+              ) : null}
               <div className="rounded-md border border-black/10 bg-black/2 px-3 py-2 text-sm">
                 <div className="du-meta">Creada por</div>
-                <div className="text-ink">{card.creator_email ?? '—'}</div>
+                <div className="text-ink">
+                  {card.creator_email
+                    ? formatPersonFullName(card.creator_first_name, card.creator_last_name, card.creator_email)
+                    : '—'}
+                </div>
                 <div className="du-meta mt-2">Creada</div>
                 <div className="text-muted">
                   {new Date(card.created_at).toLocaleString(undefined, {
@@ -207,44 +386,127 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
               ) : card.archived ? (
                 <p className="text-sm text-muted">Esta tarea está archivada.</p>
               ) : null}
+              <div className="border-t border-black/10 pt-4">
+                <div className="du-label">Comentarios</div>
+                {commentsLoading ? (
+                  <p className="mt-2 text-sm text-muted">Cargando…</p>
+                ) : comments.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted">Aún no hay comentarios.</p>
+                ) : (
+                  <ul className="mt-2 max-h-48 space-y-3 overflow-y-auto text-sm">
+                    {comments.map((c) => (
+                      <li key={c.uuid} className="rounded-md border border-black/8 bg-black/[0.02] px-3 py-2">
+                        <div className="du-meta flex flex-wrap justify-between gap-2">
+                          <span className="text-ink">
+                            {c.author_email
+                              ? formatPersonFullName(c.author_first_name, c.author_last_name, c.author_email)
+                              : '—'}
+                          </span>
+                          <time className="shrink-0" dateTime={c.created_at}>
+                            {new Date(c.created_at).toLocaleString(undefined, {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            })}
+                          </time>
+                        </div>
+                        <p className="mt-1 whitespace-pre-wrap text-ink">{c.body}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {!readOnly ? (
+                  <div className="mt-3">
+                    <label className="du-label" htmlFor="task-comment-edit">
+                      Nuevo comentario
+                    </label>
+                    <textarea
+                      id="task-comment-edit"
+                      className="du-input mt-1 min-h-[72px] resize-y text-sm"
+                      value={commentBody}
+                      onChange={(e) => setCommentBody(e.target.value)}
+                      maxLength={2000}
+                      rows={3}
+                    />
+                    {commentError ? <p className="mt-1 text-sm text-primary">{commentError}</p> : null}
+                    <PrimaryButton
+                      type="button"
+                      className="mt-2"
+                      disabled={commentPosting || !commentBody.trim()}
+                      onClick={() => void postComment()}
+                    >
+                      {commentPosting ? 'Publicando…' : 'Publicar comentario'}
+                    </PrimaryButton>
+                  </div>
+                ) : null}
+              </div>
             </>
           )}
           {error ? <p className="text-sm text-primary">{error}</p> : null}
         </div>
 
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
-          {!editing ? (
-            <>
+        <div
+          className={`mt-6 flex flex-wrap items-center gap-3 ${readOnly ? 'justify-end' : 'justify-between'}`}
+        >
+          {!readOnly ? (
+            <div className="flex min-w-0 flex-wrap gap-2">
+              {!editing && !card.archived ? (
+                <button
+                  type="button"
+                  className="rounded-md border border-black/15 bg-white px-3 py-2 text-sm text-ink hover:bg-black/[0.04] disabled:opacity-50"
+                  disabled={archiving || deleting}
+                  onClick={() => void archiveFromView()}
+                >
+                  {archiving ? 'Archivando…' : 'Archivar'}
+                </button>
+              ) : null}
               <button
                 type="button"
-                className="rounded-md px-3 py-2 text-sm text-muted hover:text-ink"
-                onClick={onClose}
+                className="rounded-md border border-primary/30 bg-primary/[0.06] px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+                disabled={archiving || deleting || saving}
+                onClick={() => void deletePermanently()}
               >
-                Cerrar
+                {deleting ? 'Eliminando…' : 'Eliminar'}
               </button>
-              {!readOnly ? (
-                <PrimaryButton type="button" onClick={() => setEditing(true)}>
-                  Editar
-                </PrimaryButton>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="rounded-md px-3 py-2 text-sm text-muted hover:text-ink"
-                onClick={cancelEdit}
-                disabled={saving}
-              >
-                Cancelar
-              </button>
-              {!readOnly ? (
-                <PrimaryButton type="button" disabled={saving || !title.trim()} onClick={() => void save()}>
-                  {saving ? 'Guardando…' : 'Guardar'}
-                </PrimaryButton>
-              ) : null}
-            </>
-          )}
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {!editing ? (
+              <>
+                <button
+                  type="button"
+                  className="rounded-md px-3 py-2 text-sm text-muted hover:text-ink"
+                  onClick={onClose}
+                >
+                  Cerrar
+                </button>
+                {!readOnly ? (
+                  <PrimaryButton type="button" onClick={() => setEditing(true)}>
+                    Editar
+                  </PrimaryButton>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="rounded-md px-3 py-2 text-sm text-muted hover:text-ink"
+                  onClick={cancelEdit}
+                  disabled={saving || deleting || archiving}
+                >
+                  Cancelar
+                </button>
+                {!readOnly ? (
+                  <PrimaryButton
+                    type="button"
+                    disabled={saving || deleting || archiving || !title.trim()}
+                    onClick={() => void save()}
+                  >
+                    {saving ? 'Guardando…' : 'Guardar'}
+                  </PrimaryButton>
+                ) : null}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

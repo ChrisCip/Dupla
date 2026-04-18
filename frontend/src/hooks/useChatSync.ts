@@ -7,7 +7,16 @@ import { useChatStore } from '../store/chatStore'
 import type { ChatConversationSummary, ChatMessage } from '../types/chat'
 
 function conversationsFingerprint(conversations: ChatConversationSummary[]): string {
-  return JSON.stringify(conversations.map((c) => [c.uuid, c.last_message_at]))
+  return JSON.stringify(
+    conversations.map((c) => [
+      c.uuid,
+      c.last_message_at,
+      c.last_message_preview,
+      c.unread_count,
+      c.participant_count,
+      c.participants?.map((p) => `${p.uuid}:${p.email}`).sort(),
+    ]),
+  )
 }
 
 export function useChatSync() {

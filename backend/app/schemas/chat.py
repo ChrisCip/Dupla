@@ -13,6 +13,8 @@ from app.models.user import User
 class ChatAuthorResponse(BaseModel):
     uuid: UUID
     email: EmailStr
+    first_name: str
+    last_name: str
 
 
 class ChatMessageResponse(BaseModel):
@@ -29,7 +31,12 @@ class ChatMessageResponse(BaseModel):
             conversation_uuid=msg.conversation_id,
             body=msg.body,
             created_at=msg.created_at,
-            author=ChatAuthorResponse(uuid=author.id, email=author.email),
+            author=ChatAuthorResponse(
+                uuid=author.id,
+                email=author.email,
+                first_name=author.first_name,
+                last_name=author.last_name,
+            ),
         )
 
 
@@ -42,6 +49,10 @@ class ChatConversationResponse(BaseModel):
     kind: str
     display_title: str
     last_message_at: Optional[datetime] = None
+    last_message_preview: Optional[str] = None
+    unread_count: int = 0
+    participant_count: Optional[int] = None
+    participants: Optional[list[ChatAuthorResponse]] = None
 
 
 class ChatDirectCreateRequest(BaseModel):
@@ -56,3 +67,5 @@ class ChatGroupCreateRequest(BaseModel):
 class ChatUserDirectoryItem(BaseModel):
     uuid: UUID
     email: EmailStr
+    first_name: str
+    last_name: str
