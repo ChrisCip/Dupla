@@ -45,85 +45,25 @@ export function ProjectWorkspaceHeader({
   }
 
   return (
-    <header className="flex shrink-0 flex-wrap items-start gap-3 border-b border-black/10 pb-3">
-      <div className="min-w-0 flex-1">
-        <div className="du-meta">
-          <Link className="du-link text-sm" to="/app/projects">
-            ← Volver a proyectos
-          </Link>
+    <header className="shrink-0 space-y-3 border-b border-black/10 pb-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="du-meta">
+            <Link className="du-link text-sm" to="/app/projects">
+              ← Volver a proyectos
+            </Link>
+          </div>
+          <h1 id="workspace-heading" className="mt-1 text-xl font-bold tracking-tight text-ink">
+            {displayTitle}
+          </h1>
+          <p className="mt-0.5 du-meta">{phaseLabel ? `Fase: ${phaseLabel}` : 'Cargando fase…'}</p>
         </div>
-        <h1 id="workspace-heading" className="mt-1 text-xl font-bold tracking-tight text-ink">
-          {displayTitle}
-        </h1>
-        <p className="mt-0.5 du-meta">{phaseLabel ? `Fase: ${phaseLabel}` : 'Cargando fase…'}</p>
-      </div>
-      <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:items-end">
-        <StatusBadge status={status} lastSavedAt={lastSavedAt} errorMessage={lastError} />
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-end sm:gap-3">
-          <details className="w-full max-w-md rounded-md border border-black/10 bg-white px-3 py-2 text-left text-sm shadow-[var(--shadow-card)] sm:min-w-0 sm:max-w-lg sm:flex-1">
-            <summary className="cursor-pointer font-medium text-ink">Exportaciones (Excel / PDF)</summary>
-            <p className="mt-2 text-xs text-muted">
-              Pueden tardar unos segundos; el botón muestra «Generando…» mientras descarga.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <PrimaryButton
-                type="button"
-                disabled={exportBusy !== null}
-                onClick={() =>
-                  void exportFile(
-                    `/api/projects/${projectUuid}/exports/pliego.xlsx`,
-                    `pliego-${projectUuid}.xlsx`,
-                    'pliego-xlsx',
-                  )
-                }
-              >
-                {exportBusy === 'pliego-xlsx' ? 'Generando…' : 'Pliego (Excel)'}
-              </PrimaryButton>
-              <PrimaryButton
-                type="button"
-                disabled={exportBusy !== null}
-                onClick={() =>
-                  void exportFile(
-                    `/api/projects/${projectUuid}/exports/pliego.pdf`,
-                    `pliego-${projectUuid}.pdf`,
-                    'pliego-pdf',
-                  )
-                }
-              >
-                {exportBusy === 'pliego-pdf' ? 'Generando…' : 'Pliego (PDF)'}
-              </PrimaryButton>
-              <PrimaryButton
-                type="button"
-                disabled={exportBusy !== null}
-                onClick={() =>
-                  void exportFile(
-                    `/api/projects/${projectUuid}/exports/control-planos.xlsx`,
-                    `control-planos-${projectUuid}.xlsx`,
-                    'control-xlsx',
-                  )
-                }
-              >
-                {exportBusy === 'control-xlsx' ? 'Generando…' : 'Control planos (Excel)'}
-              </PrimaryButton>
-              <PrimaryButton
-                type="button"
-                disabled={exportBusy !== null}
-                onClick={() =>
-                  void exportFile(
-                    `/api/projects/${projectUuid}/exports/control-planos.pdf`,
-                    `control-planos-${projectUuid}.pdf`,
-                    'control-pdf',
-                  )
-                }
-              >
-                {exportBusy === 'control-pdf' ? 'Generando…' : 'Control planos (PDF)'}
-              </PrimaryButton>
-            </div>
-          </details>
+        <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+          <StatusBadge status={status} lastSavedAt={lastSavedAt} errorMessage={lastError} />
           <button
             type="button"
             onClick={onOpenConfig}
-            className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-medium text-ink shadow-sm hover:bg-black/[0.03] sm:w-auto sm:shrink-0"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-medium text-ink shadow-sm hover:bg-black/[0.03] sm:w-auto"
             aria-label="Configuración del proyecto"
           >
             <svg
@@ -143,6 +83,69 @@ export function ProjectWorkspaceHeader({
           </button>
         </div>
       </div>
+
+      <details className="relative w-full rounded-md border border-black/10 bg-white px-3 py-2 text-left text-sm shadow-[var(--shadow-card)]">
+        <summary className="cursor-pointer list-none font-medium text-ink [&::-webkit-details-marker]:hidden">
+          Exportaciones (Excel / PDF)
+        </summary>
+        <p className="mt-2 text-xs text-muted">
+          Pueden tardar unos segundos; el botón muestra «Generando…» mientras descarga.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <PrimaryButton
+            type="button"
+            disabled={exportBusy !== null}
+            onClick={() =>
+              void exportFile(
+                `/api/projects/${projectUuid}/exports/pliego.xlsx`,
+                `pliego-${projectUuid}.xlsx`,
+                'pliego-xlsx',
+              )
+            }
+          >
+            {exportBusy === 'pliego-xlsx' ? 'Generando…' : 'Pliego (Excel)'}
+          </PrimaryButton>
+          <PrimaryButton
+            type="button"
+            disabled={exportBusy !== null}
+            onClick={() =>
+              void exportFile(
+                `/api/projects/${projectUuid}/exports/pliego.pdf`,
+                `pliego-${projectUuid}.pdf`,
+                'pliego-pdf',
+              )
+            }
+          >
+            {exportBusy === 'pliego-pdf' ? 'Generando…' : 'Pliego (PDF)'}
+          </PrimaryButton>
+          <PrimaryButton
+            type="button"
+            disabled={exportBusy !== null}
+            onClick={() =>
+              void exportFile(
+                `/api/projects/${projectUuid}/exports/control-planos.xlsx`,
+                `control-planos-${projectUuid}.xlsx`,
+                'control-xlsx',
+              )
+            }
+          >
+            {exportBusy === 'control-xlsx' ? 'Generando…' : 'Control planos (Excel)'}
+          </PrimaryButton>
+          <PrimaryButton
+            type="button"
+            disabled={exportBusy !== null}
+            onClick={() =>
+              void exportFile(
+                `/api/projects/${projectUuid}/exports/control-planos.pdf`,
+                `control-planos-${projectUuid}.pdf`,
+                'control-pdf',
+              )
+            }
+          >
+            {exportBusy === 'control-pdf' ? 'Generando…' : 'Control planos (PDF)'}
+          </PrimaryButton>
+        </div>
+      </details>
     </header>
   )
 }

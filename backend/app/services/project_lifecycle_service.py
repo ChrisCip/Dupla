@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
+from app.domain.file_discipline import FileIngestStatus, parse_discipline
 from app.domain.project_updated import touch_project_updated_at
 from app.domain.task_board_constants import TASK_LIST_DONE_UUID
 from app.domain.workflow_phase import LINEAR_NEXT, LINEAR_PREV, WorkflowPhase
@@ -22,11 +23,13 @@ from app.models.project import Project
 from app.models.task_board import TaskCard
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
+from app.models.project_file_folder import ProjectFileFolder
 from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
 from app.models.user import User, UserRole
 from app.models.user_notification import UserNotification
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
+from app.services.project_file_ai_service import ProjectFileAIService
 from app.services.project_service import ProjectService
 
 
@@ -478,12 +481,31 @@ class ProjectLifecycleService:
         )
         return list((await self._session.execute(q)).scalars().all())
 
+    async def _require_folder_in_project(self, project_id: UUID, folder_uuid: UUID) -> UUID:
+        row = await self._session.get(ProjectFileFolder, folder_uuid)
+        if row is None or row.project_id != project_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carpeta no encontrada")
+        return row.id
+
+    async def _folder_is_descendant_of(self, folder_id: UUID, ancestor_id: UUID) -> bool:
+        cur = await self._session.get(ProjectFileFolder, folder_id)
+        while cur is not None:
+            if cur.id == ancestor_id:
+                return True
+            if cur.parent_id is None:
+                return False
+            cur = await self._session.get(ProjectFileFolder, cur.parent_id)
+        return False
+
     async def upload_file(
         self,
         user: User,
         project_uuid: UUID,
         upload: UploadFile,
         category: Optional[str],
+        *,
+        folder_uuid: Optional[UUID] = None,
+        wizard: bool = False,
     ) -> ProjectFile:
         project = await self._project_svc.get_project(user, project_uuid)
         wf = WorkflowPhase(project.workflow_phase)
@@ -510,6 +532,11 @@ class ProjectLifecycleService:
         safe_name = Path(upload.filename or "file").name.replace("..", "_")
         storage_key = str(dest_dir / f"{fid}_{safe_name}")
         Path(storage_key).write_bytes(raw)
+
+        resolved_folder_id: Optional[UUID] = None
+        if folder_uuid is not None:
+            resolved_folder_id = await self._require_folder_in_project(project.id, folder_uuid)
+
         pf = ProjectFile(
             id=fid,
             project_id=project.id,
@@ -517,9 +544,19 @@ class ProjectLifecycleService:
             original_name=upload.filename or "file",
             mime=upload.content_type,
             category=category,
+            folder_id=resolved_folder_id,
             created_by=user.id,
             created_at=datetime.now(timezone.utc),
         )
+        if wizard:
+            ai = ProjectFileAIService()
+            disc, desc, _used = await ai.suggest(pf.original_name, pf.mime)
+            pf.discipline = disc.value if disc else None
+            pf.description = desc if desc else None
+            pf.ingest_status = FileIngestStatus.DRAFT.value
+        else:
+            pf.ingest_status = FileIngestStatus.PUBLISHED.value
+
         self._session.add(pf)
         await self._projects.record_event(
             project_id=project.id,
@@ -532,14 +569,184 @@ class ProjectLifecycleService:
         await self._session.refresh(pf)
         return pf
 
-    async def list_files(self, user: User, project_uuid: UUID) -> list[ProjectFile]:
+    async def list_files(
+        self,
+        user: User,
+        project_uuid: UUID,
+        folder_uuid: Optional[UUID] = None,
+    ) -> list[ProjectFile]:
         project = await self._project_svc.get_project(user, project_uuid)
-        q = (
-            select(ProjectFile)
-            .where(ProjectFile.project_id == project.id)
-            .order_by(ProjectFile.created_at.desc())
-        )
+        q = select(ProjectFile).where(ProjectFile.project_id == project.id)
+        if folder_uuid is None:
+            q = q.where(ProjectFile.folder_id.is_(None))
+        else:
+            await self._require_folder_in_project(project.id, folder_uuid)
+            q = q.where(ProjectFile.folder_id == folder_uuid)
+        q = q.order_by(ProjectFile.created_at.desc())
         return list((await self._session.execute(q)).scalars().all())
+
+    async def list_file_folders(
+        self,
+        user: User,
+        project_uuid: UUID,
+        parent_uuid: Optional[UUID],
+    ) -> list[ProjectFileFolder]:
+        project = await self._project_svc.get_project(user, project_uuid)
+        q = select(ProjectFileFolder).where(ProjectFileFolder.project_id == project.id)
+        if parent_uuid is None:
+            q = q.where(ProjectFileFolder.parent_id.is_(None))
+        else:
+            await self._require_folder_in_project(project.id, parent_uuid)
+            q = q.where(ProjectFileFolder.parent_id == parent_uuid)
+        q = q.order_by(ProjectFileFolder.name.asc())
+        return list((await self._session.execute(q)).scalars().all())
+
+    async def create_file_folder(
+        self,
+        user: User,
+        project_uuid: UUID,
+        name: str,
+        parent_uuid: Optional[UUID],
+    ) -> ProjectFileFolder:
+        project = await self._project_svc.get_project(user, project_uuid)
+        parent_id: Optional[UUID] = None
+        if parent_uuid is not None:
+            parent_id = await self._require_folder_in_project(project.id, parent_uuid)
+        row = ProjectFileFolder(
+            id=uuid.uuid4(),
+            project_id=project.id,
+            parent_id=parent_id,
+            name=name.strip(),
+            created_by=user.id,
+            created_at=datetime.now(timezone.utc),
+        )
+        self._session.add(row)
+        touch_project_updated_at(project)
+        await self._session.flush()
+        await self._session.refresh(row)
+        return row
+
+    async def patch_file_folder(
+        self,
+        user: User,
+        project_uuid: UUID,
+        folder_uuid: UUID,
+        patch: dict[str, Any],
+    ) -> ProjectFileFolder:
+        project = await self._project_svc.get_project(user, project_uuid)
+        row = await self._session.get(ProjectFileFolder, folder_uuid)
+        if row is None or row.project_id != project.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carpeta no encontrada")
+
+        if "parent_uuid" in patch:
+            raw_parent = patch["parent_uuid"]
+            if raw_parent is None:
+                row.parent_id = None
+            else:
+                if raw_parent == folder_uuid:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="La carpeta no puede ser padre de sí misma",
+                    )
+                new_parent = await self._require_folder_in_project(project.id, raw_parent)
+                if await self._folder_is_descendant_of(new_parent, folder_uuid):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No se puede mover una carpeta dentro de su propia jerarquía",
+                    )
+                row.parent_id = new_parent
+
+        if "name" in patch and patch["name"] is not None:
+            row.name = str(patch["name"]).strip()
+
+        touch_project_updated_at(project)
+        await self._session.flush()
+        await self._session.refresh(row)
+        return row
+
+    async def delete_file_folder(self, user: User, project_uuid: UUID, folder_uuid: UUID) -> None:
+        project = await self._project_svc.get_project(user, project_uuid)
+        row = await self._session.get(ProjectFileFolder, folder_uuid)
+        if row is None or row.project_id != project.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carpeta no encontrada")
+        sub = await self._session.execute(
+            select(func.count()).select_from(ProjectFileFolder).where(ProjectFileFolder.parent_id == row.id)
+        )
+        if sub.scalar_one() > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La carpeta contiene subcarpetas",
+            )
+        fc = await self._session.execute(
+            select(func.count()).select_from(ProjectFile).where(ProjectFile.folder_id == row.id)
+        )
+        if fc.scalar_one() > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La carpeta contiene archivos",
+            )
+        await self._session.delete(row)
+        touch_project_updated_at(project)
+
+    async def patch_project_file(
+        self,
+        user: User,
+        project_uuid: UUID,
+        file_uuid: UUID,
+        patch: dict[str, Any],
+    ) -> ProjectFile:
+        project = await self._project_svc.get_project(user, project_uuid)
+        pf = await self._session.get(ProjectFile, file_uuid)
+        if pf is None or pf.project_id != project.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
+
+        if "description" in patch:
+            pf.description = patch["description"]
+
+        if "discipline" in patch:
+            raw = patch["discipline"]
+            if raw is None or (isinstance(raw, str) and raw.strip() == ""):
+                pf.discipline = None
+            elif isinstance(raw, str):
+                d = parse_discipline(raw)
+                if d is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="discipline no válida",
+                    )
+                pf.discipline = d.value
+
+        if "folder_uuid" in patch:
+            fu = patch["folder_uuid"]
+            if fu is None:
+                pf.folder_id = None
+            else:
+                pf.folder_id = await self._require_folder_in_project(project.id, fu)
+
+        if "ingest_status" in patch and patch["ingest_status"] is not None:
+            s = str(patch["ingest_status"]).strip().upper()
+            if s not in (FileIngestStatus.DRAFT.value, FileIngestStatus.PUBLISHED.value):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="ingest_status debe ser DRAFT o PUBLISHED",
+                )
+            pf.ingest_status = s
+
+        touch_project_updated_at(project)
+        await self._session.flush()
+        await self._session.refresh(pf)
+        return pf
+
+    async def delete_project_file(self, user: User, project_uuid: UUID, file_uuid: UUID) -> None:
+        project = await self._project_svc.get_project(user, project_uuid)
+        pf = await self._session.get(ProjectFile, file_uuid)
+        if pf is None or pf.project_id != project.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
+        path = Path(pf.storage_key)
+        await self._session.delete(pf)
+        if path.is_file():
+            path.unlink()
+        touch_project_updated_at(project)
 
     async def get_file_path(self, user: User, project_uuid: UUID, file_uuid: UUID) -> tuple[ProjectFile, Path]:
         project = await self._project_svc.get_project(user, project_uuid)

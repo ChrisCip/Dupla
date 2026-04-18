@@ -24,11 +24,7 @@ import { useAuthStore } from '../store/authStore'
 import { useWorkspaceStore } from '../store/workspaceStore'
 import type { PlanDeliveryRow } from '../types/planDelivery'
 import type { PliegoItemState } from '../types/pliegoForm'
-import type {
-  ProjectFileRow,
-  RevisionRow,
-  SubcontractQuoteRow,
-} from '../types/projectWorkspace'
+import type { RevisionRow, SubcontractQuoteRow } from '../types/projectWorkspace'
 import type { BootstrapCriterion, Project } from '../types/project'
 
 export function ProjectWorkspacePage() {
@@ -61,12 +57,10 @@ export function ProjectWorkspacePage() {
     mergePliegoItemStates(undefined),
   )
   const [specSaveBusy, setSpecSaveBusy] = useState(false)
-  const [files, setFiles] = useState<ProjectFileRow[]>([])
   const [revisions, setRevisions] = useState<RevisionRow[]>([])
   const [quotes, setQuotes] = useState<SubcontractQuoteRow[]>([])
   const [revDecision, setRevDecision] = useState('APPROVED')
   const [revNotes, setRevNotes] = useState('')
-  const [fileCategory, setFileCategory] = useState('')
   const [bpDraft, setBpDraft] = useState<Record<string, unknown>>({})
   const [clientVersion, setClientVersion] = useState('')
   const [newQuoteTitle, setNewQuoteTitle] = useState('')
@@ -134,12 +128,10 @@ export function ProjectWorkspacePage() {
 
   const loadAuxLists = useCallback(async () => {
     if (!token || !projectUuid) return
-    const [fe, fr, fq] = await Promise.all([
-      apiFetch(`/api/projects/${projectUuid}/files`, { token }),
+    const [fr, fq] = await Promise.all([
       apiFetch(`/api/projects/${projectUuid}/architecture-revisions`, { token }),
       apiFetch(`/api/projects/${projectUuid}/subcontracts`, { token }),
     ])
-    if (fe.ok) setFiles((await fe.json()) as ProjectFileRow[])
     if (fr.ok) setRevisions((await fr.json()) as RevisionRow[])
     if (fq.ok) setQuotes((await fq.json()) as SubcontractQuoteRow[])
   }, [token, projectUuid])
@@ -353,26 +345,6 @@ export function ProjectWorkspacePage() {
     await loadAuxLists()
   }
 
-  async function uploadFileList(f: FileList | null) {
-    if (!token || !f?.[0]) return
-    setFlowMsg(null)
-    const fd = new FormData()
-    fd.append('file', f[0])
-    if (fileCategory.trim()) fd.append('category', fileCategory.trim())
-    const res = await apiFetch(`/api/projects/${projectUuid}/files`, {
-      method: 'POST',
-      token,
-      body: fd,
-    })
-    const j = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setFlowMsg((j as { detail?: string }).detail ?? 'Error al subir archivo')
-      return
-    }
-    await loadAuxLists()
-    await refreshProject()
-  }
-
   async function openProjectChat() {
     if (!token) return
     const res = await apiFetch(`/api/projects/${projectUuid}/chat/conversation`, {
@@ -466,15 +438,7 @@ export function ProjectWorkspacePage() {
         ) : null}
 
         {tab === 'archivos' ? (
-                <WorkspaceArchivosTab
-                  projectUuid={projectUuid}
-                  token={token}
-                  flowMsg={flowMsg}
-                  fileCategory={fileCategory}
-                  setFileCategory={setFileCategory}
-                  files={files}
-                  onUploadFileList={uploadFileList}
-                />
+                <WorkspaceArchivosTab projectUuid={projectUuid} token={token} flowMsg={flowMsg} />
         ) : null}
 
         {tab === 'entregaPlanos' ? (

@@ -1,7 +1,7 @@
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,10 @@ from app.schemas.project_lifecycle import (
     BootstrapCriteriaReplaceRequest,
     ProjectEventResponse,
     ProjectEventsPageResponse,
+    ProjectFileFolderCreateRequest,
+    ProjectFileFolderPatchRequest,
+    ProjectFileFolderResponse,
+    ProjectFilePatchRequest,
     ProjectFileResponse,
     ProjectPatchRequest,
     ProjectTransitionRequest,
@@ -198,6 +202,78 @@ async def get_architecture_revisions(
     return [ArchitectureRevisionResponse.from_row(r) for r in rows]
 
 
+@router.get(
+    "/{project_uuid}/file-folders",
+    response_model=list[ProjectFileFolderResponse],
+    summary="Listar carpetas de archivos",
+)
+async def get_project_file_folders(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    parent_uuid: Annotated[Optional[UUID], Query(description="Omitir para raíz")] = None,
+) -> list[ProjectFileFolderResponse]:
+    svc = ProjectLifecycleService(session)
+    rows = await svc.list_file_folders(current, project_uuid, parent_uuid)
+    return [ProjectFileFolderResponse.from_row(r) for r in rows]
+
+
+@router.post(
+    "/{project_uuid}/file-folders",
+    response_model=ProjectFileFolderResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear carpeta de archivos",
+)
+async def post_project_file_folder(
+    project_uuid: UUID,
+    body: ProjectFileFolderCreateRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectFileFolderResponse:
+    svc = ProjectLifecycleService(session)
+    row = await svc.create_file_folder(current, project_uuid, body.name, body.parent_uuid)
+    await session.commit()
+    await session.refresh(row)
+    return ProjectFileFolderResponse.from_row(row)
+
+
+@router.patch(
+    "/{project_uuid}/file-folders/{folder_uuid}",
+    response_model=ProjectFileFolderResponse,
+    summary="Renombrar o mover carpeta",
+)
+async def patch_project_file_folder(
+    project_uuid: UUID,
+    folder_uuid: UUID,
+    body: ProjectFileFolderPatchRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectFileFolderResponse:
+    svc = ProjectLifecycleService(session)
+    patch = body.model_dump(exclude_unset=True)
+    row = await svc.patch_file_folder(current, project_uuid, folder_uuid, patch)
+    await session.commit()
+    await session.refresh(row)
+    return ProjectFileFolderResponse.from_row(row)
+
+
+@router.delete(
+    "/{project_uuid}/file-folders/{folder_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar carpeta vacía",
+)
+async def delete_project_file_folder(
+    project_uuid: UUID,
+    folder_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    svc = ProjectLifecycleService(session)
+    await svc.delete_file_folder(current, project_uuid, folder_uuid)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post(
     "/{project_uuid}/files",
     response_model=ProjectFileResponse,
@@ -210,9 +286,18 @@ async def post_project_file(
     session: Annotated[AsyncSession, Depends(get_db)],
     file: Annotated[UploadFile, File()],
     category: Annotated[Optional[str], Form()] = None,
+    folder_uuid: Annotated[Optional[UUID], Form()] = None,
+    wizard: Annotated[bool, Form()] = False,
 ) -> ProjectFileResponse:
     svc = ProjectLifecycleService(session)
-    row = await svc.upload_file(current, project_uuid, file, category)
+    row = await svc.upload_file(
+        current,
+        project_uuid,
+        file,
+        category,
+        folder_uuid=folder_uuid,
+        wizard=wizard,
+    )
     await session.commit()
     return ProjectFileResponse.from_row(row)
 
@@ -222,10 +307,48 @@ async def get_project_files(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    folder_uuid: Annotated[Optional[UUID], Query(description="Omitir para raíz del proyecto")] = None,
 ) -> list[ProjectFileResponse]:
     svc = ProjectLifecycleService(session)
-    rows = await svc.list_files(current, project_uuid)
+    rows = await svc.list_files(current, project_uuid, folder_uuid)
     return [ProjectFileResponse.from_row(r) for r in rows]
+
+
+@router.patch(
+    "/{project_uuid}/files/{file_uuid}",
+    response_model=ProjectFileResponse,
+    summary="Actualizar metadatos de archivo",
+)
+async def patch_project_file(
+    project_uuid: UUID,
+    file_uuid: UUID,
+    body: ProjectFilePatchRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectFileResponse:
+    svc = ProjectLifecycleService(session)
+    patch = body.model_dump(exclude_unset=True)
+    row = await svc.patch_project_file(current, project_uuid, file_uuid, patch)
+    await session.commit()
+    await session.refresh(row)
+    return ProjectFileResponse.from_row(row)
+
+
+@router.delete(
+    "/{project_uuid}/files/{file_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar archivo",
+)
+async def delete_project_file(
+    project_uuid: UUID,
+    file_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    svc = ProjectLifecycleService(session)
+    await svc.delete_project_file(current, project_uuid, file_uuid)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{project_uuid}/files/{file_uuid}/download", summary="Descargar archivo")

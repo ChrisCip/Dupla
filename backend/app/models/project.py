@@ -60,6 +60,11 @@ class Project(Base):
         back_populates="project",
         cascade="all, delete-orphan",
     )
+    file_folders: Mapped[list["ProjectFileFolder"]] = relationship(
+        "ProjectFileFolder",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
     architecture_revisions: Mapped[list["ArchitectureRevision"]] = relationship(
         "ArchitectureRevision",
         back_populates="project",

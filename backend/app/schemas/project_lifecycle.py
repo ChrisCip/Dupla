@@ -11,6 +11,7 @@ from sqlalchemy.inspection import inspect
 from app.models.architecture_revision import ArchitectureRevision
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
+from app.models.project_file_folder import ProjectFileFolder
 from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
 from app.models.user_notification import UserNotification
 
@@ -70,6 +71,10 @@ class ProjectFileResponse(BaseModel):
     original_name: str
     mime: Optional[str]
     category: Optional[str]
+    folder_uuid: Optional[UUID]
+    description: Optional[str]
+    discipline: Optional[str]
+    ingest_status: str
     created_by_uuid: Optional[UUID]
     created_at: datetime
 
@@ -80,9 +85,46 @@ class ProjectFileResponse(BaseModel):
             original_name=row.original_name,
             mime=row.mime,
             category=row.category,
+            folder_uuid=row.folder_id,
+            description=row.description,
+            discipline=row.discipline,
+            ingest_status=row.ingest_status,
             created_by_uuid=row.created_by,
             created_at=row.created_at,
         )
+
+
+class ProjectFileFolderResponse(BaseModel):
+    uuid: UUID
+    name: str
+    parent_uuid: Optional[UUID]
+    created_at: datetime
+
+    @classmethod
+    def from_row(cls, row: ProjectFileFolder) -> ProjectFileFolderResponse:
+        return cls(
+            uuid=row.id,
+            name=row.name,
+            parent_uuid=row.parent_id,
+            created_at=row.created_at,
+        )
+
+
+class ProjectFileFolderCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    parent_uuid: Optional[UUID] = None
+
+
+class ProjectFileFolderPatchRequest(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    parent_uuid: Optional[UUID] = None
+
+
+class ProjectFilePatchRequest(BaseModel):
+    description: Optional[str] = Field(default=None, max_length=8000)
+    discipline: Optional[str] = Field(default=None, max_length=32)
+    folder_uuid: Optional[UUID] = None
+    ingest_status: Optional[str] = Field(default=None, max_length=20)
 
 
 class ArchitectureRevisionCreateRequest(BaseModel):
