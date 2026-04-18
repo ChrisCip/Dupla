@@ -1,3 +1,9 @@
+# Frontend — Grupo Dupla
+
+Documentación del producto y arquitectura: [`../docs/README.md`](../docs/README.md) · referencia técnica [`../docs/TECHNICAL.md`](../docs/TECHNICAL.md).
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

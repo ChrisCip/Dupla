@@ -1,5 +1,7 @@
 # Playbook de Ejecución: Plataforma Grupo Dupla - Módulo Arquitectura
 
+> **Nota (2026-04-18):** Los fragmentos SQL y roles de ejemplo más abajo son **orientativos**. El esquema vigente, roles (`GERENCIA`, `CONTROL`, `PRESUPUESTO`, `ARQUITECTURA`), API y convenciones están descritos en [`README.md`](README.md) y [`TECHNICAL.md`](TECHNICAL.md).
+
 ## 1. Arquitectura General y Stack
 Dado el requerimiento de una experiencia tipo "Excel moderno" y gestión de roles, la arquitectura prioriza la reactividad en el cliente y la flexibilidad estructural en la base de datos.
 
