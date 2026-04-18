@@ -2,17 +2,18 @@ from datetime import datetime
 from typing import Any, Optional, Tuple
 from uuid import UUID
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.domain.project_kind import ProjectKind
 from app.domain.project_updated import touch_project_updated_at
+from app.domain.workflow_phase import WorkflowPhase
 from app.models.project import Project
 from app.models.user import User, UserRole
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.architecture import ArchitectureDocumentPayload
-from app.schemas.project import ProjectCreateRequest
 
 settings = get_settings()
 
@@ -35,26 +36,60 @@ class ProjectService:
         is_master = user.role == UserRole.GERENCIA
         return await self._projects.list_for_user(user.id, is_master=is_master)
 
-    async def create_project(self, user: User, body: ProjectCreateRequest) -> Project:
+    async def create_project(
+        self,
+        user: User,
+        *,
+        name: str,
+        client_name: Optional[str],
+        project_kind: ProjectKind,
+        member_user_uuids: Optional[list[UUID]],
+        files: list[UploadFile],
+    ) -> Project:
         await self.ensure_architecture_access(user)
         if user.role != UserRole.GERENCIA:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Solo Gerencia puede crear proyectos",
             )
+        name_clean = name.strip()
+        if not name_clean:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El nombre del proyecto es obligatorio",
+            )
+        non_empty_files = [f for f in files if getattr(f, "filename", None)]
+        if project_kind == ProjectKind.TENDER and len(non_empty_files) < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Los proyectos de licitación requieren al menos un archivo al crear el proyecto",
+            )
+        wf = (
+            WorkflowPhase.ARCHITECTURE_REVIEW.value
+            if project_kind == ProjectKind.TENDER
+            else WorkflowPhase.BOOTSTRAPPING.value
+        )
+        cn = client_name.strip() if client_name else None
+        cn = cn or None
         project = await self._projects.create_with_architecture(
-            name=body.name,
-            client_name=body.client_name,
+            name=name_clean,
+            client_name=cn,
             created_by=user.id,
+            project_kind=project_kind.value,
+            workflow_phase=wf,
         )
         await self._projects.record_event(
             project_id=project.id,
             actor_user_id=user.id,
             event_type="PROJECT_CREATED",
-            payload={"name": project.name, "client_name": project.client_name},
+            payload={
+                "name": project.name,
+                "client_name": project.client_name,
+                "project_kind": project_kind.value,
+            },
         )
-        if body.member_user_uuids is not None:
-            await self.set_project_members(user, project.id, body.member_user_uuids)
+        if member_user_uuids is not None:
+            await self.set_project_members(user, project.id, member_user_uuids)
         return project
 
     async def get_project(self, user: User, project_uuid: UUID) -> Project:

@@ -7,6 +7,7 @@ import {
   WORKFLOW_PHASE_ORDER,
 } from '../../constants/workflowPhases'
 import { formatProjectUpdatedAt, PROJECT_BOARD_PHASE_ICONS } from '../../constants/projectsPage'
+import { projectKindLabel } from '../../constants/projectKind'
 import type { Project } from '../../types/project'
 
 type ProjectsBoardViewProps = {
@@ -120,6 +121,9 @@ export function ProjectsBoardView({
                               aria-hidden
                             />
                             <div className="relative pl-2 pr-1.5 pb-1.5 pt-1">
+                              <p className="mb-0.5 text-[7px] font-semibold uppercase leading-tight tracking-wide text-muted">
+                                {projectKindLabel(p.project_kind)}
+                              </p>
                               <h3 className="line-clamp-2 pr-0.5 text-[10px] font-semibold leading-snug tracking-tight text-ink sm:text-[11px]">
                                 {p.name}
                               </h3>

@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.domain.project_kind import ProjectKind
 from app.domain.workflow_phase import WorkflowPhase
 
 
@@ -18,6 +19,11 @@ class Project(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     client_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    project_kind: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=ProjectKind.RESIDENTIAL.value,
+    )
     status: Mapped[str] = mapped_column(String(50), default="DRAFT")
     workflow_phase: Mapped[str] = mapped_column(
         String(64),

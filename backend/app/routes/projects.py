@@ -1,12 +1,14 @@
+import json
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.dependencies import get_current_user, require_gerencia
+from app.domain.project_kind import ProjectKind
 from app.models.user import User
 from app.schemas.architecture import ArchitectureDataResponse, ArchitectureDocumentPayload
 from app.schemas.plan_delivery import (
@@ -15,13 +17,13 @@ from app.schemas.plan_delivery import (
     PlanDeliveryRequestResponse,
 )
 from app.schemas.project import (
-    ProjectCreateRequest,
     ProjectMemberEntry,
     ProjectMembersPutRequest,
     ProjectResponse,
 )
 from app.services.export_service import ExportService
 from app.services.plan_delivery_service import PlanDeliveryService
+from app.services.project_lifecycle_service import ProjectLifecycleService
 from app.services.project_service import ProjectService
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -47,16 +49,60 @@ async def list_projects(
     response_model=ProjectResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create project",
-    description="Creates a project and empty architecture document. Requires Architecture module access.",
+    description=(
+        "Multipart: name, client_name opcional, project_kind (RESIDENTIAL|TENDER), "
+        "member_user_uuids opcional como JSON string de UUIDs, files opcional (múltiples). "
+        "Licitación (TENDER): fase inicial revisión de arquitectura y obligatorio al menos un archivo."
+    ),
 )
 async def create_project(
-    body: ProjectCreateRequest,
     current: Annotated[User, Depends(require_gerencia)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    name: str = Form(...),
+    client_name: Optional[str] = Form(None),
+    project_kind: str = Form("RESIDENTIAL"),
+    member_user_uuids: Optional[str] = Form(
+        None,
+        description='JSON array de UUIDs, ej. ["uuid1","uuid2"]',
+    ),
+    files: Annotated[Optional[list[UploadFile]], File()] = None,
 ) -> ProjectResponse:
+    try:
+        kind = ProjectKind(project_kind.strip().upper())
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="project_kind debe ser RESIDENTIAL o TENDER",
+        ) from e
+    members: Optional[list[UUID]] = None
+    if member_user_uuids is not None and member_user_uuids.strip():
+        try:
+            raw = json.loads(member_user_uuids)
+            if not isinstance(raw, list):
+                raise ValueError("not a list")
+            members = [UUID(str(x)) for x in raw]
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="member_user_uuids debe ser un JSON array de UUIDs",
+            ) from e
+    file_list = files if files is not None else []
     svc = ProjectService(session)
-    project = await svc.create_project(current, body)
+    lifecycle = ProjectLifecycleService(session)
+    project = await svc.create_project(
+        current,
+        name=name,
+        client_name=client_name,
+        project_kind=kind,
+        member_user_uuids=members,
+        files=file_list,
+    )
+    for upload in file_list:
+        if not getattr(upload, "filename", None):
+            continue
+        await lifecycle.upload_file(current, project.id, upload, None)
     await session.commit()
+    await session.refresh(project)
     return ProjectResponse.from_project(project)
 
 

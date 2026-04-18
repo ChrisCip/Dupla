@@ -4,6 +4,7 @@ import { Card } from '../Card'
 import { PrimaryButton } from '../PrimaryButton'
 import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
 import { formatProjectUpdatedAt } from '../../constants/projectsPage'
+import { projectKindLabel } from '../../constants/projectKind'
 import type { Project } from '../../types/project'
 
 type ProjectsListViewProps = {
@@ -40,6 +41,7 @@ export function ProjectsListView({
             <tr>
               <th className="px-2 py-2">Nombre</th>
               <th className="px-2 py-2">Cliente</th>
+              <th className="hidden px-2 py-2 md:table-cell">Tipo</th>
               <th className="hidden px-2 py-2 sm:table-cell">Fase</th>
               <th className="whitespace-nowrap px-2 py-2">Modif.</th>
               <th className="px-2 py-2" />
@@ -48,7 +50,7 @@ export function ProjectsListView({
           <tbody>
             {loadingList ? (
               <tr>
-                <td className="border-l-4 border-l-primary bg-primary/[0.04] px-3 py-3 text-muted" colSpan={5}>
+                <td className="border-l-4 border-l-primary bg-primary/[0.04] px-3 py-3 text-muted" colSpan={6}>
                   Cargando lista de proyectos…
                 </td>
               </tr>
@@ -73,6 +75,9 @@ export function ProjectsListView({
                   <td className="max-w-[7rem] truncate px-2 py-1.5 text-muted sm:max-w-[9rem]">
                     {p.client_name ?? '—'}
                   </td>
+                  <td className="hidden px-2 py-1.5 text-muted md:table-cell">
+                    {projectKindLabel(p.project_kind)}
+                  </td>
                   <td className="hidden px-2 py-1.5 text-muted sm:table-cell">
                     <span className="inline-block max-w-[11rem] truncate rounded bg-black/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-ink">
                       {WORKFLOW_PHASE_LABELS[p.workflow_phase] ?? p.workflow_phase}
@@ -94,7 +99,7 @@ export function ProjectsListView({
               ))}
             {!loadingList && projects.length === 0 ? (
               <tr>
-                <td className="px-4 py-10" colSpan={5}>
+                <td className="px-4 py-10" colSpan={6}>
                   <div className="mx-auto max-w-md rounded-lg border border-dashed border-black/15 bg-black/[0.02] px-6 py-8 text-center">
                     <p className="text-sm font-medium text-ink">Todavía no hay proyectos</p>
                     <p className="mt-2 text-sm text-muted">
@@ -108,7 +113,7 @@ export function ProjectsListView({
             ) : null}
             {!loadingList && projects.length > 0 && filteredProjects.length === 0 ? (
               <tr>
-                <td className="border-t border-black/5 px-4 py-8 text-sm text-muted" colSpan={5}>
+                <td className="border-t border-black/5 px-4 py-8 text-sm text-muted" colSpan={6}>
                   Ningún proyecto coincide con «{projectSearch.trim()}». Prueba otro término o borra la búsqueda.
                 </td>
               </tr>

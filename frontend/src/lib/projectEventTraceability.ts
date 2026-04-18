@@ -51,6 +51,15 @@ export function describeProjectEvent(ev: ProjectEventRow): ProjectEventTrace {
       rows.push(
         { label: 'Nombre', value: str(p.name) },
         { label: 'Cliente', value: str(p.client_name) },
+        {
+          label: 'Tipo',
+          value:
+            p.project_kind === 'TENDER'
+              ? 'Licitación'
+              : p.project_kind === 'RESIDENTIAL'
+                ? 'Residencial'
+                : str(p.project_kind),
+        },
       )
       return { title: 'Proyecto creado', rows }
     }

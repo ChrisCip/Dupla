@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import { apiFetch } from '../../../api/client'
+import { projectKindLabel } from '../../../constants/projectKind'
 import { Card } from '../../Card'
 import { PrimaryButton } from '../../PrimaryButton'
 import type { Project } from '../../../types/project'
@@ -55,6 +56,10 @@ export function WorkspaceDetallesTab({
             <div>
               <dt className="du-meta">Cliente</dt>
               <dd className="mt-1 text-sm text-ink">{project.client_name ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="du-meta">Tipo de proyecto</dt>
+              <dd className="mt-1 text-sm text-ink">{projectKindLabel(project.project_kind)}</dd>
             </div>
             <div>
               <dt className="du-meta">Estado legado</dt>

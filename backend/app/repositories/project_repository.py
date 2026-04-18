@@ -115,14 +115,22 @@ class ProjectRepository:
         name: str,
         client_name: Optional[str],
         created_by: UUID,
+        project_kind: str,
+        workflow_phase: str,
     ) -> Project:
+        bootstrap = (
+            default_bootstrap_criteria()
+            if workflow_phase == WorkflowPhase.BOOTSTRAPPING.value
+            else []
+        )
         project = Project(
             name=name,
             client_name=client_name,
+            project_kind=project_kind,
             created_by=created_by,
-            workflow_phase=WorkflowPhase.BOOTSTRAPPING.value,
+            workflow_phase=workflow_phase,
             workflow_meta=_default_workflow_meta(),
-            project_bootstrap_criteria=default_bootstrap_criteria(),
+            project_bootstrap_criteria=bootstrap,
             specifications_document={},
         )
         self._session.add(project)

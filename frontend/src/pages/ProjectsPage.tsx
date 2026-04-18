@@ -12,6 +12,7 @@ import {
 } from '../constants/workflowPhases'
 import type { Project } from '../types/project'
 import { useAuthStore } from '../store/authStore'
+import type { ProjectKindValue } from '../constants/projectKind'
 
 export function ProjectsPage() {
   const navigate = useNavigate()
@@ -31,6 +32,8 @@ export function ProjectsPage() {
   const [viewMode, setViewMode] = useState<'lista' | 'tablero'>('tablero')
   const [boardMsg, setBoardMsg] = useState<string | null>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [projectKind, setProjectKind] = useState<ProjectKindValue>('RESIDENTIAL')
+  const [createFiles, setCreateFiles] = useState<File[]>([])
   const [projectSearch, setProjectSearch] = useState('')
   const dragRef = useRef(false)
 
@@ -104,19 +107,30 @@ export function ProjectsPage() {
     e.preventDefault()
     if (!token) return
     setError(null)
+    if (projectKind === 'TENDER' && createFiles.length === 0) {
+      setError('Los proyectos de licitación requieren al menos un archivo al crear.')
+      return
+    }
     setSubmitting(true)
     try {
-      const body: Record<string, unknown> = { name, client_name: client || null }
-      if (role === 'GERENCIA') {
-        body.member_user_uuids = Array.from(createMembers)
+      const fd = new FormData()
+      fd.append('name', name.trim())
+      fd.append('client_name', client.trim())
+      fd.append('project_kind', projectKind)
+      if (role === 'GERENCIA' && createMembers.size > 0) {
+        fd.append('member_user_uuids', JSON.stringify(Array.from(createMembers)))
+      }
+      for (const f of createFiles) {
+        fd.append('files', f)
       }
       const res = await apiFetch('/api/projects', {
         method: 'POST',
         token,
-        body: JSON.stringify(body),
+        body: fd,
       })
       if (!res.ok) {
-        setError('No se pudo crear el proyecto')
+        const j = await res.json().catch(() => ({}))
+        setError((j as { detail?: string }).detail ?? 'No se pudo crear el proyecto')
         return
       }
       setFeedback('Proyecto creado. Ábrelo en la tabla o en el tablero, o crea otro.')
@@ -124,6 +138,8 @@ export function ProjectsPage() {
       feedbackClearRef.current = setTimeout(() => setFeedback(null), 6000)
       setName('Nuevo proyecto')
       setClient('')
+      setProjectKind('RESIDENTIAL')
+      setCreateFiles([])
       setCreateMembers(new Set())
       closeCreateModal()
       await refresh()
@@ -283,6 +299,10 @@ export function ProjectsPage() {
           setName={setName}
           client={client}
           setClient={setClient}
+          projectKind={projectKind}
+          setProjectKind={setProjectKind}
+          createFiles={createFiles}
+          setCreateFiles={setCreateFiles}
           createMembers={createMembers}
           setCreateMembers={setCreateMembers}
           adminUsersCreate={adminUsersCreate}

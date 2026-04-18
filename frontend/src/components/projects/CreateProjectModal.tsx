@@ -1,4 +1,5 @@
 import { PrimaryButton } from '../PrimaryButton'
+import { PROJECT_KIND_OPTIONS, type ProjectKindValue } from '../../constants/projectKind'
 
 type CreateProjectModalProps = {
   onClose: () => void
@@ -7,6 +8,10 @@ type CreateProjectModalProps = {
   setName: React.Dispatch<React.SetStateAction<string>>
   client: string
   setClient: React.Dispatch<React.SetStateAction<string>>
+  projectKind: ProjectKindValue
+  setProjectKind: React.Dispatch<React.SetStateAction<ProjectKindValue>>
+  createFiles: File[]
+  setCreateFiles: React.Dispatch<React.SetStateAction<File[]>>
   createMembers: Set<string>
   setCreateMembers: React.Dispatch<React.SetStateAction<Set<string>>>
   adminUsersCreate: { uuid: string; email: string }[]
@@ -22,6 +27,10 @@ export function CreateProjectModal({
   setName,
   client,
   setClient,
+  projectKind,
+  setProjectKind,
+  createFiles,
+  setCreateFiles,
   createMembers,
   setCreateMembers,
   adminUsersCreate,
@@ -52,6 +61,32 @@ export function CreateProjectModal({
         </p>
         <form onSubmit={onSubmit} className="mt-4 space-y-4">
           <div>
+            <div className="du-label">Tipo de proyecto</div>
+            <div className="mt-2 space-y-2">
+              {PROJECT_KIND_OPTIONS.map((o) => (
+                <label
+                  key={o.value}
+                  className={`flex cursor-pointer gap-3 rounded-lg border p-3 text-sm ${
+                    projectKind === o.value ? 'border-primary/40 bg-primary/[0.06]' : 'border-black/10 bg-white'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="project-kind"
+                    className="mt-1"
+                    checked={projectKind === o.value}
+                    onChange={() => setProjectKind(o.value)}
+                    disabled={submitting}
+                  />
+                  <span>
+                    <span className="font-medium text-ink">{o.label}</span>
+                    <span className="mt-0.5 block text-xs text-muted">{o.description}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
             <label htmlFor="modal-project-name" className="du-label">
               Nombre
             </label>
@@ -80,6 +115,33 @@ export function CreateProjectModal({
               disabled={submitting}
             />
           </div>
+          {projectKind === 'TENDER' ? (
+            <div>
+              <label htmlFor="modal-project-files" className="du-label">
+                Archivos iniciales <span className="text-primary">(obligatorio)</span>
+              </label>
+              <input
+                id="modal-project-files"
+                type="file"
+                className="mt-1 block w-full text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-primary/12 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink"
+                multiple
+                disabled={submitting}
+                onChange={(e) => {
+                  const list = e.target.files
+                  setCreateFiles(list ? Array.from(list) : [])
+                }}
+              />
+              {createFiles.length > 0 ? (
+                <ul className="mt-2 list-inside list-disc text-xs text-muted">
+                  {createFiles.map((f) => (
+                    <li key={`${f.name}-${f.size}`}>{f.name}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-xs text-muted">Selecciona uno o más archivos (DWG, PDF, etc.).</p>
+              )}
+            </div>
+          ) : null}
           <div>
             <div className="du-label">Participantes (opcional)</div>
             <p className="mt-1 text-xs text-muted">
