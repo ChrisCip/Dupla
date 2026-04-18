@@ -219,15 +219,15 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
     !hasActiveFilters && filesTotal > 20 && (fileHasPrevPage || fileHasNextPage)
 
   return (
-    <Card className="space-y-4 p-6">
-      <div>
+    <Card className="flex min-h-0 w-full flex-1 flex-col gap-4 p-6">
+      <div className="shrink-0">
         <h2 className="text-lg font-semibold text-ink">Archivos del proyecto</h2>
         <p className="text-sm text-muted">
           Explorador por carpetas con descripción y disciplina. Arrastra archivos al área inferior o usa el botón Crear archivo.
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -317,7 +317,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
       </div>
 
       {filterOpen ? (
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-black/10 bg-black/[0.02] p-3">
+        <div className="flex shrink-0 flex-wrap items-end gap-3 rounded-lg border border-black/10 bg-black/[0.02] p-3">
           <div className="min-w-[10rem] flex-1">
             <label htmlFor="archivos-filter-discipline" className="du-label text-xs">
               Disciplina
@@ -364,14 +364,14 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
         </div>
       ) : null}
 
-      {flowMsg ? <p className="text-sm text-primary">{flowMsg}</p> : null}
+      {flowMsg ? <p className="shrink-0 text-sm text-primary">{flowMsg}</p> : null}
 
       {hasActiveFilters ? (
-        <p className="text-sm text-muted">
+        <p className="shrink-0 text-sm text-muted">
           Búsqueda en todo el proyecto: solo archivos. La ruta muestra la carpeta donde está cada uno.
         </p>
       ) : (
-        <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label="Ruta">
+        <nav className="flex shrink-0 flex-wrap items-center gap-1 text-sm" aria-label="Ruta">
           {trail.map((seg, i) => (
             <span key={`${seg.uuid ?? 'root'}-${i}`} className="flex items-center gap-1">
               {i > 0 ? <span className="text-black/25">/</span> : null}
@@ -390,7 +390,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
       )}
 
       <div
-        className={`rounded-xl border-2 border-dashed p-4 transition-colors ${
+        className={`flex min-h-0 flex-1 flex-col rounded-xl border-2 border-dashed p-4 transition-colors ${
           dropHighlight ? 'border-primary/50 bg-primary/[0.04]' : 'border-black/10 bg-white'
         }`}
         onDragEnter={(e) => {
@@ -420,6 +420,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
           if (id && dragFileId) void moveFileToFolder(id, folderUuid)
         }}
       >
+        <div className="min-h-0 flex-1 overflow-y-auto">
         {hasActiveFilters ? (
           searchBusy ? (
             <p className="py-8 text-center text-sm text-muted">Buscando…</p>
@@ -759,9 +760,10 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
             </table>
           </div>
         )}
+        </div>
       </div>
 
-      <p className="text-xs text-muted">
+      <p className="shrink-0 text-xs text-muted">
         {hasActiveFilters
           ? 'Sal de los filtros (Limpiar) para volver a la vista por carpetas y mover archivos.'
           : 'Arrastra un archivo sobre una carpeta para moverlo. Doble clic en una carpeta para abrirla.'}

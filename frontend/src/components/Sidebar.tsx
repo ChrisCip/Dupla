@@ -58,9 +58,9 @@ export function Sidebar() {
   }, [token])
 
   const linkBase =
-    'flex items-center rounded-md text-sm font-medium text-ink outline-none transition-colors duration-150 hover:bg-black/5 active:bg-black/10 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white'
-  const linkExpanded = 'justify-between gap-2 px-3 py-2'
-  const linkCollapsed = 'justify-center px-2 py-2.5'
+    'flex items-center rounded-md text-base font-medium text-ink outline-none transition-colors duration-150 hover:bg-black/5 active:bg-black/10 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white'
+  const linkExpanded = 'justify-between gap-2 px-3.5 py-2.5'
+  const linkCollapsed = 'justify-center px-2.5 py-3'
   const activeClass = 'bg-primary/10 text-primary'
 
   const userTooltip = [email, role, unreadNotifs > 0 ? `${unreadNotifs} aviso(s)` : null]
@@ -70,12 +70,12 @@ export function Sidebar() {
   return (
     <aside
       className={`flex shrink-0 flex-col border-r border-black/10 bg-white transition-[width] duration-200 ease-out ${
-        collapsed ? 'w-[4.25rem]' : 'w-52 md:w-56'
+        collapsed ? 'w-[4.5rem]' : 'w-56 md:w-60'
       }`}
     >
       <div
         className={`flex shrink-0 border-b border-black/10 ${
-          collapsed ? 'items-center justify-center px-2 py-3 md:py-4' : 'px-3 py-4 md:px-4 md:py-6'
+          collapsed ? 'items-center justify-center px-2.5 py-4 md:py-5' : 'px-4 py-5 md:px-5 md:py-7'
         }`}
       >
         <DuplaLogo
@@ -86,7 +86,7 @@ export function Sidebar() {
           }
         />
       </div>
-      <nav className="flex flex-1 flex-col gap-0.5 p-2" aria-label="Principal">
+      <nav className="flex flex-1 flex-col gap-1 p-2.5" aria-label="Principal">
         <NavLink
           to="/app/projects"
           title="Proyectos"
@@ -95,7 +95,7 @@ export function Sidebar() {
             `${linkBase} ${collapsed ? linkCollapsed : linkExpanded} ${isActive ? activeClass : ''}`
           }
         >
-          <FolderKanban className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
+          <FolderKanban className="h-5 w-5 shrink-0" aria-hidden />
           <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Proyectos</span>
         </NavLink>
         <NavLink
@@ -106,7 +106,7 @@ export function Sidebar() {
           }
         >
           <span className="relative shrink-0">
-            <MessageCircle className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+            <MessageCircle className="h-5 w-5" aria-hidden />
             {hasUnread && collapsed ? (
               <span
                 className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-white"
@@ -126,7 +126,7 @@ export function Sidebar() {
             `${linkBase} ${collapsed ? linkCollapsed : linkExpanded} ${isActive ? activeClass : ''}`
           }
         >
-          <LayoutDashboard className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
+          <LayoutDashboard className="h-5 w-5 shrink-0" aria-hidden />
           <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Tablero</span>
         </NavLink>
         {role === 'GERENCIA' ? (
@@ -137,7 +137,7 @@ export function Sidebar() {
               `${linkBase} ${collapsed ? linkCollapsed : linkExpanded} ${isActive ? activeClass : ''}`
             }
           >
-            <Users className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden />
+            <Users className="h-5 w-5 shrink-0" aria-hidden />
             <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Usuarios</span>
           </NavLink>
         ) : null}
@@ -145,11 +145,11 @@ export function Sidebar() {
 
       <div className="border-t border-black/10">
         {collapsed ? (
-          <div className="flex flex-col items-center gap-2 p-2">
+          <div className="flex flex-col items-center gap-2.5 p-2.5">
             <span className="relative" title={userTooltip}>
               <UserRound className="h-6 w-6 text-muted" aria-hidden />
               {unreadNotifs > 0 ? (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/20 px-0.5 text-[9px] font-bold text-primary">
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/20 px-0.5 text-[10px] font-bold text-primary">
                   {unreadNotifs > 9 ? '9+' : unreadNotifs}
                 </span>
               ) : null}
@@ -165,17 +165,17 @@ export function Sidebar() {
             </button>
           </div>
         ) : (
-          <div className="space-y-2 px-3 py-3">
-            <p className="break-all text-xs font-medium leading-snug text-ink">{email}</p>
-            {role ? <p className="text-[11px] text-muted">{role}</p> : null}
+          <div className="space-y-2.5 px-3.5 py-4">
+            <p className="break-all text-sm font-medium leading-snug text-ink">{email}</p>
+            {role ? <p className="text-xs text-muted">{role}</p> : null}
             {unreadNotifs > 0 ? (
-              <span className="inline-flex rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+              <span className="inline-flex rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-medium text-primary">
                 {unreadNotifs} aviso{unreadNotifs === 1 ? '' : 's'}
               </span>
             ) : null}
             <button
               type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-md border border-black/12 py-2 text-xs font-medium text-muted transition hover:bg-black/[0.04] hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-black/12 py-2.5 text-sm font-medium text-muted transition hover:bg-black/[0.04] hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               onClick={() => logout()}
             >
               <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -185,10 +185,10 @@ export function Sidebar() {
         )}
       </div>
 
-      <div className="border-t border-black/10 p-2">
+      <div className="border-t border-black/10 p-2.5">
         <button
           type="button"
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-black/10 bg-white px-2 py-2 text-muted outline-none transition hover:bg-black/[0.04] hover:text-ink focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2"
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-black/10 bg-white px-2.5 py-2.5 text-muted outline-none transition hover:bg-black/[0.04] hover:text-ink focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2"
           aria-expanded={!collapsed}
           aria-label={collapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'}
           onClick={() => setCollapsed((c) => !c)}
@@ -198,7 +198,7 @@ export function Sidebar() {
           ) : (
             <>
               <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="text-xs font-medium">Contraer</span>
+              <span className="text-sm font-medium">Contraer</span>
             </>
           )}
         </button>

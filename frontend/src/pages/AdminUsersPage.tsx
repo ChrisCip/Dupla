@@ -67,7 +67,7 @@ export function AdminUsersPage() {
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-ink md:text-2xl">Usuarios</h1>
+          <h1 className="text-2xl font-semibold text-ink md:text-3xl">Usuarios</h1>
           <p className="mt-2 max-w-prose text-sm text-muted">
             Alta y edición de credenciales, rol y acceso al workspace. Solo rol Gerencia.
           </p>

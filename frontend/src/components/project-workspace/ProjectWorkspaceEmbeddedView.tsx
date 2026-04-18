@@ -1,3 +1,4 @@
+import { LayoutDashboard, MessageCircle, PanelLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Card } from '../Card'
@@ -83,19 +84,26 @@ export function ProjectWorkspaceEmbeddedView({
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Acciones rápidas</h2>
           <div className="mt-3 flex flex-col gap-2">
             <Link
-              className="du-pill-action text-center"
+              className="du-pill-action inline-flex w-full items-center justify-center gap-2 text-center"
               to={`/app/tasks?project_uuid=${encodeURIComponent(projectUuid)}`}
             >
+              <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden />
               Tablero completo
             </Link>
-            <button type="button" className="du-pill-action" onClick={onOpenChat}>
+            <button
+              type="button"
+              className="du-pill-action inline-flex w-full items-center justify-center gap-2"
+              onClick={onOpenChat}
+            >
+              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
               Chat del proyecto
             </button>
             <button
               type="button"
-              className="du-pill-action border-primary/40 bg-primary/[0.06] font-semibold text-primary"
+              className="du-pill-action inline-flex w-full items-center justify-center gap-2 border-primary/40 bg-primary/6 font-semibold text-primary"
               onClick={onOpenWorkspace}
             >
+              <PanelLeft className="h-4 w-4 shrink-0" aria-hidden />
               Ver workspace
             </button>
           </div>

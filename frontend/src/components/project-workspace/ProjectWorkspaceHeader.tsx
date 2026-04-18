@@ -45,17 +45,17 @@ export function ProjectWorkspaceHeader({
   }
 
   return (
-    <header className="shrink-0 space-y-2 border-b border-black/10 pb-2 md:space-y-3 md:pb-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <header className="shrink-0 space-y-3 border-b border-black/10 pb-3 md:space-y-4 md:pb-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="du-meta">
-            <Link className="du-link text-sm" to="/app/projects">
+            <Link className="du-link text-base" to="/app/projects">
               ← Volver a proyectos
             </Link>
           </div>
           <h1
             id="workspace-heading"
-            className="mt-1 text-lg font-bold tracking-tight text-ink md:text-xl"
+            className="mt-1 text-xl font-bold tracking-tight text-ink md:text-2xl"
           >
             {displayTitle}
           </h1>
@@ -67,11 +67,11 @@ export function ProjectWorkspaceHeader({
             <button
               type="button"
               onClick={onOpenConfig}
-              className="inline-flex min-h-[2.5rem] flex-1 items-center justify-center gap-2 rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-medium text-ink shadow-sm hover:bg-black/[0.03] sm:flex-initial"
+              className="inline-flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-lg border border-black/15 bg-white px-4 py-2.5 text-base font-medium text-ink shadow-sm hover:bg-black/[0.03] sm:flex-initial"
               aria-label="Configuración del proyecto"
             >
               <svg
-                className="h-4 w-4 shrink-0 text-muted"
+                className="h-5 w-5 shrink-0 text-muted"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -86,11 +86,11 @@ export function ProjectWorkspaceHeader({
               Configuración
             </button>
             <details className="group relative flex-1 sm:flex-initial">
-              <summary className="flex min-h-[2.5rem] cursor-pointer list-none items-center justify-center gap-1.5 rounded-lg border border-black/15 bg-white px-3 py-2 text-center text-sm font-medium text-ink shadow-sm hover:bg-black/[0.03] [&::-webkit-details-marker]:hidden">
+              <summary className="flex min-h-[2.75rem] cursor-pointer list-none items-center justify-center gap-1.5 rounded-lg border border-black/15 bg-white px-4 py-2.5 text-center text-base font-medium text-ink shadow-sm hover:bg-black/[0.03] [&::-webkit-details-marker]:hidden">
                 Exportaciones
-                <span className="hidden text-xs text-muted sm:inline">(Excel / PDF)</span>
+                <span className="hidden text-sm text-muted sm:inline">(Excel / PDF)</span>
                 <svg
-                  className="h-4 w-4 shrink-0 text-muted"
+                  className="h-5 w-5 shrink-0 text-muted"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -100,8 +100,8 @@ export function ProjectWorkspaceHeader({
                   <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </summary>
-              <div className="absolute right-0 top-full z-40 mt-1 w-[min(calc(100vw-2rem),22rem)] rounded-lg border border-black/10 bg-white p-3 text-left shadow-lg">
-                <p className="text-xs text-muted">
+              <div className="absolute right-0 top-full z-40 mt-1 w-[min(calc(100vw-2rem),22rem)] rounded-lg border border-black/10 bg-white p-4 text-left shadow-lg">
+                <p className="text-sm text-muted">
                   Pueden tardar unos segundos; el botón muestra «Generando…» mientras descarga.
                 </p>
                 <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">

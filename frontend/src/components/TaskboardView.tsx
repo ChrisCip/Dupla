@@ -186,7 +186,7 @@ export function TaskboardView({
       {!embedded ? (
         <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-ink md:text-2xl">Tablero de tareas</h1>
+            <h1 className="text-2xl font-semibold text-ink md:text-3xl">Tablero de tareas</h1>
             <p className="mt-2 text-sm text-muted">
               Asigna personas, descripciones breves y archiva lo completado. Clic en una tarjeta para el detalle.
             </p>

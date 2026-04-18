@@ -29,7 +29,7 @@ export function Tabs({ tabs, value, onChange, children, labelledBy }: Props) {
               aria-selected={selected}
               id={`tab-${t.id}`}
               tabIndex={selected ? 0 : -1}
-              className={`relative -mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium outline-none transition-colors duration-150 md:px-4 md:py-3 ${
+              className={`relative -mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-base font-medium outline-none transition-colors duration-150 md:px-5 md:py-3.5 ${
                 selected
                   ? 'border-primary bg-primary/[0.06] text-ink'
                   : 'border-transparent text-muted hover:bg-black/[0.04] hover:text-ink active:bg-black/[0.06]'
@@ -45,7 +45,7 @@ export function Tabs({ tabs, value, onChange, children, labelledBy }: Props) {
       <div
         role="tabpanel"
         aria-labelledby={`tab-${value}`}
-        className="pt-4 md:pt-6 lg:pt-8"
+        className="pt-5 md:pt-7 lg:pt-9"
       >
         {children}
       </div>

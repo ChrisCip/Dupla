@@ -26,7 +26,7 @@ export function StatusBadge({ status, lastSavedAt, errorMessage }: Props) {
   return (
     <div className="flex flex-col items-end gap-1 text-right sm:items-start sm:text-left">
       <span
-        className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium ${tone}`}
+        className={`inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium ${tone}`}
         role="status"
         aria-live="polite"
       >
@@ -37,7 +37,7 @@ export function StatusBadge({ status, lastSavedAt, errorMessage }: Props) {
           </span>
         ) : null}
       </span>
-      {errorMessage ? <span className="max-w-xs text-xs text-primary">{errorMessage}</span> : null}
+      {errorMessage ? <span className="max-w-xs text-sm text-primary">{errorMessage}</span> : null}
     </div>
   )
 }
