@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { apiFetch } from '../api/client'
+import { formatPersonFullName } from '../lib/personDisplay'
 import { PrimaryButton } from './PrimaryButton'
 import type { TaskAssigneeOption } from '../types/taskBoard'
 
@@ -150,7 +151,7 @@ export function TaskboardCreateModal({
               <option value="">Sin asignar</option>
               {assignees.map((a) => (
                 <option key={a.uuid} value={a.uuid}>
-                  {a.email}
+                  {formatPersonFullName(a.first_name, a.last_name, a.email)}
                 </option>
               ))}
             </select>

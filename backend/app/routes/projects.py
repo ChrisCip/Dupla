@@ -136,7 +136,7 @@ async def list_project_members(
 ) -> list[ProjectMemberEntry]:
     svc = ProjectService(session)
     rows = await svc.list_project_members(current, project_uuid)
-    return [ProjectMemberEntry(uuid=u, email=e) for u, e in rows]
+    return [ProjectMemberEntry(uuid=u, email=e, first_name=fn, last_name=ln) for u, e, fn, ln in rows]
 
 
 @router.put(

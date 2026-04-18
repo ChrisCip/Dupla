@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react'
 
-import { emailInitials, hueClassForUuid } from '../lib/taskboard'
+import { hueClassForUuid, userDisplayInitials } from '../lib/taskboard'
 import type { TaskAssigneeOption } from '../types/taskBoard'
 import { PrimaryButton } from './PrimaryButton'
 
@@ -212,7 +212,7 @@ export function TaskboardToolbar({
                               mineOnly ? 'cursor-not-allowed opacity-40' : ''
                             }`}
                           >
-                            {emailInitials(a.email)}
+                            {userDisplayInitials(a.first_name, a.last_name, a.email)}
                           </button>
                         </span>
                       ) : (
@@ -228,7 +228,7 @@ export function TaskboardToolbar({
                             mineOnly ? 'cursor-not-allowed opacity-40' : ''
                           }`}
                         >
-                          {emailInitials(a.email)}
+                          {userDisplayInitials(a.first_name, a.last_name, a.email)}
                         </button>
                       )}
                     </span>

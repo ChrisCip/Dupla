@@ -12,7 +12,14 @@ import {
   type AdminEditUserForm,
 } from '../schemas/adminUser'
 
-type ListedUser = { uuid: string; email: string; role: string; module_ids: number[] }
+type ListedUser = {
+  uuid: string
+  email: string
+  first_name: string
+  last_name: string
+  role: string
+  module_ids: number[]
+}
 
 type Props = {
   token: string
@@ -27,6 +34,8 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
   const createForm = useForm<AdminCreateUserForm>({
     resolver: zodResolver(adminCreateUserSchema),
     defaultValues: {
+      first_name: '',
+      last_name: '',
       email: '',
       password: '',
       role: 'ARQUITECTURA',
@@ -37,6 +46,8 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
   const editForm = useForm<AdminEditUserForm>({
     resolver: zodResolver(adminEditUserSchema),
     defaultValues: {
+      first_name: '',
+      last_name: '',
       email: '',
       password: '',
       role: 'ARQUITECTURA',
@@ -49,6 +60,8 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
     if (mode === 'edit' && user) {
       const hasArch = user.module_ids?.includes(1) ?? true
       editForm.reset({
+        first_name: user.first_name,
+        last_name: user.last_name,
         email: user.email,
         password: '',
         role: user.role as UserRole,
@@ -57,6 +70,8 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
     }
     if (mode === 'create') {
       createForm.reset({
+        first_name: '',
+        last_name: '',
         email: '',
         password: '',
         role: 'ARQUITECTURA',
@@ -80,6 +95,8 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
       method: 'POST',
       token,
       body: JSON.stringify({
+        first_name: values.first_name,
+        last_name: values.last_name,
         email: values.email,
         password: values.password,
         role: values.role,
@@ -101,6 +118,8 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
     if (!user) return
     const module_ids = values.architectureAccess ? [1] : []
     const body: Record<string, unknown> = {
+      first_name: values.first_name,
+      last_name: values.last_name,
       email: values.email,
       role: values.role,
       module_ids,
@@ -148,6 +167,38 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
 
         {isCreate ? (
           <form className="mt-6 space-y-4" onSubmit={createForm.handleSubmit(submitCreate)} noValidate>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="du-label" htmlFor="um-first">
+                  Nombre
+                </label>
+                <input
+                  id="um-first"
+                  type="text"
+                  autoComplete="given-name"
+                  className="du-input mt-1"
+                  {...createForm.register('first_name')}
+                />
+                {createForm.formState.errors.first_name ? (
+                  <p className="mt-1 text-sm text-primary">{createForm.formState.errors.first_name.message}</p>
+                ) : null}
+              </div>
+              <div>
+                <label className="du-label" htmlFor="um-last">
+                  Apellido
+                </label>
+                <input
+                  id="um-last"
+                  type="text"
+                  autoComplete="family-name"
+                  className="du-input mt-1"
+                  {...createForm.register('last_name')}
+                />
+                {createForm.formState.errors.last_name ? (
+                  <p className="mt-1 text-sm text-primary">{createForm.formState.errors.last_name.message}</p>
+                ) : null}
+              </div>
+            </div>
             <div>
               <label className="du-label" htmlFor="um-email">
                 Correo
@@ -204,6 +255,38 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
           </form>
         ) : (
           <form className="mt-6 space-y-4" onSubmit={editForm.handleSubmit(submitEdit)} noValidate>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="du-label" htmlFor="ue-first">
+                  Nombre
+                </label>
+                <input
+                  id="ue-first"
+                  type="text"
+                  autoComplete="given-name"
+                  className="du-input mt-1"
+                  {...editForm.register('first_name')}
+                />
+                {editForm.formState.errors.first_name ? (
+                  <p className="mt-1 text-sm text-primary">{editForm.formState.errors.first_name.message}</p>
+                ) : null}
+              </div>
+              <div>
+                <label className="du-label" htmlFor="ue-last">
+                  Apellido
+                </label>
+                <input
+                  id="ue-last"
+                  type="text"
+                  autoComplete="family-name"
+                  className="du-input mt-1"
+                  {...editForm.register('last_name')}
+                />
+                {editForm.formState.errors.last_name ? (
+                  <p className="mt-1 text-sm text-primary">{editForm.formState.errors.last_name.message}</p>
+                ) : null}
+              </div>
+            </div>
             <div>
               <label className="du-label" htmlFor="ue-email">
                 Correo

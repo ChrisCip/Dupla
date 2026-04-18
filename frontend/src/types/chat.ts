@@ -3,6 +3,8 @@ export type ChatConversationKind = 'GENERAL' | 'DIRECT' | 'GROUP' | 'PROJECT'
 export type ChatParticipantRef = {
   uuid: string
   email: string
+  first_name: string
+  last_name: string
 }
 
 export type ChatConversationSummary = {
@@ -21,10 +23,12 @@ export type ChatMessage = {
   conversation_uuid: string
   body: string
   created_at: string
-  author: { uuid: string; email: string }
+  author: { uuid: string; email: string; first_name: string; last_name: string }
 }
 
 export type ChatDirectoryUser = {
   uuid: string
   email: string
+  first_name: string
+  last_name: string
 }

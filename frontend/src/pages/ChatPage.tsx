@@ -12,13 +12,15 @@ import { ChatMessageList } from '../components/chat/ChatMessageList'
 import { formatGroupParticipantEmails } from '../lib/chatUi'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
-import type { ChatConversationSummary, ChatMessage } from '../types/chat'
+import type { ChatConversationSummary, ChatDirectoryUser, ChatMessage } from '../types/chat'
 
 export function ChatPage() {
   const [searchParams] = useSearchParams()
   const token = useAuthStore((s) => s.token)
   const userUuid = useAuthStore((s) => s.userUuid)
   const email = useAuthStore((s) => s.email)
+  const firstName = useAuthStore((s) => s.firstName)
+  const lastName = useAuthStore((s) => s.lastName)
   const conversations = useChatStore((s) => s.conversations)
   const activeConversationUuid = useChatStore((s) => s.activeConversationUuid)
   const setActiveConversationUuid = useChatStore((s) => s.setActiveConversationUuid)
@@ -55,7 +57,7 @@ export function ChatPage() {
     async function run() {
       const res = await apiFetch('/api/chat/directory', { token })
       if (!res.ok || cancelled) return
-      setDirectory((await res.json()) as { uuid: string; email: string }[])
+      setDirectory((await res.json()) as ChatDirectoryUser[])
     }
     void run()
     return () => {
@@ -160,7 +162,11 @@ export function ChatPage() {
     const selected = new Set(groupSelectedUuids)
     return directory
       .filter((u) => !selected.has(u.uuid))
-      .filter((u) => q === '' || u.email.toLowerCase().includes(q))
+      .filter((u) => {
+        if (q === '') return true
+        const hay = `${u.email} ${u.first_name} ${u.last_name}`.toLowerCase()
+        return hay.includes(q)
+      })
       .slice(0, 50)
   }, [directory, groupMemberSearch, groupSelectedUuids])
 
@@ -183,7 +189,12 @@ export function ChatPage() {
       conversation_uuid: activeConversationUuid,
       body: text,
       created_at: new Date().toISOString(),
-      author: { uuid: userUuid, email: email ?? '' },
+      author: {
+        uuid: userUuid,
+        email: email ?? '',
+        first_name: firstName ?? '',
+        last_name: lastName ?? '',
+      },
     }
     appendMessages([optimistic])
     setDraft('')
@@ -216,6 +227,8 @@ export function ChatPage() {
     activeConversationUuid,
     userUuid,
     email,
+    firstName,
+    lastName,
     appendMessages,
     setMessages,
     refreshConversations,

@@ -137,15 +137,23 @@ class ChatService:
         if not conversation_ids:
             return {}
         q = (
-            select(ChatConversationMember.conversation_id, User.id, User.email)
+            select(
+                ChatConversationMember.conversation_id,
+                User.id,
+                User.email,
+                User.first_name,
+                User.last_name,
+            )
             .join(User, User.id == ChatConversationMember.user_id)
             .where(ChatConversationMember.conversation_id.in_(conversation_ids))
             .order_by(User.email.asc())
         )
         rows = list((await self._session.execute(q)).all())
         out: dict[uuid.UUID, list[ChatAuthorResponse]] = {}
-        for conv_id, uid, email in rows:
-            out.setdefault(conv_id, []).append(ChatAuthorResponse(uuid=uid, email=email))
+        for conv_id, uid, email, fn, ln in rows:
+            out.setdefault(conv_id, []).append(
+                ChatAuthorResponse(uuid=uid, email=email, first_name=fn, last_name=ln)
+            )
         return out
 
     async def _unread_count(self, user: User, conv: ChatConversation) -> int:
@@ -287,7 +295,15 @@ class ChatService:
     async def list_directory(self, user: User) -> list[ChatUserDirectoryItem]:
         q = select(User).where(User.id != user.id).order_by(User.email.asc())
         users = list((await self._session.execute(q)).scalars().all())
-        return [ChatUserDirectoryItem(uuid=u.id, email=u.email) for u in users]
+        return [
+            ChatUserDirectoryItem(
+                uuid=u.id,
+                email=u.email,
+                first_name=u.first_name,
+                last_name=u.last_name,
+            )
+            for u in users
+        ]
 
     async def get_or_create_direct(self, user: User, other_uuid: uuid.UUID) -> ChatConversationResponse:
         if other_uuid == user.id:

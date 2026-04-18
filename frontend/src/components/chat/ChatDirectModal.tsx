@@ -1,10 +1,11 @@
+import { formatPersonFullName } from '../../lib/personDisplay'
 import { PrimaryButton } from '../PrimaryButton'
 
 type ChatDirectModalProps = {
   open: boolean
   dmTarget: string
   setDmTarget: React.Dispatch<React.SetStateAction<string>>
-  directory: { uuid: string; email: string }[]
+  directory: { uuid: string; email: string; first_name: string; last_name: string }[]
   error: string | null
   onBackdropClose: () => void
   onCancel: () => void
@@ -53,7 +54,7 @@ export function ChatDirectModal({
           <option value="">Selecciona…</option>
           {directory.map((u) => (
             <option key={u.uuid} value={u.uuid}>
-              {u.email}
+              {formatPersonFullName(u.first_name, u.last_name, u.email)}
             </option>
           ))}
         </select>

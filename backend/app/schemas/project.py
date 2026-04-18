@@ -42,6 +42,8 @@ class ProjectResponse(BaseModel):
 class ProjectMemberEntry(BaseModel):
     uuid: UUID
     email: EmailStr
+    first_name: str
+    last_name: str
 
 
 class ProjectMembersPutRequest(BaseModel):

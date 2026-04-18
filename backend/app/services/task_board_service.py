@@ -61,7 +61,15 @@ class TaskBoardService:
                 .order_by(User.email)
             )
             rows = list((await self._session.execute(q)).scalars().all())
-            return [TaskAssigneeOption(uuid=u.id, email=u.email) for u in rows]
+            return [
+                TaskAssigneeOption(
+                    uuid=u.id,
+                    email=u.email,
+                    first_name=u.first_name,
+                    last_name=u.last_name,
+                )
+                for u in rows
+            ]
 
         project = await self._projects.get_by_uuid(project_uuid)
         if project is None:
@@ -74,8 +82,10 @@ class TaskBoardService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Proyecto no encontrado",
             )
-        pairs = await self._projects.list_team_with_emails_for_project(project_uuid)
-        return [TaskAssigneeOption(uuid=u, email=e) for u, e in pairs]
+        pairs = await self._projects.list_team_profiles_for_project(project_uuid)
+        return [
+            TaskAssigneeOption(uuid=u, email=e, first_name=fn, last_name=ln) for u, e, fn, ln in pairs
+        ]
 
     async def _validate_assignee(
         self,

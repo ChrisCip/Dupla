@@ -101,9 +101,9 @@ class ProjectService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
         return project
 
-    async def list_project_members(self, user: User, project_uuid: UUID) -> list[tuple[UUID, str]]:
+    async def list_project_members(self, user: User, project_uuid: UUID) -> list[tuple[UUID, str, str, str]]:
         project = await self.get_project(user, project_uuid)
-        return await self._projects.list_project_members_with_emails(project.id)
+        return await self._projects.list_project_member_profiles(project.id)
 
     async def set_project_members(self, master: User, project_uuid: UUID, member_user_uuids: list[UUID]) -> None:
         if master.role != UserRole.GERENCIA:
@@ -128,9 +128,10 @@ class ProjectService:
                     detail="Todos los miembros deben tener acceso al módulo Arquitectura",
                 )
         await self._projects.replace_project_members(project.id, ids)
-        pairs = await self._projects.list_project_members_with_emails(project.id)
+        pairs = await self._projects.list_project_member_profiles(project.id)
         member_payload: list[dict[str, Any]] = [
-            {"user_uuid": str(u), "email": e} for u, e in sorted(pairs, key=lambda x: x[1].lower())
+            {"user_uuid": str(u), "email": e, "first_name": fn, "last_name": ln}
+            for u, e, fn, ln in sorted(pairs, key=lambda x: x[1].lower())
         ]
         await self._projects.record_event(
             project_id=project.id,

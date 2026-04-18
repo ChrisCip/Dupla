@@ -6,6 +6,7 @@ import {
   isOptimisticMessageId,
   type MessageDisplayGroup,
 } from '../../lib/chatUi'
+import { formatPersonFullName } from '../../lib/personDisplay'
 import type { ChatMessage } from '../../types/chat'
 
 type ChatMessageListProps = {
@@ -32,7 +33,9 @@ function MessageGroupBlock({
       <div
         className={`du-meta mb-0.5 max-w-[85%] px-0.5 ${mine ? 'text-right' : 'text-left'}`}
       >
-        <span className={mine ? 'text-primary' : 'text-muted'}>{group.author.email}</span>
+        <span className={mine ? 'text-primary' : 'text-muted'}>
+          {formatPersonFullName(group.author.first_name, group.author.last_name, group.author.email)}
+        </span>
         <span className="text-muted"> · {headerTime}</span>
       </div>
       {group.messages.map((m) => {

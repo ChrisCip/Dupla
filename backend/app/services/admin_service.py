@@ -47,6 +47,8 @@ class AdminService:
         user = User(
             id=uid,
             email=body.email,
+            first_name=body.first_name,
+            last_name=body.last_name,
             password_hash=hash_password(body.password),
             role=body.role,
         )
@@ -87,6 +89,8 @@ class AdminService:
                 )
 
         user.email = body.email
+        user.first_name = body.first_name
+        user.last_name = body.last_name
         user.role = body.role
         if body.password:
             user.password_hash = hash_password(body.password)

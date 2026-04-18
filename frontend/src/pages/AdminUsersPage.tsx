@@ -5,9 +5,17 @@ import { AdminUserModal } from '../components/AdminUserModal'
 import { Card } from '../components/Card'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { ROLE_LABELS, type UserRole } from '../constants/userRoles'
+import { formatPersonFullName } from '../lib/personDisplay'
 import { useAuthStore } from '../store/authStore'
 
-type ListedUser = { uuid: string; email: string; role: string; module_ids: number[] }
+type ListedUser = {
+  uuid: string
+  email: string
+  first_name: string
+  last_name: string
+  role: string
+  module_ids: number[]
+}
 
 export function AdminUsersPage() {
   const token = useAuthStore((s) => s.token)
@@ -84,6 +92,7 @@ export function AdminUsersPage() {
           <table className="w-full table-fixed text-left text-sm">
             <thead className="bg-black/4 text-xs uppercase text-muted">
               <tr>
+                <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Correo</th>
                 <th className="w-40 px-4 py-3">Rol</th>
                 <th className="w-32 px-4 py-3 text-right">Acciones</th>
@@ -92,7 +101,7 @@ export function AdminUsersPage() {
             <tbody>
               {loadingList ? (
                 <tr>
-                  <td className="px-4 py-8 text-muted" colSpan={3}>
+                  <td className="px-4 py-8 text-muted" colSpan={4}>
                     Cargando…
                   </td>
                 </tr>
@@ -100,7 +109,10 @@ export function AdminUsersPage() {
               {!loadingList &&
                 users.map((u) => (
                   <tr key={u.uuid} className="border-t border-black/5">
-                    <td className="truncate px-4 py-3 text-ink">{u.email}</td>
+                    <td className="truncate px-4 py-3 text-ink">
+                      {formatPersonFullName(u.first_name, u.last_name, u.email)}
+                    </td>
+                    <td className="truncate px-4 py-3 text-muted">{u.email}</td>
                     <td className="px-4 py-3 text-muted">{roleLabel(u.role)}</td>
                     <td className="px-4 py-3 text-right">
                       <button

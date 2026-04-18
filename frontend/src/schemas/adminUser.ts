@@ -5,6 +5,8 @@ import { USER_ROLES } from '../constants/userRoles'
 const roleEnum = z.enum(USER_ROLES)
 
 const baseFields = {
+  first_name: z.string().min(1, 'Requerido').max(120, 'Máximo 120 caracteres'),
+  last_name: z.string().min(1, 'Requerido').max(120, 'Máximo 120 caracteres'),
   email: z.string().min(1, 'Requerido').email('Correo inválido'),
   role: roleEnum,
   architectureAccess: z.boolean(),

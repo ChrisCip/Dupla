@@ -8,6 +8,7 @@ import {
   PROJECT_FILE_ACCEPT_ATTR,
 } from '../../constants/projectAllowedFiles'
 import { PROJECT_KIND_OPTIONS, type ProjectKindValue } from '../../constants/projectKind'
+import { formatPersonFullName } from '../../lib/personDisplay'
 
 const STEP = {
   datos: {
@@ -106,7 +107,7 @@ type CreateProjectModalProps = {
   setCreateFiles: React.Dispatch<React.SetStateAction<File[]>>
   createMembers: Set<string>
   setCreateMembers: React.Dispatch<React.SetStateAction<Set<string>>>
-  adminUsersCreate: { uuid: string; email: string }[]
+  adminUsersCreate: { uuid: string; email: string; first_name: string; last_name: string }[]
   userUuid: string | null
   error: string | null
   submitting: boolean
@@ -354,7 +355,7 @@ export function CreateProjectModal({
                               }}
                             />
                             <label htmlFor={`cm-${u.uuid}`} className={isSelf ? 'text-muted' : 'text-ink'}>
-                              {u.email}
+                              {formatPersonFullName(u.first_name, u.last_name, u.email)}
                               {isSelf ? <span className="du-meta"> (creador)</span> : null}
                             </label>
                           </li>

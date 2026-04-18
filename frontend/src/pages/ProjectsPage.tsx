@@ -24,7 +24,9 @@ export function ProjectsPage() {
   const [name, setName] = useState('Nuevo proyecto')
   const [client, setClient] = useState('')
   const [createMembers, setCreateMembers] = useState<Set<string>>(new Set())
-  const [adminUsersCreate, setAdminUsersCreate] = useState<{ uuid: string; email: string }[]>([])
+  const [adminUsersCreate, setAdminUsersCreate] = useState<
+    { uuid: string; email: string; first_name: string; last_name: string }[]
+  >([])
   const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
   const [loadingList, setLoadingList] = useState(true)
@@ -75,7 +77,9 @@ export function ProjectsPage() {
     void (async () => {
       const u = await apiFetch('/api/admin/users', { token })
       if (cancelled || !u.ok) return
-      setAdminUsersCreate((await u.json()) as { uuid: string; email: string }[])
+      setAdminUsersCreate(
+        (await u.json()) as { uuid: string; email: string; first_name: string; last_name: string }[],
+      )
     })()
     return () => {
       cancelled = true

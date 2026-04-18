@@ -1,10 +1,12 @@
 import type { ChatConversationKind, ChatMessage, ChatParticipantRef } from '../types/chat'
 
+import { formatPersonFullName } from './personDisplay'
+
 const GROUP_MS = 5 * 60 * 1000
 
 export type MessageDisplayGroup = {
   key: string
-  author: { uuid: string; email: string }
+  author: { uuid: string; email: string; first_name: string; last_name: string }
   messages: ChatMessage[]
 }
 
@@ -12,7 +14,7 @@ export function formatGroupParticipantEmails(
   participants: ChatParticipantRef[] | null | undefined,
 ): string {
   if (!participants?.length) return ''
-  return participants.map((p) => p.email).join(', ')
+  return participants.map((p) => formatPersonFullName(p.first_name, p.last_name, p.email)).join(', ')
 }
 
 export function chatKindLabel(kind: ChatConversationKind): string {

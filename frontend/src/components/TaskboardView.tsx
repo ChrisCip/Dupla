@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
 import { boardQueryParams, cardMatchesSearch, CARD_MIME, labelForCreatedPhase } from '../lib/taskboard'
+import { formatPersonFullName } from '../lib/personDisplay'
 import { TaskboardCardModal } from './TaskboardCardModal'
 import { TaskboardCreateModal } from './TaskboardCreateModal'
 import { TaskboardToolbar } from './TaskboardToolbar'
@@ -355,11 +356,27 @@ export function TaskboardView({
                                   <span className="font-semibold uppercase tracking-wide text-muted">
                                     Asignado
                                   </span>
-                                  <span className="min-w-0 break-words text-ink">{card.assignee_email ?? '—'}</span>
+                                  <span className="min-w-0 break-words text-ink">
+                                    {card.assignee_email
+                                      ? formatPersonFullName(
+                                          card.assignee_first_name,
+                                          card.assignee_last_name,
+                                          card.assignee_email,
+                                        )
+                                      : '—'}
+                                  </span>
                                 </div>
                                 <div className="flex flex-col gap-0.5">
                                   <span className="font-semibold uppercase tracking-wide text-muted">Por</span>
-                                  <span className="min-w-0 break-words text-ink">{card.creator_email ?? '—'}</span>
+                                  <span className="min-w-0 break-words text-ink">
+                                    {card.creator_email
+                                      ? formatPersonFullName(
+                                          card.creator_first_name,
+                                          card.creator_last_name,
+                                          card.creator_email,
+                                        )
+                                      : '—'}
+                                  </span>
                                 </div>
                               </div>
                             </button>
@@ -400,7 +417,11 @@ export function TaskboardView({
                     onClick={() => setModalCard(c)}
                   >
                     <div className="font-medium text-ink">{c.title}</div>
-                    <div className="du-meta mt-1 line-clamp-1">{c.assignee_email ?? 'Sin asignar'}</div>
+                    <div className="du-meta mt-1 line-clamp-1">
+                      {c.assignee_email
+                        ? formatPersonFullName(c.assignee_first_name, c.assignee_last_name, c.assignee_email)
+                        : 'Sin asignar'}
+                    </div>
                   </button>
                 ))}
               </div>

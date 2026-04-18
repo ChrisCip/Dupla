@@ -38,6 +38,8 @@ async def test_admin_create_user(client, master_auth_headers_async: dict[str, st
         "/api/admin/users",
         headers={**master_auth_headers_async, "Content-Type": "application/json"},
         json={
+            "first_name": "Nuevo",
+            "last_name": "Usuario",
             "email": "newuser@dupla.demo",
             "password": "longpassword1",
             "role": "PRESUPUESTO",

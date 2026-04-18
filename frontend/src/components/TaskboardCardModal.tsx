@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { apiFetch } from '../api/client'
 import { WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
+import { formatPersonFullName } from '../lib/personDisplay'
 import { PrimaryButton } from './PrimaryButton'
 import type { TaskAssigneeOption, TaskCardCommentDto, TaskCardDto } from '../types/taskBoard'
 
@@ -105,8 +106,12 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
     setEditing(false)
   }
 
-  const assigneeLabel =
-    card.assignee_email ?? assignees.find((a) => a.uuid === card.assignee_uuid)?.email ?? 'Sin asignar'
+  const assigneeFromList = assignees.find((a) => a.uuid === card.assignee_uuid)
+  const assigneeLabel = card.assignee_email
+    ? formatPersonFullName(card.assignee_first_name, card.assignee_last_name, card.assignee_email)
+    : assigneeFromList
+      ? formatPersonFullName(assigneeFromList.first_name, assigneeFromList.last_name, assigneeFromList.email)
+      : 'Sin asignar'
 
   async function archiveFromView() {
     if (readOnly || card.archived) return
@@ -225,7 +230,11 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
               ) : null}
               <div className="rounded-md border border-black/10 bg-black/2 px-3 py-2 text-sm">
                 <div className="du-meta">Creada por</div>
-                <div className="text-ink">{card.creator_email ?? '—'}</div>
+                <div className="text-ink">
+                  {card.creator_email
+                    ? formatPersonFullName(card.creator_first_name, card.creator_last_name, card.creator_email)
+                    : '—'}
+                </div>
                 <div className="du-meta mt-2">Creada</div>
                 <div className="text-muted">
                   {new Date(card.created_at).toLocaleString(undefined, {
@@ -248,7 +257,11 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
                     {comments.map((c) => (
                       <li key={c.uuid} className="rounded-md border border-black/8 bg-black/[0.02] px-3 py-2">
                         <div className="du-meta flex flex-wrap justify-between gap-2">
-                          <span className="text-ink">{c.author_email ?? '—'}</span>
+                          <span className="text-ink">
+                            {c.author_email
+                              ? formatPersonFullName(c.author_first_name, c.author_last_name, c.author_email)
+                              : '—'}
+                          </span>
                           <time className="shrink-0" dateTime={c.created_at}>
                             {new Date(c.created_at).toLocaleString(undefined, {
                               dateStyle: 'short',
@@ -332,7 +345,7 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
                   <option value="">Sin asignar</option>
                   {assignees.map((a) => (
                     <option key={a.uuid} value={a.uuid}>
-                      {a.email}
+                      {formatPersonFullName(a.first_name, a.last_name, a.email)}
                     </option>
                   ))}
                 </select>
@@ -347,7 +360,11 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
               ) : null}
               <div className="rounded-md border border-black/10 bg-black/2 px-3 py-2 text-sm">
                 <div className="du-meta">Creada por</div>
-                <div className="text-ink">{card.creator_email ?? '—'}</div>
+                <div className="text-ink">
+                  {card.creator_email
+                    ? formatPersonFullName(card.creator_first_name, card.creator_last_name, card.creator_email)
+                    : '—'}
+                </div>
                 <div className="du-meta mt-2">Creada</div>
                 <div className="text-muted">
                   {new Date(card.created_at).toLocaleString(undefined, {
@@ -380,7 +397,11 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
                     {comments.map((c) => (
                       <li key={c.uuid} className="rounded-md border border-black/8 bg-black/[0.02] px-3 py-2">
                         <div className="du-meta flex flex-wrap justify-between gap-2">
-                          <span className="text-ink">{c.author_email ?? '—'}</span>
+                          <span className="text-ink">
+                            {c.author_email
+                              ? formatPersonFullName(c.author_first_name, c.author_last_name, c.author_email)
+                              : '—'}
+                          </span>
                           <time className="shrink-0" dateTime={c.created_at}>
                             {new Date(c.created_at).toLocaleString(undefined, {
                               dateStyle: 'short',

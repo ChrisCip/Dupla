@@ -16,6 +16,8 @@ class TokenResponse(BaseModel):
 class UserResponse(BaseModel):
     uuid: UUID = Field(..., description="Public user identifier")
     email: EmailStr
+    first_name: str
+    last_name: str
     role: UserRole
     module_ids: list[int] = Field(default_factory=list, description="Módulos asignados")
 
@@ -26,4 +28,11 @@ class UserResponse(BaseModel):
             mids: list[int] = []
         else:
             mids = [m.module_id for m in user.modules]
-        return cls(uuid=user.id, email=user.email, role=user.role, module_ids=mids)
+        return cls(
+            uuid=user.id,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            role=user.role,
+            module_ids=mids,
+        )

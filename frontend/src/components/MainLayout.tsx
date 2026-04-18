@@ -20,8 +20,14 @@ export function MainLayout() {
     void (async () => {
       const res = await apiFetch('/api/me', { token })
       if (!res.ok) return
-      const p = (await res.json()) as { uuid: string; email: string; role: MeRole }
-      setSession(token, p.email, p.role, p.uuid)
+      const p = (await res.json()) as {
+        uuid: string
+        email: string
+        first_name: string
+        last_name: string
+        role: MeRole
+      }
+      setSession(token, p.email, p.role, p.uuid, p.first_name, p.last_name)
     })()
   }, [token, userUuid, setSession])
 

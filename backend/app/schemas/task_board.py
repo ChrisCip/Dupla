@@ -13,6 +13,8 @@ from app.models.task_board import TaskCard, TaskCardComment, TaskList
 class TaskAssigneeOption(BaseModel):
     uuid: UUID
     email: str
+    first_name: str
+    last_name: str
 
 
 class TaskCardResponse(BaseModel):
@@ -25,8 +27,12 @@ class TaskCardResponse(BaseModel):
     created_at: datetime
     created_by_uuid: Optional[UUID]
     creator_email: Optional[str]
+    creator_first_name: Optional[str]
+    creator_last_name: Optional[str]
     assignee_uuid: Optional[UUID]
     assignee_email: Optional[str]
+    assignee_first_name: Optional[str]
+    assignee_last_name: Optional[str]
     archived: bool
     archived_at: Optional[datetime]
     created_in_phase: Optional[str]
@@ -46,8 +52,12 @@ class TaskCardResponse(BaseModel):
             created_at=card.created_at,
             created_by_uuid=card.created_by,
             creator_email=creator.email if creator is not None else None,
+            creator_first_name=creator.first_name if creator is not None else None,
+            creator_last_name=creator.last_name if creator is not None else None,
             assignee_uuid=card.assignee_id,
             assignee_email=assignee.email if assignee is not None else None,
+            assignee_first_name=assignee.first_name if assignee is not None else None,
+            assignee_last_name=assignee.last_name if assignee is not None else None,
             archived=card.archived,
             archived_at=card.archived_at,
             created_in_phase=card.created_in_phase,
@@ -100,6 +110,8 @@ class TaskCardCommentResponse(BaseModel):
     created_at: datetime
     author_uuid: Optional[UUID]
     author_email: Optional[str]
+    author_first_name: Optional[str]
+    author_last_name: Optional[str]
 
     @classmethod
     def from_row(cls, row: TaskCardComment) -> TaskCardCommentResponse:
@@ -111,6 +123,8 @@ class TaskCardCommentResponse(BaseModel):
             created_at=row.created_at,
             author_uuid=row.author_id,
             author_email=author.email if author is not None else None,
+            author_first_name=author.first_name if author is not None else None,
+            author_last_name=author.last_name if author is not None else None,
         )
 
 

@@ -72,29 +72,34 @@ class ProjectRepository:
             self._session.add(ProjectMember(id=uuid.uuid4(), project_id=project_id, user_id=uid))
         await self._session.flush()
 
-    async def list_project_members_with_emails(self, project_id: UUID) -> list[tuple[UUID, str]]:
+    async def list_project_member_profiles(self, project_id: UUID) -> list[tuple[UUID, str, str, str]]:
         q = (
-            select(User.id, User.email)
+            select(User.id, User.email, User.first_name, User.last_name)
             .join(ProjectMember, ProjectMember.user_id == User.id)
             .where(ProjectMember.project_id == project_id)
             .order_by(User.email)
         )
         rows = (await self._session.execute(q)).all()
-        return [(r[0], r[1]) for r in rows]
+        return [(r[0], r[1], r[2], r[3]) for r in rows]
 
-    async def list_team_with_emails_for_project(self, project_uuid: UUID) -> list[tuple[UUID, str]]:
+    async def list_team_profiles_for_project(self, project_uuid: UUID) -> list[tuple[UUID, str, str, str]]:
         project = await self.get_by_uuid(project_uuid)
         if project is None:
             return []
-        by_id: dict[UUID, str] = {}
+        by_id: dict[UUID, tuple[str, str, str]] = {}
         if project.created_by is not None:
             q_creator = select(User).where(User.id == project.created_by)
             creator = (await self._session.execute(q_creator)).scalar_one_or_none()
             if creator is not None:
-                by_id[creator.id] = creator.email
-        for uid, email in await self.list_project_members_with_emails(project.id):
-            by_id[uid] = email
-        return sorted(by_id.items(), key=lambda x: x[1].lower())
+                by_id[creator.id] = (creator.email, creator.first_name, creator.last_name)
+        q = (
+            select(User.id, User.email, User.first_name, User.last_name)
+            .join(ProjectMember, ProjectMember.user_id == User.id)
+            .where(ProjectMember.project_id == project.id)
+        )
+        for row in (await self._session.execute(q)).all():
+            by_id[row[0]] = (row[1], row[2], row[3])
+        return sorted([(uid, t[0], t[1], t[2]) for uid, t in by_id.items()], key=lambda x: x[1].lower())
 
     async def user_is_project_team_member(self, project: Project, user_id: UUID) -> bool:
         if project.created_by is not None and project.created_by == user_id:

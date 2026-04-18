@@ -3,9 +3,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '../api/client'
 import { Card } from './Card'
 import { PrimaryButton } from './PrimaryButton'
+import { formatPersonFullName } from '../lib/personDisplay'
 import type { Project } from '../types/project'
 
-type MemberRow = { uuid: string; email: string }
+type MemberRow = { uuid: string; email: string; first_name: string; last_name: string }
 
 type ProjectConfigModalProps = {
   open: boolean
@@ -187,7 +188,7 @@ export function ProjectConfigModal({
                             }}
                           />
                           <label htmlFor={`cfg-pm-${u.uuid}`} className={isCreator ? 'text-muted' : 'text-ink'}>
-                            {u.email}
+                            {formatPersonFullName(u.first_name, u.last_name, u.email)}
                             {isCreator ? <span className="du-meta"> (creador)</span> : null}
                           </label>
                         </li>
@@ -236,7 +237,9 @@ export function ProjectConfigModal({
                     {memberRows.length === 0 ? (
                       <li className="text-muted">No hay miembros adicionales.</li>
                     ) : (
-                      memberRows.map((r) => <li key={r.uuid}>{r.email}</li>)
+                      memberRows.map((r) => (
+                        <li key={r.uuid}>{formatPersonFullName(r.first_name, r.last_name, r.email)}</li>
+                      ))
                     )}
                   </ul>
                 </Card>

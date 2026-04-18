@@ -67,8 +67,12 @@ export function ProjectWorkspacePage() {
   const [lineItem, setLineItem] = useState('')
   const [linePrice, setLinePrice] = useState('')
   const [activeQuote, setActiveQuote] = useState('')
-  const [memberRows, setMemberRows] = useState<{ uuid: string; email: string }[]>([])
-  const [adminUsers, setAdminUsers] = useState<{ uuid: string; email: string }[]>([])
+  const [memberRows, setMemberRows] = useState<
+    { uuid: string; email: string; first_name: string; last_name: string }[]
+  >([])
+  const [adminUsers, setAdminUsers] = useState<
+    { uuid: string; email: string; first_name: string; last_name: string }[]
+  >([])
   const [membersBusy, setMembersBusy] = useState(false)
   const [membersMsg, setMembersMsg] = useState<string | null>(null)
   const [memberSelection, setMemberSelection] = useState<Set<string>>(new Set())
@@ -223,8 +227,24 @@ export function ProjectWorkspacePage() {
         apiFetch('/api/admin/users', { token }),
       ])
       if (cancelled) return
-      if (m.ok) setMemberRows((await m.json()) as { uuid: string; email: string }[])
-      if (u.ok) setAdminUsers((await u.json()) as { uuid: string; email: string }[])
+      if (m.ok)
+        setMemberRows(
+          (await m.json()) as {
+            uuid: string
+            email: string
+            first_name: string
+            last_name: string
+          }[],
+        )
+      if (u.ok)
+        setAdminUsers(
+          (await u.json()) as {
+            uuid: string
+            email: string
+            first_name: string
+            last_name: string
+          }[],
+        )
     })()
     return () => {
       cancelled = true

@@ -1,4 +1,7 @@
+import { formatPersonFullName } from '../../lib/personDisplay'
 import { PrimaryButton } from '../PrimaryButton'
+
+type DirUser = { uuid: string; email: string; first_name: string; last_name: string }
 
 type ChatGroupModalProps = {
   open: boolean
@@ -7,8 +10,8 @@ type ChatGroupModalProps = {
   groupMemberSearch: string
   setGroupMemberSearch: React.Dispatch<React.SetStateAction<string>>
   groupSelectedUuids: string[]
-  directory: { uuid: string; email: string }[]
-  groupPickerCandidates: { uuid: string; email: string }[]
+  directory: DirUser[]
+  groupPickerCandidates: DirUser[]
   error: string | null
   onBackdropClose: () => void
   onCancel: () => void
@@ -88,7 +91,8 @@ export function ChatGroupModal({
         {groupSelectedUuids.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {groupSelectedUuids.map((id) => {
-              const label = directory.find((u) => u.uuid === id)?.email ?? id
+              const du = directory.find((u) => u.uuid === id)
+              const label = du ? formatPersonFullName(du.first_name, du.last_name, du.email) : id
               return (
                 <span
                   key={id}
@@ -131,7 +135,7 @@ export function ChatGroupModal({
                   className="w-full rounded px-2 py-2 text-left text-sm text-ink hover:bg-primary/[0.08]"
                   onClick={() => onAddMember(u.uuid)}
                 >
-                  {u.email}
+                  {formatPersonFullName(u.first_name, u.last_name, u.email)}
                 </button>
               </li>
             ))

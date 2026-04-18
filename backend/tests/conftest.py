@@ -113,6 +113,8 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
             User(
                 id=master_id,
                 email="master@dupla.demo",
+                first_name="María",
+                last_name="López",
                 password_hash=hash_password("master123"),
                 role=UserRole.GERENCIA,
             )
@@ -123,6 +125,8 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
             User(
                 id=tester_id,
                 email="tester@dupla.demo",
+                first_name="Carlos",
+                last_name="Ruiz",
                 password_hash=hash_password("testpass123"),
                 role=UserRole.CONTROL,
             )
@@ -133,6 +137,8 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
             User(
                 id=worker_id,
                 email="worker@dupla.demo",
+                first_name="Ana",
+                last_name="Martín",
                 password_hash=hash_password("workerpass123"),
                 role=UserRole.PRESUPUESTO,
             )
