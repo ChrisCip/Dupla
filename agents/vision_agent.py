@@ -449,6 +449,7 @@ def _simple_to_level_inventory(
     image_name: str,
 ) -> dict[str, Any]:
     """Convert simple vision JSON inventory to a LevelInventory-compatible dict."""
+    page_slug = Path(image_name).stem  # e.g. "page_0001"
 
     _BLOCK_THICKNESS: dict[str, float] = {
         "block_6in": 0.15, "block_8in": 0.20, "block_4in": 0.10,
@@ -660,7 +661,7 @@ def _simple_to_level_inventory(
         count = f_item.get("count")
         fixtures.append(
             {
-                "id": f"vis-fixture-{i:02d}",
+                "id": f"{page_slug}-fixture-{i:02d}",
                 "source": "vision",
                 "source_refs": [f"vision:{image_name}:fixture_{i}"],
                 "assumptions": [],
@@ -669,7 +670,6 @@ def _simple_to_level_inventory(
                 "fixture_type": f_item.get("type") or "other",
                 "count": int(count) if count is not None else 1,
                 "unit": "unit",
-                "confidence": 0.65,
                 "evidence": [f"Counted from plan image: type={f_item.get('type')}."],
             }
         )
@@ -680,7 +680,7 @@ def _simple_to_level_inventory(
         count = e.get("count")
         extra_fixtures.append(
             {
-                "id": f"vis-elec-{i:02d}",
+                "id": f"{page_slug}-elec-{i:02d}",
                 "source": "vision",
                 "source_refs": [f"vision:{image_name}:elec_{i}"],
                 "assumptions": [],
@@ -690,7 +690,6 @@ def _simple_to_level_inventory(
                 "count": int(count) if count is not None else 1,
                 "unit": "unit",
                 "location_hint": e.get("location"),
-                "confidence": 0.65,
                 "evidence": [f"Electrical element from plan: type={e.get('type')}, count={count}."],
             }
         )
@@ -699,7 +698,7 @@ def _simple_to_level_inventory(
         count = p.get("count")
         extra_fixtures.append(
             {
-                "id": f"vis-plumb-{i:02d}",
+                "id": f"{page_slug}-plumb-{i:02d}",
                 "source": "vision",
                 "source_refs": [f"vision:{image_name}:plumb_{i}"],
                 "assumptions": [],
@@ -714,7 +713,6 @@ def _simple_to_level_inventory(
                 "count": int(count) if count is not None else 1,
                 "unit": "unit",
                 "location_hint": p.get("location"),
-                "confidence": 0.60,
                 "evidence": [f"Plumbing element from plan: type={p.get('type')}, count={count}."],
             }
         )
@@ -723,7 +721,7 @@ def _simple_to_level_inventory(
         qty = ext.get("quantity")
         extra_fixtures.append(
             {
-                "id": f"vis-ext-{i:02d}",
+                "id": f"{page_slug}-ext-{i:02d}",
                 "source": "vision",
                 "source_refs": [f"vision:{image_name}:ext_{i}"],
                 "assumptions": [],
@@ -738,7 +736,6 @@ def _simple_to_level_inventory(
                 "count": int(qty) if qty is not None else 1,
                 "unit": ext.get("unit") or "unit",
                 "location_hint": ext.get("id"),
-                "confidence": 0.55,
                 "evidence": [f"Exterior work from plan: type={ext.get('type')}."],
             }
         )

@@ -199,6 +199,55 @@ def load_or_build_embeddings(
     )
 
 
+def batch_search_bc3(
+    queries: list[str],
+    index: EmbeddingIndex,
+    top_k: int = 10,
+    *,
+    embed_batch_fn: Callable[[list[str]], np.ndarray] | None = None,
+    embed_chunk_size: int = 128,
+) -> list[list[dict[str, Any]]]:
+    """
+    Semantic search for many queries with one (or few) embedding API calls.
+
+    Returns one result list per query (same length as ``queries``); empty strings
+    yield empty lists without calling the embedder.
+    """
+    if not queries:
+        return []
+    if index.vectors.size == 0:
+        return [[] for _ in queries]
+
+    embedder = embed_batch_fn or _default_embedder(index.model)
+    non_empty: list[tuple[int, str]] = [
+        (i, str(q).strip()) for i, q in enumerate(queries) if q and str(q).strip()
+    ]
+    out: list[list[dict[str, Any]]] = [[] for _ in queries]
+    if not non_empty:
+        return out
+
+    texts = [t for _, t in non_empty]
+    chunks: list[np.ndarray] = []
+    for start in range(0, len(texts), embed_chunk_size):
+        chunk = texts[start : start + embed_chunk_size]
+        chunks.append(embedder(chunk).astype(np.float32))
+    q_matrix = np.vstack(chunks)
+    q_matrix = np.vstack([_normalize_vector(q_matrix[i]) for i in range(q_matrix.shape[0])])
+    scores = index.vectors @ q_matrix.T
+
+    limit = min(max(top_k, 1), len(index.metadata))
+    for col, (orig_idx, _) in enumerate(non_empty):
+        col_scores = scores[:, col]
+        ranked_indices = np.argsort(col_scores)[::-1][:limit]
+        row: list[dict[str, Any]] = []
+        for idx in ranked_indices:
+            meta = dict(index.metadata[int(idx)])
+            meta["score"] = float(col_scores[int(idx)])
+            row.append(meta)
+        out[orig_idx] = row
+    return out
+
+
 def search_bc3(
     query_text: str,
     index: EmbeddingIndex,
@@ -236,7 +285,17 @@ def build_query_from_takeoff(takeoff: QuantityTakeoff) -> str:
     trace_evidence = " ".join(takeoff.trace.evidence)
     assumptions = " ".join(takeoff.assumptions)
     formula = takeoff.formula or ""
+    extra = ""
+    if takeoff.item_type == "fixture_count":
+        disc = str(takeoff.inputs.get("discipline") or "")
+        ftype = str(takeoff.inputs.get("fixture_type") or "")
+        loc = str(takeoff.inputs.get("location_hint") or "")
+        raw = takeoff.inputs.get("raw")
+        raw_txt = ""
+        if isinstance(raw, dict):
+            raw_txt = str(raw.get("id") or raw.get("type") or "")
+        extra = f" disciplina {disc} tipo {ftype} ubicacion {loc} {raw_txt}".strip()
     return (
         f"{item_type_desc} unidad {takeoff.unit} formula {formula} "
-        f"supuestos {assumptions} evidencia {trace_evidence}"
+        f"supuestos {assumptions} evidencia {trace_evidence} {extra}"
     ).strip()

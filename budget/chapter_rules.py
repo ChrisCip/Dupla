@@ -350,6 +350,12 @@ def chapter_path_for_takeoff(takeoff: QuantityTakeoff) -> list[ChapterSegment]:
         ]
 
     if item_type in {"fixture_count"}:
+        disc = str(takeoff.inputs.get("discipline") or "").lower()
+        if disc == "plumbing":
+            return [
+                ChapterSegment("08", "INSTALACIONES"),
+                ChapterSegment("08.02", "SANITARIAS"),
+            ]
         return [
             ChapterSegment("08", "INSTALACIONES"),
             ChapterSegment("08.01", "ELECTRICAS"),
@@ -620,6 +626,52 @@ def _window_summary(takeoff: QuantityTakeoff) -> str:
     return "Ventana corredera aluminio y vidrio"
 
 
+def _fixture_count_summary(takeoff: QuantityTakeoff) -> str:
+    """Human-readable summary for vision-derived fixtures (electrical / plumbing / exterior)."""
+    disc = str(takeoff.inputs.get("discipline") or "").lower()
+    ftype = str(takeoff.inputs.get("fixture_type") or "").lower()
+    loc = str(takeoff.inputs.get("location_hint") or "").strip()
+    loc_part = f" ({loc})" if loc else ""
+
+    if disc == "electrical" or disc == "electric":
+        labels = {
+            "outlet_110v": "Tomacorrientes 110V",
+            "outlet_220v": "Tomacorrientes 220V",
+            "switch_single": "Interruptores sencillos",
+            "switch_double": "Interruptores dobles",
+            "switch_triple": "Interruptores triples",
+            "switch_dimmer": "Dimmer",
+            "luminaire_ceiling": "Luminarias de techo",
+            "luminaire_wall": "Luminarias de pared",
+            "luminaire_recessed": "Luminarias empotradas",
+            "panel_breaker": "Tablero / breaker",
+            "emergency_light": "Luz de emergencia",
+            "data_outlet": "Punto de datos",
+            "fan_connection": "Conexion ventilador",
+            "ac_connection": "Conexion aire acondicionado",
+        }
+        base = labels.get(ftype, f"Punto electrico ({ftype or 'tipo no especificado'})")
+        return f"{base}{loc_part}"
+
+    if disc == "plumbing":
+        labels = {
+            "water_supply_point": "Punto suministro agua (tuberia)",
+            "drain_point": "Punto desague / drenaje",
+            "vent_pipe": "Tuberia de ventilacion",
+            "cleanout": "Registro / cleanout",
+            "floor_drain": "Sumidero de piso",
+            "pump": "Bomba",
+            "gas_distribution": "Distribucion gas",
+        }
+        base = labels.get(ftype, f"Punto sanitario / plomeria ({ftype or 'tipo no especificado'})")
+        return f"{base}{loc_part}"
+
+    if disc == "exterior":
+        return f"Trabajo exterior / sitio ({ftype or 'elemento'}){loc_part}"
+
+    return f"Equipo / accesorio ({ftype or 'fixture'}){loc_part}"
+
+
 def _wet_area_summary(takeoff: QuantityTakeoff) -> str:
     item_type = takeoff.item_type.lower()
     tags = _takeoff_tags(takeoff)
@@ -670,6 +722,89 @@ def build_budget_summary(
     if item_type == "stair_count":
         return "Escalones en escalera"
     if item_type == "fixture_count":
+        if takeoff.inputs.get("discipline") or takeoff.inputs.get("fixture_type"):
+            return _fixture_count_summary(takeoff)
         return "Juego accesorios de banos"
 
     return takeoff.item_type.replace("_", " ").strip().capitalize()
+
+
+def _decomposition_parent_sort_key(code: str) -> tuple[int, str]:
+    """Prefer chapter-style codes (e.g. A.024ASA04) over typology roots (TGIU…)."""
+    c = code.strip()
+    if c.startswith("TGIU") or (c.startswith("TG") and len(c) <= 10):
+        return (2, c)
+    if "." in c and c[:1].isalpha():
+        return (0, c)
+    return (1, c)
+
+
+def _pick_decomposition_parent(parents: list[str], *, chapter_codes: set[str]) -> str | None:
+    if not parents:
+        return None
+    if len(parents) == 1:
+        return parents[0]
+    in_chapter = [p for p in parents if p in chapter_codes]
+    pool = in_chapter if in_chapter else list(parents)
+    return min(pool, key=_decomposition_parent_sort_key)
+
+
+def _segment_title_for_bc3_code(bc3_catalog: dict[str, Any], code: str) -> str:
+    concepts = bc3_catalog.get("concepts_by_code") or {}
+    row = concepts.get(code) or {}
+    summary = str(row.get("summary") or "").strip()
+    if summary:
+        return summary
+    texts = bc3_catalog.get("texts") or {}
+    long_t = str(texts.get(code) or "").strip()
+    if long_t:
+        clip = 120
+        return long_t[:clip] + ("..." if len(long_t) > clip else "")
+    return code
+
+
+def chapter_path_from_bc3_catalog(
+    bc3_catalog: dict[str, Any],
+    resolved_bc3_code: str,
+    *,
+    max_depth: int = 32,
+) -> list[ChapterSegment] | None:
+    """
+    Build chapter folders from ~D decomposition in the BC3 catalog (root → leaf parent).
+
+    When ``context.metadata["use_bc3_catalog_chapters"]`` is true, the composer can use this
+    instead of the fixed Dupla chapter map so grouping follows the example BC3 hierarchy.
+    """
+    code = (resolved_bc3_code or "").strip()
+    if not code or not bc3_catalog:
+        return None
+
+    parent_map: dict[str, list[str]] = bc3_catalog.get("decomposition_parent_candidates") or {}
+    if not parent_map:
+        return None
+
+    chapters_list = bc3_catalog.get("chapters") or []
+    chapter_codes = {str(c.get("code", "")).strip() for c in chapters_list if c.get("code")}
+
+    tip_to_root: list[str] = []
+    current = code
+    visited: set[str] = set()
+
+    while len(tip_to_root) < max_depth:
+        parents = parent_map.get(current) or []
+        if not parents:
+            break
+        parent = _pick_decomposition_parent(parents, chapter_codes=chapter_codes)
+        if not parent or parent == current:
+            break
+        if parent in visited:
+            break
+        visited.add(parent)
+        tip_to_root.append(parent)
+        current = parent
+
+    if not tip_to_root:
+        return None
+
+    ordered = list(reversed(tip_to_root))
+    return [ChapterSegment(seg_code, _segment_title_for_bc3_code(bc3_catalog, seg_code)) for seg_code in ordered]

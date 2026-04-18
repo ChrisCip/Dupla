@@ -20,7 +20,12 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 from core.schemas import BudgetCandidate, QuantityTakeoff
-from knowledge.bc3_embeddings import EmbeddingIndex, build_query_from_takeoff, search_bc3
+from knowledge.bc3_embeddings import (
+    EmbeddingIndex,
+    batch_search_bc3,
+    build_query_from_takeoff,
+    search_bc3,
+)
 from knowledge.pres_expansion import inject_pres_reference_candidates
 from knowledge.training_data import TrainingPair, generate_few_shot_examples
 
@@ -241,6 +246,12 @@ _PREFIX_TO_CHAPTER: list[tuple[str, str]] = [
 
 def _assign_chapter(takeoff: QuantityTakeoff) -> str:
     item_type = takeoff.item_type.lower()
+    if item_type == "fixture_count":
+        disc = str(takeoff.inputs.get("discipline") or "").lower()
+        if disc == "plumbing":
+            return "07"
+        if disc in {"electrical", "electric"}:
+            return "06"
     chapter = _ITEM_TYPE_TO_CHAPTER.get(item_type)
     if chapter:
         return chapter
@@ -272,9 +283,10 @@ def _filter_bc3_for_chapter(
     if embedding_index is not None and takeoffs:
         items_by_code = {str(item.get("code", "")): item for item in items}
         scored_by_code: dict[str, float] = {}
-        for takeoff in takeoffs:
-            query = build_query_from_takeoff(takeoff)
-            for match in search_bc3(query, embedding_index, top_k=15):
+        query_texts = [build_query_from_takeoff(t) for t in takeoffs]
+        batch_matches = batch_search_bc3(query_texts, embedding_index, top_k=15)
+        for takeoff, matches in zip(takeoffs, batch_matches):
+            for match in matches:
                 code = str(match.get("code", ""))
                 if not code or code not in items_by_code:
                     continue
@@ -386,7 +398,8 @@ def _gpt4o_classify_chapter(
         + "- Si ninguna partida del catálogo encaja de forma razonable, OMITe esa partida "
         + "(no incluyas objeto para ese takeoff_key).\n"
         + "- Misma disciplina y unidad compatible (m2 con m2, m3 con m3, ud con ud, etc.).\n"
-        + "- unit_price: copia el precio del ítem del catálogo para ese code.\n"
+        + "- unit_price: DEBE coincidir con el campo price del catálogo para ese code. "
+        + "Si el catálogo lista price=0, usa 0 (no inventes precios).\n"
         + "- match_type: exacto (misma obra y unidad), aproximado (muy cercano), "
         + "estimado (solo si no hay mejor opción pero aún es defendible).\n\n"
         + "Devuelve SOLO un JSON array (sin texto adicional):\n"
@@ -442,14 +455,18 @@ def _gpt4o_classify_chapter(
 
         summary = str(bc3_item.get("summary", bc3_code))
 
+        catalog_price = float(bc3_item.get("price") or 0.0)
         unit_price = 0.0
         try:
             unit_price = float(match.get("unit_price") or 0)
         except (TypeError, ValueError):
             pass
-        # If GPT-4o didn't return a price, look it up from the catalog
-        if unit_price == 0.0 and bc3_item:
-            unit_price = float(bc3_item.get("price") or 0)
+        # Nunca confiar en un precio del modelo si contradice el catálogo con precio > 0
+        if catalog_price > 0:
+            if abs(unit_price - catalog_price) > 0.02:
+                unit_price = catalog_price
+        else:
+            unit_price = 0.0
 
         match_type = str(match.get("match_type") or "aproximado").lower()
         if match_type == "exacto":
@@ -464,13 +481,19 @@ def _gpt4o_classify_chapter(
             (t.unit for t in takeoffs if t.item_key == key), ""
         )
 
+        rationale_payload: dict[str, Any] = {
+            "unit_price": unit_price,
+            "match_type": match_type,
+            "catalog_price_rd": catalog_price,
+            "sin_precio_bc3": catalog_price <= 0,
+        }
         result[key] = BudgetCandidate(
             takeoff_key=key,
             bc3_code=bc3_code,
             summary=summary,
             unit=takeoff_unit,  # use takeoff unit to pass the unit-match check
             score=score,
-            rationale=json.dumps({"unit_price": unit_price, "match_type": match_type}),
+            rationale=json.dumps(rationale_payload, ensure_ascii=False),
             source="gpt4o",
         )
 

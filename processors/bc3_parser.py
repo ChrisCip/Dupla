@@ -78,6 +78,32 @@ def _parse_concepts(records: list[str]) -> dict[str, dict[str, Any]]:
     return concepts
 
 
+def _iter_decomposition_child_edges(records: list[str]) -> list[tuple[str, str]]:
+    """Direct (parent_code, child_code) edges from ~D decomposition lines."""
+    edges: list[tuple[str, str]] = []
+
+    for record in records:
+        if not record.startswith("~D|"):
+            continue
+
+        parts = record[3:].split("|")
+        if len(parts) < 2:
+            continue
+
+        parent_code = parts[0].replace("#", "").strip()
+        tokens = [token.strip() for token in parts[1].split("\\") if token.strip()]
+        if not parent_code or not tokens:
+            continue
+
+        # TODO: Expand this parser for the full FIEBDC decomposition grammar.
+        for index in range(0, len(tokens), 3):
+            child_code = tokens[index].replace("#", "").strip()
+            if child_code:
+                edges.append((parent_code, child_code))
+
+    return edges
+
+
 def _parse_hierarchy(records: list[str]) -> dict[str, list[dict[str, Any]]]:
     hierarchy: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
@@ -96,7 +122,7 @@ def _parse_hierarchy(records: list[str]) -> dict[str, list[dict[str, Any]]]:
 
         # TODO: Expand this parser for the full FIEBDC decomposition grammar.
         for index in range(0, len(tokens), 3):
-            child_code = tokens[index]
+            child_code = tokens[index].replace("#", "").strip()
             factor = _to_float(tokens[index + 1]) if index + 1 < len(tokens) else None
             yield_value = _to_float(tokens[index + 2]) if index + 2 < len(tokens) else None
             hierarchy[parent_code].append(
@@ -108,6 +134,26 @@ def _parse_hierarchy(records: list[str]) -> dict[str, list[dict[str, Any]]]:
             )
 
     return hierarchy
+
+
+def _parse_decomposition_parent_candidates(records: list[str]) -> dict[str, list[str]]:
+    """
+    For each component code, BC3 files that list which ~D parents reference it.
+
+    Used to walk upward from a priced line toward chapter-like headers in the same file.
+    Multiple parents are preserved (e.g. shared resources); callers disambiguate.
+    """
+    buckets: dict[str, list[str]] = defaultdict(list)
+    seen_pairs: set[tuple[str, str]] = set()
+
+    for parent_code, child_code in _iter_decomposition_child_edges(records):
+        key = (parent_code, child_code)
+        if key in seen_pairs:
+            continue
+        seen_pairs.add(key)
+        buckets[child_code].append(parent_code)
+
+    return dict(buckets)
 
 
 def _parse_texts(records: list[str]) -> dict[str, str]:
@@ -172,6 +218,7 @@ def parse_bc3(path: str) -> dict[str, Any]:
 
     concepts = _parse_concepts(records)
     hierarchy = _parse_hierarchy(records)
+    decomposition_parent_candidates = _parse_decomposition_parent_candidates(records)
     texts = _parse_texts(records)
     measurements = _parse_measurements(records)
 
@@ -204,6 +251,7 @@ def parse_bc3(path: str) -> dict[str, Any]:
         "chapters": chapters,
         "items": items,
         "hierarchy": hierarchy,
+        "decomposition_parent_candidates": decomposition_parent_candidates,
         "texts": texts,
         "measurements": measurements,
     }

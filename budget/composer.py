@@ -25,9 +25,12 @@ from .chapter_rules import (
     ChapterSegment,
     build_budget_summary,
     chapter_path_for_takeoff,
+    chapter_path_from_bc3_catalog,
     default_bc3_code_for_takeoff,
     select_strong_candidate,
 )
+
+from validation.discipline_inference import infer_source_discipline
 
 try:
     from pricing.construcosto_loader import ConstrucostoSnapshot, find_best_price
@@ -568,10 +571,28 @@ def compose_budget_rows(
             bc3_catalog,
             context,
         )
+
+        meta = context.metadata or {}
+        if strong_candidate is not None:
+            effective_bc3 = strong_candidate.bc3_code.strip()
+        else:
+            fb = default_bc3_code_for_takeoff(takeoff)
+            effective_bc3 = fb.strip() if fb else ""
+
+        chapter_path = chapter_path_for_takeoff(takeoff)
+        if (
+            bc3_catalog
+            and meta.get("use_bc3_catalog_chapters")
+            and effective_bc3
+        ):
+            alt_path = chapter_path_from_bc3_catalog(bc3_catalog, effective_bc3)
+            if alt_path:
+                chapter_path = alt_path
+
         prepared_lines.append(
             _PreparedLine(
                 takeoff=takeoff,
-                chapter_path=chapter_path_for_takeoff(takeoff),
+                chapter_path=chapter_path,
                 summary=build_budget_summary(takeoff, strong_candidate),
                 candidate=strong_candidate,
                 bc3_guard_drop_reason=guard_reason,
@@ -615,6 +636,7 @@ def compose_budget_rows(
             "line_id": f"BLINE-{line_index:04d}",
             "chapter_path": [segment.title for segment in prepared.chapter_path],
             "chapter_codes": [segment.code for segment in prepared.chapter_path],
+            "source_discipline": infer_source_discipline(prepared.takeoff, context),
             "candidate_summary": prepared.candidate.summary if prepared.candidate else None,
             "candidate_rationale": prepared.candidate.rationale if prepared.candidate else None,
             "trace_metadata": dict(prepared.takeoff.trace.metadata),
@@ -693,10 +715,23 @@ def compose_budget(
         construcosto_snapshot=construcosto_snapshot,
     )
     logger.info("Budget composed: %d chapters, %d lines, %d rows", len(chapters), len(lines), len(rows))
-    return {
+    payload: dict[str, Any] = {
         "project_context": context.to_dict(),
         "chapters": [chapter.to_dict() for chapter in chapters],
         "lines": [line.to_dict() for line in lines],
         "rows": [row.to_dict() for row in rows],
         "budget_diagnostics": diagnostics,
     }
+    if context.metadata.get("run_budget_validation"):
+        try:
+            from validation.budget_validator import run_budget_validation
+
+            payload["budget_validation"] = run_budget_validation(
+                lines,
+                takeoff_list,
+                bc3_catalog=bc3_catalog,
+                context=context,
+            ).to_dict()
+        except Exception:
+            logger.exception("run_budget_validation failed")
+    return payload

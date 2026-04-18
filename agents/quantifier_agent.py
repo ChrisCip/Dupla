@@ -949,6 +949,7 @@ def _fixture_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             quantity=float(fixture.count),
             formula="fixture.count",
             inputs={
+                **(dict(fixture.inputs) if fixture.inputs else {}),
                 "count": fixture.count,
                 "fixture_type": fixture.fixture_type,
                 "location_hint": fixture.location_hint,
