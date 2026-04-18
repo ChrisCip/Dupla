@@ -84,27 +84,33 @@ export function ProjectWorkspaceEmbeddedView({
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Acciones rápidas</h2>
           <div className="mt-3 flex flex-col gap-2">
             <Link
-              className="du-pill-action inline-flex w-full items-center justify-center gap-2 text-center"
+              className="du-pill-action flex w-full items-center justify-center gap-2 leading-snug no-underline"
               to={`/app/tasks?project_uuid=${encodeURIComponent(projectUuid)}`}
             >
-              <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden />
-              Tablero completo
+              <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:size-4" aria-hidden>
+                <LayoutDashboard />
+              </span>
+              <span className="text-center">Tablero completo</span>
             </Link>
             <button
               type="button"
-              className="du-pill-action inline-flex w-full items-center justify-center gap-2"
+              className="du-pill-action flex w-full items-center justify-center gap-2 leading-snug"
               onClick={onOpenChat}
             >
-              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-              Chat del proyecto
+              <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:size-4" aria-hidden>
+                <MessageCircle />
+              </span>
+              <span className="text-center">Chat del proyecto</span>
             </button>
             <button
               type="button"
-              className="du-pill-action inline-flex w-full items-center justify-center gap-2 border-primary/40 bg-primary/6 font-semibold text-primary"
+              className="du-pill-action flex w-full items-center justify-center gap-2 border-primary/40 bg-primary/6 leading-snug font-semibold text-primary"
               onClick={onOpenWorkspace}
             >
-              <PanelLeft className="h-4 w-4 shrink-0" aria-hidden />
-              Ver workspace
+              <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:size-4" aria-hidden>
+                <PanelLeft />
+              </span>
+              <span className="text-center">Ver workspace</span>
             </button>
           </div>
         </Card>

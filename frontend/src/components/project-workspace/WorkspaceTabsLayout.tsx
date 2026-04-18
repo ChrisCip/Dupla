@@ -1,7 +1,55 @@
 import { useState, type ReactNode } from 'react'
-import { PanelLeft } from 'lucide-react'
+import {
+  Calculator,
+  ClipboardCheck,
+  FileSpreadsheet,
+  FolderOpen,
+  GitBranch,
+  History,
+  Info,
+  Package,
+  PanelLeft,
+  ScrollText,
+  Truck,
+  type LucideIcon,
+} from 'lucide-react'
 
 export type WorkspaceTabItem = { id: string; label: string }
+
+const WORKSPACE_TAB_ICONS: Record<string, LucideIcon> = {
+  detalles: Info,
+  flujo: GitBranch,
+  archivos: FolderOpen,
+  entregaPlanos: Truck,
+  revisiones: ClipboardCheck,
+  especificaciones: ScrollText,
+  presupuesto: Calculator,
+  eventos: History,
+  pliegos: FileSpreadsheet,
+  materiales: Package,
+}
+
+function WorkspaceSectionIcon({
+  tabId,
+  variant,
+  selected,
+}: {
+  tabId: string
+  variant: 'nav' | 'header'
+  selected?: boolean
+}) {
+  const Icon = WORKSPACE_TAB_ICONS[tabId]
+  if (!Icon) return null
+  if (variant === 'header') {
+    return <Icon className="h-5 w-5 shrink-0 text-primary sm:h-6 sm:w-6" aria-hidden />
+  }
+  return (
+    <Icon
+      className={`h-4 w-4 shrink-0 ${selected ? 'text-primary' : 'text-muted'}`}
+      aria-hidden
+    />
+  )
+}
 
 type Props = {
   tabs: WorkspaceTabItem[]
@@ -47,7 +95,7 @@ export function WorkspaceTabsLayout({
                 aria-selected={selected}
                 id={`tab-${t.id}`}
                 tabIndex={selected ? 0 : -1}
-                className={`rounded-md px-3.5 py-2.5 text-left text-base font-medium outline-none transition-colors ${
+                className={`flex items-center gap-2.5 rounded-md px-3.5 py-2.5 text-left text-base font-medium outline-none transition-colors ${
                   selected
                     ? 'bg-primary/10 text-ink shadow-sm'
                     : 'text-muted hover:bg-black/[0.04] hover:text-ink'
@@ -59,7 +107,8 @@ export function WorkspaceTabsLayout({
                   }
                 }}
               >
-                {t.label}
+                <WorkspaceSectionIcon tabId={t.id} variant="nav" selected={selected} />
+                <span className="min-w-0">{t.label}</span>
               </button>
             )
           })}
@@ -82,8 +131,9 @@ export function WorkspaceTabsLayout({
             Secciones
           </button>
           {active ? (
-            <h2 className="min-w-0 flex-1 text-lg font-semibold tracking-tight text-ink sm:text-xl">
-              {active.label}
+            <h2 className="flex min-w-0 flex-1 items-center gap-2 text-lg font-semibold tracking-tight text-ink sm:text-xl">
+              <WorkspaceSectionIcon tabId={active.id} variant="header" />
+              <span className="min-w-0">{active.label}</span>
             </h2>
           ) : null}
         </div>
