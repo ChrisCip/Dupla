@@ -88,6 +88,62 @@ def merge_pres_template_takeoffs(
     return merged
 
 
+def _match_or_generate(
+    expanded_takeoffs: list[QuantityTakeoff],
+    bc3_catalog: dict[str, Any],
+    *,
+    embedding_index: Any | None = None,
+    training_pairs: list[Any] | None = None,
+    project_discipline_id: str | None = None,
+) -> tuple[dict[str, list[BudgetCandidate]], dict[str, Any]]:
+    """
+    Try PartidaGenerator (GPT-4o generates project-specific partidas), fall back to
+    legacy match_takeoffs_to_bc3 on any failure.
+
+    Returns (candidates_dict, bc3_catalog_to_use). On the generator path the catalog
+    is an extended copy with synthetic partida codes so _guard_budget_candidate passes.
+    On the fallback path the original bc3_catalog is returned unchanged.
+    """
+    import os as _os  # local import — avoids shadowing the module-level namespace
+
+    api_key = _os.getenv("OPENAI_API_KEY")
+    if api_key:
+        try:
+            from agents.partida_generator import PartidaGenerator
+            from agents.partida_adapter import adapt_generated_to_legacy_format
+
+            generator = PartidaGenerator()
+            generated = generator.generate(
+                expanded_takeoffs,
+                training_pairs=training_pairs,
+                bc3_catalog=bc3_catalog,
+            )
+            if not generated:
+                raise ValueError("PartidaGenerator returned empty result — using BC3 fallback")
+
+            candidates, extended_catalog = adapt_generated_to_legacy_format(
+                generated, expanded_takeoffs, bc3_catalog
+            )
+            logger.info("PartidaGenerator path: %d partidas generated", len(generated))
+            return candidates, extended_catalog
+
+        except Exception:
+            logger.warning(
+                "PartidaGenerator failed — falling back to BC3 matching", exc_info=True
+            )
+    else:
+        logger.info("No OPENAI_API_KEY — skipping PartidaGenerator, using BC3 matching")
+
+    candidates = match_takeoffs_to_bc3(
+        expanded_takeoffs,
+        bc3_catalog,
+        embedding_index=embedding_index,
+        training_pairs=training_pairs,
+        project_discipline_id=project_discipline_id,
+    )
+    return candidates, bc3_catalog
+
+
 def _load_construcosto_if_available() -> Any:
     try:
         snapshot = load_construcosto_snapshot()
@@ -155,7 +211,7 @@ def build_budget_from_inventory(
         fallback_unmatched=bool(context.metadata.get("pres_fallback_unmatched", True)),
     )
     _stamp_takeoffs_source_discipline(expanded_takeoffs, project_discipline)
-    candidates = match_takeoffs_to_bc3(
+    candidates, bc3_catalog_for_budget = _match_or_generate(
         expanded_takeoffs,
         bc3_catalog,
         embedding_index=embedding_index,
@@ -165,7 +221,7 @@ def build_budget_from_inventory(
     snapshot = _load_construcosto_if_available()
     return build_final_budget(
         context, expanded_takeoffs, candidates,
-        bc3_catalog=bc3_catalog,
+        bc3_catalog=bc3_catalog_for_budget,
         construcosto_snapshot=snapshot,
     )
 
@@ -382,20 +438,20 @@ def build_budget_from_sources(
 
     _stamp_takeoffs_source_discipline(expanded_takeoffs, project_discipline)
 
-    logger.info("Matching %d takeoffs to BC3 catalog", len(expanded_takeoffs))
-    candidates = match_takeoffs_to_bc3(
+    logger.info("Resolving candidates for %d takeoffs", len(expanded_takeoffs))
+    candidates, bc3_catalog_for_budget = _match_or_generate(
         expanded_takeoffs,
         bc3_catalog,
         embedding_index=embedding_index,
         training_pairs=training_pairs,
         project_discipline_id=project_discipline,
     )
-    logger.info("BC3 candidates matched for %d takeoff keys", len(candidates))
+    logger.info("Candidates resolved for %d takeoff keys", len(candidates))
 
     snapshot = _load_construcosto_if_available()
     budget = build_final_budget(
         context, expanded_takeoffs, candidates,
-        bc3_catalog=bc3_catalog,
+        bc3_catalog=bc3_catalog_for_budget,
         construcosto_snapshot=snapshot,
     )
     budget["hybrid_inventory"] = [level.to_dict() for level in hybrid_inventory]

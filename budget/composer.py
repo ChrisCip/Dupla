@@ -706,6 +706,7 @@ def compose_budget_rows(
             "source_discipline": infer_source_discipline(prepared.takeoff, context),
             "candidate_summary": prepared.candidate.summary if prepared.candidate else None,
             "candidate_rationale": prepared.candidate.rationale if prepared.candidate else None,
+            "candidate_source": prepared.candidate.source if prepared.candidate else None,
             "trace_metadata": dict(prepared.takeoff.trace.metadata),
         }
         if prepared.bc3_guard_drop_reason:

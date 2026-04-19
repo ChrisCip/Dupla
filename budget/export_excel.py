@@ -24,7 +24,9 @@ HEADERS = (
     "Fuente Cantidad",
     "Fuente Precio",
     "BC3 Origen",
+    "Método de Precio",
 )
+PENDING_FILL = PatternFill("solid", fgColor="FFFF00")
 THIN_SIDE = Side(style="thin", color="BFBFBF")
 ALL_BORDER = Border(left=THIN_SIDE, right=THIN_SIDE, top=THIN_SIDE, bottom=THIN_SIDE)
 HEADER_FILL = PatternFill("solid", fgColor="D9E1F2")
@@ -179,10 +181,12 @@ def export_budget_workbook(
         price_source = ""
         quantity_source = ""
         bc3_origin = ""
+        candidate_source = ""
         if row.row_type == "line":
             price_source = str(row.metadata.get("price_source") or "")
             quantity_source = str(row.metadata.get("quantity_source_display") or "")
             bc3_origin = str(row.metadata.get("bc3_origin") or "")
+            candidate_source = str(row.metadata.get("candidate_source") or "")
 
         values = (
             row.code,
@@ -195,6 +199,7 @@ def export_budget_workbook(
             quantity_source,
             price_source,
             bc3_origin,
+            candidate_source,
         )
         for column_index, value in enumerate(values, start=1):
             cell = worksheet.cell(row=target_row, column=column_index)
@@ -234,10 +239,67 @@ def export_budget_workbook(
     worksheet.column_dimensions["H"].width = 32
     worksheet.column_dimensions["I"].width = 28
     worksheet.column_dimensions["J"].width = 22
+    worksheet.column_dimensions["K"].width = 22
 
     if quality_report:
         _append_quality_sheet(workbook, quality_report)
 
+    _append_pendientes_sheet(workbook, coerced_rows)
+
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     return _save_workbook(workbook, output)
+
+
+def _append_pendientes_sheet(
+    workbook: Workbook,
+    rows: list[Any],
+    *,
+    sheet_name: str = "PENDIENTES",
+) -> None:
+    """
+    Creates a separate sheet listing all budget line rows where unit_price is None.
+    These are items that ConstruCosto could not price and require manual review.
+    """
+    pending = [
+        row for row in rows
+        if isinstance(row, object)
+        and getattr(row, "row_type", None) == "line"
+        and getattr(row, "unit_price", 1) is None
+    ]
+    if not pending:
+        return
+
+    worksheet = workbook.create_sheet(title=sheet_name)
+    headers = ("Código", "Ud", "Resumen", "CanPres", "Takeoff Key", "Disciplina")
+    for idx, header in enumerate(headers, start=1):
+        cell = worksheet.cell(row=1, column=idx, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = HEADER_FILL
+        cell.border = ALL_BORDER
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for row_index, row in enumerate(pending, start=2):
+        discipline = str(row.metadata.get("source_discipline") or "") if hasattr(row, "metadata") else ""
+        takeoff_key = str(getattr(row, "takeoff_key", "") or "")
+        values = (
+            getattr(row, "code", ""),
+            getattr(row, "unit", ""),
+            getattr(row, "summary", ""),
+            getattr(row, "quantity", None),
+            takeoff_key,
+            discipline,
+        )
+        for col_idx, value in enumerate(values, start=1):
+            cell = worksheet.cell(row=row_index, column=col_idx, value=value)
+            cell.fill = PENDING_FILL
+            cell.border = ALL_BORDER
+            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+    worksheet.freeze_panes = "A2"
+    worksheet.column_dimensions["A"].width = 18
+    worksheet.column_dimensions["B"].width = 10
+    worksheet.column_dimensions["C"].width = 60
+    worksheet.column_dimensions["D"].width = 14
+    worksheet.column_dimensions["E"].width = 42
+    worksheet.column_dimensions["F"].width = 18
