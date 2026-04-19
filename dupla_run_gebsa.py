@@ -277,7 +277,10 @@ def process_discipline(
 
     logger.info("[%s] Running Vision AI on %d pages...", disc_id, len(image_paths))
     vision_results = run_full_vision_analysis(
-        str(pages_dir), cad_facts, office_methodology=methodology,
+        str(pages_dir),
+        cad_facts,
+        office_methodology=methodology,
+        upload_discipline_id=disc_id,
     )
 
     vision_json = run_dir.discipline_vision_json(disc_id)

@@ -18,8 +18,10 @@ from core.schemas import (
     LevelInventory,
     ProjectContext,
     QuantityTakeoff,
+    QuantityTrace,
     level_inventory_from_dict,
 )
+from validation.discipline_inference import infer_source_discipline
 from core.semantic_adapter import adapt_semantic_to_inventory
 from core.semantic_enrichment import enrich_semantics
 from knowledge.bc3_embeddings import load_or_build_embeddings
@@ -31,6 +33,33 @@ from processors.json_processor import process_autodesk_json
 from rules_engine import RulesEngine, default_rules_engine
 
 logger = logging.getLogger("dupla.pipeline")
+
+
+def _runner_discipline_canonical(context: ProjectContext | None) -> str | None:
+    """Disciplina de corrida (arquitectonica|estructural|electrica|sanitaria) desde metadata, o None."""
+    if context is None or not context.metadata:
+        return None
+    if not str(context.metadata.get("discipline_id") or "").strip():
+        return None
+    probe = QuantityTakeoff(
+        item_key="__discipline_probe__",
+        item_type="wall_net_area",
+        unit="m2",
+        quantity=0.0,
+        formula="",
+        trace=QuantityTrace(),
+    )
+    return infer_source_discipline(probe, context)
+
+
+def _stamp_takeoffs_source_discipline(
+    takeoffs: Iterable[QuantityTakeoff],
+    label: str | None,
+) -> None:
+    if not label:
+        return
+    for takeoff in takeoffs:
+        takeoff.trace.metadata["source_discipline"] = label
 
 
 def merge_pres_template_takeoffs(
@@ -114,7 +143,8 @@ def build_budget_from_inventory(
     training_pairs: list[Any] | None = None,
 ) -> dict[str, Any]:
     engine = rules_engine or default_rules_engine()
-    base_takeoffs = quantify_inventory(levels)
+    project_discipline = _runner_discipline_canonical(context)
+    base_takeoffs = quantify_inventory(levels, runner_source_discipline=project_discipline)
     expanded_takeoffs = engine.apply(base_takeoffs)
     expanded_takeoffs = merge_pres_template_takeoffs(
         levels,
@@ -124,11 +154,13 @@ def build_budget_from_inventory(
         max_per_level=int(context.metadata.get("pres_max_per_level", 250)),
         fallback_unmatched=bool(context.metadata.get("pres_fallback_unmatched", True)),
     )
+    _stamp_takeoffs_source_discipline(expanded_takeoffs, project_discipline)
     candidates = match_takeoffs_to_bc3(
         expanded_takeoffs,
         bc3_catalog,
         embedding_index=embedding_index,
         training_pairs=training_pairs,
+        project_discipline_id=project_discipline,
     )
     snapshot = _load_construcosto_if_available()
     return build_final_budget(
@@ -141,13 +173,15 @@ def build_budget_from_inventory(
 def build_expanded_takeoffs_from_inventory(
     levels: list[LevelInventory],
     rules_engine: RulesEngine | None = None,
+    *,
+    runner_source_discipline: str | None = None,
 ) -> tuple[list[QuantityTakeoff], list[QuantityTakeoff]]:
     """
     Quantify inventory deterministically, then expand base takeoffs through the
     configured rule engine.
     """
     engine = rules_engine or default_rules_engine()
-    base_takeoffs = quantify_inventory(levels)
+    base_takeoffs = quantify_inventory(levels, runner_source_discipline=runner_source_discipline)
     expanded_takeoffs = engine.apply(base_takeoffs)
     return base_takeoffs, expanded_takeoffs
 
@@ -325,8 +359,11 @@ def build_budget_from_sources(
                 quality_report_obj.blocked_count,
             )
 
+    project_discipline = _runner_discipline_canonical(context)
     base_takeoffs, expanded_takeoffs = build_expanded_takeoffs_from_inventory(
-        hybrid_inventory, rules_engine=rules_engine,
+        hybrid_inventory,
+        rules_engine=rules_engine,
+        runner_source_discipline=project_discipline,
     )
     logger.info(
         "Takeoffs: %d base -> %d expanded (rules applied)",
@@ -343,12 +380,15 @@ def build_budget_from_sources(
     )
     logger.info("After PRES merge: %d takeoffs", len(expanded_takeoffs))
 
+    _stamp_takeoffs_source_discipline(expanded_takeoffs, project_discipline)
+
     logger.info("Matching %d takeoffs to BC3 catalog", len(expanded_takeoffs))
     candidates = match_takeoffs_to_bc3(
         expanded_takeoffs,
         bc3_catalog,
         embedding_index=embedding_index,
         training_pairs=training_pairs,
+        project_discipline_id=project_discipline,
     )
     logger.info("BC3 candidates matched for %d takeoff keys", len(candidates))
 

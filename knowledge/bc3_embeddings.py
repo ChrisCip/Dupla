@@ -276,6 +276,7 @@ def search_bc3(
 
 
 def build_query_from_takeoff(takeoff: QuantityTakeoff) -> str:
+    specific = str(takeoff.inputs.get("takeoff_description") or "").strip()
     item_type_to_spanish = {
         "wall_finish_plaster": "panete en muros interiores",
         "door_count": "puerta de madera interior",
@@ -295,7 +296,8 @@ def build_query_from_takeoff(takeoff: QuantityTakeoff) -> str:
         if isinstance(raw, dict):
             raw_txt = str(raw.get("id") or raw.get("type") or "")
         extra = f" disciplina {disc} tipo {ftype} ubicacion {loc} {raw_txt}".strip()
-    return (
+    core = (
         f"{item_type_desc} unidad {takeoff.unit} formula {formula} "
         f"supuestos {assumptions} evidencia {trace_evidence} {extra}"
     ).strip()
+    return f"{specific} {core}".strip() if specific else core

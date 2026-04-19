@@ -13,7 +13,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from core.schemas import BudgetRow, ProjectContext
 
-HEADERS = ("Código", "Nat", "Ud", "Resumen", "CanPres", "PrPres", "ImpPres")
+HEADERS = ("Código", "Nat", "Ud", "Resumen", "CanPres", "PrPres", "ImpPres", "Fuente Precio")
 THIN_SIDE = Side(style="thin", color="BFBFBF")
 ALL_BORDER = Border(left=THIN_SIDE, right=THIN_SIDE, top=THIN_SIDE, bottom=THIN_SIDE)
 HEADER_FILL = PatternFill("solid", fgColor="D9E1F2")
@@ -165,6 +165,10 @@ def export_budget_workbook(
     coerced_rows = [_coerce_row(row) for row in rows]
     for row in coerced_rows:
         target_row = row.excel_row or 4
+        price_source = ""
+        if row.row_type == "line":
+            price_source = str(row.metadata.get("price_source") or "")
+
         values = (
             row.code,
             row.nat,
@@ -173,12 +177,13 @@ def export_budget_workbook(
             row.quantity,
             row.unit_price,
             row.amount,
+            price_source,
         )
         for column_index, value in enumerate(values, start=1):
             cell = worksheet.cell(row=target_row, column=column_index)
             _write_value(cell, value)
             cell.border = ALL_BORDER
-            if column_index >= 5:
+            if 5 <= column_index <= 7:
                 cell.number_format = '#,##0.00'
 
         row_fill = None
@@ -190,11 +195,11 @@ def export_budget_workbook(
             row_fill = SUBTOTAL_FILL
             row_font = Font(bold=True)
 
-        for column_index in range(1, 8):
+        for column_index in range(1, 9):
             cell = worksheet.cell(row=target_row, column=column_index)
             cell.font = row_font
             cell.alignment = Alignment(
-                horizontal="left" if column_index <= 4 else "right",
+                horizontal="left" if column_index <= 4 or column_index == 8 else "right",
                 vertical="center",
             )
             if row_fill is not None:
@@ -209,6 +214,7 @@ def export_budget_workbook(
     worksheet.column_dimensions["E"].width = 14
     worksheet.column_dimensions["F"].width = 14
     worksheet.column_dimensions["G"].width = 16
+    worksheet.column_dimensions["H"].width = 28
 
     if quality_report:
         _append_quality_sheet(workbook, quality_report)

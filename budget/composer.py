@@ -126,46 +126,57 @@ def _extract_unit_price(
     construcosto_snapshot: Any | None = None,
     summary: str = "",
     unit: str = "",
-) -> float | None:
-    """Extract unit price with fallback chain: rationale -> BC3 candidate -> BC3 deterministic -> ConstruCosto."""
-    # 1) Classifier rationale
-    if candidate is not None:
-        rationale = getattr(candidate, "rationale", "") or ""
-        if rationale.startswith("{"):
-            try:
-                data = json.loads(rationale)
-                price = data.get("unit_price")
-                if price:
-                    return float(price)
-            except (json.JSONDecodeError, ValueError, TypeError):
-                pass
+) -> tuple[float | None, str]:
+    """Resolve unit price: ConstruCosto (APU → materiales → equipos) then BC3 catalog; never BC3-first."""
+    summary_s = (summary or "").strip()
+    unit_s = (unit or "").strip()
 
-    # 2) BC3 catalog lookup by candidate code
+    if construcosto_snapshot is not None and find_best_price is not None and summary_s:
+        for sources, label in (
+            (frozenset({"analisis"}), "ConstruCosto APU Punta Cana"),
+            (frozenset({"materiales"}), "ConstruCosto Material Punta Cana"),
+            (frozenset({"equipos"}), "ConstruCosto Equipo Punta Cana"),
+        ):
+            match = find_best_price(
+                construcosto_snapshot,
+                summary_s,
+                unit_s,
+                allowed_sources=sources,
+            )
+            if match is not None and match.unit_price and match.unit_price > 0:
+                logger.debug(
+                    "ConstruCosto (%s) price for '%s': RD$%.2f (score=%.2f, matched='%s')",
+                    label,
+                    summary_s[:60],
+                    match.unit_price,
+                    match.score,
+                    match.entry.description[:60],
+                )
+                return float(match.unit_price), label
+
     if candidate is not None and bc3_catalog and candidate.bc3_code:
         concept = bc3_catalog.get("concepts_by_code", {}).get(candidate.bc3_code, {})
         price = concept.get("price")
         if price:
-            return float(price)
+            try:
+                p = float(price)
+                if p > 0:
+                    return p, "BC3 TGIU (fallback)"
+            except (TypeError, ValueError):
+                pass
 
-    # 3) BC3 catalog lookup by deterministic fallback code
     if fallback_bc3_code and bc3_catalog:
         concept = bc3_catalog.get("concepts_by_code", {}).get(fallback_bc3_code, {})
         price = concept.get("price")
         if price:
-            return float(price)
+            try:
+                p = float(price)
+                if p > 0:
+                    return p, "BC3 TGIU (fallback)"
+            except (TypeError, ValueError):
+                pass
 
-    # 4) ConstruCosto fuzzy match on description
-    if construcosto_snapshot is not None and find_best_price is not None and summary:
-        match = find_best_price(construcosto_snapshot, summary, unit)
-        if match is not None:
-            logger.debug(
-                "ConstruCosto price for '%s': RD$%.2f (score=%.2f, matched='%s')",
-                summary[:60], match.unit_price, match.score,
-                match.entry.description[:60],
-            )
-            return match.unit_price
-
-    return None
+    return None, "PRECIO_PENDIENTE"
 
 
 @dataclass
@@ -644,6 +655,16 @@ def compose_budget_rows(
         if prepared.bc3_guard_drop_reason:
             line_metadata["bc3_guard_drop_reason"] = prepared.bc3_guard_drop_reason
 
+        resolved_price, price_source = _extract_unit_price(
+            prepared.candidate,
+            bc3_catalog,
+            fallback_bc3_code=deterministic_bc3_code,
+            construcosto_snapshot=construcosto_snapshot,
+            summary=prepared.summary,
+            unit=prepared.takeoff.unit,
+        )
+        line_metadata["price_source"] = price_source
+
         budget_line = BudgetLine(
             line_id=f"BLINE-{line_index:04d}",
             takeoff_key=prepared.takeoff.item_key,
@@ -653,14 +674,7 @@ def compose_budget_rows(
             unit=prepared.takeoff.unit,
             summary=prepared.summary,
             quantity=prepared.takeoff.quantity,
-            unit_price=_extract_unit_price(
-                prepared.candidate,
-                bc3_catalog,
-                fallback_bc3_code=deterministic_bc3_code,
-                construcosto_snapshot=construcosto_snapshot,
-                summary=prepared.summary,
-                unit=prepared.takeoff.unit,
-            ),
+            unit_price=resolved_price,
             candidate_code=prepared.candidate.bc3_code if prepared.candidate else deterministic_bc3_code,
             candidate_score=prepared.candidate.score if prepared.candidate else None,
             source_refs=list(prepared.takeoff.source_refs),

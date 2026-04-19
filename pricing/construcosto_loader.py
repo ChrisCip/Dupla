@@ -388,6 +388,7 @@ def find_best_price(
     *,
     min_score: float = 0.45,
     prefer_analisis: bool = True,
+    allowed_sources: frozenset[str] | None = None,
 ) -> PriceMatch | None:
     """Find the ConstruCosto entry that best matches *description*.
 
@@ -398,6 +399,7 @@ def find_best_price(
         min_score: Minimum token-overlap score to accept a match.
         prefer_analisis: Give slight bonus to APU (analisis) entries since
             they represent complete cost analyses, not just material prices.
+        allowed_sources: If set, only consider entries whose ``source`` is in this set.
 
     Returns:
         Best ``PriceMatch`` above threshold, or ``None``.
@@ -410,6 +412,8 @@ def find_best_price(
     best: PriceMatch | None = None
 
     for entry in snapshot.entries:
+        if allowed_sources is not None and entry.source not in allowed_sources:
+            continue
         score = _token_score(query_tokens, entry.tokens)
         if score < min_score:
             continue

@@ -358,18 +358,26 @@ def _gpt4o_classify_chapter(
     chapter_desc: str,
     client: "OpenAI",
     few_shot_examples: str = "",
+    *,
+    project_discipline_id: str | None = None,
 ) -> dict[str, BudgetCandidate]:
     """One GPT-4o call per chapter — assign best BC3 code to each takeoff."""
     if not takeoffs or not bc3_items:
         return {}
 
-    # Format takeoffs
+    # Format takeoffs (include plan-specific description for BC3 matching — B1)
     takeoff_lines = []
     for t in takeoffs:
-        takeoff_lines.append(
-            f'  {{"key":"{t.item_key}","type":"{t.item_type}",'
-            f'"unit":"{t.unit}","qty":{t.quantity:.2f}}}'
-        )
+        payload: dict[str, Any] = {
+            "key": t.item_key,
+            "type": t.item_type,
+            "unit": t.unit,
+            "qty": round(float(t.quantity), 2),
+        }
+        desc = str(t.inputs.get("takeoff_description") or "").strip()
+        if desc:
+            payload["desc"] = desc[:500]
+        takeoff_lines.append("  " + json.dumps(payload, ensure_ascii=False))
 
     # Format BC3 catalog (max 80 items to stay within token limits)
     bc3_lines = []
@@ -382,9 +390,17 @@ def _gpt4o_classify_chapter(
         )
 
     static_hint = _STATIC_CHAPTER_GUIDANCE.get(chapter_code, "")
+    disc_block = ""
+    if project_discipline_id:
+        disc_block = (
+            f"CONTEXTO DE CORRIDA: la disciplina principal del proyecto es «{project_discipline_id}». "
+            "Elige partidas del catálogo coherentes con esa disciplina y con el capítulo indicado; "
+            "no mezcles partidas claramente de otra instalación si el takeoff no la sugiere.\n\n"
+        )
     prompt = (
         f"Eres un presupuestista dominicano senior. Capítulo ({chapter_code}): {chapter_desc}\n"
         f"{static_hint}\n\n"
+        f"{disc_block}"
         + (few_shot_examples + "\n\n" if few_shot_examples else "")
         + "PARTIDAS A CLASIFICAR:\n[\n"
         + ",\n".join(takeoff_lines)
@@ -395,6 +411,9 @@ def _gpt4o_classify_chapter(
         + "Instrucciones estrictas:\n"
         + "- bc3_code debe ser EXACTAMENTE uno de los valores \"code\" del catálogo anterior. "
         + "Nunca inventes códigos.\n"
+        + "- Usa el campo \"desc\" cuando exista: describe el trabajo medido en el plano "
+        + "(tipo de muro, rotulo C1/V1, puerta con dimensiones, tomacorriente, etc.); "
+        + "elige la partida BC3 más coherente con esa descripción, no solo con \"type\".\n"
         + "- Si ninguna partida del catálogo encaja de forma razonable, OMITe esa partida "
         + "(no incluyas objeto para ese takeoff_key).\n"
         + "- Misma disciplina y unidad compatible (m2 con m2, m3 con m3, ud con ud, etc.).\n"
@@ -507,6 +526,7 @@ def _match_with_gpt4o(
     *,
     embedding_index: EmbeddingIndex | None = None,
     training_pairs: list[TrainingPair] | None = None,
+    project_discipline_id: str | None = None,
 ) -> dict[str, list[BudgetCandidate]]:
     """Classify all takeoffs via GPT-4o, grouped by chapter."""
     # Group takeoffs by chapter
@@ -543,6 +563,7 @@ def _match_with_gpt4o(
             chapter_info["desc"],
             client,
             few_shot_examples=few_shot,
+            project_discipline_id=project_discipline_id,
         )
 
         for key, candidate in matches.items():
@@ -564,6 +585,7 @@ def _tokenize(text: str) -> set[str]:
 
 
 def _query_text(takeoff: QuantityTakeoff) -> str:
+    desc = str(takeoff.inputs.get("takeoff_description") or "").strip()
     trace_values = " ".join(
         [
             " ".join(takeoff.trace.source_entity_ids),
@@ -571,7 +593,8 @@ def _query_text(takeoff: QuantityTakeoff) -> str:
             " ".join(str(value) for value in takeoff.inputs.values() if value),
         ]
     )
-    return f"{takeoff.item_key} {takeoff.item_type} {trace_values}"
+    base = f"{takeoff.item_key} {takeoff.item_type} {trace_values}"
+    return f"{desc} {base}".strip() if desc else base
 
 
 def rank_budget_candidates(
@@ -623,6 +646,7 @@ def match_takeoffs_to_bc3(
     *,
     embedding_index: EmbeddingIndex | None = None,
     training_pairs: list[TrainingPair] | None = None,
+    project_discipline_id: str | None = None,
 ) -> dict[str, list[BudgetCandidate]]:
     """
     Assign BC3 candidates to each takeoff.
@@ -645,6 +669,7 @@ def match_takeoffs_to_bc3(
                     client,
                     embedding_index=embedding_index,
                     training_pairs=training_pairs,
+                    project_discipline_id=project_discipline_id,
                 )
             except Exception:
                 logger.warning(

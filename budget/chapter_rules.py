@@ -690,13 +690,17 @@ def build_budget_summary(
     takeoff: QuantityTakeoff,
     candidate: BudgetCandidate | None = None,
 ) -> str:
-    if candidate is not None:
-        return candidate.summary.strip() or takeoff.item_type.replace("_", " ").strip()
-
     item_type = takeoff.item_type.lower()
     if item_type == "pres_reference_line":
         summary = str(takeoff.inputs.get("pres_summary", "") or "").strip()
         return summary or takeoff.item_key
+
+    specific = str(takeoff.inputs.get("takeoff_description") or "").strip()
+    if specific:
+        return specific
+
+    if candidate is not None:
+        return candidate.summary.strip() or takeoff.item_type.replace("_", " ").strip()
     if item_type == "structural_area":
         return "Superficie estructural (referencia)"
 
