@@ -13,7 +13,17 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from core.schemas import BudgetRow, ProjectContext
 
-HEADERS = ("Código", "Nat", "Ud", "Resumen", "CanPres", "PrPres", "ImpPres", "Fuente Precio")
+HEADERS = (
+    "Código",
+    "Nat",
+    "Ud",
+    "Resumen",
+    "CanPres",
+    "PrPres",
+    "ImpPres",
+    "Fuente Cantidad",
+    "Fuente Precio",
+)
 THIN_SIDE = Side(style="thin", color="BFBFBF")
 ALL_BORDER = Border(left=THIN_SIDE, right=THIN_SIDE, top=THIN_SIDE, bottom=THIN_SIDE)
 HEADER_FILL = PatternFill("solid", fgColor="D9E1F2")
@@ -166,8 +176,10 @@ def export_budget_workbook(
     for row in coerced_rows:
         target_row = row.excel_row or 4
         price_source = ""
+        quantity_source = ""
         if row.row_type == "line":
             price_source = str(row.metadata.get("price_source") or "")
+            quantity_source = str(row.metadata.get("quantity_source_display") or "")
 
         values = (
             row.code,
@@ -177,6 +189,7 @@ def export_budget_workbook(
             row.quantity,
             row.unit_price,
             row.amount,
+            quantity_source,
             price_source,
         )
         for column_index, value in enumerate(values, start=1):
@@ -195,11 +208,11 @@ def export_budget_workbook(
             row_fill = SUBTOTAL_FILL
             row_font = Font(bold=True)
 
-        for column_index in range(1, 9):
+        for column_index in range(1, 10):
             cell = worksheet.cell(row=target_row, column=column_index)
             cell.font = row_font
             cell.alignment = Alignment(
-                horizontal="left" if column_index <= 4 or column_index == 8 else "right",
+                horizontal="left" if column_index <= 4 or column_index >= 8 else "right",
                 vertical="center",
             )
             if row_fill is not None:
@@ -214,7 +227,8 @@ def export_budget_workbook(
     worksheet.column_dimensions["E"].width = 14
     worksheet.column_dimensions["F"].width = 14
     worksheet.column_dimensions["G"].width = 16
-    worksheet.column_dimensions["H"].width = 28
+    worksheet.column_dimensions["H"].width = 32
+    worksheet.column_dimensions["I"].width = 28
 
     if quality_report:
         _append_quality_sheet(workbook, quality_report)

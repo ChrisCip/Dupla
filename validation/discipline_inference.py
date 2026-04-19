@@ -67,6 +67,9 @@ def infer_source_discipline(
             return "sanitaria"
         return "arquitectonica"
 
+    if it == "wet_area_fixture_count":
+        return "sanitaria"
+
     return "arquitectonica"
 
 

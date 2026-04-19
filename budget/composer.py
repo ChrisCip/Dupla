@@ -40,6 +40,32 @@ except ImportError:
 
 DATA_START_ROW = 4
 
+_QUANTITY_SOURCE_LABELS: dict[str, str] = {
+    "plan_measurement": "Medido",
+    "default_estimate": "Estimado (default)",
+    "mixed_measurement": "Mezclado (plano + default)",
+    "ratio_estimate": "Estimado (ratio)",
+}
+
+
+def _quantity_source_display(takeoff: QuantityTakeoff) -> str:
+    """Human-readable quantity provenance for Excel (B2)."""
+    meta = takeoff.trace.metadata
+    inputs = takeoff.inputs
+    raw = meta.get("quantity_source")
+    if raw is None:
+        raw = inputs.get("quantity_source")
+    note = meta.get("quantity_source_note") or inputs.get("quantity_source_note")
+    if raw is None or str(raw).strip() == "":
+        if note:
+            return str(note).strip()
+        return ""
+    key = str(raw).strip()
+    label = _QUANTITY_SOURCE_LABELS.get(key, key.replace("_", " "))
+    if key == "ratio_estimate" and note:
+        return f"{label}: {str(note).strip()}"
+    return label
+
 
 def _bc3_catalog_code_set(bc3_catalog: dict[str, Any]) -> set[str]:
     codes: set[str] = set()
@@ -664,6 +690,7 @@ def compose_budget_rows(
             unit=prepared.takeoff.unit,
         )
         line_metadata["price_source"] = price_source
+        line_metadata["quantity_source_display"] = _quantity_source_display(prepared.takeoff)
 
         budget_line = BudgetLine(
             line_id=f"BLINE-{line_index:04d}",

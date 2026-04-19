@@ -600,6 +600,9 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     for wall in level.walls:
         wall_desc = _wall_entity_description(wall)
         if wall.length_m is not None:
+            finish_h = wall.height_m
+            finish_h_eff = finish_h if finish_h is not None else _DEFAULT_WALL_HEIGHT_M
+            finish_src = "plan_measurement" if finish_h is not None else "default_estimate"
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{wall.id}:length",
@@ -608,7 +611,14 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                     unit="m",
                     quantity=wall.length_m,
                     formula="wall.length_m",
-                    inputs=_merge_inputs_with_description({"length_m": wall.length_m}, wall_desc),
+                    inputs=_merge_inputs_with_description(
+                        {
+                            "length_m": wall.length_m,
+                            "finish_height_m": finish_h_eff,
+                            "finish_height_source": finish_src,
+                        },
+                        wall_desc,
+                    ),
                     assumptions=list(wall.assumptions),
                     source_refs=list(wall.source_refs),
                     trace=_trace_from_entities(
@@ -816,6 +826,7 @@ def _level_surface_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             level_surface_context_tags,
             explicit_level_tags,
         )
+        floor_desc = f"Área de piso — nivel {level.level_name}"
         takeoffs.append(
             _make_takeoff(
                 item_key=f"{level.level_id}:floor_area",
@@ -824,10 +835,13 @@ def _level_surface_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 unit="m2",
                 quantity=level.floor_area_m2,
                 formula="level.floor_area_m2",
-                inputs={
-                    "floor_area_m2": level.floor_area_m2,
-                    "context_tags": floor_context_tags,
-                },
+                inputs=_merge_inputs_with_description(
+                    {
+                        "floor_area_m2": level.floor_area_m2,
+                        "context_tags": floor_context_tags,
+                    },
+                    floor_desc,
+                ),
                 assumptions=list(level.assumptions),
                 source_refs=list(level.source_refs),
                 trace=QuantityTrace(
@@ -849,6 +863,7 @@ def _level_surface_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             level_surface_context_tags,
             explicit_level_tags,
         )
+        ceiling_desc = f"Área de cielo raso / techo — nivel {level.level_name}"
         takeoffs.append(
             _make_takeoff(
                 item_key=f"{level.level_id}:ceiling_area",
@@ -857,10 +872,13 @@ def _level_surface_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 unit="m2",
                 quantity=level.ceiling_area_m2,
                 formula="level.ceiling_area_m2",
-                inputs={
-                    "ceiling_area_m2": level.ceiling_area_m2,
-                    "context_tags": ceiling_context_tags,
-                },
+                inputs=_merge_inputs_with_description(
+                    {
+                        "ceiling_area_m2": level.ceiling_area_m2,
+                        "context_tags": ceiling_context_tags,
+                    },
+                    ceiling_desc,
+                ),
                 assumptions=list(level.assumptions),
                 source_refs=list(level.source_refs),
                 trace=QuantityTrace(
@@ -982,6 +1000,21 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
 
     for wet_area in level.wet_areas:
         wet_area_count_context_tags = _entity_context_tags(wet_area, "wet_area", wet_area.kind, "count")
+        wa_desc = f"Área húmeda ({wet_area.kind}) — {wet_area.id}"
+        raw_w = wet_area.inputs.get("raw") if isinstance(wet_area.inputs, dict) else {}
+        est_m2 = wet_area.estimated_area_m2
+        if est_m2 is None and isinstance(raw_w, dict) and raw_w.get("area_m2") is not None:
+            try:
+                est_m2 = float(raw_w["area_m2"])
+            except (TypeError, ValueError):
+                est_m2 = None
+        count_payload: dict[str, Any] = {
+            "count": wet_area.count,
+            "kind": wet_area.kind,
+            "context_tags": wet_area_count_context_tags,
+        }
+        if est_m2 is not None:
+            count_payload["estimated_area_m2"] = est_m2
         takeoffs.append(
             _make_takeoff(
                 item_key=f"{wet_area.id}:count",
@@ -990,11 +1023,10 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 unit="unit",
                 quantity=float(wet_area.count),
                 formula="wet_area.count",
-                inputs={
-                    "count": wet_area.count,
-                    "kind": wet_area.kind,
-                    "context_tags": wet_area_count_context_tags,
-                },
+                inputs=_merge_inputs_with_description(
+                    count_payload,
+                    wa_desc,
+                ),
                 assumptions=list(wet_area.assumptions),
                 source_refs=list(wet_area.source_refs),
                 trace=_trace_from_entities(
@@ -1006,6 +1038,7 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
         )
         if wet_area.estimated_area_m2 is not None:
             wet_area_area_context_tags = _entity_context_tags(wet_area, "wet_area", wet_area.kind, "area")
+            wa_area_desc = f"Superficie área húmeda ({wet_area.kind}) — {wet_area.id}"
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{wet_area.id}:area",
@@ -1014,11 +1047,14 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                     unit="m2",
                     quantity=wet_area.estimated_area_m2,
                     formula="wet_area.estimated_area_m2",
-                    inputs={
-                        "estimated_area_m2": wet_area.estimated_area_m2,
-                        "kind": wet_area.kind,
-                        "context_tags": wet_area_area_context_tags,
-                    },
+                    inputs=_merge_inputs_with_description(
+                        {
+                            "estimated_area_m2": wet_area.estimated_area_m2,
+                            "kind": wet_area.kind,
+                            "context_tags": wet_area_area_context_tags,
+                        },
+                        wa_area_desc,
+                    ),
                     assumptions=list(wet_area.assumptions),
                     source_refs=list(wet_area.source_refs),
                     trace=_trace_from_entities(
@@ -1030,6 +1066,10 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             )
 
     for kitchen in level.kitchens:
+        kit_desc = f"Cocina — {kitchen.id}"
+        kit_count_inputs: dict[str, Any] = {"count": kitchen.count}
+        if kitchen.estimated_area_m2 is not None:
+            kit_count_inputs["estimated_area_m2"] = kitchen.estimated_area_m2
         takeoffs.append(
             _make_takeoff(
                 item_key=f"{kitchen.id}:count",
@@ -1038,7 +1078,7 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 unit="unit",
                 quantity=float(kitchen.count),
                 formula="kitchen.count",
-                inputs={"count": kitchen.count},
+                inputs=_merge_inputs_with_description(kit_count_inputs, kit_desc),
                 assumptions=list(kitchen.assumptions),
                 source_refs=list(kitchen.source_refs),
                 trace=_trace_from_entities(
@@ -1048,6 +1088,7 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             )
         )
         if kitchen.estimated_area_m2 is not None:
+            kit_area_desc = f"Superficie cocina — {kitchen.id}"
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{kitchen.id}:area",
@@ -1056,7 +1097,10 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                     unit="m2",
                     quantity=kitchen.estimated_area_m2,
                     formula="kitchen.estimated_area_m2",
-                    inputs={"estimated_area_m2": kitchen.estimated_area_m2},
+                    inputs=_merge_inputs_with_description(
+                        {"estimated_area_m2": kitchen.estimated_area_m2},
+                        kit_area_desc,
+                    ),
                     assumptions=list(kitchen.assumptions),
                     source_refs=list(kitchen.source_refs),
                     trace=_trace_from_entities(
@@ -1069,6 +1113,84 @@ def _area_group_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     return takeoffs
 
 
+# Piezas sanitarias típicas de baño/cocina — van como wet_area_fixture_count si hay wet_areas (B3).
+_SKIP_FIXTURE_COUNT_IF_WET_AREAS: frozenset[str] = frozenset(
+    {"toilet", "sink", "shower_base", "bathtub", "bidet", "urinal", "laundry_sink"}
+)
+
+_WET_AREA_KIND_LABEL: dict[str, str] = {
+    "full_bathroom": "baño",
+    "half_bathroom": "medio baño",
+    "service_bathroom": "baño de servicio",
+    "laundry": "lavandería",
+    "utility": "área de servicio",
+    "bathroom": "baño",
+}
+
+# (raw flag from vision wet_areas JSON, fixture_type token, Spanish label for description)
+_WET_AREA_FLAG_PIECES: tuple[tuple[str, str, str], ...] = (
+    ("has_toilet", "toilet", "Inodoro"),
+    ("has_sink", "sink", "Lavamano"),
+    ("has_shower", "shower_base", "Ducha"),
+    ("has_bathtub", "bathtub", "Bañera"),
+    ("has_bidet", "bidet", "Bidet"),
+)
+
+
+def _wet_area_fixture_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
+    """Emit wet_area_fixture_count from wet-area booleans (Vision raw) × count (B3)."""
+    takeoffs: list[QuantityTakeoff] = []
+    for wet_area in level.wet_areas:
+        raw = wet_area.inputs.get("raw") if isinstance(wet_area.inputs, dict) else {}
+        if not isinstance(raw, dict):
+            raw = {}
+        n_units = max(int(wet_area.count or 1), 1)
+        kind = (wet_area.kind or "bathroom").strip().lower()
+        area_label = _WET_AREA_KIND_LABEL.get(kind, kind.replace("_", " "))
+        tags = _entity_context_tags(wet_area, "wet_area", wet_area.kind, "fixture")
+
+        for flag, fixture_type, label_es in _WET_AREA_FLAG_PIECES:
+            if not raw.get(flag):
+                continue
+            qty = float(n_units)
+            desc = f"{label_es} en {area_label}"
+            item_key = f"{wet_area.id}:wet_fixture:{fixture_type}"
+            takeoffs.append(
+                _make_takeoff(
+                    item_key=item_key,
+                    item_type="wet_area_fixture_count",
+                    level_id=level.level_id,
+                    unit="ud",
+                    quantity=qty,
+                    formula=f"wet_area.count * {flag}",
+                    inputs=_merge_inputs_with_description(
+                        {
+                            "fixture_type": fixture_type,
+                            "area_type": wet_area.kind,
+                            "wet_area_id": wet_area.id,
+                            "wet_area_flag": flag,
+                            "context_tags": tags,
+                        },
+                        desc,
+                    ),
+                    assumptions=list(wet_area.assumptions),
+                    source_refs=list(wet_area.source_refs),
+                    trace=_trace_from_entities(
+                        entities=[wet_area],
+                        steps=[
+                            "Counted sanitary fixture from wet-area schedule "
+                            f"({flag}=true, {n_units} unit(s)).",
+                        ],
+                        metadata={
+                            "context_tags": tags,
+                            "source_discipline": "sanitaria",
+                        },
+                    ),
+                )
+            )
+    return takeoffs
+
+
 def _stair_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     return [
         _make_takeoff(
@@ -1078,7 +1200,10 @@ def _stair_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             unit="unit",
             quantity=float(stair.count),
             formula="stair.count",
-            inputs={"count": stair.count, "flights": stair.flights},
+            inputs=_merge_inputs_with_description(
+                {"count": stair.count, "flights": stair.flights},
+                f"Escalera — {stair.id}",
+            ),
             assumptions=list(stair.assumptions),
             source_refs=list(stair.source_refs),
             trace=_trace_from_entities(
@@ -1090,9 +1215,18 @@ def _stair_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     ]
 
 
-def _fixture_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
+def _fixture_takeoffs(
+    level: LevelInventory,
+    *,
+    skip_sanitary_fixture_dupes: bool = False,
+) -> list[QuantityTakeoff]:
     takeoffs: list[QuantityTakeoff] = []
     for fixture in level.fixtures:
+        ftype = str(fixture.fixture_type or "").lower()
+        disc = str((fixture.inputs or {}).get("discipline") or "").lower()
+        if skip_sanitary_fixture_dupes and ftype in _SKIP_FIXTURE_COUNT_IF_WET_AREAS:
+            if disc not in {"electrical", "electric"}:
+                continue
         fx_desc = _fixture_entity_description(fixture)
         takeoffs.append(
             _make_takeoff(
@@ -1188,13 +1322,19 @@ def _rebar_takeoffs(
     level_id: str | None,
     volume_quantity: float,
     volume_formula: str | None,
+    *,
+    struct_desc: str = "",
 ) -> list[QuantityTakeoff]:
     """Estimate reinforcement steel weight from concrete volume using standard ratios."""
     etype = element.element_type
     ratio = _REBAR_KG_PER_M3.get(etype, _REBAR_KG_PER_M3["other"])
     rebar_kg = volume_quantity * ratio
+    ratio_note = (
+        f"Estimado por ratio {ratio:g} kg/m³. Requiere verificación con despiece real."
+    )
 
     context_tags = _entity_context_tags(element, "structural", etype, "reinforcement", "kg")
+    desc = struct_desc or _structural_entity_description(element)
     return [
         _make_takeoff(
             item_key=f"{element.id}:reinforcement_kg",
@@ -1203,14 +1343,19 @@ def _rebar_takeoffs(
             unit="kg",
             quantity=rebar_kg,
             formula=f"concrete_volume_m3 * {ratio} kg/m3",
-            inputs={
-                "concrete_volume_m3": volume_quantity,
-                "rebar_ratio_kg_m3": ratio,
-                "element_type": etype,
-                "material_hint": element.material_hint,
-                "reinforcement_hint": element.reinforcement_hint,
-                "context_tags": context_tags,
-            },
+            inputs=_merge_inputs_with_description(
+                {
+                    "concrete_volume_m3": volume_quantity,
+                    "rebar_ratio_kg_m3": ratio,
+                    "element_type": etype,
+                    "material_hint": element.material_hint,
+                    "reinforcement_hint": element.reinforcement_hint,
+                    "context_tags": context_tags,
+                    "quantity_source": "ratio_estimate",
+                    "quantity_source_note": ratio_note,
+                },
+                f"Acero estimado ({etype}) — {desc}" if desc else f"Acero estimado ({etype})",
+            ),
             assumptions=[
                 f"{etype.title()} {element.id} reinforcement estimated at {ratio} kg/m3 "
                 f"(standard preliminary ratio for {etype} elements).",
@@ -1222,7 +1367,11 @@ def _rebar_takeoffs(
                     f"Estimated reinforcement steel from concrete volume ({volume_quantity:.3f} m3) "
                     f"using standard ratio of {ratio} kg/m3.",
                 ],
-                metadata={"context_tags": context_tags},
+                metadata={
+                    "context_tags": context_tags,
+                    "quantity_source": "ratio_estimate",
+                    "quantity_source_note": ratio_note,
+                },
             ),
         )
     ]
@@ -1263,6 +1412,15 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             "adjacent_elements": list(element.adjacent_elements),
         }
         struct_desc = _structural_entity_description(element)
+        count_in: dict[str, Any] = {
+            "count": element.count,
+            **base_inputs,
+            "context_tags": _entity_context_tags(
+                element, "structural", element.element_type, "count"
+            ),
+        }
+        if element.element_type == "column" and element.count and element.length_m is not None:
+            count_in["length_m_per_column"] = float(element.length_m) / max(int(element.count), 1)
         takeoffs.append(
             _make_takeoff(
                 item_key=f"{element.id}:count",
@@ -1272,13 +1430,7 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 quantity=float(element.count),
                 formula="structural_element.count",
                 inputs=_merge_inputs_with_description(
-                    {
-                        "count": element.count,
-                        **base_inputs,
-                        "context_tags": _entity_context_tags(
-                            element, "structural", element.element_type, "count"
-                        ),
-                    },
+                    count_in,
                     struct_desc,
                 ),
                 assumptions=list(element.assumptions),
@@ -1294,6 +1446,7 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                             element.element_type,
                             "count",
                         ),
+                        "used_default_dimensions": bool(default_assumptions),
                     },
                 ),
             )
@@ -1389,16 +1542,19 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                     unit="m2",
                     quantity=element.area_m2,
                     formula="structural_element.area_m2",
-                    inputs={
-                        "area_m2": element.area_m2,
-                        **base_inputs,
-                        "context_tags": _entity_context_tags(
-                            element,
-                            "structural",
-                            element.element_type,
-                            "area",
-                        ),
-                    },
+                    inputs=_merge_inputs_with_description(
+                        {
+                            "area_m2": element.area_m2,
+                            **base_inputs,
+                            "context_tags": _entity_context_tags(
+                                element,
+                                "structural",
+                                element.element_type,
+                                "area",
+                            ),
+                        },
+                        struct_desc,
+                    ),
                     assumptions=list(element.assumptions),
                     source_refs=list(element.source_refs),
                     trace=_trace_from_entities(
@@ -1426,16 +1582,19 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                         unit="m2",
                         quantity=element.area_m2,
                         formula="structural_element.area_m2",
-                        inputs={
-                            "area_m2": element.area_m2,
-                            **base_inputs,
-                            "context_tags": _entity_context_tags(
-                                element,
-                                "structural",
-                                element.element_type,
-                                "area",
-                            ),
-                        },
+                        inputs=_merge_inputs_with_description(
+                            {
+                                "area_m2": element.area_m2,
+                                **base_inputs,
+                                "context_tags": _entity_context_tags(
+                                    element,
+                                    "structural",
+                                    element.element_type,
+                                    "area",
+                                ),
+                            },
+                            struct_desc,
+                        ),
                         assumptions=list(element.assumptions),
                         source_refs=list(element.source_refs),
                         trace=_trace_from_entities(
@@ -1469,16 +1628,19 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                     unit="m3",
                     quantity=volume_quantity,
                     formula=volume_formula,
-                    inputs={
-                        **volume_inputs,
-                        **base_inputs,
-                        "context_tags": _entity_context_tags(
-                            element,
-                            "structural",
-                            element.element_type,
-                            "volume",
-                        ),
-                    },
+                    inputs=_merge_inputs_with_description(
+                        {
+                            **volume_inputs,
+                            **base_inputs,
+                            "context_tags": _entity_context_tags(
+                                element,
+                                "structural",
+                                element.element_type,
+                                "volume",
+                            ),
+                        },
+                        struct_desc,
+                    ),
                     assumptions=list(dict.fromkeys([*element.assumptions, *volume_assumptions])),
                     source_refs=list(element.source_refs),
                     trace=_trace_from_entities(
@@ -1506,16 +1668,19 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                         unit="m3",
                         quantity=volume_quantity,
                         formula=volume_formula,
-                        inputs={
-                            **volume_inputs,
-                            **base_inputs,
-                            "context_tags": _entity_context_tags(
-                                element,
-                                "structural",
-                                element.element_type,
-                                "volume",
-                            ),
-                        },
+                        inputs=_merge_inputs_with_description(
+                            {
+                                **volume_inputs,
+                                **base_inputs,
+                                "context_tags": _entity_context_tags(
+                                    element,
+                                    "structural",
+                                    element.element_type,
+                                    "volume",
+                                ),
+                            },
+                            struct_desc,
+                        ),
                         assumptions=list(dict.fromkeys([*element.assumptions, *volume_assumptions])),
                         source_refs=list(element.source_refs),
                         trace=_trace_from_entities(
@@ -1554,11 +1719,14 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                     unit="m3",
                     quantity=volume_quantity,
                     formula=volume_formula or "structural_element.volume_m3",
-                    inputs={
-                        **(volume_inputs or {"volume_m3": volume_quantity}),
-                        **base_inputs,
-                        "context_tags": concrete_context_tags,
-                    },
+                    inputs=_merge_inputs_with_description(
+                        {
+                            **(volume_inputs or {"volume_m3": volume_quantity}),
+                            **base_inputs,
+                            "context_tags": concrete_context_tags,
+                        },
+                        struct_desc,
+                    ),
                     assumptions=list(
                         dict.fromkeys(
                             [
@@ -1601,11 +1769,14 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                     unit="m2",
                     quantity=formwork_quantity,
                     formula=formwork_formula,
-                    inputs={
-                        **formwork_inputs,
-                        **base_inputs,
-                        "context_tags": formwork_context_tags,
-                    },
+                    inputs=_merge_inputs_with_description(
+                        {
+                            **formwork_inputs,
+                            **base_inputs,
+                            "context_tags": formwork_context_tags,
+                        },
+                        struct_desc,
+                    ),
                     assumptions=list(dict.fromkeys([*element.assumptions, *formwork_assumptions])),
                     source_refs=list(element.source_refs),
                     trace=_trace_from_entities(
@@ -1625,7 +1796,13 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 effective_volume = element.volume_m3
             if effective_volume is not None and effective_volume > 0:
                 takeoffs.extend(
-                    _rebar_takeoffs(element, level.level_id, effective_volume, volume_formula)
+                    _rebar_takeoffs(
+                        element,
+                        level.level_id,
+                        effective_volume,
+                        volume_formula,
+                        struct_desc=struct_desc,
+                    )
                 )
 
     return takeoffs
@@ -1644,8 +1821,15 @@ def quantify_inventory(
         takeoffs.extend(_door_takeoffs(level))
         takeoffs.extend(_window_takeoffs(level))
         takeoffs.extend(_area_group_takeoffs(level))
+        wet_area_fixtures = _wet_area_fixture_takeoffs(level)
+        takeoffs.extend(wet_area_fixtures)
         takeoffs.extend(_stair_takeoffs(level))
-        takeoffs.extend(_fixture_takeoffs(level))
+        takeoffs.extend(
+            _fixture_takeoffs(
+                level,
+                skip_sanitary_fixture_dupes=bool(wet_area_fixtures),
+            )
+        )
         takeoffs.extend(_structural_takeoffs(level))
 
     if runner_source_discipline:

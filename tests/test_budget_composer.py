@@ -138,6 +138,42 @@ def test_budget_composer_drops_bc3_candidate_not_in_catalog_when_catalog_provide
     assert line_by_key["door_01:leaf"].code == "P1501011"
 
 
+def test_takeoff_description_used_as_resumen_over_bc3_candidate() -> None:
+    """B1: Resumen must follow plan-specific takeoff_description, not catálogo BC3."""
+    context = ProjectContext(project_id="d1", project_name="D1")
+    takeoffs = [
+        QuantityTakeoff(
+            item_key="w1:net",
+            item_type="wall_net_area",
+            level_id="L1",
+            unit="m2",
+            quantity=100.0,
+            formula="x",
+            inputs={
+                "takeoff_description": "Muro tipo C1, bloque 6\" (15cm), mortero 1:5",
+                "thickness_m": 0.15,
+            },
+            trace=QuantityTrace(),
+        ),
+    ]
+    candidates = {
+        "w1:net": [
+            BudgetCandidate(
+                takeoff_key="w1:net",
+                bc3_code="P0415005",
+                summary="Muro bloques 15x20x40 SNP catalogo",
+                unit="m2",
+                score=0.9,
+                rationale="{}",
+            )
+        ],
+    }
+    _, lines, _ = compose_budget_rows(context, takeoffs, candidates)
+    assert len(lines) == 1
+    assert lines[0].summary == "Muro tipo C1, bloque 6\" (15cm), mortero 1:5"
+    assert lines[0].metadata.get("price_source") == "PRECIO_PENDIENTE"
+
+
 def test_budget_composer_returns_serializable_budget_payload() -> None:
     context, takeoffs, candidates = _sample_takeoffs()
     composed = compose_budget(context, takeoffs, candidates)

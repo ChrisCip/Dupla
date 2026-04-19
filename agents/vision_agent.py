@@ -602,6 +602,7 @@ def _simple_to_level_inventory(
                 "width_m": d.get("width_m"),
                 "height_m": d.get("height_m"),
                 "type_hint": d.get("type"),
+                "material_hint": d.get("material"),
                 "confidence": 0.70,
                 "evidence": [
                     f"Counted from plan image: type={d.get('type')}, count={d.get('count')}."

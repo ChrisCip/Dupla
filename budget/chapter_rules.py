@@ -84,6 +84,7 @@ _DEFAULT_BC3_MAP: dict[str, str] = {
     "window_installation_count": "P1601045",
     "window_sealant_area": "P1601045",
     "wet_area_waterproofing": "P1103101",
+    "wet_area_fixture_count": "P130CON",
     "stair_count": "P1201101",
     "fixture_count": "P130CON",
 }
@@ -251,6 +252,8 @@ def default_bc3_code_for_takeoff(takeoff: QuantityTakeoff) -> str | None:
         return _FLOOR_HORMIGON
 
     # --- Wet areas ---
+    if item_type == "wet_area_fixture_count":
+        return "P130CON"
     if item_type in ("wet_area_count", "wet_area_area", "wet_area_finish"):
         return _wet_area_bc3_code(takeoff)
 
@@ -431,6 +434,12 @@ def chapter_path_for_takeoff(takeoff: QuantityTakeoff) -> list[ChapterSegment]:
         return [
             ChapterSegment("06", "CARPINTERIAS"),
             ChapterSegment("06.02", "VENTANAS"),
+        ]
+
+    if item_type == "wet_area_fixture_count":
+        return [
+            ChapterSegment("08", "INSTALACIONES"),
+            ChapterSegment("08.02", "SANITARIAS"),
         ]
 
     if item_type.startswith("wet_area_"):
@@ -676,6 +685,13 @@ def _wet_area_summary(takeoff: QuantityTakeoff) -> str:
     item_type = takeoff.item_type.lower()
     tags = _takeoff_tags(takeoff)
     layer = _item_key_layer(takeoff)
+
+    if item_type == "wet_area_fixture_count":
+        ft = str(takeoff.inputs.get("fixture_type") or "").replace("_", " ").strip()
+        at = str(takeoff.inputs.get("area_type") or "").replace("_", " ").strip()
+        if ft and at:
+            return f"Pieza sanitaria ({ft}) en {at}"
+        return "Pieza sanitaria en área húmeda"
 
     if "waterproofing" in item_type:
         return "Impermeabilizante en areas humedas"
