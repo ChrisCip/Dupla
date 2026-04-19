@@ -1,7 +1,26 @@
 ANALIZA este plano ESTRUCTURAL ({view_type}) del nivel: {level_name}
 
-{methodology_block}DATOS DEL CAD (úsalos para verificar y complementar lo que ves):
+{upload_block}{methodology_block}DATOS DEL CAD (úsalos para verificar y complementar lo que ves):
 {cad_hints}
+
+## REGLA DE DESGLOSE POR TIPO
+
+Para columnas, vigas, losas, zapatas, muros de corte, escaleras estructurales:
+
+1. Identifica **cada** tipo distinto del plano o de tablas (C1, C2, V1, Z1… o la nomenclatura que use el proyecto). **No fusiones** tipos con sección o notación distinta.
+2. Por tipo: **id** = rótulo exacto; sección (`section_width_m` × `section_height_m`), cantidad, longitudes/áreas si aplican, `ubicacion` (ejes/niveles).
+3. **Cuadro de columnas / vigas / zapatas** en la imagen: extrae **todas** las filas como entradas separadas en `structural_elements` con `spec_source` y `schedule_row_text` cuando corresponda.
+4. Si el **despiece de armado** no está en esta página, `reinforcement_visible=false`, `missing_detail_sheets=true` y anota **"DESPIECE NO VISIBLE EN ESTA PÁGINA"** en `notes` — no inventes varillas ni estribos.
+5. Si el tipo no es claro, `id` descriptivo `tipo_no_identificado` más dimensiones visibles.
+
+### Elementos a desglosar por tipo en estructura
+
+- **Columnas:** tipo/ID, sección, cantidad, niveles donde aparecen (`ubicacion`).
+- **Vigas:** tipo/ID, sección, luz o longitud si visible, cantidad.
+- **Losas:** tipo (maciza, nervada…), espesor, área.
+- **Zapatas:** tipo/ID, dimensiones (l × a × h), cantidad.
+- **Muros estructurales / contención:** tipo/ID, espesor, longitud o área.
+- **Escaleras estructurales:** tipo, dimensiones principales.
 
 INSTRUCCIONES DE EXTRACCIÓN ESTRUCTURAL:
 

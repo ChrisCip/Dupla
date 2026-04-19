@@ -1,7 +1,24 @@
 ANALIZA este plano ({view_type}) del nivel: {level_name}
 
-{methodology_block}DATOS DEL CAD (úsalos para verificar y complementar lo que ves):
+{upload_block}{methodology_block}DATOS DEL CAD (úsalos para verificar y complementar lo que ves):
 {cad_hints}
+
+## REGLA DE DESGLOSE POR TIPO
+
+Para CADA categoría de elemento (muros, columnas o vigas solo como referencia en plano arq., puertas, ventanas, pisos, cielos, revestimientos, cocinas, escaleras, instalaciones si aparecen en esta hoja):
+
+1. Identifica **todos** los tipos distintos que el plano muestra: rótulos (C1, M1, P1…), texto en leyendas, tablas/cuadros, cotas o símbolos distintos. **No inventes** nombres: copia lo que veas.
+2. Por **cada** tipo: identificador tal como en el plano, especificaciones visibles (dimensiones, material, espesor), **cantidad contada en esta hoja**, ubicación (ejes, niveles, zonas).
+3. Si hay **cuadro/tablas** (puertas, ventanas, muros, acabados), esa tabla es fuente primaria: **una fila o bloque del JSON por tipo**, no un solo total agregado.
+4. **No agrupes** tipos distintos en un solo objeto. Si hay tres espesores de muro, devuelve **tres** entradas en `walls`.
+5. Si no determinas el tipo, usa `id` o `wall_typology` descriptivo (p. ej. `tipo_no_identificado`) y detalla lo observable (espesor aproximado, material).
+
+### Elementos a desglosar por tipo en arquitectura
+
+- **Muros:** `wall_typology` o `tipo`, espesor `thickness_m`, `material`, `location` interior/exterior, área o longitud **por tipo**.
+- **Puertas / ventanas:** un objeto JSON **por tipo**; `label` con texto del plano; dimensiones y `count`.
+- **Pisos / cielos / revestimientos:** `floor_finishes` / `ceiling_finishes` por zona y tipo, o notas en `annotations_and_notes`.
+- **Cocina / escaleras / exteriores:** tipo y medidas si son visibles.
 
 INSTRUCCIONES DE EXTRACCIÓN EXHAUSTIVA:
 

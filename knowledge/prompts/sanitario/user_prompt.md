@@ -1,7 +1,22 @@
 ANALIZA este plano SANITARIO/PLOMERÍA ({view_type}) del nivel: {level_name}
 
-{methodology_block}DATOS DEL CAD (úsalos para verificar y complementar lo que ves):
+{upload_block}{methodology_block}DATOS DEL CAD (úsalos para verificar y complementar lo que ves):
 {cad_hints}
+
+## REGLA DE DESGLOSE POR TIPO
+
+Cada **diámetro, símbolo de pieza sanitaria o tramo** distinto que el plano muestre debe reflejarse como **entradas separadas** en `plumbing`, `fixtures` o `wet_areas` según aplique, con `label` o notas fieles al dibujo.
+
+1. No agrupes tuberías de distinto diámetro en un solo conteo.
+2. Piezas sanitarias: **por tipo y modelo visible** (inodoro, lavamanos, ducha…); cantidades por zona si el plano las separa.
+3. Si el tipo no está claro, `label` con lo legible + `type` genérico o `tipo_no_identificado` en texto de `annotations_and_notes`.
+
+### Elementos a desglosar por tipo en sanitario/plomería
+
+- **Piezas sanitarias:** tipo, modelo si visible, cantidad.
+- **Tuberías agua fría / caliente / drenaje:** **por diámetro** visible en `pipe_diameter_in` y `type`.
+- **Registros, válvulas, equipos** (cisterna, bomba, calentador): por tipo y cantidad.
+- **Contra incendios** u otros sistemas: componentes visibles, por tipo.
 
 INSTRUCCIONES DE EXTRACCIÓN SANITARIA:
 

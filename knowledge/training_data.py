@@ -253,6 +253,7 @@ def generate_few_shot_examples(
     chapter_code: str | None = None,
     max_examples: int = 10,
 ) -> str:
+    """Few-shot lines use PRES reference rows (description + item_type); BC3 codes in examples are illustrative only."""
     if not training_pairs:
         return ""
 

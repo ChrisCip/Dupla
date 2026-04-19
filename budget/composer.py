@@ -8,7 +8,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from collections import Counter
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 logger = logging.getLogger("dupla.composer")
 
@@ -144,6 +144,35 @@ def _guard_budget_candidate(
     return candidate, None
 
 
+def _bc3_fallback_price_label(concept: Mapping[str, Any] | None) -> str:
+    """BC3 price fallback label (Problema 3B): use catalog file name when available."""
+    origin = "catálogo"
+    if concept is not None:
+        origin = str(concept.get("bc3_origin") or "").strip() or "catálogo"
+    return f"BC3 {origin} (fallback)"
+
+
+def _line_bc3_origin(
+    candidate: BudgetCandidate | None,
+    bc3_catalog: dict[str, Any] | None,
+    resolved_code: str,
+) -> str:
+    if candidate and getattr(candidate, "bc3_origin", None):
+        o = str(candidate.bc3_origin).strip()
+        if o:
+            return o
+    code = str((candidate.bc3_code if candidate else "") or resolved_code or "").strip()
+    if not code or not bc3_catalog:
+        return ""
+    for it in bc3_catalog.get("items") or []:
+        if str(it.get("code", "")).strip() == code:
+            o = str(it.get("bc3_origin") or "").strip()
+            if o:
+                return o
+    c = bc3_catalog.get("concepts_by_code", {}).get(code, {})
+    return str(c.get("bc3_origin") or "").strip()
+
+
 def _extract_unit_price(
     candidate: BudgetCandidate | None,
     bc3_catalog: dict[str, Any] | None,
@@ -153,7 +182,7 @@ def _extract_unit_price(
     summary: str = "",
     unit: str = "",
 ) -> tuple[float | None, str]:
-    """Resolve unit price: ConstruCosto (APU → materiales → equipos) then BC3 catalog; never BC3-first."""
+    """Resolve unit price: ConstruCosto (APU → materiales → equipos → mano de obra) then BC3; never BC3-first."""
     summary_s = (summary or "").strip()
     unit_s = (unit or "").strip()
 
@@ -162,6 +191,7 @@ def _extract_unit_price(
             (frozenset({"analisis"}), "ConstruCosto APU Punta Cana"),
             (frozenset({"materiales"}), "ConstruCosto Material Punta Cana"),
             (frozenset({"equipos"}), "ConstruCosto Equipo Punta Cana"),
+            (frozenset({"mano_obra"}), "ConstruCosto Mano de obra Punta Cana"),
         ):
             match = find_best_price(
                 construcosto_snapshot,
@@ -187,7 +217,7 @@ def _extract_unit_price(
             try:
                 p = float(price)
                 if p > 0:
-                    return p, "BC3 TGIU (fallback)"
+                    return p, _bc3_fallback_price_label(concept)
             except (TypeError, ValueError):
                 pass
 
@@ -198,7 +228,7 @@ def _extract_unit_price(
             try:
                 p = float(price)
                 if p > 0:
-                    return p, "BC3 TGIU (fallback)"
+                    return p, _bc3_fallback_price_label(concept)
             except (TypeError, ValueError):
                 pass
 
@@ -691,6 +721,9 @@ def compose_budget_rows(
         )
         line_metadata["price_source"] = price_source
         line_metadata["quantity_source_display"] = _quantity_source_display(prepared.takeoff)
+        line_metadata["bc3_origin"] = _line_bc3_origin(
+            prepared.candidate, bc3_catalog or {}, line_code
+        )
 
         budget_line = BudgetLine(
             line_id=f"BLINE-{line_index:04d}",

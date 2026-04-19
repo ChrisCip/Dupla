@@ -69,7 +69,14 @@ def _merge_inputs_with_description(base: dict[str, Any], description: str) -> di
 def _wall_entity_description(wall: Wall) -> str:
     inp = getattr(wall, "inputs", None) or {}
     raw = inp.get("raw") if isinstance(inp.get("raw"), dict) else {}
-    typ = (inp.get("wall_typology") or raw.get("wall_typology") or "").strip()
+    typ = (
+        inp.get("wall_typology")
+        or raw.get("wall_typology")
+        or raw.get("tipo")
+        or raw.get("type_label")
+        or ""
+    )
+    typ = str(typ).strip()
     if not typ:
         wid = str(getattr(wall, "id", "") or "").strip()
         if wid and not wid.lower().startswith("vis-wall-"):
@@ -77,6 +84,7 @@ def _wall_entity_description(wall: Wall) -> str:
     thick = wall.thickness_m
     thick_cm = int(round(thick * 100)) if thick is not None else None
     mat_code = str(raw.get("original_material_code") or wall.material_hint or "")
+    loc = str(raw.get("ubicacion") or "").strip()
     parts: list[str] = []
     if typ:
         parts.append(f"Muro tipo {typ}")
@@ -88,6 +96,8 @@ def _wall_entity_description(wall: Wall) -> str:
         parts.append(mat_code.replace("_", " "))
     if thick_cm is not None:
         parts.append(f"espesor {thick_cm} cm")
+    if loc:
+        parts.append(f"ubicación {loc}")
     return ", ".join(parts)
 
 
@@ -139,6 +149,7 @@ def _window_entity_description(window: Window) -> str:
 def _structural_entity_description(element: StructuralElement) -> str:
     """Human-readable label from rotulo, tipo y sección (B1 — partidas específicas)."""
     inp = getattr(element, "inputs", None) or {}
+    raw = inp.get("raw") if isinstance(inp.get("raw"), dict) else {}
     label = str(inp.get("structural_label") or element.id or "").strip()
     etype = element.element_type
     type_es = {
@@ -161,6 +172,9 @@ def _structural_entity_description(element: StructuralElement) -> str:
     if sched and sched != label:
         clip = 100
         parts.append(f"tabla: {sched[:clip]}{'…' if len(sched) > clip else ''}")
+    ubi = str(raw.get("ubicacion") or "").strip()
+    if ubi:
+        parts.append(f"ubicación {ubi}")
     return ", ".join(parts)
 
 

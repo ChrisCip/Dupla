@@ -23,6 +23,7 @@ HEADERS = (
     "ImpPres",
     "Fuente Cantidad",
     "Fuente Precio",
+    "BC3 Origen",
 )
 THIN_SIDE = Side(style="thin", color="BFBFBF")
 ALL_BORDER = Border(left=THIN_SIDE, right=THIN_SIDE, top=THIN_SIDE, bottom=THIN_SIDE)
@@ -177,9 +178,11 @@ def export_budget_workbook(
         target_row = row.excel_row or 4
         price_source = ""
         quantity_source = ""
+        bc3_origin = ""
         if row.row_type == "line":
             price_source = str(row.metadata.get("price_source") or "")
             quantity_source = str(row.metadata.get("quantity_source_display") or "")
+            bc3_origin = str(row.metadata.get("bc3_origin") or "")
 
         values = (
             row.code,
@@ -191,6 +194,7 @@ def export_budget_workbook(
             row.amount,
             quantity_source,
             price_source,
+            bc3_origin,
         )
         for column_index, value in enumerate(values, start=1):
             cell = worksheet.cell(row=target_row, column=column_index)
@@ -208,7 +212,7 @@ def export_budget_workbook(
             row_fill = SUBTOTAL_FILL
             row_font = Font(bold=True)
 
-        for column_index in range(1, 10):
+        for column_index in range(1, 12):
             cell = worksheet.cell(row=target_row, column=column_index)
             cell.font = row_font
             cell.alignment = Alignment(
@@ -229,6 +233,7 @@ def export_budget_workbook(
     worksheet.column_dimensions["G"].width = 16
     worksheet.column_dimensions["H"].width = 32
     worksheet.column_dimensions["I"].width = 28
+    worksheet.column_dimensions["J"].width = 22
 
     if quality_report:
         _append_quality_sheet(workbook, quality_report)

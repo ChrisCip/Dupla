@@ -93,7 +93,7 @@ from disciplines.domain_validator import (
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.methodology_generator import generate_methodology_context
 from knowledge.training_data import extract_training_pairs
-from processors.bc3_parser import parse_bc3
+from processors.bc3_parser import merge_bc3_catalogs, parse_bc3
 from processors.json_processor import process_autodesk_json
 
 logger = logging.getLogger("dupla.gebsa")
@@ -117,9 +117,11 @@ def run_preflight(disciplines: dict[str, dict[str, str]], bc3_path: str) -> list
             if not dwg.exists():
                 errors.append(f"[{disc_id}] DWG not found: {dwg}")
 
-    bc3_full = (REPO_ROOT / bc3_path).resolve()
-    if not bc3_full.exists():
-        errors.append(f"BC3 catalog not found: {bc3_full}")
+    data_bc3_files = list((REPO_ROOT / "data").glob("*.bc3"))
+    if not data_bc3_files:
+        bc3_full = (REPO_ROOT / bc3_path).resolve()
+        if not bc3_full.exists():
+            errors.append(f"No BC3 files in data/*.bc3 and BC3_PATH not found: {bc3_full}")
 
     if not os.getenv("CLIENT_ID") or not os.getenv("CLIENT_SECRET"):
         errors.append("APS credentials missing: CLIENT_ID or CLIENT_SECRET not in .env")
@@ -443,9 +445,22 @@ def main() -> None:
 
     # --- Load shared resources (once) ---
     logger.info("Loading shared resources...")
+    bc3_files = sorted((REPO_ROOT / "data").glob("*.bc3"))
+    if not bc3_files:
+        logger.error("No .bc3 files found in %s", REPO_ROOT / "data")
+        sys.exit(1)
+    catalogs = [parse_bc3(str(p)) for p in bc3_files]
+    for p, cat in zip(bc3_files, catalogs, strict=True):
+        logger.info("BC3 loaded: %s (%d items)", p.name, len(cat.get("items", [])))
+    bc3_catalog = merge_bc3_catalogs(*catalogs) if len(catalogs) > 1 else catalogs[0]
+    logger.info(
+        "BC3 combined catalog: %d items from %d file(s)",
+        len(bc3_catalog.get("items", [])),
+        len(catalogs),
+    )
     bc3_full = (REPO_ROOT / BC3_PATH).resolve()
-    bc3_catalog = parse_bc3(str(bc3_full))
-    logger.info("BC3 catalog: %d items from %s", len(bc3_catalog.get("items", [])), bc3_full.name)
+    if not bc3_full.exists():
+        logger.warning("Configured BC3_PATH does not exist: %s (merge still uses data/*.bc3)", bc3_full)
 
     embedding_index = None
     if bc3_catalog.get("items"):
@@ -466,7 +481,7 @@ def main() -> None:
 
     shared = {
         "bc3_catalog": bc3_catalog,
-        "bc3_path_value": str(bc3_full),
+        "bc3_path_value": str(bc3_catalog.get("path") or bc3_full),
         "embedding_index": embedding_index,
         "training_pairs": training_pairs,
         "xlsx_path": str(xlsx_path_resolved) if xlsx_path_resolved.exists() else None,

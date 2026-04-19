@@ -5,6 +5,7 @@ from pathlib import Path
 from agents.vision_agent import (
     _build_simple_user_prompt,
     _cad_suggests_structural,
+    _coerce_vision_list,
     _simple_to_level_inventory,
 )
 from core.schemas import level_inventory_from_dict
@@ -21,6 +22,7 @@ def test_upload_discipline_arquitectura_skips_cad_structural_hint() -> None:
     )
     assert "CONTEXTO DE SUBIDA" in body
     assert "NOTA (CAD)" not in body
+    assert "REGLA DE DESGLOSE POR TIPO" in body
 
 
 def test_upload_discipline_estructura_includes_upload_block() -> None:
@@ -31,6 +33,7 @@ def test_upload_discipline_estructura_includes_upload_block() -> None:
         upload_discipline_id="estructura",
     )
     assert "ESTRUCTURA" in body
+    assert "REGLA DE DESGLOSE POR TIPO" in body
 
 
 def test_cad_suggests_structural_from_layers() -> None:
@@ -38,6 +41,31 @@ def test_cad_suggests_structural_from_layers() -> None:
         {"inventory_hints": {"layer_names": ["A-COLUM-01", "PARED"]}}
     )
     assert not _cad_suggests_structural({"inventory_hints": {"layer_names": ["A-WALL-FIN"]}})
+
+
+def test_coerce_vision_list_flattens_items_wrapper() -> None:
+    nested = {"items": [{"id": "M1", "material": "block_6in", "estimated_length_m": 10.0}]}
+    assert len(_coerce_vision_list(nested)) == 1
+    assert _coerce_vision_list(nested)[0]["id"] == "M1"
+
+
+def test_structural_notation_from_tipo_when_id_missing() -> None:
+    simple = {
+        "plan_type": "structural",
+        "structural_elements": [
+            {
+                "tipo": "CB",
+                "type": "column",
+                "count": 4,
+                "section_width_m": 0.4,
+                "section_height_m": 0.4,
+                "material": "concrete",
+            }
+        ],
+    }
+    adapted = _simple_to_level_inventory(simple, "Nivel 1", "nivel_1", "page.png")
+    inv = level_inventory_from_dict(adapted, default_source="vision")
+    assert inv.structural_elements[0].id == "CB"
 
 
 def test_structural_gebsa_fields_flow_to_inventory_inputs() -> None:

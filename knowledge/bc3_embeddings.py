@@ -63,6 +63,7 @@ def _build_item_text(item: dict[str, Any]) -> str:
 
 
 def _catalog_fingerprint(bc3_catalog: dict[str, Any]) -> str:
+    # Include bc3_origin so merged multi-file catalogs invalidate cache when sources change.
     serializable = [
         {
             "code": item.get("code", ""),
@@ -70,6 +71,7 @@ def _catalog_fingerprint(bc3_catalog: dict[str, Any]) -> str:
             "long_text": item.get("long_text", ""),
             "unit": item.get("unit", ""),
             "price": item.get("price", 0),
+            "bc3_origin": item.get("bc3_origin", ""),
         }
         for item in bc3_catalog.get("items", [])
     ]

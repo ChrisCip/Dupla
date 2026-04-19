@@ -376,7 +376,7 @@ def _gpt4o_classify_chapter(
         }
         desc = str(t.inputs.get("takeoff_description") or "").strip()
         if desc:
-            payload["desc"] = desc[:500]
+            payload["desc"] = desc[:1500]
         takeoff_lines.append("  " + json.dumps(payload, ensure_ascii=False))
 
     # Format BC3 catalog (max 80 items to stay within token limits)
@@ -452,8 +452,13 @@ def _gpt4o_classify_chapter(
 
     matches = _extract_json_list(raw)
 
-    # Build a code→item lookup for this chapter's subset
-    code_to_item: dict[str, dict[str, Any]] = {item["code"]: item for item in bc3_items}
+    # Build a code→item lookup for this chapter's subset (first occurrence wins if same code
+    # appears from multiple merged BC3 sources).
+    code_to_item: dict[str, dict[str, Any]] = {}
+    for item in bc3_items:
+        c = item.get("code")
+        if c and c not in code_to_item:
+            code_to_item[c] = item
 
     result: dict[str, BudgetCandidate] = {}
     for match in matches:
@@ -506,6 +511,7 @@ def _gpt4o_classify_chapter(
             "catalog_price_rd": catalog_price,
             "sin_precio_bc3": catalog_price <= 0,
         }
+        bc3_origin = str(bc3_item.get("bc3_origin") or "").strip() or None
         result[key] = BudgetCandidate(
             takeoff_key=key,
             bc3_code=bc3_code,
@@ -514,6 +520,7 @@ def _gpt4o_classify_chapter(
             score=score,
             rationale=json.dumps(rationale_payload, ensure_ascii=False),
             source="gpt4o",
+            bc3_origin=bc3_origin,
         )
 
     return result
@@ -628,6 +635,7 @@ def rank_budget_candidates(
                 unit=str(concept.get("unit", "")),
                 score=score,
                 rationale=f"Shared tokens: {', '.join(sorted(overlap))}",
+                bc3_origin=str(concept.get("bc3_origin") or "").strip() or None,
             )
         )
 

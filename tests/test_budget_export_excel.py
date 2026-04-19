@@ -77,7 +77,7 @@ def test_budget_export_excel_writes_workbook_with_headers_and_formulas() -> None
 
         assert worksheet["A1"].value == "Demo Export Budget"
         assert worksheet["A2"].value == "Presupuesto"
-        assert [worksheet.cell(row=3, column=index).value for index in range(1, 10)] == [
+        assert [worksheet.cell(row=3, column=index).value for index in range(1, 11)] == [
             "Código",
             "Nat",
             "Ud",
@@ -87,6 +87,7 @@ def test_budget_export_excel_writes_workbook_with_headers_and_formulas() -> None
             "ImpPres",
             "Fuente Cantidad",
             "Fuente Precio",
+            "BC3 Origen",
         ]
 
         chapter_row = None

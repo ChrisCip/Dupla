@@ -257,6 +257,7 @@ class BudgetCandidate(ModelBase):
     score: float
     rationale: str
     source: str = "keyword_match"
+    bc3_origin: str | None = None
 
 
 @dataclass(kw_only=True)
