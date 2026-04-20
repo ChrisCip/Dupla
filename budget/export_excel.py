@@ -6,14 +6,27 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Any, Iterable, Mapping
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from core.schemas import BudgetRow, ProjectContext
 
-HEADERS = ("Código", "Nat", "Ud", "Resumen", "CanPres", "PrPres", "ImpPres")
+HEADERS = (
+    "Código",
+    "Nat",
+    "Ud",
+    "Resumen",
+    "CanPres",
+    "PrPres",
+    "ImpPres",
+    "Fuente Cantidad",
+    "Fuente Precio",
+    "BC3 Origen",
+    "Método de Precio",
+)
+PENDING_FILL = PatternFill("solid", fgColor="FFFF00")
 THIN_SIDE = Side(style="thin", color="BFBFBF")
 ALL_BORDER = Border(left=THIN_SIDE, right=THIN_SIDE, top=THIN_SIDE, bottom=THIN_SIDE)
 HEADER_FILL = PatternFill("solid", fgColor="D9E1F2")
@@ -79,12 +92,70 @@ def _save_workbook(workbook: Workbook, output: Path, *, max_fallback_attempts: i
     ) from last_error
 
 
+def _append_quality_sheet(workbook: Workbook, quality_report: Mapping[str, Any], *, sheet_name: str = "Quality_Report") -> None:
+    worksheet = workbook.create_sheet(title=sheet_name)
+    headers = (
+        "status",
+        "code",
+        "discipline",
+        "element_id",
+        "level_id",
+        "unit_id",
+        "space_id",
+        "confidence",
+        "message",
+        "evidence",
+        "suggested_action",
+    )
+    for idx, header in enumerate(headers, start=1):
+        cell = worksheet.cell(row=1, column=idx, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = HEADER_FILL
+        cell.border = ALL_BORDER
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    issues = list(quality_report.get("issues", []))
+    for row_index, issue in enumerate(issues, start=2):
+        evidence = issue.get("evidence_refs") or []
+        values = (
+            issue.get("status", ""),
+            issue.get("code", ""),
+            issue.get("discipline", ""),
+            issue.get("element_id", ""),
+            issue.get("level_id", ""),
+            issue.get("unit_id", ""),
+            issue.get("space_id", ""),
+            issue.get("confidence_score", ""),
+            issue.get("message", ""),
+            ", ".join(str(item) for item in evidence if item),
+            issue.get("suggested_action", ""),
+        )
+        for col_index, value in enumerate(values, start=1):
+            cell = worksheet.cell(row=row_index, column=col_index, value=value)
+            cell.border = ALL_BORDER
+            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+    worksheet.freeze_panes = "A2"
+    worksheet.column_dimensions["A"].width = 12
+    worksheet.column_dimensions["B"].width = 22
+    worksheet.column_dimensions["C"].width = 14
+    worksheet.column_dimensions["D"].width = 20
+    worksheet.column_dimensions["E"].width = 14
+    worksheet.column_dimensions["F"].width = 14
+    worksheet.column_dimensions["G"].width = 14
+    worksheet.column_dimensions["H"].width = 12
+    worksheet.column_dimensions["I"].width = 58
+    worksheet.column_dimensions["J"].width = 46
+    worksheet.column_dimensions["K"].width = 46
+
+
 def export_budget_workbook(
     context: ProjectContext,
     rows: Iterable[BudgetRow | Mapping[str, object]],
     output_path: str | Path,
     *,
     sheet_name: str = "Presupuesto",
+    quality_report: Mapping[str, Any] | None = None,
 ) -> Path:
     workbook = Workbook()
     worksheet = workbook.active
@@ -107,6 +178,16 @@ def export_budget_workbook(
     coerced_rows = [_coerce_row(row) for row in rows]
     for row in coerced_rows:
         target_row = row.excel_row or 4
+        price_source = ""
+        quantity_source = ""
+        bc3_origin = ""
+        candidate_source = ""
+        if row.row_type == "line":
+            price_source = str(row.metadata.get("price_source") or "")
+            quantity_source = str(row.metadata.get("quantity_source_display") or "")
+            bc3_origin = str(row.metadata.get("bc3_origin") or "")
+            candidate_source = str(row.metadata.get("candidate_source") or "")
+
         values = (
             row.code,
             row.nat,
@@ -115,12 +196,16 @@ def export_budget_workbook(
             row.quantity,
             row.unit_price,
             row.amount,
+            quantity_source,
+            price_source,
+            bc3_origin,
+            candidate_source,
         )
         for column_index, value in enumerate(values, start=1):
             cell = worksheet.cell(row=target_row, column=column_index)
             _write_value(cell, value)
             cell.border = ALL_BORDER
-            if column_index >= 5:
+            if 5 <= column_index <= 7:
                 cell.number_format = '#,##0.00'
 
         row_fill = None
@@ -132,11 +217,11 @@ def export_budget_workbook(
             row_fill = SUBTOTAL_FILL
             row_font = Font(bold=True)
 
-        for column_index in range(1, 8):
+        for column_index in range(1, 12):
             cell = worksheet.cell(row=target_row, column=column_index)
             cell.font = row_font
             cell.alignment = Alignment(
-                horizontal="left" if column_index <= 4 else "right",
+                horizontal="left" if column_index <= 4 or column_index >= 8 else "right",
                 vertical="center",
             )
             if row_fill is not None:
@@ -151,7 +236,70 @@ def export_budget_workbook(
     worksheet.column_dimensions["E"].width = 14
     worksheet.column_dimensions["F"].width = 14
     worksheet.column_dimensions["G"].width = 16
+    worksheet.column_dimensions["H"].width = 32
+    worksheet.column_dimensions["I"].width = 28
+    worksheet.column_dimensions["J"].width = 22
+    worksheet.column_dimensions["K"].width = 22
+
+    if quality_report:
+        _append_quality_sheet(workbook, quality_report)
+
+    _append_pendientes_sheet(workbook, coerced_rows)
 
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     return _save_workbook(workbook, output)
+
+
+def _append_pendientes_sheet(
+    workbook: Workbook,
+    rows: list[Any],
+    *,
+    sheet_name: str = "PENDIENTES",
+) -> None:
+    """
+    Creates a separate sheet listing all budget line rows where unit_price is None.
+    These are items that ConstruCosto could not price and require manual review.
+    """
+    pending = [
+        row for row in rows
+        if isinstance(row, object)
+        and getattr(row, "row_type", None) == "line"
+        and getattr(row, "unit_price", 1) is None
+    ]
+    if not pending:
+        return
+
+    worksheet = workbook.create_sheet(title=sheet_name)
+    headers = ("Código", "Ud", "Resumen", "CanPres", "Takeoff Key", "Disciplina")
+    for idx, header in enumerate(headers, start=1):
+        cell = worksheet.cell(row=1, column=idx, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = HEADER_FILL
+        cell.border = ALL_BORDER
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for row_index, row in enumerate(pending, start=2):
+        discipline = str(row.metadata.get("source_discipline") or "") if hasattr(row, "metadata") else ""
+        takeoff_key = str(getattr(row, "takeoff_key", "") or "")
+        values = (
+            getattr(row, "code", ""),
+            getattr(row, "unit", ""),
+            getattr(row, "summary", ""),
+            getattr(row, "quantity", None),
+            takeoff_key,
+            discipline,
+        )
+        for col_idx, value in enumerate(values, start=1):
+            cell = worksheet.cell(row=row_index, column=col_idx, value=value)
+            cell.fill = PENDING_FILL
+            cell.border = ALL_BORDER
+            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+    worksheet.freeze_panes = "A2"
+    worksheet.column_dimensions["A"].width = 18
+    worksheet.column_dimensions["B"].width = 10
+    worksheet.column_dimensions["C"].width = 60
+    worksheet.column_dimensions["D"].width = 14
+    worksheet.column_dimensions["E"].width = 42
+    worksheet.column_dimensions["F"].width = 18

@@ -3,7 +3,7 @@
 Dupla local full-run wrapper.
 
 Edit the CONFIG section and run:
-    python dupla_run_full_analysis_local.py
+    python dupla_run_full_analysis_local.py [--discipline arquitectonica|estructural|electrica|sanitaria]
 
 Recommended location:
 - Save this file in the ROOT of your Dupla repo
@@ -28,6 +28,7 @@ Notes:
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import logging
@@ -38,8 +39,8 @@ from pathlib import Path
 from openpyxl import Workbook
 
 # ========= CONFIG: EDIT THIS SECTION =========
-PROJECT_NAME = "Torre Giualca I"
-PROJECT_ID = "torre_giualca_i"
+PROJECT_NAME = "Presupuesto Dupla"
+PROJECT_ID = "presupuesto_dupla"
 
 # Input files
 DWG_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\2- PLANTAS ARQUITECTONICAS.dwg"
@@ -66,6 +67,11 @@ FAILED_MANIFEST_GRACE_SLEEP_SECONDS = 20
 UPLOAD_OBJECT_NAME = None  # Set a string to override the uploaded Autodesk object name
 AUTO_UNIQUE_OBJECT_NAME = True
 
+# Discipline filter — controls which takeoff types enter the budget.
+# Set to "arquitectura" to exclude structural volumes/kg/formwork from the budget.
+# Set to None to include everything (legacy behavior).
+DISCIPLINE = "arquitectura"
+
 # Office methodology (step 1 evolution loop) — markdown injected into every vision page prompt.
 # Edit knowledge/office_methodology.md between runs; set to "" to disable.
 OFFICE_METHODOLOGY_PATH = "./knowledge/office_methodology.md"
@@ -77,6 +83,21 @@ OUTPUT_NAME = "dupla_budget_ready_full"
 # Optional Autodesk bucket override (or leave None to use APS_BUCKET_NAME from .env)
 BUCKET_NAME = None
 # ============================================
+
+# Set from CLI --discipline in main(); used by Vision + ProjectContext.metadata["discipline_id"].
+_CLI_RUN_DISCIPLINE: str | None = None
+_CLI_CANON_TO_ENGINE: dict[str, str] = {
+    "arquitectonica": "arquitectura",
+    "estructural": "estructura",
+    "electrica": "electrico",
+    "sanitaria": "sanitario",
+}
+_ENGINE_TO_CANON_DISCIPLINE: dict[str, str] = {
+    "arquitectura": "arquitectonica",
+    "estructura": "estructural",
+    "electrico": "electrica",
+    "sanitario": "sanitaria",
+}
 
 REPO_ROOT = Path(__file__).resolve().parent
 if str(REPO_ROOT) not in sys.path:
@@ -110,6 +131,7 @@ from core.logging_config import setup_logging
 from core.pipeline import build_budget_from_sources
 from core.schemas import ProjectContext
 from core.stage import PipelineRunner
+from disciplines import get_engine
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.methodology_generator import generate_methodology_context
 from knowledge.training_data import extract_training_pairs
@@ -236,6 +258,7 @@ def stage_vision_analysis(
     outputs_dir: Path,
     *,
     auto_methodology: str | None = None,
+    upload_discipline_id: str | None = None,
 ) -> dict:
     """Stage 3: Run GPT-4o vision analysis on each page."""
     manual_text, manual_path = _load_office_methodology(OFFICE_METHODOLOGY_PATH)
@@ -256,6 +279,7 @@ def stage_vision_analysis(
         str(pages_dir),
         cad_facts,
         office_methodology=methodology,
+        upload_discipline_id=upload_discipline_id,
     )
 
     if methodology:
@@ -359,6 +383,29 @@ def stage_build_budget(
     )
     logger.info("Building budget with %d rendered pages", len(page_paths))
 
+    discipline_meta: dict = {}
+    engine_key: str | None = None
+    discipline_id_for_meta: str | None = None
+    if _CLI_RUN_DISCIPLINE:
+        engine_key = _CLI_CANON_TO_ENGINE.get(_CLI_RUN_DISCIPLINE)
+        discipline_id_for_meta = _CLI_RUN_DISCIPLINE
+    elif DISCIPLINE:
+        engine_key = DISCIPLINE
+        discipline_id_for_meta = _ENGINE_TO_CANON_DISCIPLINE.get(DISCIPLINE, DISCIPLINE)
+    if engine_key:
+        try:
+            engine = get_engine(engine_key)
+            discipline_meta["discipline_id"] = discipline_id_for_meta
+            discipline_meta["allowed_item_types"] = sorted(engine.config.item_types)
+            logger.info(
+                "Discipline filter active: engine=%s metadata discipline_id=%s (%d allowed item types)",
+                engine_key,
+                discipline_id_for_meta,
+                len(engine.config.item_types),
+            )
+        except KeyError:
+            logger.warning("Unknown discipline engine key '%s', running without filter", engine_key)
+
     context = ProjectContext(
         project_id=PROJECT_ID,
         project_name=PROJECT_NAME,
@@ -381,6 +428,7 @@ def stage_build_budget(
             "failed_manifest_grace_sleep_seconds": FAILED_MANIFEST_GRACE_SLEEP_SECONDS,
             "xlsx_path": xlsx_path,
             "pres_template_takeoffs": PRES_TEMPLATE_TAKEOFFS,
+            **discipline_meta,
         },
     )
 
@@ -480,13 +528,30 @@ def _save_for_review(budget: dict, output_dir: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    global _CLI_RUN_DISCIPLINE
+
     outputs_dir = (REPO_ROOT / OUTPUTS_DIR).resolve()
     outputs_dir.mkdir(parents=True, exist_ok=True)
+
+    parser = argparse.ArgumentParser(description="Dupla full local pipeline")
+    parser.add_argument(
+        "--discipline",
+        choices=("arquitectonica", "estructural", "electrica", "sanitaria"),
+        default=None,
+        help="Disciplina de la corrida: Vision (upload_discipline_id) y metadata discipline_id del presupuesto.",
+    )
+    args, _unknown_argv = parser.parse_known_args()
+    _CLI_RUN_DISCIPLINE = args.discipline
 
     setup_logging(
         console_level=logging.INFO,
         log_file=outputs_dir / "dupla_debug.log",
     )
+    if _CLI_RUN_DISCIPLINE is None:
+        logger.warning(
+            "No se pasó --discipline (arquitectonica|estructural|electrica|sanitaria); "
+            "Vision y disciplina de presupuesto usan heurística e inferencia por takeoff.",
+        )
     logger.info("Dupla pipeline starting — project: %s", PROJECT_NAME)
 
     dwg_path = (REPO_ROOT / DWG_PATH).resolve()
@@ -531,6 +596,7 @@ def main() -> None:
         aps["cad_facts"],
         outputs_dir,
         auto_methodology=s3.output.get("auto_methodology") or None,
+        upload_discipline_id=_CLI_RUN_DISCIPLINE,
     )
     if not s4.ok:
         _finish(runner, outputs_dir)
