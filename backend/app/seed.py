@@ -86,7 +86,14 @@ async def _ensure_user(
     role: UserRole,
 ) -> None:
     result = await session.execute(select(User).where(User.email == email))
-    if result.scalar_one_or_none() is not None:
+    existing = result.scalar_one_or_none()
+    if existing is not None:
+        # Si el usuario ya existía (p. ej. de un seed anterior sin nombres), rellenar nombres vacíos.
+        fn = (existing.first_name or "").strip()
+        ln = (existing.last_name or "").strip()
+        if not fn and not ln:
+            existing.first_name = first_name
+            existing.last_name = last_name
         return
     uid = uuid.uuid4()
     session.add(

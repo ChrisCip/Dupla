@@ -17,6 +17,9 @@ import { WorkspacePresupuestoTab } from '../components/project-workspace/tabs/Wo
 import { WorkspaceRevisionesTab } from '../components/project-workspace/tabs/WorkspaceRevisionesTab'
 import { WorkspaceTabsLayout } from '../components/project-workspace/WorkspaceTabsLayout'
 import { TUTORIAL_PROJECT_UUID } from '../constants/tutorialProject'
+import { loadAdminDirectoryUsers } from '../lib/adminUsersDirectoryCache'
+import type { DirectoryUserRow } from '../lib/directoryUsers'
+import { normalizeDirectoryUsers } from '../lib/directoryUsers'
 import { projectWorkspaceTabs } from '../constants/projectWorkspaceTabs'
 import { NEXT_WORKFLOW_PHASE, WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
 import { budgetPipeline } from '../lib/budgetPipeline'
@@ -69,12 +72,8 @@ export function ProjectWorkspacePage() {
   const [lineItem, setLineItem] = useState('')
   const [linePrice, setLinePrice] = useState('')
   const [activeQuote, setActiveQuote] = useState('')
-  const [memberRows, setMemberRows] = useState<
-    { uuid: string; email: string; first_name: string; last_name: string }[]
-  >([])
-  const [adminUsers, setAdminUsers] = useState<
-    { uuid: string; email: string; first_name: string; last_name: string }[]
-  >([])
+  const [memberRows, setMemberRows] = useState<DirectoryUserRow[]>([])
+  const [adminUsers, setAdminUsers] = useState<DirectoryUserRow[]>([])
   const [membersBusy, setMembersBusy] = useState(false)
   const [membersMsg, setMembersMsg] = useState<string | null>(null)
   const [memberSelection, setMemberSelection] = useState<Set<string>>(new Set())
@@ -239,29 +238,13 @@ export function ProjectWorkspacePage() {
     if (!token || !projectUuid || role !== 'GERENCIA' || !project) return
     let cancelled = false
     void (async () => {
-      const [m, u] = await Promise.all([
+      const [m, adminRows] = await Promise.all([
         apiFetch(`/api/projects/${projectUuid}/members`, { token }),
-        apiFetch('/api/admin/users', { token }),
+        loadAdminDirectoryUsers(token),
       ])
       if (cancelled) return
-      if (m.ok)
-        setMemberRows(
-          (await m.json()) as {
-            uuid: string
-            email: string
-            first_name: string
-            last_name: string
-          }[],
-        )
-      if (u.ok)
-        setAdminUsers(
-          (await u.json()) as {
-            uuid: string
-            email: string
-            first_name: string
-            last_name: string
-          }[],
-        )
+      if (m.ok) setMemberRows(normalizeDirectoryUsers(await m.json()))
+      if (adminRows !== null) setAdminUsers(adminRows)
     })()
     return () => {
       cancelled = true

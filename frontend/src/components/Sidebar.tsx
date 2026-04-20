@@ -71,7 +71,7 @@ export function Sidebar() {
   return (
     <aside
       data-tour="sidebar-root"
-      className={`flex shrink-0 flex-col border-r border-black/10 bg-white transition-[width] duration-200 ease-out ${
+      className={`flex h-full min-h-0 max-h-full shrink-0 flex-col overflow-hidden border-r border-black/10 bg-white transition-[width] duration-200 ease-out ${
         collapsed ? 'w-[4.5rem]' : 'w-56 md:w-60'
       }`}
     >
@@ -88,7 +88,7 @@ export function Sidebar() {
           }
         />
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-2.5" aria-label="Principal">
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden p-2.5" aria-label="Principal">
         <NavLink
           data-tour="sidebar-projects"
           to="/app/projects"

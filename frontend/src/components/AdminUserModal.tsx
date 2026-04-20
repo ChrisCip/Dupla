@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { apiFetch } from '../api/client'
+import { invalidateAdminUsersDirectoryCache } from '../lib/adminUsersDirectoryCache'
 import { ROLE_LABELS, USER_ROLES, type UserRole } from '../constants/userRoles'
 import { PrimaryButton } from './PrimaryButton'
 import {
@@ -110,6 +111,7 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
       })
       return
     }
+    invalidateAdminUsersDirectoryCache()
     onSaved()
     onClose()
   }
@@ -139,6 +141,7 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
       })
       return
     }
+    invalidateAdminUsersDirectoryCache()
     onSaved()
     onClose()
   }
