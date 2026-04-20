@@ -72,6 +72,7 @@ export function WorkspaceTabsLayout({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row">
       <aside
+        data-tour="workspace-tab-nav"
         id="workspace-section-nav"
         aria-hidden={!sidebarOpen}
         className={`shrink-0 overflow-hidden border-black/10 bg-black/[0.02] transition-[width,max-height] duration-200 ease-out ${
@@ -138,6 +139,7 @@ export function WorkspaceTabsLayout({
           ) : null}
         </div>
         <div
+          data-tour="workspace-tab-panel"
           role="tabpanel"
           aria-labelledby={active ? `tab-${active.id}` : undefined}
           className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-5 sm:py-5"

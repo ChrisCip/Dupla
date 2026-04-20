@@ -272,7 +272,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
     !hasActiveFilters && filesTotal > 20 && (fileHasPrevPage || fileHasNextPage)
 
   return (
-    <Card className="flex min-h-0 w-full flex-1 flex-col gap-4 p-6">
+    <Card data-tour="workspace-archivos-root" className="flex min-h-0 w-full flex-1 flex-col gap-4 p-6">
       <div className="shrink-0">
         <h2 className="text-lg font-semibold text-ink">Archivos del proyecto</h2>
         <p className="text-sm text-muted">
@@ -289,7 +289,10 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+      <div
+        data-tour="workspace-archivos-toolbar"
+        className="flex shrink-0 flex-wrap items-center justify-between gap-3"
+      >
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -456,6 +459,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
       )}
 
       <div
+        data-tour="workspace-archivos-dropzone"
         className={`flex min-h-0 flex-1 flex-col rounded-xl border-2 border-dashed p-4 transition-colors ${
           dropHighlight ? 'border-primary/50 bg-primary/[0.04]' : 'border-black/10 bg-white'
         }`}

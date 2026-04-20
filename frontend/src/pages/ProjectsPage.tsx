@@ -7,10 +7,7 @@ import { CreateProjectModal } from '../components/projects/CreateProjectModal'
 import { ProjectsBoardView } from '../components/projects/ProjectsBoardView'
 import { ProjectsListView } from '../components/projects/ProjectsListView'
 import { PROJECT_CARD_MIME } from '../constants/projectsPage'
-import {
-  NEXT_WORKFLOW_PHASE,
-  PREV_WORKFLOW_PHASE,
-} from '../constants/workflowPhases'
+import { isAdjacentWorkflowTransitionAllowed } from '../constants/workflowPhases'
 import type { Project } from '../types/project'
 import { useAuthStore } from '../store/authStore'
 import type { ProjectKindValue } from '../constants/projectKind'
@@ -156,10 +153,12 @@ export function ProjectsPage() {
 
   async function transitionProjectOnBoard(p: Project, targetPhase: string) {
     if (!token) return
-    const next = NEXT_WORKFLOW_PHASE[p.workflow_phase]
-    const prev = PREV_WORKFLOW_PHASE[p.workflow_phase]
-    if (next !== targetPhase && prev !== targetPhase) {
-      setBoardMsg('Solo puedes mover el proyecto a la fase inmediatamente anterior o siguiente.')
+    if (!isAdjacentWorkflowTransitionAllowed(p.project_kind, p.workflow_phase, targetPhase)) {
+      setBoardMsg(
+        p.project_kind === 'TENDER'
+          ? 'Los proyectos de licitación no pueden retroceder por debajo de «Revisión de arquitectura». Solo puedes mover a la fase inmediatamente siguiente o, si aplica, retroceder un paso desde esa fase en adelante.'
+          : 'Solo puedes mover el proyecto a la fase inmediatamente anterior o siguiente.',
+      )
       return
     }
     setBoardMsg(null)
@@ -228,7 +227,7 @@ export function ProjectsPage() {
         </div>
       ) : null}
       <div className="flex shrink-0 flex-col gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0" data-tour="projects-heading">
           <h1 className="text-3xl font-semibold text-ink md:text-4xl">Proyectos</h1>
           <p className="mt-3 text-lg text-muted md:text-xl">
             {role === 'GERENCIA'
@@ -242,7 +241,7 @@ export function ProjectsPage() {
           ) : null}
         </div>
         <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-          <label className="min-w-0 flex-1">
+          <label className="min-w-0 flex-1" data-tour="projects-search">
             <span className="sr-only">Buscar proyecto por nombre</span>
             <input
               type="search"
@@ -256,6 +255,7 @@ export function ProjectsPage() {
           </label>
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
             <div
+              data-tour="projects-view-toggle"
               className="inline-flex h-9 shrink-0 items-stretch gap-0.5 rounded-lg border border-black/10 bg-white p-0.5 text-xs shadow-[var(--shadow-card)]"
               role="group"
               aria-label="Vista de proyectos"
@@ -282,6 +282,7 @@ export function ProjectsPage() {
             {role === 'GERENCIA' ? (
               <button
                 type="button"
+                data-tour="projects-new"
                 className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold tracking-normal text-white shadow-sm outline-none transition-[opacity,transform] hover:opacity-[0.92] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
                 onClick={() => {
                   setCreateError(null)

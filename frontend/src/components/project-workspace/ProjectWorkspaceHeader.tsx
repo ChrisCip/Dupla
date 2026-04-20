@@ -45,7 +45,10 @@ export function ProjectWorkspaceHeader({
   }
 
   return (
-    <header className="shrink-0 space-y-3 border-b border-black/10 pb-3 md:space-y-4 md:pb-4">
+    <header
+      data-tour="workspace-header"
+      className="shrink-0 space-y-3 border-b border-black/10 pb-3 md:space-y-4 md:pb-4"
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="du-meta">

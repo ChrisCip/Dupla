@@ -24,7 +24,10 @@ export function ProjectsListView({
   onNavigateProject,
 }: ProjectsListViewProps) {
   return (
-    <Card className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col overflow-hidden p-0">
+    <Card
+      data-tour="projects-board"
+      className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col overflow-hidden p-0"
+    >
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-black/4 text-sm font-semibold uppercase tracking-wide text-ink backdrop-blur-sm md:text-base">

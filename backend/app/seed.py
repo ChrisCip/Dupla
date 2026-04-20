@@ -1,19 +1,32 @@
 import asyncio
 import uuid
 from datetime import datetime, timezone
-from typing import Tuple
+from typing import Any, Tuple
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import ProgrammingError
 
 from app.db.session import AsyncSessionLocal
+from app.domain.bootstrap_defaults import default_bootstrap_criteria
+from app.domain.project_kind import ProjectKind
+from app.domain.tutorial_project import (
+    TASK_LIST_TODO_UUID,
+    TUTORIAL_PROJECT_NAME,
+    TUTORIAL_PROJECT_UUID,
+    TUTORIAL_TASK_CARD_UUID,
+    TUTORIAL_TASK_TITLE,
+)
+from app.domain.workflow_phase import WorkflowPhase
 from app.models.chat_conversation import (
     GENERAL_CONVERSATION_UUID,
     ChatConversation,
     ChatConversationKind,
 )
 from app.models.module import Module
+from app.models.project import Project, ProjectArchitectureData
+from app.models.task_board import TaskCard, TaskList
 from app.models.user import User, UserModule, UserRole
+from app.repositories.project_repository import ProjectRepository
 from app.security.password import hash_password
 
 
@@ -89,6 +102,123 @@ async def _ensure_user(
     session.add(UserModule(user_id=uid, module_id=1))
 
 
+def _seed_workflow_meta() -> dict[str, Any]:
+    """Alineado con `ProjectRepository` / creación de proyectos."""
+    return {
+        "budget_pipeline": {
+            "subcontracts_done": False,
+            "volumetry_done": False,
+            "cost_analysis_done": False,
+            "budget_marked_complete": False,
+            "client_approved_version_label": None,
+            "volumetry": {},
+            "cost_analysis": {},
+            "budget_versions": [],
+        }
+    }
+
+
+async def _user_id_by_email(session, email: str) -> uuid.UUID | None:
+    r = await session.execute(select(User.id).where(User.email == email))
+    return r.scalar_one_or_none()
+
+
+async def _ensure_tutorial_project_and_task(session) -> None:
+    """Proyecto demo con tarea vinculada, accesible por los usuarios semilla para tutoriales."""
+    master_id = await _user_id_by_email(session, "master@dupla.demo")
+    if master_id is None:
+        return
+
+    repo = ProjectRepository(session)
+    project = await session.get(Project, TUTORIAL_PROJECT_UUID)
+    if project is None:
+        now = datetime.now(timezone.utc)
+        project = Project(
+            id=TUTORIAL_PROJECT_UUID,
+            name=TUTORIAL_PROJECT_NAME,
+            client_name="Dupla (demo)",
+            project_kind=ProjectKind.RESIDENTIAL.value,
+            created_by=master_id,
+            workflow_phase=WorkflowPhase.BOOTSTRAPPING.value,
+            workflow_meta=_seed_workflow_meta(),
+            project_bootstrap_criteria=default_bootstrap_criteria(),
+            specifications_document={},
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(project)
+        await session.flush()
+        session.add(
+            ProjectArchitectureData(
+                project_id=TUTORIAL_PROJECT_UUID,
+                document={"groups": []},
+                materiales=[],
+                last_updated_by=master_id,
+                updated_at=now,
+            ),
+        )
+        await session.flush()
+        await repo.record_event(
+            project_id=TUTORIAL_PROJECT_UUID,
+            actor_user_id=master_id,
+            event_type="PROJECT_CREATED",
+            payload={
+                "name": project.name,
+                "client_name": project.client_name,
+                "project_kind": project.project_kind,
+            },
+        )
+        await session.flush()
+
+    for email, _, _, _, _ in SEED_USERS:
+        uid = await _user_id_by_email(session, email)
+        if uid is not None:
+            await repo.add_project_member(TUTORIAL_PROJECT_UUID, uid)
+
+    if await session.get(TaskCard, TUTORIAL_TASK_CARD_UUID) is not None:
+        return
+
+    max_pos_row = await session.execute(
+        select(func.coalesce(func.max(TaskCard.position), -1)).where(
+            TaskCard.list_id == TASK_LIST_TODO_UUID,
+            TaskCard.archived.is_(False),
+        )
+    )
+    next_pos = int(max_pos_row.scalar_one()) + 1
+    now = datetime.now(timezone.utc)
+    tl = await session.get(TaskList, TASK_LIST_TODO_UUID)
+    list_title = tl.title if tl is not None else "Por hacer"
+    card = TaskCard(
+        id=TUTORIAL_TASK_CARD_UUID,
+        list_id=TASK_LIST_TODO_UUID,
+        title=TUTORIAL_TASK_TITLE,
+        description="Tarjeta de práctica para el tablero global vinculada al proyecto tutorial.",
+        position=next_pos,
+        created_by=master_id,
+        assignee_id=None,
+        archived=False,
+        archived_at=None,
+        created_at=now,
+        project_id=TUTORIAL_PROJECT_UUID,
+        created_in_phase=WorkflowPhase.BOOTSTRAPPING.value,
+    )
+    session.add(card)
+    await session.flush()
+    await repo.record_event(
+        project_id=TUTORIAL_PROJECT_UUID,
+        actor_user_id=master_id,
+        event_type="TASK_CARD_CREATED",
+        payload={
+            "task_uuid": str(TUTORIAL_TASK_CARD_UUID),
+            "title": TUTORIAL_TASK_TITLE,
+            "list_uuid": str(TASK_LIST_TODO_UUID),
+            "list_title": list_title,
+            "assignee_uuid": None,
+            "created_in_phase": WorkflowPhase.BOOTSTRAPPING.value,
+        },
+    )
+
+
 async def _seed_impl() -> None:
     async with AsyncSessionLocal() as session:
         await _ensure_module(session)
@@ -98,6 +228,10 @@ async def _seed_impl() -> None:
     async with AsyncSessionLocal() as session:
         for email, first_name, last_name, password_plain, role in SEED_USERS:
             await _ensure_user(session, email, first_name, last_name, password_plain, role)
+        await session.commit()
+
+    async with AsyncSessionLocal() as session:
+        await _ensure_tutorial_project_and_task(session)
         await session.commit()
 
 

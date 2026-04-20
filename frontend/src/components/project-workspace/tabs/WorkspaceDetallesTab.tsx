@@ -51,10 +51,19 @@ export function WorkspaceDetallesTab({
             </div>
           </dl>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Link className="du-pill-action" to={`/app/tasks?project_uuid=${encodeURIComponent(project.uuid)}`}>
+            <Link
+              data-tour="workspace-project-tasks-link"
+              className="du-pill-action"
+              to={`/app/tasks?project_uuid=${encodeURIComponent(project.uuid)}`}
+            >
               Tablero del proyecto
             </Link>
-            <button type="button" className="du-pill-action" onClick={onOpenChat}>
+            <button
+              data-tour="workspace-project-chat-btn"
+              type="button"
+              className="du-pill-action"
+              onClick={onOpenChat}
+            >
               Chat del proyecto
             </button>
           </div>

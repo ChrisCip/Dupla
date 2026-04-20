@@ -184,7 +184,7 @@ export function TaskboardView({
   return (
     <div className={`flex min-h-0 flex-1 flex-col ${embedded ? 'gap-2 overflow-hidden' : 'gap-4'}`}>
       {!embedded ? (
-        <div className="shrink-0">
+        <div className="shrink-0" data-tour="taskboard-header">
           <h1 className="text-2xl font-semibold text-ink md:text-3xl">Tablero de tareas</h1>
           <p className="mt-2 text-sm text-muted">
             Asigna personas, descripciones breves y archiva lo completado. Clic en una tarjeta para el detalle.
@@ -243,6 +243,7 @@ export function TaskboardView({
               style={boardViewportMaxWidth ? { maxWidth: boardViewportMaxWidth } : undefined}
             >
               <div
+                data-tour="taskboard-columns"
                 className={
                   embedded
                     ? 'flex h-full min-h-[10rem] w-max min-w-full items-stretch gap-1.5 sm:gap-2'
