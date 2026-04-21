@@ -144,17 +144,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.folder:
         folder = (_REPO_ROOT / args.folder).resolve()
         logger.info("Scanning folder: %s (pattern=%r)", folder, args.pattern)
-        # Use rglob for patterns containing '**', glob otherwise.
-        if "**" in args.pattern:
-            sub_pattern = args.pattern.lstrip("*").lstrip("/")
-            xlsx_paths = sorted(folder.rglob(sub_pattern))
-        else:
-            xlsx_paths = sorted(folder.glob(args.pattern))
-        if not xlsx_paths:
-            logger.error("No files matched %r in %s", args.pattern, folder)
-            return 1
-        _stats_per_file(xlsx_paths)
-        pairs = load_training_corpus(xlsx_paths, deduplicate=deduplicate)
+        from knowledge.training_data import load_training_corpus_from_folder
+
+        pairs = load_training_corpus_from_folder(
+            folder,
+            pattern=args.pattern,
+            deduplicate=deduplicate,
+        )
     else:
         xlsx_paths = [(_REPO_ROOT / f).resolve() for f in args.files]
         _stats_per_file(xlsx_paths)
