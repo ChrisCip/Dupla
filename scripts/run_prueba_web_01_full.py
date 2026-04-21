@@ -9,7 +9,8 @@ Salida: output/prueba_web_01/run_<fecha_hora>/
 
 Uso:
     python scripts/run_prueba_web_01_full.py
-    python scripts/run_prueba_web_01_full.py --pdf "Batch_Publish_20260406 (Conflicted Copy).pdf"
+    python scripts/run_prueba_web_01_full.py --pdf "BLCAD14/Batch_Publish_20260406 (Conflicted Copy).pdf"
+    python scripts/run_prueba_web_01_full.py --pdf "BLCAD09/BLCADO900.pdf" --dwg-pattern "BLCAD09/BLCAD*.dwg" --dwg-filter 09001-16 --project-id blcad_09
 """
 
 from __future__ import annotations
@@ -36,13 +37,14 @@ def _excel_slug(project_id: str) -> str:
 def _write_run_readme(
     run_root: Path,
     *,
+    project_id: str,
     pdf: Path,
     vision_dir: Path,
     cad_xlsx: Path,
     gen_xlsx: Path,
 ) -> None:
     lines = [
-        "proyecto=prueba_web_01",
+        f"proyecto={project_id}",
         f"fecha={datetime.now().strftime('%Y-%m-%d %H:%M')}",
         f"pdf={pdf}",
         f"carpeta_corrida={run_root}",
@@ -60,12 +62,28 @@ def main() -> int:
     parser.add_argument(
         "--pdf",
         type=str,
-        default=str(REPO_ROOT / "Batch_Publish_20260406 (Conflicted Copy).pdf"),
+        default=str(REPO_ROOT / "BLCAD14" / "Batch_Publish_20260406 (Conflicted Copy).pdf"),
     )
     parser.add_argument(
         "--project-id",
         default="prueba_web_01",
         help="Define el sufijo del Excel: dupla_presupuesto_generado_cad_vision_<id>",
+    )
+    parser.add_argument(
+        "--dwg-pattern",
+        default="BLCAD14/BLCAD*.dwg",
+        help="Glob de DWG bajo la raíz del repo.",
+    )
+    parser.add_argument(
+        "--dwg-filter",
+        choices=("14001-15", "09001-16", "none"),
+        default="14001-15",
+        help="Subconjunto tras el glob (por defecto BLCAD14001–14015).",
+    )
+    parser.add_argument(
+        "--project-name",
+        default="",
+        help="Nombre legible del lote CAD; si se omite, se infiere de --dwg-filter.",
     )
     args = parser.parse_args()
 
@@ -84,19 +102,31 @@ def main() -> int:
     cad_script = REPO_ROOT / "scripts" / "run_multi_dwg_project_cad.py"
     vis_script = REPO_ROOT / "scripts" / "run_merged_cad_pdf_vision.py"
 
+    if args.project_name.strip():
+        cad_batch_label = args.project_name.strip()
+    elif args.dwg_filter == "14001-15":
+        cad_batch_label = "batch BLCAD14001–14015"
+    elif args.dwg_filter == "09001-16":
+        cad_batch_label = "batch BLCAD09001–09016"
+    else:
+        cad_batch_label = "batch DWG (sin filtro de nombre)"
+
     cmd1 = [
         py,
         str(cad_script),
         "--output-dir",
         str(run_root),
-        "--blcad-01-15-only",
         "--pattern",
-        "BLCAD*.dwg",
+        args.dwg_pattern,
         "--project-id",
         args.project_id,
         "--project-name",
-        f"{args.project_id} — batch BLCAD14001–14015",
+        f"{args.project_id} — {cad_batch_label}",
     ]
+    if args.dwg_filter == "14001-15":
+        cmd1.insert(4, "--blcad-01-15-only")
+    elif args.dwg_filter == "09001-16":
+        cmd1.insert(4, "--blcad-09001-16-only")
     env = {**os.environ, "PYTHONUNBUFFERED": "1"}
 
     print("=== 1) APS + merge CAD (sin PRES) ===", flush=True)
@@ -133,6 +163,7 @@ def main() -> int:
 
     _write_run_readme(
         run_root,
+        project_id=args.project_id,
         pdf=pdf_path,
         vision_dir=vision_dir,
         cad_xlsx=cad_xlsx,

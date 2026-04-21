@@ -4,7 +4,8 @@ un solo presupuesto CAD-only (sin PDF ni GPT visión).
 
 Uso:
     python scripts/run_multi_dwg_project_cad.py
-    python scripts/run_multi_dwg_project_cad.py --pattern "BLCAD*.dwg" --project-name "Mi obra"
+    python scripts/run_multi_dwg_project_cad.py --pattern "BLCAD09/BLCAD*.dwg" --project-name "Proyecto 09"
+    python scripts/run_multi_dwg_project_cad.py --pattern "BLCAD14/BLCAD*.dwg" --project-name "Proyecto 14"
 """
 
 from __future__ import annotations
@@ -39,6 +40,8 @@ from processors.bc3_parser import parse_bc3
 logger = logging.getLogger("dupla.multi_dwg_cad")
 
 _BLCAD_14001_15 = re.compile(r"^BLCAD140(0[1-9]|1[0-5])\.dwg$", re.IGNORECASE)
+# BLCAD09001 … BLCAD09016 (prefijo "BLCAD090", no "BLCAD09" + 2 dígitos)
+_BLCAD_09001_16 = re.compile(r"^BLCAD090(0[1-9]|1[0-6])\.dwg$", re.IGNORECASE)
 
 
 def merge_process_autodesk_outputs(
@@ -110,18 +113,24 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Multi-DWG → presupuesto CAD-only fusionado")
     parser.add_argument(
         "--pattern",
-        default="BLCAD*.dwg",
-        help="Glob relativo al repo (por defecto BLCAD*.dwg)",
+        default="BLCAD14/BLCAD*.dwg",
+        help="Glob relativo al repo (por defecto planos en BLCAD14/)",
     )
     parser.add_argument(
         "--output-dir",
         default="",
         help="Carpeta de salida exacta (recomendado). Si se omite: output/prueba_web_01/<fecha_hora>/",
     )
-    parser.add_argument(
+    cad_subset = parser.add_mutually_exclusive_group()
+    cad_subset.add_argument(
         "--blcad-01-15-only",
         action="store_true",
         help="Incluir solo BLCAD14001.dwg … BLCAD14015.dwg (tras el glob --pattern).",
+    )
+    cad_subset.add_argument(
+        "--blcad-09001-16-only",
+        action="store_true",
+        help="Incluir solo BLCAD09001…09016 (prefijo BLCAD090; tras el glob --pattern).",
     )
     parser.add_argument(
         "--project-id",
@@ -151,6 +160,8 @@ def main() -> int:
     dwg_paths = [p for p in dwg_paths if p.is_file()]
     if args.blcad_01_15_only:
         dwg_paths = [p for p in dwg_paths if _BLCAD_14001_15.match(p.name)]
+    elif args.blcad_09001_16_only:
+        dwg_paths = [p for p in dwg_paths if _BLCAD_09001_16.match(p.name)]
     if not dwg_paths:
         print(f"No se encontraron DWG con el patrón {args.pattern!r} en {REPO_ROOT}", file=sys.stderr)
         return 1
@@ -185,6 +196,8 @@ def main() -> int:
             return 1
     else:
         logger.info("Sin PRES: matching BC3 sin pares de entrenamiento desde Excel.")
+
+    bc3_catalog = parse_bc3(str(bc3_path))
 
     embedding_index = None
     if bc3_catalog.get("items"):

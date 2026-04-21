@@ -15,6 +15,9 @@ from typing import Any
 
 from openpyxl import load_workbook
 
+from budget.discipline_mapping import DISCIPLINE_KEYS, SuccessMetricThresholds, canonical_discipline_for_summary
+from budget.nasas_preliminary_io import load_nasas_preliminary_budget_rows
+
 
 def _safe_str(value: Any) -> str:
     if value is None:
@@ -139,12 +142,24 @@ def _md_cell(value: Any) -> str:
     return text
 
 
-def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]:
+def analyze_budget_pair(
+    generated_path: Path,
+    real_path: Path,
+    *,
+    real_format: str = "default",
+) -> dict[str, Any]:
     """
     Métricas compartidas entre el informe .txt y el informe Markdown.
+
+    real_format:
+      - ``default``: mismo layout Presto que la primera hoja Dupla (filas desde la 4).
+      - ``nasas_preliminary``: presupuesto NASAS «Preliminary Budget» (varias hojas).
     """
     generated_rows = _load_budget_rows(generated_path)
-    real_rows = _load_budget_rows(real_path)
+    if real_format == "nasas_preliminary":
+        real_rows = load_nasas_preliminary_budget_rows(real_path)
+    else:
+        real_rows = _load_budget_rows(real_path)
 
     generated_partidas = [row for row in generated_rows if _is_partida(row)]
     real_partidas = [row for row in real_rows if _is_partida(row)]
@@ -233,6 +248,54 @@ def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]
     }
 
 
+def analyze_budget_by_canonical_discipline(
+    generated_path: Path,
+    real_path: Path,
+    *,
+    real_format: str = "default",
+) -> dict[str, Any]:
+    """
+    Suma de importes por disciplina canónica (heurística de texto en el resumen).
+    Complementa `analyze_budget_pair` para localizar dónde se desvía el total.
+    """
+    stats = analyze_budget_pair(generated_path, real_path, real_format=real_format)
+    buckets: dict[str, dict[str, float]] = {
+        k: {"real_amount": 0.0, "generated_amount": 0.0, "real_lines": 0, "generated_lines": 0}
+        for k in DISCIPLINE_KEYS
+    }
+    for row in stats["real_partidas"]:
+        d = canonical_discipline_for_summary(str(row.get("summary", "")))
+        buckets[d]["real_amount"] += float(row.get("amount", 0) or 0)
+        buckets[d]["real_lines"] += 1
+    for row in stats["generated_partidas"]:
+        d = canonical_discipline_for_summary(str(row.get("summary", "")))
+        buckets[d]["generated_amount"] += float(row.get("amount", 0) or 0)
+        buckets[d]["generated_lines"] += 1
+
+    th = SuccessMetricThresholds()
+    rel_err = (
+        abs(stats["generated_total"] - stats["real_total"]) / stats["real_total"]
+        if stats["real_total"]
+        else 0.0
+    )
+    return {
+        "headline": {
+            "coverage_pct": stats["coverage"],
+            "qty_accuracy_pct": stats["qty_accuracy"],
+            "price_accuracy_pct": stats["price_accuracy"],
+            "real_total": stats["real_total"],
+            "generated_total": stats["generated_total"],
+            "total_amount_rel_error": rel_err,
+        },
+        "thresholds": {
+            "min_code_coverage_pct": th.min_code_coverage_pct,
+            "min_qty_accuracy_pct": th.min_qty_accuracy_pct,
+            "max_total_amount_rel_error": th.max_total_amount_rel_error,
+        },
+        "by_discipline": buckets,
+    }
+
+
 def build_comparison_markdown(
     generated_path: Path,
     real_path: Path,
@@ -243,11 +306,12 @@ def build_comparison_markdown(
     notes: str = "",
     max_list_codes: int = 80,
     max_delta_rows: int = 25,
+    real_format: str = "default",
 ) -> str:
     """
     Informe en Markdown para carpetas de comparación por proyecto/corrida.
     """
-    stats = analyze_budget_pair(generated_path, real_path)
+    stats = analyze_budget_pair(generated_path, real_path, real_format=real_format)
     lines: list[str] = [
         f"# {title}",
         "",
@@ -346,8 +410,14 @@ def build_comparison_markdown(
     return "\n".join(lines) + "\n"
 
 
-def build_comparison_report(generated_path: Path, real_path: Path, output_dir: Path) -> Path:
-    stats = analyze_budget_pair(generated_path, real_path)
+def build_comparison_report(
+    generated_path: Path,
+    real_path: Path,
+    output_dir: Path,
+    *,
+    real_format: str = "default",
+) -> Path:
+    stats = analyze_budget_pair(generated_path, real_path, real_format=real_format)
     matching_codes = stats["matching_codes"]
     qty_precisions = stats["qty_precisions"]
     price_precisions = stats["price_precisions"]
@@ -450,12 +520,53 @@ def _resolve_defaults() -> tuple[Path, Path, Path]:
     )
 
 
+def _validate_xlsx_cli_path(label: str, path: Path) -> None:
+    """Evita placeholders tipo `...` y extensiones que openpyxl no abre."""
+    raw = str(path).strip()
+    if not raw or raw == "..." or "..." in path.name or path.name in {".", ".."}:
+        raise SystemExit(
+            f"{label}: ruta inválida ({path}). "
+            "No uses `...` como placeholder; pasa una ruta real entre comillas, "
+            'p. ej. --generated "C:/salida/dupla_budget_ready_full.xlsx"'
+        )
+    suf = path.suffix.lower()
+    if suf not in {".xlsx", ".xlsm", ".xltx", ".xltm"}:
+        raise SystemExit(
+            f"{label}: se esperaba un Excel .xlsx (openpyxl); recibido: {path} "
+            f"(extensión {suf!r}). Los .xls antiguos no están soportados."
+        )
+
+
 def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Compare generated budget vs PRES.xlsx")
     defaults_generated, defaults_real, defaults_output = _resolve_defaults()
     parser.add_argument("--generated", default=str(defaults_generated))
     parser.add_argument("--real", default=str(defaults_real))
     parser.add_argument("--output-dir", default=str(defaults_output))
+    parser.add_argument(
+        "--write-markdown",
+        type=str,
+        default="",
+        help="Ruta opcional para informe Markdown (p. ej. comparisons/budget/.../diferencias.md).",
+    )
+    parser.add_argument(
+        "--write-discipline-json",
+        type=str,
+        default="",
+        help="Ruta opcional para JSON con desglose por disciplina canónica.",
+    )
+    parser.add_argument(
+        "--run-tag",
+        type=str,
+        default="local",
+        help="Etiqueta de corrida (solo para el Markdown).",
+    )
+    parser.add_argument(
+        "--real-format",
+        choices=("default", "nasas_preliminary"),
+        default="default",
+        help="Layout del Excel de referencia (NASAS Preliminary Budget = nasas_preliminary).",
+    )
     return parser
 
 
@@ -465,13 +576,44 @@ def main() -> None:
     real = Path(args.real).resolve()
     output_dir = Path(args.output_dir).resolve()
 
+    _validate_xlsx_cli_path("--generated", generated)
+    _validate_xlsx_cli_path("--real", real)
+
     if not generated.exists():
         raise FileNotFoundError(f"Generated workbook not found: {generated}")
     if not real.exists():
         raise FileNotFoundError(f"Real workbook not found: {real}")
 
-    report_path = build_comparison_report(generated, real, output_dir)
+    report_path = build_comparison_report(
+        generated, real, output_dir, real_format=args.real_format
+    )
     print(f"Comparison report written to: {report_path}")
+
+    if args.write_discipline_json:
+        disc_path = Path(args.write_discipline_json).resolve()
+        disc_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = analyze_budget_by_canonical_discipline(
+            generated, real, real_format=args.real_format
+        )
+        disc_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"Discipline breakdown written to: {disc_path}")
+
+    if args.write_markdown:
+        from datetime import date
+
+        md_path = Path(args.write_markdown).resolve()
+        md_path.parent.mkdir(parents=True, exist_ok=True)
+        title = f"Comparación presupuesto — {generated.stem}"
+        md = build_comparison_markdown(
+            generated,
+            real,
+            title=title,
+            run_date=str(date.today()),
+            run_tag=args.run_tag,
+            real_format=args.real_format,
+        )
+        md_path.write_text(md, encoding="utf-8")
+        print(f"Markdown report written to: {md_path}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,33 @@
+# Ejemplo de manifiesto — copiar a mi_proyecto.yaml y ajustar rutas.
+# Las rutas pueden ser relativas a la carpeta donde está este YAML.
+
+project_name: "Ejemplo Torre"
+project_id: "ejemplo_torre"
+
+paths:
+  dwg: "../../data/ejemplo.dwg"       # requerido
+  pdf: "../../data/ejemplo.pdf"       # visión single-PDF (si no usas vision.sources)
+  outputs_dir: "../../output/run_ejemplo"
+  bc3: "../../data/TGIU.bc3"          # opcional — omitir clave o poner null
+  pres_training: "../../data/PRES.xlsx"
+
+output_name: "dupla_budget_ready_full"
+use_pdf: true
+bucket_name: null
+pres_template_takeoffs: false
+
+# Perfil de visión para todo el PDF único (structural|electrical|sanitary|finishes_architectural|general)
+vision:
+  profile: finishes_architectural
+
+# Alternativa: varios PDF por disciplina (cada uno con su prompt de visión)
+# vision:
+#   sources:
+#     - pdf: "./planos/estructural.pdf"
+#       discipline: structural
+#     - pdf: "./planos/electrico.pdf"
+#       discipline: electrical
+#     - pdf: "./planos/sanitario.pdf"
+#       discipline: sanitary
+#     - pdf: "./planos/arquitectura.pdf"
+#       discipline: finishes_architectural

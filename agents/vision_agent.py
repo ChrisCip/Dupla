@@ -21,6 +21,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+from .vision_profiles import get_vision_profile
 from core.schemas import LevelInventory, level_inventory_from_dict
 
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -242,6 +243,22 @@ _SIMPLE_SCHEMA_HINT = """{
     {"text": "exact text visible", "interpretation": "what it means for quantification"}
   ]
 }"""
+
+
+def _compose_vision_system_prompt(vision_profile_key: str | None) -> tuple[str, str]:
+    """
+    Prompt de sistema = base (metodología + reglas RD) + foco opcional por disciplina.
+    El JSON pedido al modelo sigue siendo siempre `_SIMPLE_SCHEMA_HINT` para alinear el adaptador.
+    """
+    profile = get_vision_profile(vision_profile_key)
+    base = _SIMPLE_SYSTEM_PROMPT.strip()
+    addon = (profile.focus_addon or "").strip()
+    if not addon:
+        return base, profile.key
+    return (
+        f"{base}\n\nENFOQUE POR DISCIPLINA ({profile.key}):\n{addon}",
+        profile.key,
+    )
 
 
 def _detect_view_type(image_path: Path) -> str:
@@ -791,6 +808,7 @@ def analyze_plan(
     level_name: str,
     *,
     office_methodology: str | None = None,
+    vision_profile_key: str | None = None,
 ) -> dict[str, Any]:
     client = get_client()
     image_path = Path(image_path).resolve()
@@ -801,11 +819,13 @@ def analyze_plan(
     extension = image_path.suffix.lower().replace(".", "")
     mime = f"image/{extension}" if extension in {"png", "jpg", "jpeg", "webp"} else "image/png"
 
+    system_prompt, profile_key = _compose_vision_system_prompt(vision_profile_key)
+
     # Step 1: Ask GPT-4o to return a simple flat inventory
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": _SIMPLE_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {
                 "role": "user",
                 "content": [
@@ -842,6 +862,7 @@ def analyze_plan(
             "_metadata": {
                 "file": image_path.name,
                 "timestamp": datetime.now().isoformat(),
+                "vision_profile": profile_key,
             },
         }
 
@@ -858,6 +879,7 @@ def analyze_plan(
         "file": image_path.name,
         "timestamp": datetime.now().isoformat(),
         "office_methodology_chars": len(office_methodology or ""),
+        "vision_profile": profile_key,
     }
     return result
 
@@ -867,6 +889,7 @@ def run_full_vision_analysis(
     cad_summary: dict[str, Any],
     *,
     office_methodology: str | None = None,
+    vision_profile_key: str | None = None,
 ) -> list[dict[str, Any]]:
     pages_path = Path(pages_dir)
     images = sorted(
@@ -883,6 +906,7 @@ def run_full_vision_analysis(
                     cad_summary,
                     level_name,
                     office_methodology=office_methodology,
+                    vision_profile_key=vision_profile_key,
                 )
             )
         except Exception as exc:  # pragma: no cover - depends on external API/runtime

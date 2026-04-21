@@ -7,7 +7,7 @@ Por defecto **no** usa PRES.xlsx (suele ser de otro trabajo). Opcional: ``--use-
 Requiere OPENAI_API_KEY en .env y PyMuPDF (pip install pymupdf).
 
 Uso:
-    python scripts/run_merged_cad_pdf_vision.py --pdf "Batch_Publish_20260406 (Conflicted Copy).pdf"
+    python scripts/run_merged_cad_pdf_vision.py --pdf "BLCAD14/Batch_Publish_20260406 (Conflicted Copy).pdf"
     python scripts/run_merged_cad_pdf_vision.py --pdf ruta.pdf --merged-json output/.../project_merged.normalized.json
 """
 
@@ -25,6 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from budget.discipline_mapping import normalize_discipline_key
 from budget.export_excel import export_budget_workbook
 from core.logging_config import setup_logging
 from core.pipeline import build_budget_from_sources
@@ -78,7 +79,7 @@ def main() -> int:
     parser.add_argument(
         "--pdf",
         type=str,
-        default=str(REPO_ROOT / "Batch_Publish_20260406 (Conflicted Copy).pdf"),
+        default=str(REPO_ROOT / "BLCAD14" / "Batch_Publish_20260406 (Conflicted Copy).pdf"),
         help="PDF del batch de planos",
     )
     parser.add_argument(
@@ -111,6 +112,11 @@ def main() -> int:
         "--use-pres-training",
         action="store_true",
         help="Cargar PRES.xlsx como pares few-shot (por defecto NO: PRES suele ser de otro proyecto).",
+    )
+    parser.add_argument(
+        "--vision-profile",
+        default="general",
+        help="Perfil GPT visión: structural|electrical|sanitary|finishes_architectural|general",
     )
     args = parser.parse_args()
 
@@ -153,6 +159,7 @@ def main() -> int:
     dr.PROJECT_ID = args.project_id
     dr.PROJECT_NAME = args.project_name
     dr.PRES_TEMPLATE_TAKEOFFS = False
+    dr.RUN.vision_profile = normalize_discipline_key(args.vision_profile)
     suffix = _slug_for_excel_filename(args.excel_suffix or args.project_id)
     dr.OUTPUT_NAME = f"dupla_presupuesto_generado_cad_vision_{suffix}"
     dr.BC3_PATH = "./data/TGIU.bc3"

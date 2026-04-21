@@ -1,8 +1,12 @@
 import os
+from pathlib import Path
+
 import requests
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
+# Cargar .env desde la raíz del repo aunque el cwd sea otro directorio
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(_REPO_ROOT / ".env")
 load_dotenv()
 
 CLIENT_ID = os.getenv("CLIENT_ID")
