@@ -24,3 +24,4 @@ def test_parse_bc3_reads_items_and_texts(tmp_path: Path) -> None:
     assert parsed["chapter_count"] == 1
     assert parsed["items"][0]["code"] == "ITM1"
     assert parsed["items"][0]["long_text"] == "Muro de bloque con acabado base"
+    assert parsed.get("decomposition_parent_candidates", {}).get("ITM1") == ["CAP"]

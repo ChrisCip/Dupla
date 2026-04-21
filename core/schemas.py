@@ -146,6 +146,27 @@ class Fixture(InventoryEntity):
 
 
 @dataclass(kw_only=True)
+class ReinforcementDetail:
+    """Structured reinforcement data read from plan notation."""
+    main_bars: str | None = None       # "4#6+2#5"
+    stirrups: str | None = None        # "#3@0.15"
+    steel_grade: str | None = None     # "grado_60"
+    tie_bars: str | None = None        # "2#4" (bastones)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {k: v for k, v in asdict(self).items() if v is not None}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "ReinforcementDetail":
+        return cls(
+            main_bars=data.get("main_bars"),
+            stirrups=data.get("stirrups"),
+            steel_grade=data.get("steel_grade"),
+            tie_bars=data.get("tie_bars"),
+        )
+
+
+@dataclass(kw_only=True)
 class StructuralElement(InventoryEntity):
     element_type: str = "other"
     count: int = 1
@@ -159,6 +180,7 @@ class StructuralElement(InventoryEntity):
     orientation: str | None = None
     load_bearing: bool | None = None
     reinforcement_hint: str | None = None
+    reinforcement: ReinforcementDetail | None = None
     concrete_grade_hint: str | None = None
     steel_grade_hint: str | None = None
     host_level: str | None = None
@@ -235,6 +257,7 @@ class BudgetCandidate(ModelBase):
     score: float
     rationale: str
     source: str = "keyword_match"
+    bc3_origin: str | None = None
 
 
 @dataclass(kw_only=True)

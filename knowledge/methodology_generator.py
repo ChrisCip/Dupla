@@ -1,7 +1,7 @@
 """
 Auto-generate vision methodology context from PRES training pairs + BC3 catalog.
 
-The output is a compact Spanish text block injected into the GPT-4o vision prompt
+The output is a compact Spanish text block injected into the OpenAI vision prompt
 so the model knows what level of detail and what disciplines/partidas are expected
 *before* it looks at any plan image.
 """

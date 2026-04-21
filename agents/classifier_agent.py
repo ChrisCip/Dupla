@@ -20,7 +20,12 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 from core.schemas import BudgetCandidate, QuantityTakeoff
-from knowledge.bc3_embeddings import EmbeddingIndex, build_query_from_takeoff, search_bc3
+from knowledge.bc3_embeddings import (
+    EmbeddingIndex,
+    batch_search_bc3,
+    build_query_from_takeoff,
+    search_bc3,
+)
 from knowledge.pres_expansion import inject_pres_reference_candidates
 from knowledge.training_data import TrainingPair, generate_few_shot_examples
 
@@ -241,6 +246,12 @@ _PREFIX_TO_CHAPTER: list[tuple[str, str]] = [
 
 def _assign_chapter(takeoff: QuantityTakeoff) -> str:
     item_type = takeoff.item_type.lower()
+    if item_type == "fixture_count":
+        disc = str(takeoff.inputs.get("discipline") or "").lower()
+        if disc == "plumbing":
+            return "07"
+        if disc in {"electrical", "electric"}:
+            return "06"
     chapter = _ITEM_TYPE_TO_CHAPTER.get(item_type)
     if chapter:
         return chapter
@@ -272,9 +283,10 @@ def _filter_bc3_for_chapter(
     if embedding_index is not None and takeoffs:
         items_by_code = {str(item.get("code", "")): item for item in items}
         scored_by_code: dict[str, float] = {}
-        for takeoff in takeoffs:
-            query = build_query_from_takeoff(takeoff)
-            for match in search_bc3(query, embedding_index, top_k=15):
+        query_texts = [build_query_from_takeoff(t) for t in takeoffs]
+        batch_matches = batch_search_bc3(query_texts, embedding_index, top_k=15)
+        for takeoff, matches in zip(takeoffs, batch_matches):
+            for match in matches:
                 code = str(match.get("code", ""))
                 if not code or code not in items_by_code:
                     continue
@@ -346,18 +358,26 @@ def _gpt4o_classify_chapter(
     chapter_desc: str,
     client: "OpenAI",
     few_shot_examples: str = "",
+    *,
+    project_discipline_id: str | None = None,
 ) -> dict[str, BudgetCandidate]:
     """One GPT-4o call per chapter — assign best BC3 code to each takeoff."""
     if not takeoffs or not bc3_items:
         return {}
 
-    # Format takeoffs
+    # Format takeoffs (include plan-specific description for BC3 matching — B1)
     takeoff_lines = []
     for t in takeoffs:
-        takeoff_lines.append(
-            f'  {{"key":"{t.item_key}","type":"{t.item_type}",'
-            f'"unit":"{t.unit}","qty":{t.quantity:.2f}}}'
-        )
+        payload: dict[str, Any] = {
+            "key": t.item_key,
+            "type": t.item_type,
+            "unit": t.unit,
+            "qty": round(float(t.quantity), 2),
+        }
+        desc = str(t.inputs.get("takeoff_description") or "").strip()
+        if desc:
+            payload["desc"] = desc[:1500]
+        takeoff_lines.append("  " + json.dumps(payload, ensure_ascii=False))
 
     # Format BC3 catalog (max 80 items to stay within token limits)
     bc3_lines = []
@@ -370,9 +390,17 @@ def _gpt4o_classify_chapter(
         )
 
     static_hint = _STATIC_CHAPTER_GUIDANCE.get(chapter_code, "")
+    disc_block = ""
+    if project_discipline_id:
+        disc_block = (
+            f"CONTEXTO DE CORRIDA: la disciplina principal del proyecto es «{project_discipline_id}». "
+            "Elige partidas del catálogo coherentes con esa disciplina y con el capítulo indicado; "
+            "no mezcles partidas claramente de otra instalación si el takeoff no la sugiere.\n\n"
+        )
     prompt = (
         f"Eres un presupuestista dominicano senior. Capítulo ({chapter_code}): {chapter_desc}\n"
         f"{static_hint}\n\n"
+        f"{disc_block}"
         + (few_shot_examples + "\n\n" if few_shot_examples else "")
         + "PARTIDAS A CLASIFICAR:\n[\n"
         + ",\n".join(takeoff_lines)
@@ -383,10 +411,14 @@ def _gpt4o_classify_chapter(
         + "Instrucciones estrictas:\n"
         + "- bc3_code debe ser EXACTAMENTE uno de los valores \"code\" del catálogo anterior. "
         + "Nunca inventes códigos.\n"
+        + "- Usa el campo \"desc\" cuando exista: describe el trabajo medido en el plano "
+        + "(tipo de muro, rotulo C1/V1, puerta con dimensiones, tomacorriente, etc.); "
+        + "elige la partida BC3 más coherente con esa descripción, no solo con \"type\".\n"
         + "- Si ninguna partida del catálogo encaja de forma razonable, OMITe esa partida "
         + "(no incluyas objeto para ese takeoff_key).\n"
         + "- Misma disciplina y unidad compatible (m2 con m2, m3 con m3, ud con ud, etc.).\n"
-        + "- unit_price: copia el precio del ítem del catálogo para ese code.\n"
+        + "- unit_price: DEBE coincidir con el campo price del catálogo para ese code. "
+        + "Si el catálogo lista price=0, usa 0 (no inventes precios).\n"
         + "- match_type: exacto (misma obra y unidad), aproximado (muy cercano), "
         + "estimado (solo si no hay mejor opción pero aún es defendible).\n\n"
         + "Devuelve SOLO un JSON array (sin texto adicional):\n"
@@ -420,8 +452,13 @@ def _gpt4o_classify_chapter(
 
     matches = _extract_json_list(raw)
 
-    # Build a code→item lookup for this chapter's subset
-    code_to_item: dict[str, dict[str, Any]] = {item["code"]: item for item in bc3_items}
+    # Build a code→item lookup for this chapter's subset (first occurrence wins if same code
+    # appears from multiple merged BC3 sources).
+    code_to_item: dict[str, dict[str, Any]] = {}
+    for item in bc3_items:
+        c = item.get("code")
+        if c and c not in code_to_item:
+            code_to_item[c] = item
 
     result: dict[str, BudgetCandidate] = {}
     for match in matches:
@@ -442,14 +479,18 @@ def _gpt4o_classify_chapter(
 
         summary = str(bc3_item.get("summary", bc3_code))
 
+        catalog_price = float(bc3_item.get("price") or 0.0)
         unit_price = 0.0
         try:
             unit_price = float(match.get("unit_price") or 0)
         except (TypeError, ValueError):
             pass
-        # If GPT-4o didn't return a price, look it up from the catalog
-        if unit_price == 0.0 and bc3_item:
-            unit_price = float(bc3_item.get("price") or 0)
+        # Nunca confiar en un precio del modelo si contradice el catálogo con precio > 0
+        if catalog_price > 0:
+            if abs(unit_price - catalog_price) > 0.02:
+                unit_price = catalog_price
+        else:
+            unit_price = 0.0
 
         match_type = str(match.get("match_type") or "aproximado").lower()
         if match_type == "exacto":
@@ -464,14 +505,22 @@ def _gpt4o_classify_chapter(
             (t.unit for t in takeoffs if t.item_key == key), ""
         )
 
+        rationale_payload: dict[str, Any] = {
+            "unit_price": unit_price,
+            "match_type": match_type,
+            "catalog_price_rd": catalog_price,
+            "sin_precio_bc3": catalog_price <= 0,
+        }
+        bc3_origin = str(bc3_item.get("bc3_origin") or "").strip() or None
         result[key] = BudgetCandidate(
             takeoff_key=key,
             bc3_code=bc3_code,
             summary=summary,
             unit=takeoff_unit,  # use takeoff unit to pass the unit-match check
             score=score,
-            rationale=json.dumps({"unit_price": unit_price, "match_type": match_type}),
+            rationale=json.dumps(rationale_payload, ensure_ascii=False),
             source="gpt4o",
+            bc3_origin=bc3_origin,
         )
 
     return result
@@ -484,6 +533,7 @@ def _match_with_gpt4o(
     *,
     embedding_index: EmbeddingIndex | None = None,
     training_pairs: list[TrainingPair] | None = None,
+    project_discipline_id: str | None = None,
 ) -> dict[str, list[BudgetCandidate]]:
     """Classify all takeoffs via GPT-4o, grouped by chapter."""
     # Group takeoffs by chapter
@@ -520,6 +570,7 @@ def _match_with_gpt4o(
             chapter_info["desc"],
             client,
             few_shot_examples=few_shot,
+            project_discipline_id=project_discipline_id,
         )
 
         for key, candidate in matches.items():
@@ -541,6 +592,7 @@ def _tokenize(text: str) -> set[str]:
 
 
 def _query_text(takeoff: QuantityTakeoff) -> str:
+    desc = str(takeoff.inputs.get("takeoff_description") or "").strip()
     trace_values = " ".join(
         [
             " ".join(takeoff.trace.source_entity_ids),
@@ -548,7 +600,8 @@ def _query_text(takeoff: QuantityTakeoff) -> str:
             " ".join(str(value) for value in takeoff.inputs.values() if value),
         ]
     )
-    return f"{takeoff.item_key} {takeoff.item_type} {trace_values}"
+    base = f"{takeoff.item_key} {takeoff.item_type} {trace_values}"
+    return f"{desc} {base}".strip() if desc else base
 
 
 def rank_budget_candidates(
@@ -582,6 +635,7 @@ def rank_budget_candidates(
                 unit=str(concept.get("unit", "")),
                 score=score,
                 rationale=f"Shared tokens: {', '.join(sorted(overlap))}",
+                bc3_origin=str(concept.get("bc3_origin") or "").strip() or None,
             )
         )
 
@@ -600,6 +654,7 @@ def match_takeoffs_to_bc3(
     *,
     embedding_index: EmbeddingIndex | None = None,
     training_pairs: list[TrainingPair] | None = None,
+    project_discipline_id: str | None = None,
 ) -> dict[str, list[BudgetCandidate]]:
     """
     Assign BC3 candidates to each takeoff.
@@ -622,6 +677,7 @@ def match_takeoffs_to_bc3(
                     client,
                     embedding_index=embedding_index,
                     training_pairs=training_pairs,
+                    project_discipline_id=project_discipline_id,
                 )
             except Exception:
                 logger.warning(

@@ -77,7 +77,7 @@ def test_budget_export_excel_writes_workbook_with_headers_and_formulas() -> None
 
         assert worksheet["A1"].value == "Demo Export Budget"
         assert worksheet["A2"].value == "Presupuesto"
-        assert [worksheet.cell(row=3, column=index).value for index in range(1, 8)] == [
+        assert [worksheet.cell(row=3, column=index).value for index in range(1, 11)] == [
             "Código",
             "Nat",
             "Ud",
@@ -85,6 +85,9 @@ def test_budget_export_excel_writes_workbook_with_headers_and_formulas() -> None
             "CanPres",
             "PrPres",
             "ImpPres",
+            "Fuente Cantidad",
+            "Fuente Precio",
+            "BC3 Origen",
         ]
 
         chapter_row = None
@@ -157,3 +160,46 @@ def test_budget_export_excel_falls_back_to_new_filename_when_target_is_locked(mo
             requested_output.unlink()
         for fallback_path in requested_output.parent.glob(f"{requested_output.stem}_*.xlsx"):
             fallback_path.unlink()
+
+
+def test_budget_export_excel_adds_quality_report_sheet_when_provided() -> None:
+    context, takeoffs, candidates = _sample_export_inputs()
+    _, _, rows = compose_budget_rows(context, takeoffs, candidates)
+    output_path = Path("tests") / "_budget_quality_sheet.xlsx"
+    if output_path.exists():
+        output_path.unlink()
+
+    quality_report = {
+        "discipline": "arquitectura",
+        "summary": {"total_elements": 2, "ok_count": 1, "warning_count": 0, "blocked_count": 1},
+        "issues": [
+            {
+                "status": "BLOCKED",
+                "code": "missing_space",
+                "discipline": "arquitectura",
+                "element_id": "wall_01",
+                "level_id": "level_01",
+                "unit_id": "level_01:unit_01",
+                "space_id": None,
+                "confidence_score": 0.4,
+                "message": "Elemento sin espacio/unidad asignable con evidencia suficiente.",
+                "evidence_refs": [],
+                "suggested_action": "Agregar etiquetas espaciales en plano.",
+            }
+        ],
+    }
+
+    try:
+        export_budget_workbook(context, rows, output_path, quality_report=quality_report)
+        workbook = load_workbook(output_path, data_only=False)
+        try:
+            assert "Quality_Report" in workbook.sheetnames
+            ws = workbook["Quality_Report"]
+            assert ws["A1"].value == "status"
+            assert ws["D2"].value == "wall_01"
+            assert ws["I2"].value == "Elemento sin espacio/unidad asignable con evidencia suficiente."
+        finally:
+            workbook.close()
+    finally:
+        if output_path.exists():
+            output_path.unlink()

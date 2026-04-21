@@ -4,6 +4,7 @@ import numpy as np
 
 from core.schemas import QuantityTakeoff, QuantityTrace
 from knowledge.bc3_embeddings import (
+    batch_search_bc3,
     build_bc3_embeddings,
     build_query_from_takeoff,
     load_or_build_embeddings,
@@ -23,6 +24,22 @@ def _fake_embed(texts: list[str]) -> np.ndarray:
             ]
         )
     return np.asarray(vectors, dtype=np.float32)
+
+
+def test_batch_search_bc3_matches_single_search(tmp_path: Path) -> None:
+    catalog = {
+        "items": [
+            {"code": "P0501101", "summary": "Pañete en muros interiores", "long_text": "", "unit": "m2", "price": 8.4},
+            {"code": "P1501004", "summary": "Puerta comercial aluminio", "long_text": "", "unit": "u", "price": 424.61},
+        ]
+    }
+    index = build_bc3_embeddings(catalog, embed_batch_fn=_fake_embed, cache_dir=tmp_path)
+    queries = ["pañete muros interiores", "puerta aluminio", ""]
+    batch = batch_search_bc3(queries, index, top_k=1, embed_batch_fn=_fake_embed)
+    assert len(batch) == 3
+    assert batch[2] == []
+    assert batch[0][0]["code"] == search_bc3(queries[0], index, top_k=1, embed_batch_fn=_fake_embed)[0]["code"]
+    assert batch[1][0]["code"] == search_bc3(queries[1], index, top_k=1, embed_batch_fn=_fake_embed)[0]["code"]
 
 
 def test_build_and_search_bc3_embeddings(tmp_path: Path) -> None:

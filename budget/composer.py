@@ -8,7 +8,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from collections import Counter
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 logger = logging.getLogger("dupla.composer")
 
@@ -25,10 +25,46 @@ from .chapter_rules import (
     ChapterSegment,
     build_budget_summary,
     chapter_path_for_takeoff,
+    chapter_path_from_bc3_catalog,
+    default_bc3_code_for_takeoff,
     select_strong_candidate,
 )
 
+from validation.discipline_inference import infer_source_discipline
+
+try:
+    from pricing.construcosto_loader import ConstrucostoSnapshot, find_best_price
+except ImportError:
+    ConstrucostoSnapshot = None  # type: ignore[assignment,misc]
+    find_best_price = None  # type: ignore[assignment]
+
 DATA_START_ROW = 4
+
+_QUANTITY_SOURCE_LABELS: dict[str, str] = {
+    "plan_measurement": "Medido",
+    "default_estimate": "Estimado (default)",
+    "mixed_measurement": "Mezclado (plano + default)",
+    "ratio_estimate": "Estimado (ratio)",
+}
+
+
+def _quantity_source_display(takeoff: QuantityTakeoff) -> str:
+    """Human-readable quantity provenance for Excel (B2)."""
+    meta = takeoff.trace.metadata
+    inputs = takeoff.inputs
+    raw = meta.get("quantity_source")
+    if raw is None:
+        raw = inputs.get("quantity_source")
+    note = meta.get("quantity_source_note") or inputs.get("quantity_source_note")
+    if raw is None or str(raw).strip() == "":
+        if note:
+            return str(note).strip()
+        return ""
+    key = str(raw).strip()
+    label = _QUANTITY_SOURCE_LABELS.get(key, key.replace("_", " "))
+    if key == "ratio_estimate" and note:
+        return f"{label}: {str(note).strip()}"
+    return label
 
 
 def _bc3_catalog_code_set(bc3_catalog: dict[str, Any]) -> set[str]:
@@ -108,37 +144,95 @@ def _guard_budget_candidate(
     return candidate, None
 
 
+def _bc3_fallback_price_label(concept: Mapping[str, Any] | None) -> str:
+    """BC3 price fallback label (Problema 3B): use catalog file name when available."""
+    origin = "catálogo"
+    if concept is not None:
+        origin = str(concept.get("bc3_origin") or "").strip() or "catálogo"
+    return f"BC3 {origin} (fallback)"
+
+
+def _line_bc3_origin(
+    candidate: BudgetCandidate | None,
+    bc3_catalog: dict[str, Any] | None,
+    resolved_code: str,
+) -> str:
+    if candidate and getattr(candidate, "bc3_origin", None):
+        o = str(candidate.bc3_origin).strip()
+        if o:
+            return o
+    code = str((candidate.bc3_code if candidate else "") or resolved_code or "").strip()
+    if not code or not bc3_catalog:
+        return ""
+    for it in bc3_catalog.get("items") or []:
+        if str(it.get("code", "")).strip() == code:
+            o = str(it.get("bc3_origin") or "").strip()
+            if o:
+                return o
+    c = bc3_catalog.get("concepts_by_code", {}).get(code, {})
+    return str(c.get("bc3_origin") or "").strip()
+
+
 def _extract_unit_price(
     candidate: BudgetCandidate | None,
     bc3_catalog: dict[str, Any] | None,
-) -> float | None:
-    """Extract unit price from a BC3 candidate.
+    *,
+    fallback_bc3_code: str | None = None,
+    construcosto_snapshot: Any | None = None,
+    summary: str = "",
+    unit: str = "",
+) -> tuple[float | None, str]:
+    """Resolve unit price: ConstruCosto (APU → materiales → equipos → mano de obra) then BC3; never BC3-first."""
+    summary_s = (summary or "").strip()
+    unit_s = (unit or "").strip()
 
-    Checks candidate.rationale first (GPT-4o classifier stores JSON there),
-    then falls back to a direct BC3 catalog lookup by code.
-    """
-    if candidate is None:
-        return None
+    if construcosto_snapshot is not None and find_best_price is not None and summary_s:
+        for sources, label in (
+            (frozenset({"analisis"}), "ConstruCosto APU Punta Cana"),
+            (frozenset({"materiales"}), "ConstruCosto Material Punta Cana"),
+            (frozenset({"equipos"}), "ConstruCosto Equipo Punta Cana"),
+            (frozenset({"mano_obra"}), "ConstruCosto Mano de obra Punta Cana"),
+        ):
+            match = find_best_price(
+                construcosto_snapshot,
+                summary_s,
+                unit_s,
+                allowed_sources=sources,
+            )
+            if match is not None and match.unit_price and match.unit_price > 0:
+                logger.debug(
+                    "ConstruCosto (%s) price for '%s': RD$%.2f (score=%.2f, matched='%s')",
+                    label,
+                    summary_s[:60],
+                    match.unit_price,
+                    match.score,
+                    match.entry.description[:60],
+                )
+                return float(match.unit_price), label
 
-    # GPT-4o classifier stores: rationale='{"unit_price": 12345.00, "match_type": "exacto"}'
-    rationale = getattr(candidate, "rationale", "") or ""
-    if rationale.startswith("{"):
-        try:
-            data = json.loads(rationale)
-            price = data.get("unit_price")
-            if price:
-                return float(price)
-        except (json.JSONDecodeError, ValueError, TypeError):
-            pass
-
-    # Fallback: look up price in BC3 catalog by code
-    if bc3_catalog and candidate.bc3_code:
+    if candidate is not None and bc3_catalog and candidate.bc3_code:
         concept = bc3_catalog.get("concepts_by_code", {}).get(candidate.bc3_code, {})
         price = concept.get("price")
         if price:
-            return float(price)
+            try:
+                p = float(price)
+                if p > 0:
+                    return p, _bc3_fallback_price_label(concept)
+            except (TypeError, ValueError):
+                pass
 
-    return None
+    if fallback_bc3_code and bc3_catalog:
+        concept = bc3_catalog.get("concepts_by_code", {}).get(fallback_bc3_code, {})
+        price = concept.get("price")
+        if price:
+            try:
+                p = float(price)
+                if p > 0:
+                    return p, _bc3_fallback_price_label(concept)
+            except (TypeError, ValueError):
+                pass
+
+    return None, "PRECIO_PENDIENTE"
 
 
 @dataclass
@@ -195,6 +289,7 @@ def takeoff_budget_eligibility(
     derived_from_keys: set[str],
     concrete_volume_prefixes: set[str],
     budget_inclusive: bool = True,
+    allowed_item_types: set[str] | None = None,
 ) -> tuple[bool, str]:
     """Whether this takeoff becomes a budget line, and a short reason if not."""
     item_type = takeoff.item_type.lower()
@@ -204,6 +299,9 @@ def takeoff_budget_eligibility(
 
     if item_type == "pres_reference_line":
         return True, ""
+
+    if allowed_item_types is not None and item_type not in allowed_item_types:
+        return False, "discipline_filter"
 
     always_skip = {
         "wall_gross_area",
@@ -294,12 +392,14 @@ def _budgetable_takeoff(
     derived_from_keys: set[str],
     concrete_volume_prefixes: set[str],
     budget_inclusive: bool = True,
+    allowed_item_types: set[str] | None = None,
 ) -> bool:
     ok, _reason = takeoff_budget_eligibility(
         takeoff,
         derived_from_keys=derived_from_keys,
         concrete_volume_prefixes=concrete_volume_prefixes,
         budget_inclusive=budget_inclusive,
+        allowed_item_types=allowed_item_types,
     )
     return ok
 
@@ -508,10 +608,14 @@ def compose_budget_rows(
     candidates_by_takeoff: dict[str, list[BudgetCandidate]],
     *,
     bc3_catalog: dict[str, Any] | None = None,
+    construcosto_snapshot: Any | None = None,
 ) -> tuple[list[BudgetChapter], list[BudgetLine], list[BudgetRow]]:
     takeoff_list = list(takeoffs)
     derived_from_keys, concrete_volume_prefixes = budget_filter_sets(takeoff_list)
     inclusive = _budget_inclusive_flag(context)
+
+    raw_allowed = context.metadata.get("allowed_item_types") if context.metadata else None
+    allowed_item_types: set[str] | None = set(raw_allowed) if raw_allowed else None
 
     prepared_lines: list[_PreparedLine] = []
     for takeoff in takeoff_list:
@@ -520,6 +624,7 @@ def compose_budget_rows(
             derived_from_keys=derived_from_keys,
             concrete_volume_prefixes=concrete_volume_prefixes,
             budget_inclusive=inclusive,
+            allowed_item_types=allowed_item_types,
         ):
             continue
 
@@ -533,10 +638,28 @@ def compose_budget_rows(
             bc3_catalog,
             context,
         )
+
+        meta = context.metadata or {}
+        if strong_candidate is not None:
+            effective_bc3 = strong_candidate.bc3_code.strip()
+        else:
+            fb = default_bc3_code_for_takeoff(takeoff)
+            effective_bc3 = fb.strip() if fb else ""
+
+        chapter_path = chapter_path_for_takeoff(takeoff)
+        if (
+            bc3_catalog
+            and meta.get("use_bc3_catalog_chapters")
+            and effective_bc3
+        ):
+            alt_path = chapter_path_from_bc3_catalog(bc3_catalog, effective_bc3)
+            if alt_path:
+                chapter_path = alt_path
+
         prepared_lines.append(
             _PreparedLine(
                 takeoff=takeoff,
-                chapter_path=chapter_path_for_takeoff(takeoff),
+                chapter_path=chapter_path,
                 summary=build_budget_summary(takeoff, strong_candidate),
                 candidate=strong_candidate,
                 bc3_guard_drop_reason=guard_reason,
@@ -563,11 +686,16 @@ def compose_budget_rows(
         leaf_chapter_id = _ensure_chapter_path(chapter_nodes, chapters, prepared.chapter_path)
         chapter_nodes[leaf_chapter_id].chapter.line_keys.append(prepared.takeoff.item_key)
 
+        deterministic_bc3_code: str | None = None
         if prepared.candidate is not None:
             line_code = prepared.candidate.bc3_code.strip()
         else:
-            line_code = f"DUP-{internal_code_counter:04d}"
-            internal_code_counter += 1
+            deterministic_bc3_code = default_bc3_code_for_takeoff(prepared.takeoff)
+            if deterministic_bc3_code:
+                line_code = deterministic_bc3_code
+            else:
+                line_code = f"DUP-{internal_code_counter:04d}"
+                internal_code_counter += 1
 
         line_metadata: dict[str, Any] = {
             "item_type": prepared.takeoff.item_type,
@@ -575,12 +703,28 @@ def compose_budget_rows(
             "line_id": f"BLINE-{line_index:04d}",
             "chapter_path": [segment.title for segment in prepared.chapter_path],
             "chapter_codes": [segment.code for segment in prepared.chapter_path],
+            "source_discipline": infer_source_discipline(prepared.takeoff, context),
             "candidate_summary": prepared.candidate.summary if prepared.candidate else None,
             "candidate_rationale": prepared.candidate.rationale if prepared.candidate else None,
+            "candidate_source": prepared.candidate.source if prepared.candidate else None,
             "trace_metadata": dict(prepared.takeoff.trace.metadata),
         }
         if prepared.bc3_guard_drop_reason:
             line_metadata["bc3_guard_drop_reason"] = prepared.bc3_guard_drop_reason
+
+        resolved_price, price_source = _extract_unit_price(
+            prepared.candidate,
+            bc3_catalog,
+            fallback_bc3_code=deterministic_bc3_code,
+            construcosto_snapshot=construcosto_snapshot,
+            summary=prepared.summary,
+            unit=prepared.takeoff.unit,
+        )
+        line_metadata["price_source"] = price_source
+        line_metadata["quantity_source_display"] = _quantity_source_display(prepared.takeoff)
+        line_metadata["bc3_origin"] = _line_bc3_origin(
+            prepared.candidate, bc3_catalog or {}, line_code
+        )
 
         budget_line = BudgetLine(
             line_id=f"BLINE-{line_index:04d}",
@@ -591,8 +735,8 @@ def compose_budget_rows(
             unit=prepared.takeoff.unit,
             summary=prepared.summary,
             quantity=prepared.takeoff.quantity,
-            unit_price=_extract_unit_price(prepared.candidate, bc3_catalog),
-            candidate_code=prepared.candidate.bc3_code if prepared.candidate else None,
+            unit_price=resolved_price,
+            candidate_code=prepared.candidate.bc3_code if prepared.candidate else deterministic_bc3_code,
             candidate_score=prepared.candidate.score if prepared.candidate else None,
             source_refs=list(prepared.takeoff.source_refs),
             assumptions=list(prepared.takeoff.assumptions),
@@ -621,6 +765,7 @@ def compose_budget(
     candidates_by_takeoff: dict[str, list[BudgetCandidate]],
     *,
     bc3_catalog: dict[str, Any] | None = None,
+    construcosto_snapshot: Any | None = None,
 ) -> dict[str, Any]:
     takeoff_list = list(takeoffs)
     derived_from_keys, concrete_volume_prefixes = budget_filter_sets(takeoff_list)
@@ -640,13 +785,28 @@ def compose_budget(
         logger.debug("Exclusion reasons: %s", diagnostics["excluded_by_reason"])
 
     chapters, lines, rows = compose_budget_rows(
-        context, takeoff_list, candidates_by_takeoff, bc3_catalog=bc3_catalog
+        context, takeoff_list, candidates_by_takeoff,
+        bc3_catalog=bc3_catalog,
+        construcosto_snapshot=construcosto_snapshot,
     )
     logger.info("Budget composed: %d chapters, %d lines, %d rows", len(chapters), len(lines), len(rows))
-    return {
+    payload: dict[str, Any] = {
         "project_context": context.to_dict(),
         "chapters": [chapter.to_dict() for chapter in chapters],
         "lines": [line.to_dict() for line in lines],
         "rows": [row.to_dict() for row in rows],
         "budget_diagnostics": diagnostics,
     }
+    if context.metadata.get("run_budget_validation"):
+        try:
+            from validation.budget_validator import run_budget_validation
+
+            payload["budget_validation"] = run_budget_validation(
+                lines,
+                takeoff_list,
+                bc3_catalog=bc3_catalog,
+                context=context,
+            ).to_dict()
+        except Exception:
+            logger.exception("run_budget_validation failed")
+    return payload
