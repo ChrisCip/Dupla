@@ -400,7 +400,12 @@ def load_training_corpus_from_folder(
     if not folder_path.is_dir():
         raise NotADirectoryError(f"Training folder not found: {folder_path}")
 
-    xlsx_paths = sorted(folder_path.glob(pattern))
+    # Use rglob for patterns that include ** (recursive), glob otherwise.
+    if "**" in pattern:
+        sub_pattern = pattern.lstrip("*").lstrip("/")
+        xlsx_paths = sorted(folder_path.rglob(sub_pattern))
+    else:
+        xlsx_paths = sorted(folder_path.glob(pattern))
     if not xlsx_paths:
         logger.warning("No XLSX files found in %s (pattern=%r)", folder_path, pattern)
         return []
@@ -431,7 +436,7 @@ def export_corpus_jsonl(
                     {
                         "role": "system",
                         "content": (
-                            "Eres un asistente de presupuesto de construccion dominicano. "
+                            "Eres un asistente de presupuesto de construcción dominicano. "
                             "Dado un tipo de elemento y contexto de nivel/disciplina, "
                             "devuelve el codigo BC3 correcto, descripcion, unidad y precio."
                         ),

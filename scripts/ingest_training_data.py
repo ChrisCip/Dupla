@@ -144,7 +144,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.folder:
         folder = (_REPO_ROOT / args.folder).resolve()
         logger.info("Scanning folder: %s (pattern=%r)", folder, args.pattern)
-        xlsx_paths = sorted(folder.glob(args.pattern))
+        # Use rglob for patterns containing '**', glob otherwise.
+        if "**" in args.pattern:
+            sub_pattern = args.pattern.lstrip("*").lstrip("/")
+            xlsx_paths = sorted(folder.rglob(sub_pattern))
+        else:
+            xlsx_paths = sorted(folder.glob(args.pattern))
         if not xlsx_paths:
             logger.error("No files matched %r in %s", args.pattern, folder)
             return 1

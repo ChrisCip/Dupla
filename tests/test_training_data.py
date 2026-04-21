@@ -111,7 +111,10 @@ def test_load_training_corpus_deduplicates_by_code_and_desc(tmp_path: Path) -> N
     corpus_all = load_training_corpus([path1, path2], deduplicate=False)
 
     assert len(corpus_dedup) < len(corpus_all)
-    assert len(corpus_dedup) == 4  # only unique (code, desc) pairs
+    # Deduped corpus must equal the number of unique (code, desc) pairs from one file
+    single_file_pairs = extract_training_pairs(path1)
+    unique_keys = {(p.output_bc3_code, p.output_description) for p in single_file_pairs}
+    assert len(corpus_dedup) == len(unique_keys)
 
 
 def test_load_training_corpus_skips_missing_files(tmp_path: Path) -> None:
