@@ -1,15 +1,23 @@
 """
 Training dataset extraction helpers from real completed budgets.
+
+Supports loading from:
+- A single PRES.xlsx file (backward-compatible API).
+- A folder of XLSX files (multi-project corpus from Dropbox).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+import logging
 from pathlib import Path
 import re
 from typing import Any
 
 from openpyxl import load_workbook
+
+logger = logging.getLogger("dupla.training_data")
 
 
 @dataclass
@@ -135,11 +143,13 @@ def _iter_budget_rows(xlsx_path: str | Path):
 
 
 def extract_training_pairs(xlsx_path: str | Path) -> list[TrainingPair]:
+    path = Path(xlsx_path)
+    source_name = path.name
     pairs: list[TrainingPair] = []
     current_level = "Sin Nivel"
     current_discipline = "Sin Disciplina"
 
-    for row in _iter_budget_rows(xlsx_path):
+    for row in _iter_budget_rows(path):
         nat = row["nat"]
         summary = row["summary"]
 
@@ -168,6 +178,7 @@ def extract_training_pairs(xlsx_path: str | Path) -> list[TrainingPair]:
                 output_unit=row["unit"],
                 output_quantity=row["quantity"],
                 output_price=row["price"],
+                source=source_name,
             )
         )
 
@@ -305,3 +316,150 @@ def generate_few_shot_examples(
         "puedes usar códigos que aparezcan en el catálogo BC3 proporcionado abajo."
     )
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Multi-source corpus loader
+# ---------------------------------------------------------------------------
+
+def load_training_corpus(
+    paths: list[str | Path],
+    *,
+    deduplicate: bool = True,
+) -> list[TrainingPair]:
+    """
+    Load and merge training pairs from multiple XLSX budget files.
+
+    Parameters
+    ----------
+    paths:
+        List of paths to XLSX files (e.g., multiple project budgets from Dropbox).
+        Non-existent paths are skipped with a warning.
+    deduplicate:
+        When True (default), removes pairs whose (code, description) combination
+        is already present from a previous file in the list.  This avoids
+        over-representing projects that appear in multiple formats.
+
+    Returns
+    -------
+    Merged list of ``TrainingPair`` instances, preserving insertion order.
+    """
+    merged: list[TrainingPair] = []
+    seen_keys: set[tuple[str, str]] = set()
+
+    for raw_path in paths:
+        path = Path(raw_path)
+        if not path.exists():
+            logger.warning("Training file not found, skipping: %s", path)
+            continue
+        try:
+            pairs = extract_training_pairs(path)
+            added = 0
+            for pair in pairs:
+                key = (pair.output_bc3_code.strip(), pair.output_description.strip())
+                if deduplicate and key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                merged.append(pair)
+                added += 1
+            logger.info(
+                "Loaded %d training pairs (%d new) from %s",
+                len(pairs), added, path.name,
+            )
+        except Exception:
+            logger.warning("Failed to load training pairs from %s", path, exc_info=True)
+
+    logger.info("Training corpus total: %d pairs from %d files", len(merged), len(paths))
+    return merged
+
+
+def load_training_corpus_from_folder(
+    folder: str | Path,
+    *,
+    pattern: str = "*.xlsx",
+    deduplicate: bool = True,
+) -> list[TrainingPair]:
+    """
+    Load training pairs from all XLSX files found in ``folder``.
+
+    Parameters
+    ----------
+    folder:
+        Directory to scan (non-recursive by default via ``pattern``).
+        Use ``**/*.xlsx`` for a recursive scan.
+    pattern:
+        Glob pattern used to locate files inside ``folder``.
+    deduplicate:
+        Forwarded to ``load_training_corpus``.
+
+    Returns
+    -------
+    Merged list of ``TrainingPair`` instances.
+    """
+    folder_path = Path(folder)
+    if not folder_path.is_dir():
+        raise NotADirectoryError(f"Training folder not found: {folder_path}")
+
+    xlsx_paths = sorted(folder_path.glob(pattern))
+    if not xlsx_paths:
+        logger.warning("No XLSX files found in %s (pattern=%r)", folder_path, pattern)
+        return []
+
+    logger.info(
+        "Scanning %s for training data (%d files matched %r)",
+        folder_path, len(xlsx_paths), pattern,
+    )
+    return load_training_corpus(xlsx_paths, deduplicate=deduplicate)
+
+
+def export_corpus_jsonl(
+    training_pairs: list[TrainingPair],
+    output_path: str | Path,
+) -> Path:
+    """
+    Export training pairs to a JSONL file suitable for fine-tuning or offline analysis.
+
+    Each line is a JSON object with the fine-tuning message format used by
+    ``FeedbackStore.export_for_fine_tuning``.
+    """
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", encoding="utf-8") as handle:
+        for pair in training_pairs:
+            record = {
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "Eres un asistente de presupuesto de construccion dominicano. "
+                            "Dado un tipo de elemento y contexto de nivel/disciplina, "
+                            "devuelve el codigo BC3 correcto, descripcion, unidad y precio."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"item_type={pair.input_item_type}\n"
+                            f"unit={pair.input_unit}\n"
+                            f"context={pair.input_context}"
+                        ),
+                    },
+                    {
+                        "role": "assistant",
+                        "content": json.dumps(
+                            {
+                                "bc3_code": pair.output_bc3_code,
+                                "description": pair.output_description,
+                                "unit": pair.output_unit,
+                                "quantity": pair.output_quantity,
+                                "price": pair.output_price,
+                            },
+                            ensure_ascii=False,
+                        ),
+                    },
+                ],
+                "metadata": {"source": pair.source},
+            }
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    logger.info("Exported %d training pairs to %s", len(training_pairs), out)
+    return out

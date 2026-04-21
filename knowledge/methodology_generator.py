@@ -13,12 +13,48 @@ from typing import Any
 
 from knowledge.training_data import TrainingPair
 
+# Canonical discipline names mapped from common free-text variations found in PRES files.
+_DISCIPLINE_ALIASES: dict[str, str] = {
+    "arquitectura": "Arquitectura",
+    "arquit": "Arquitectura",
+    "estructura": "Estructura",
+    "estructural": "Estructura",
+    "hormigon armado": "Estructura",
+    "hormigón armado": "Estructura",
+    "electrico": "Eléctrico",
+    "eléctrico": "Eléctrico",
+    "instalaciones electricas": "Eléctrico",
+    "instalaciones eléctricas": "Eléctrico",
+    "sanitario": "Sanitario",
+    "instalaciones sanitarias": "Sanitario",
+    "plomeria": "Sanitario",
+    "plomería": "Sanitario",
+    "pisos": "Pisos",
+    "puertas": "Puertas y Ventanas",
+    "ventanas": "Puertas y Ventanas",
+    "movimiento de tierras": "Movimiento de Tierras",
+    "cimentacion": "Cimentación",
+    "cimentación": "Cimentación",
+    "pintura": "Pintura",
+    "acabados": "Acabados",
+}
+
+
+def _normalize_discipline(raw: str) -> str:
+    """Return a canonical discipline label or the raw value if unknown."""
+    lowered = raw.strip().lower()
+    for alias, canonical in _DISCIPLINE_ALIASES.items():
+        if alias in lowered:
+            return canonical
+    return raw.strip() or "General"
+
 
 def _discipline_summary(pairs: list[TrainingPair]) -> dict[str, list[TrainingPair]]:
     by_disc: dict[str, list[TrainingPair]] = defaultdict(list)
     for p in pairs:
         _, _, disc = p.input_context.partition("|")
-        by_disc[disc.strip() or "General"].append(p)
+        canonical = _normalize_discipline(disc)
+        by_disc[canonical].append(p)
     return dict(by_disc)
 
 
@@ -75,12 +111,28 @@ def generate_methodology_context(
     training_pairs: list[TrainingPair] | None = None,
     bc3_catalog: dict[str, Any] | None = None,
     *,
+    discipline: str | None = None,
     max_chars: int = 10000,
 ) -> str:
     """
     Build a compact Spanish methodology block from existing project data.
 
-    Returns empty string when no data is available.
+    Parameters
+    ----------
+    training_pairs:
+        Budget lines from one or more completed PRES.xlsx files.
+    bc3_catalog:
+        Parsed BC3 catalog dict (from ``processors.bc3_parser.parse_bc3``).
+    discipline:
+        Optional discipline filter (e.g. ``"Arquitectura"``, ``"Eléctrico"``).
+        When provided, PRES detail examples are limited to that discipline so
+        the vision prompt stays focused on the plan type being analyzed.
+    max_chars:
+        Maximum character length of the returned text block.
+
+    Returns
+    -------
+    Empty string when no data is available.
     """
     sections: list[str] = []
 
@@ -90,8 +142,12 @@ def generate_methodology_context(
     if not has_pres and not has_bc3:
         return ""
 
+    disc_label = ""
+    if discipline:
+        disc_label = f" — disciplina: {discipline}"
+
     sections.append(
-        "CONTEXTO AUTOMÁTICO (generado del PRES y BC3 del proyecto de referencia).\n"
+        f"CONTEXTO AUTOMÁTICO (generado del PRES y BC3 del proyecto de referencia{disc_label}).\n"
         "Úsalo para entender el NIVEL DE DETALLE y las DISCIPLINAS que el presupuestista espera.\n"
         "NO copies cantidades de aquí — solo el criterio de desglose."
     )
@@ -126,10 +182,24 @@ def generate_methodology_context(
             f"Unidades usadas: {', '.join(f'{u} ({c})' for u, c in unit_counts.most_common(10))}"
         )
 
-        detail_lines = _pres_detail_examples(disc_map, max_per_disc=5)
-        if detail_lines:
-            sections.append("\nDesglose por disciplina (ejemplos reales de partidas):")
-            sections.extend(detail_lines)
+        # When a discipline filter is active, highlight only that discipline's examples.
+        if discipline:
+            canonical = _normalize_discipline(discipline)
+            # Try exact match first, then fuzzy substring match.
+            filtered_disc_map = {
+                k: v for k, v in disc_map.items()
+                if k == canonical or canonical.lower() in k.lower()
+            }
+            display_map = filtered_disc_map if filtered_disc_map else disc_map
+            detail_lines = _pres_detail_examples(display_map, max_per_disc=8)
+            if detail_lines:
+                sections.append(f"\nDesglose para '{discipline}' (ejemplos reales de partidas):")
+                sections.extend(detail_lines)
+        else:
+            detail_lines = _pres_detail_examples(disc_map, max_per_disc=5)
+            if detail_lines:
+                sections.append("\nDesglose por disciplina (ejemplos reales de partidas):")
+                sections.extend(detail_lines)
 
         sections.append(
             "\nREGLA: el nivel de desglose de arriba es lo MÍNIMO que debes extraer del plano. "

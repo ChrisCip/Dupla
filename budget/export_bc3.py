@@ -122,10 +122,14 @@ def export_budget_bc3(
         )
         chapter_codes.append(ch_code)
 
+    emitted_line_codes: set[str] = set()
     for row in coerced_rows:
         if row.row_type != "line":
             continue
         code = _sanitize_code(row.code)
+        if code in emitted_line_codes:
+            continue
+        emitted_line_codes.add(code)
         unit = _escape_bc3(row.unit or "")
         summary = _escape_bc3(row.summary or "")
 
@@ -151,16 +155,26 @@ def export_budget_bc3(
         if not child_lines:
             continue
 
-        children_tokens = "\\".join(
-            f"{_sanitize_code(line.code)}\\1.000\\1.000"
-            for line in child_lines
-        )
+        seen_child_codes: set[str] = set()
+        unique_child_tokens: list[str] = []
+        for line in child_lines:
+            line_code = _sanitize_code(line.code)
+            if line_code not in seen_child_codes:
+                seen_child_codes.add(line_code)
+                unique_child_tokens.append(f"{line_code}\\1.000\\1.000")
+
+        if not unique_child_tokens:
+            continue
+        children_tokens = "\\".join(unique_child_tokens)
         records.append(f"~D|{ch_code}#|{children_tokens}\\|")
 
+    emitted_measurement_codes: set[str] = set()
     for row in coerced_rows:
         if row.row_type != "line":
             continue
         code = _sanitize_code(row.code)
+        if code in emitted_measurement_codes:
+            continue
 
         qty = row.quantity
         if isinstance(qty, str) and qty.startswith("="):
@@ -173,6 +187,7 @@ def export_budget_bc3(
         except (TypeError, ValueError):
             continue
 
+        emitted_measurement_codes.add(code)
         takeoff_key = row.takeoff_key or ""
         summary_line = _escape_bc3(takeoff_key[:60]) if takeoff_key else _escape_bc3(row.summary[:60])
 

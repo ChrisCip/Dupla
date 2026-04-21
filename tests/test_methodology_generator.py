@@ -34,6 +34,16 @@ def _sample_pairs() -> list[TrainingPair]:
             output_quantity=20.37,
             output_price=42.32,
         ),
+        TrainingPair(
+            input_item_type="fixture_count",
+            input_unit="u",
+            input_context="NIVEL 5 | INSTALACIONES ELÉCTRICAS",
+            output_bc3_code="E0101001",
+            output_description="Tomacorriente doble 120V",
+            output_unit="u",
+            output_quantity=12.0,
+            output_price=25.0,
+        ),
     ]
 
 
@@ -93,3 +103,25 @@ def test_truncates_when_over_limit() -> None:
     text = generate_methodology_context(training_pairs=pairs, max_chars=500)
     assert len(text) <= 600
     assert "truncado" in text.lower()
+
+
+def test_discipline_filter_focuses_on_matching_discipline() -> None:
+    pairs = _sample_pairs()
+    text_all = generate_methodology_context(training_pairs=pairs)
+    text_elec = generate_methodology_context(training_pairs=pairs, discipline="Eléctrico")
+
+    # Filtered context should mention the discipline
+    assert "Eléctrico" in text_elec or "INSTALACIONES ELÉCTRICAS" in text_elec.upper()
+    # Electrical items should appear in filtered view
+    assert "Tomacorriente" in text_elec
+
+    # Global context always lists all disciplines
+    assert "Disciplinas encontradas" in text_all
+
+
+def test_discipline_filter_label_in_header() -> None:
+    text = generate_methodology_context(
+        training_pairs=_sample_pairs(),
+        discipline="Arquitectura",
+    )
+    assert "Arquitectura" in text
