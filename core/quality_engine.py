@@ -45,9 +45,9 @@ def _evaluate_element(element: SemanticElement, *, discipline: str) -> QualityIs
                 suggested_action="Agregar etiquetas espaciales si se requiere mayor granularidad.",
             )
         return QualityIssue(
-            status="BLOCKED",
+            status="WARNING",
             code="missing_space",
-            message="Elemento sin espacio/unidad asignable con evidencia suficiente.",
+            message="Elemento sin espacio/unidad asignable con evidencia suficiente; se conserva para cuantificación con trazabilidad parcial.",
             discipline=discipline,
             element_id=element.element_id,
             level_id=element.level_id,
@@ -55,7 +55,7 @@ def _evaluate_element(element: SemanticElement, *, discipline: str) -> QualityIs
             confidence_score=confidence,
             evidence_refs=list(element.evidence_refs),
             raw_entity_ids=list(element.raw_entity_ids),
-            suggested_action="Agregar etiquetas/refs espaciales en planos o capas.",
+            suggested_action="Agregar etiquetas/refs espaciales en planos o capas para elevar la confianza.",
         )
     if confidence < 0.75:
         return QualityIssue(

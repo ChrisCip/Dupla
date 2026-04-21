@@ -93,6 +93,7 @@ from disciplines.domain_validator import (
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.methodology_generator import generate_methodology_context
 from knowledge.training_data import extract_training_pairs
+from analysis.day1_prep import build_day1_artifacts
 from processors.bc3_parser import merge_bc3_catalogs, parse_bc3
 from processors.json_processor import process_autodesk_json
 
@@ -211,6 +212,10 @@ def process_discipline(
     files: dict[str, str],
     run_dir: RunOutputDir,
     shared: dict[str, Any],
+    *,
+    day1_prep_enabled: bool = False,
+    day1_pres_path: str | None = None,
+    day1_holdout_limit: int = 40,
 ) -> dict[str, Any]:
     """Process a single discipline end-to-end. Returns summary dict."""
     t0 = time.time()
@@ -359,6 +364,19 @@ def process_discipline(
     )
     logger.info("[%s] BC3: %s", disc_id, bc3_path)
 
+    day1_prep: dict[str, Any] | None = None
+    if day1_prep_enabled and day1_pres_path:
+        try:
+            day1_prep = build_day1_artifacts(
+                day1_pres_path,
+                run_dir.day1_prep_dir(disc_id),
+                generated_path=excel_path,
+                holdout_limit=day1_holdout_limit,
+            )
+            logger.info("[%s] Day 1 prep written: %s", disc_id, day1_prep.get("report_path", ""))
+        except Exception as exc:
+            logger.warning("[%s] Day 1 prep failed, continuing: %s", disc_id, exc, exc_info=True)
+
     # --- Save budget JSON ---
     budget_json_path = run_dir.discipline_budget_json(disc_id)
     budget_json_path.write_text(
@@ -383,6 +401,7 @@ def process_discipline(
         "budget_chapters": budget_chapters,
         "excel": str(excel_path),
         "bc3": str(bc3_path),
+        "day1_prep": day1_prep,
     }
 
 
@@ -395,6 +414,18 @@ def main() -> None:
     parser.add_argument("--only", type=str, help="Run only this discipline")
     parser.add_argument("--resume", action="store_true", help="Resume from run_state.json")
     parser.add_argument("--skip-aps", action="store_true", help="Skip APS extraction, PDF only")
+    parser.add_argument("--day1-prep", action="store_true", help="Write Day 1 prep artifacts per discipline")
+    parser.add_argument(
+        "--day1-pres",
+        default=str(REPO_ROOT / "data" / "PRES.xlsx"),
+        help="PRES.xlsx source used for Day 1 prep artifacts",
+    )
+    parser.add_argument(
+        "--day1-holdout-limit",
+        type=int,
+        default=40,
+        help="Maximum Day 1 holdout examples sampled from PRES",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -505,7 +536,15 @@ def main() -> None:
         save_run_state(run_dir, state)
 
         try:
-            result = process_discipline(disc_id, DISCIPLINES[disc_id], run_dir, shared)
+            result = process_discipline(
+                disc_id,
+                DISCIPLINES[disc_id],
+                run_dir,
+                shared,
+                day1_prep_enabled=args.day1_prep,
+                day1_pres_path=args.day1_pres,
+                day1_holdout_limit=args.day1_holdout_limit,
+            )
             state[disc_id] = result
         except Exception as exc:
             logger.error("DISCIPLINE %s FAILED: %s", disc_id.upper(), exc, exc_info=True)

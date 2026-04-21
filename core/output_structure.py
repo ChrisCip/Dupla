@@ -76,6 +76,9 @@ class RunOutputDir:
     def discipline_missing_attrs(self, discipline_id: str) -> Path:
         return self.discipline_dir(discipline_id) / f"missing_attributes_{discipline_id}.txt"
 
+    def day1_prep_dir(self, discipline_id: str) -> Path:
+        return self.discipline_dir(discipline_id) / "day1_prep"
+
     @property
     def consolidado_dir(self) -> Path:
         d = self.root / "consolidado"
