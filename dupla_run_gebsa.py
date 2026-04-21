@@ -35,20 +35,20 @@ PROJECT_ID = "gebsa_iv"
 
 DISCIPLINES: dict[str, dict[str, str]] = {
     "arquitectura": {
-        "pdf": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\TERMINACIONES GEBSA PDF\prueba dupla full.pdf",
-        "dwg": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\DISEÑOS GEBSA DWG\2- PLANTAS ARQUITECTONICAS.dwg",
+        "pdf": r"C:\Users\jimif\Downloads\DUPLA GEBSA\prueba dupla full.pdf",
+        "dwg": r"C:\Users\jimif\Downloads\DUPLA GEBSA\2- PLANTAS ARQUITECTONICAS.dwg",
     },
     "estructura": {
-        "pdf": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\ESTRUCTURAL GEBSA PDF\full gebsa estructural.pdf",
-        "dwg": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\DISEÑOS GEBSA DWG\ESTRUCTURA GEBSA IV.dwg",
+        "pdf": r"C:\Users\jimif\Downloads\DUPLA GEBSA\full gebsa estructural.pdf",
+        "dwg": r"C:\Users\jimif\Downloads\DUPLA GEBSA\ESTRUCTURA GEBSA IV.dwg",
     },
     "electrico": {
-        "pdf": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\ELECTRICOS GEBSA PDF\electrico gebsa full.pdf",
-        "dwg": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\DISEÑOS GEBSA DWG\GEBSA IV- EL01 definitivos1 FINAL.dwg",
+        "pdf": r"C:\Users\jimif\Downloads\DUPLA GEBSA\electrico gebsa full.pdf",
+        "dwg": r"C:\Users\jimif\Downloads\DUPLA GEBSA\GEBSA IV- EL01 definitivos1 FINAL.dwg",
     },
     "sanitario": {
-        "pdf": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\SANITARIOS GEBSA PDF\sanitario full pdf gebsa.pdf",
-        "dwg": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\DISEÑOS GEBSA DWG\SANITARIAS FINAL ODELIN.dwg",
+        "pdf": r"C:\Users\jimif\Downloads\DUPLA GEBSA\sanitario full pdf gebsa.pdf",
+        "dwg": r"C:\Users\jimif\Downloads\DUPLA GEBSA\SANITARIAS FINAL ODELIN.dwg",
     },
 }
 
@@ -58,7 +58,7 @@ BC3_PATH = r"data\GIV00001 (1).bc3"
 XLSX_TRAINING_PATH = r"data\PRES.xlsx"
 OFFICE_METHODOLOGY_PATH = r"knowledge\office_methodology.md"
 
-OUTPUTS_DIR = r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\output"
+OUTPUTS_DIR = r"C:\Users\jimif\Downloads\DUPLA GEBSA\output"
 
 TRANSLATION_VIEWS = ("2d",)
 TRANSLATION_TIMEOUT_SECONDS = 3600

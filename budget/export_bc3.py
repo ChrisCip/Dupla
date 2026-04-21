@@ -229,8 +229,9 @@ def export_budget_bc3(
                 _collect_component_tree(child_code)
 
         if tokens:
+            joined_tokens = "\\".join(tokens)
             apu_decomp_records.append(
-                f"~D|{parent_code}|{'\\'.join(tokens)}\\|"
+                f"~D|{parent_code}|{joined_tokens}\\|"
             )
 
     for row in coerced_rows:
@@ -269,7 +270,8 @@ def export_budget_bc3(
             child_tokens.append(f"{_sanitize_code(line.code)}\\1\\1")
 
         if child_tokens:
-            records.append(f"~D|{ch_code}#|{'\\'.join(child_tokens)}\\|")
+            joined_child_tokens = "\\".join(child_tokens)
+            records.append(f"~D|{ch_code}#|{joined_child_tokens}\\|")
 
     # ==================== APU ~D records (partida → components) ====================
     records.extend(apu_decomp_records)
