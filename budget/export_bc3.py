@@ -182,10 +182,14 @@ def export_budget_bc3(
     emitted_codes: set[str] = {root_code}
     emitted_codes.update(chapter_code_map.values())
 
+    emitted_line_codes: set[str] = set()
     for row in coerced_rows:
         if row.row_type != "line":
             continue
         code = _sanitize_code(row.code)
+        if code in emitted_line_codes:
+            continue
+        emitted_line_codes.add(code)
         unit = _escape_bc3(row.unit or "")
         summary = _escape_bc3(row.summary or "")
         price_value = row.unit_price
@@ -234,6 +238,7 @@ def export_budget_bc3(
                 f"~D|{parent_code}|{joined_tokens}\\|"
             )
 
+    emitted_measurement_codes: set[str] = set()
     for row in coerced_rows:
         if row.row_type != "line":
             continue
