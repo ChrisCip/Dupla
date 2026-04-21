@@ -190,11 +190,19 @@ def generate_methodology_context(
                 k: v for k, v in disc_map.items()
                 if k == canonical or canonical.lower() in k.lower()
             }
-            display_map = filtered_disc_map if filtered_disc_map else disc_map
-            detail_lines = _pres_detail_examples(display_map, max_per_disc=8)
-            if detail_lines:
-                sections.append(f"\nDesglose para '{discipline}' (ejemplos reales de partidas):")
-                sections.extend(detail_lines)
+            if filtered_disc_map:
+                detail_lines = _pres_detail_examples(filtered_disc_map, max_per_disc=8)
+                if detail_lines:
+                    sections.append(f"\nDesglose para '{discipline}' (ejemplos reales de partidas):")
+                    sections.extend(detail_lines)
+            else:
+                detail_lines = _pres_detail_examples(disc_map, max_per_disc=8)
+                if detail_lines:
+                    sections.append(
+                        f"\nNo se encontró una disciplina coincidente para '{discipline}'. "
+                        "Se muestra el desglose global por disciplina (ejemplos reales de partidas):"
+                    )
+                    sections.extend(detail_lines)
         else:
             detail_lines = _pres_detail_examples(disc_map, max_per_disc=5)
             if detail_lines:
