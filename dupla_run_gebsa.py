@@ -94,6 +94,7 @@ from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.methodology_generator import generate_methodology_context
 from knowledge.training_data import extract_training_pairs
 from analysis.day1_prep import build_day1_artifacts
+from analysis.day2_prep import build_day2_dataset_artifacts
 from processors.bc3_parser import merge_bc3_catalogs, parse_bc3
 from processors.json_processor import process_autodesk_json
 
@@ -216,6 +217,10 @@ def process_discipline(
     day1_prep_enabled: bool = False,
     day1_pres_path: str | None = None,
     day1_holdout_limit: int = 40,
+    day2_prep_enabled: bool = False,
+    day2_pres_paths: list[str] | None = None,
+    day2_validation_limit: int = 40,
+    day2_min_source_quality: float = 0.75,
 ) -> dict[str, Any]:
     """Process a single discipline end-to-end. Returns summary dict."""
     t0 = time.time()
@@ -377,6 +382,19 @@ def process_discipline(
         except Exception as exc:
             logger.warning("[%s] Day 1 prep failed, continuing: %s", disc_id, exc, exc_info=True)
 
+    day2_prep: dict[str, Any] | None = None
+    if day2_prep_enabled and day2_pres_paths:
+        try:
+            day2_prep = build_day2_dataset_artifacts(
+                day2_pres_paths,
+                run_dir.day2_prep_dir(disc_id),
+                validation_limit=day2_validation_limit,
+                min_source_quality=day2_min_source_quality,
+            )
+            logger.info("[%s] Day 2 dataset written: %s", disc_id, day2_prep.get("report_path", ""))
+        except Exception as exc:
+            logger.warning("[%s] Day 2 dataset failed, continuing: %s", disc_id, exc, exc_info=True)
+
     # --- Save budget JSON ---
     budget_json_path = run_dir.discipline_budget_json(disc_id)
     budget_json_path.write_text(
@@ -402,6 +420,7 @@ def process_discipline(
         "excel": str(excel_path),
         "bc3": str(bc3_path),
         "day1_prep": day1_prep,
+        "day2_prep": day2_prep,
     }
 
 
@@ -425,6 +444,25 @@ def main() -> None:
         type=int,
         default=40,
         help="Maximum Day 1 holdout examples sampled from PRES",
+    )
+    parser.add_argument("--day2-prep", action="store_true", help="Write Day 2 dataset artifacts per discipline")
+    parser.add_argument(
+        "--day2-pres",
+        action="append",
+        default=None,
+        help="PRES.xlsx source used for Day 2 dataset artifacts (repeat to add multiple)",
+    )
+    parser.add_argument(
+        "--day2-validation-limit",
+        type=int,
+        default=40,
+        help="Maximum Day 2 validation examples sampled from PRES",
+    )
+    parser.add_argument(
+        "--day2-min-source-quality",
+        type=float,
+        default=0.75,
+        help="Minimum source quality score required for each Day 2 PRES source",
     )
     args = parser.parse_args()
 
@@ -544,6 +582,10 @@ def main() -> None:
                 day1_prep_enabled=args.day1_prep,
                 day1_pres_path=args.day1_pres,
                 day1_holdout_limit=args.day1_holdout_limit,
+                day2_prep_enabled=args.day2_prep,
+                day2_pres_paths=(args.day2_pres or [str(REPO_ROOT / "data" / "PRES.xlsx")]),
+                day2_validation_limit=args.day2_validation_limit,
+                day2_min_source_quality=args.day2_min_source_quality,
             )
             state[disc_id] = result
         except Exception as exc:

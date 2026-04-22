@@ -96,31 +96,56 @@ def _normalize(text: str) -> str:
     return lowered
 
 
-def _is_level_name(text: str) -> bool:
-    normalized = _normalize(text)
-    return any(pattern.search(normalized) for pattern in _LEVEL_PATTERNS)
+def _compact(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", _normalize(text))
 
 
-def _infer_item_type(summary: str) -> str:
-    normalized = _normalize(summary)
-    for keywords, item_type in _ITEM_TYPE_HINTS:
-        if any(keyword in normalized for keyword in keywords):
-            return item_type
-    return "generic_construction_item"
+def _header_role(value: Any) -> str | None:
+    token = _compact(_safe_str(value))
+    if token in {"codigo", "cdigo", "code"} or token.endswith("digo"):
+        return "code"
+    if token in {"nat", "naturaleza"}:
+        return "nat"
+    if token in {"resumen", "resume", "summary"}:
+        return "summary"
+    if token in {"ud", "unidad", "unit"}:
+        return "unit"
+    if token in {"canpres", "cantidad", "qty", "quantity"}:
+        return "quantity"
+    if token in {"prpres", "pres", "precio", "price"}:
+        return "price"
+    if token in {"imppres", "importe", "amount"}:
+        return "amount"
+    return None
 
 
-def _iter_budget_rows(xlsx_path: str | Path):
-    workbook = load_workbook(filename=str(xlsx_path), data_only=True)
-    sheet = workbook[workbook.sheetnames[0]]
-    # Header starts on row 3 in the known PRES format.
-    for row in sheet.iter_rows(min_row=4, values_only=True):
-        code = _safe_str(row[0] if len(row) > 0 else None)
-        nat = _safe_str(row[1] if len(row) > 1 else None)
-        unit = _safe_str(row[2] if len(row) > 2 else None)
-        summary = _safe_str(row[3] if len(row) > 3 else None)
-        quantity = _safe_float(row[4] if len(row) > 4 else None)
-        price = _safe_float(row[5] if len(row) > 5 else None)
-        amount = _safe_float(row[6] if len(row) > 6 else None)
+def _iter_sheet_budget_rows(sheet):
+    header_row: int | None = None
+    header_map: dict[str, int] = {}
+
+    for row_index in range(1, min(sheet.max_row, 20) + 1):
+        row_values = [sheet.cell(row_index, col_index).value for col_index in range(1, min(sheet.max_column, 12) + 1)]
+        roles: dict[str, int] = {}
+        for col_index, value in enumerate(row_values, start=1):
+            role = _header_role(value)
+            if role and role not in roles:
+                roles[role] = col_index
+        if {"code", "nat", "summary"}.issubset(roles):
+            header_row = row_index
+            header_map = roles
+            break
+
+    if header_row is None:
+        return
+
+    for row_index in range(header_row + 1, sheet.max_row + 1):
+        code = _safe_str(sheet.cell(row_index, header_map.get("code", 1)).value)
+        nat = _safe_str(sheet.cell(row_index, header_map.get("nat", 2)).value)
+        summary = _safe_str(sheet.cell(row_index, header_map.get("summary", 3)).value)
+        unit = _safe_str(sheet.cell(row_index, header_map.get("unit", 4)).value)
+        quantity = _safe_float(sheet.cell(row_index, header_map.get("quantity", 5)).value)
+        price = _safe_float(sheet.cell(row_index, header_map.get("price", 6)).value)
+        amount = _safe_float(sheet.cell(row_index, header_map.get("amount", 7)).value)
         if not any((code, nat, unit, summary)):
             continue
         yield {
@@ -134,42 +159,57 @@ def _iter_budget_rows(xlsx_path: str | Path):
         }
 
 
+def _is_level_name(text: str) -> bool:
+    normalized = _normalize(text)
+    return any(pattern.search(normalized) for pattern in _LEVEL_PATTERNS)
+
+
+def _infer_item_type(summary: str) -> str:
+    normalized = _normalize(summary)
+    for keywords, item_type in _ITEM_TYPE_HINTS:
+        if any(keyword in normalized for keyword in keywords):
+            return item_type
+    return "generic_construction_item"
+
+
 def extract_training_pairs(xlsx_path: str | Path) -> list[TrainingPair]:
     pairs: list[TrainingPair] = []
-    current_level = "Sin Nivel"
-    current_discipline = "Sin Disciplina"
 
-    for row in _iter_budget_rows(xlsx_path):
-        nat = row["nat"]
-        summary = row["summary"]
+    workbook = load_workbook(filename=str(xlsx_path), data_only=True)
+    for sheet in workbook.worksheets:
+        current_level = "Sin Nivel"
+        current_discipline = "Sin Disciplina"
+        for row in _iter_sheet_budget_rows(sheet):
+            nat = row["nat"]
+            summary = row["summary"]
 
-        if "cap" in nat:
-            if _is_level_name(summary):
-                current_level = summary
-                current_discipline = "General"
-            else:
-                current_discipline = summary or current_discipline
-            continue
+            if "cap" in nat:
+                if _is_level_name(summary):
+                    current_level = summary
+                    current_discipline = "General"
+                else:
+                    current_discipline = summary or current_discipline
+                continue
 
-        if "partida" not in nat:
-            continue
-        if not row["code"] or not summary:
-            continue
+            if "partida" not in nat:
+                continue
+            if not row["code"] or not summary:
+                continue
 
-        inferred_type = _infer_item_type(summary)
-        context = f"{current_level} | {current_discipline}"
-        pairs.append(
-            TrainingPair(
-                input_item_type=inferred_type,
-                input_unit=row["unit"],
-                input_context=context,
-                output_bc3_code=row["code"],
-                output_description=summary,
-                output_unit=row["unit"],
-                output_quantity=row["quantity"],
-                output_price=row["price"],
+            inferred_type = _infer_item_type(summary)
+            context = f"{current_level} | {current_discipline}"
+            pairs.append(
+                TrainingPair(
+                    input_item_type=inferred_type,
+                    input_unit=row["unit"],
+                    input_context=context,
+                    output_bc3_code=row["code"],
+                    output_description=summary,
+                    output_unit=row["unit"],
+                    output_quantity=row["quantity"],
+                    output_price=row["price"],
+                )
             )
-        )
 
     return pairs
 

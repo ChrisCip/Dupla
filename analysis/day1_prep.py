@@ -218,6 +218,9 @@ def build_day1_artifacts(
         )
 
     if comparison is not None:
+        real_disciplines = sorted(comparison.get("real_disciplines") or [])
+        generated_disciplines = sorted(comparison.get("generated_disciplines") or [])
+        missing_disciplines = sorted(set(real_disciplines) - set(generated_disciplines))
         report_lines.extend(
             [
                 "",
@@ -230,6 +233,12 @@ def build_day1_artifacts(
                 f"- Matched codes: {len(comparison['matching_codes'])}",
                 f"- Generated partidas: {len(comparison['generated_partidas'])}",
                 f"- Real partidas: {len(comparison['real_partidas'])}",
+                "",
+                "### Semantic family overlap",
+                "",
+                f"- Generated families: {', '.join(generated_disciplines) or '—'}",
+                f"- Real families: {', '.join(real_disciplines) or '—'}",
+                f"- Missing families vs real: {', '.join(missing_disciplines) or '—'}",
             ]
         )
     else:

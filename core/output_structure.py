@@ -79,6 +79,9 @@ class RunOutputDir:
     def day1_prep_dir(self, discipline_id: str) -> Path:
         return self.discipline_dir(discipline_id) / "day1_prep"
 
+    def day2_prep_dir(self, discipline_id: str) -> Path:
+        return self.discipline_dir(discipline_id) / "day2_prep"
+
     @property
     def consolidado_dir(self) -> Path:
         d = self.root / "consolidado"

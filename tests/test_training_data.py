@@ -28,6 +28,23 @@ def _write_sample_pres(path: Path) -> None:
     workbook.save(path)
 
 
+def _write_sample_nasas(path: Path) -> None:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "NASAS"
+    sheet.append([None, None, None, None, None, None, None, None])
+    sheet.append([None, None, None, None, None, None, None, None])
+    sheet.append([None, None, None, None, None, None, None, None])
+    sheet.append([None, None, None, None, None, None, None, None])
+    sheet.append([None, None, None, None, None, None, None, None])
+    sheet.append(["C�digo", "Nat", "Resumen", "Resume", "CanPres", "Ud", "Pres", "ImpPres"])
+    sheet.append(["NAS-9.1", "Capítulo", "COSTOS DIRECTOS", "DIRECT COSTS", 1, "UD", 915627.85, 915627.85])
+    sheet.append(["1.00", "Capítulo", "Trabajos preliminares", "Preliminary Works", 1, "UD", 9292.49, 9292.49])
+    sheet.append(["1.01", "Partida", "Fumigación", "Fumigation (foundations)", 2868.89, " M2", 1.5, 4303.34])
+    sheet.append(["1.02", "Partida", "Limpieza del solar", "Lot cleaning", 1794.66, " M2", 2.78, 4989.15])
+    workbook.save(path)
+
+
 def test_extract_training_pairs_builds_structured_pairs(tmp_path: Path) -> None:
     pres_path = tmp_path / "PRES.xlsx"
     _write_sample_pres(pres_path)
@@ -40,6 +57,18 @@ def test_extract_training_pairs_builds_structured_pairs(tmp_path: Path) -> None:
     assert "SEMISOTANO" in pairs[0].input_context
     assert pairs[2].input_item_type == "wall_finish_plaster"
     assert pairs[3].input_item_type == "floor_finish"
+
+
+def test_extract_training_pairs_parses_nasas_format(tmp_path: Path) -> None:
+    pres_path = tmp_path / "NASAS.xlsx"
+    _write_sample_nasas(pres_path)
+
+    pairs = extract_training_pairs(pres_path)
+
+    assert len(pairs) == 2
+    assert pairs[0].output_bc3_code == "1.01"
+    assert pairs[0].input_unit.strip() == "M2"
+    assert "Trabajos preliminares" in pairs[0].input_context
 
 
 def test_extract_level_templates_groups_repeated_signatures(tmp_path: Path) -> None:
