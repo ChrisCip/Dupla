@@ -2,10 +2,10 @@
 Vision agent for normalized building inventory extraction.
 
 Two-step approach:
-1. GPT-4o Vision returns a simple flat count of visible elements.
+1. The configured vision model (default: gpt-5.1 via OPENAI_VISION_MODEL) returns a simple flat count of visible elements.
 2. Python adapter converts that simple inventory to the full LevelInventory schema.
 
-This avoids asking GPT-4o to fill a complex 15-field schema, which causes it to
+This avoids asking the model to fill a complex 15-field schema, which causes it to
 return mostly null/empty data. The simpler prompt produces useful counts.
 """
 
@@ -21,12 +21,21 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from .vision_profiles import get_vision_profile
 from core.schemas import LevelInventory, level_inventory_from_dict
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
+# Vision Chat Completions (.env overrides):
+#   OPENAI_VISION_MODEL — default gpt-5.1 (e.g. gpt-5.1-2025-11-13 for a snapshot)
+#   OPENAI_VISION_MAX_OUTPUT — max output tokens (default 4096)
+#   OPENAI_VISION_REASONING_EFFORT — gpt-5.x only: none | low | medium | high (default none)
+#   OPENAI_VISION_TEMPERATURE — gpt-4 family only (default 0.1)
+
 logger = logging.getLogger("dupla.vision")
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+_DEFAULT_VISION_MODEL = "gpt-5.1"
 
 try:
     from openai import OpenAI
@@ -44,6 +53,59 @@ def get_client() -> "OpenAI":
     if not api_key:
         raise ValueError("OPENAI_API_KEY is not configured in the project .env file.")
     return OpenAI(api_key=api_key)
+
+
+def vision_model_id(explicit: str | None = None) -> str:
+    """Resolved vision model id (OPENAI_VISION_MODEL or default gpt-5.1)."""
+    if explicit is not None:
+        s = explicit.strip()
+        return s or _DEFAULT_VISION_MODEL
+    raw = (os.getenv("OPENAI_VISION_MODEL") or "").strip()
+    return raw or _DEFAULT_VISION_MODEL
+
+
+def _vision_max_output_tokens() -> int:
+    raw = (os.getenv("OPENAI_VISION_MAX_OUTPUT") or "4096").strip()
+    try:
+        n = int(raw)
+    except ValueError:
+        return 4096
+    return max(256, min(n, 128_000))
+
+
+def _vision_reasoning_effort() -> str:
+    return (os.getenv("OPENAI_VISION_REASONING_EFFORT") or "none").strip() or "none"
+
+
+def _uses_gpt5_completion_params(model: str) -> bool:
+    return model.lower().startswith("gpt-5")
+
+
+def _vision_chat_completion(
+    client: "OpenAI",
+    *,
+    model: str,
+    messages: list[dict[str, Any]],
+) -> Any:
+    """Chat Completions with kwargs compatible with GPT-5.x vs GPT-4 family."""
+    max_out = _vision_max_output_tokens()
+    if _uses_gpt5_completion_params(model):
+        return client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_completion_tokens=max_out,
+            reasoning_effort=_vision_reasoning_effort(),
+        )
+    try:
+        temp = float((os.getenv("OPENAI_VISION_TEMPERATURE") or "0.1").strip() or "0.1")
+    except ValueError:
+        temp = 0.1
+    return client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=max_out,
+        temperature=temp,
+    )
 
 
 def encode_image(image_path: Path) -> str:
@@ -84,7 +146,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Step 1: Simple prompt — GPT-4o counts visible elements
+# Step 1: Simple prompt — vision model counts visible elements
 # ---------------------------------------------------------------------------
 
 _MAX_OFFICE_METHODOLOGY_CHARS = 12000
@@ -102,13 +164,16 @@ REGLAS OBLIGATORIAS:
 3. Si ves "B-6" o "bloque 6" = espesor 0.15m (6 pulgadas). "B-8" = 0.20m. "B-4" = 0.10m.
 4. Notaciones tipo "e=0.20" o "esp. 0.15" = espesor en metros.
 5. Si ves cotas entre líneas de nivel (NPT+0.00, NPT+2.80) = altura de entrepiso.
-6. CADA tipo diferente de elemento va en una entrada separada. No agrupes bloques de 6 con bloques de 8.
-7. Extrae ABSOLUTAMENTE TODO lo visible: estructura, albañilería, acabados, instalaciones eléctricas, sanitarias, carpintería.
+6. CADA tipo diferente de elemento va en una entrada separada. No agrupes bloques de 6 con bloques de 8. Para MUROS: una fila en `walls` por combinación distinta de wall_typology / espesor / material (ej. C1 bloque 6" vs C2 bloque 4"); no fusiones áreas de tipos distintos en un solo objeto.
+7. En planos ARQUITECTÓNICOS prioriza: albañilería, acabados, carpintería, pisos, cielos. En planos ESTRUCTURALES prioriza: structural_elements (rotulos C1/V1, tablas, secciones) y NO diluyas el JSON con muros de acabado salvo que estén cotados en esa misma hoja.
 8. Para baños: cuenta CADA pieza sanitaria (inodoro, lavamanos, ducha, bañera, bidet, gabinete).
 9. Para cocinas: identifica gabinetes, fregaderos, conexiones de gas si son visibles.
 10. Para instalaciones eléctricas: tomacorrientes, interruptores, luminarias, paneles, salidas especiales.
 11. Para instalaciones sanitarias: tuberías visibles, registros, trampas, válvulas, puntos de agua.
 12. Identifica el TIPO DE PLANO: arquitectónico, estructural, eléctrico, sanitario, corte, elevación, detalle.
+13. PLANO ARQUITECTÓNICO: NO cuantifiques volúmenes de hormigón, peso de acero ni encofrado. Si ves rotulos C1/V1 en planta, puedes listarlos en structural_elements como referencia ligera (sección si está cotada en esa misma hoja), pero NO inventes armados ni tablas que no aparezcan.
+14. PLANO ESTRUCTURAL (o hoja de cuadro de columnas/vigas): prioridad ABSOLUTA a structural_elements. Copia el ROTULO exacto del plano (C1, C2, V1…). Lee sección (0.30x0.60, etc.) y f'c / hormigón SOLO si aparece en esta imagen o en una tabla visible. Si el armado o el despiece NO está en esta hoja, pon reinforcement_visible=false y missing_detail_sheets=true; NO inventes estribos ni diámetros.
+15. Si una celda de tabla está ilegible o recortada, deja el campo en null y explica en annotations_and_notes.
 
 Return ONLY valid JSON — no markdown, no explanation, no text."""
 
@@ -119,6 +184,9 @@ _SIMPLE_SCHEMA_HINT = """{
   "floor_to_floor_height_m": <number or null>,
   "walls": [
     {"id": "descriptive label (e.g. muro_ext_bloque8, muro_int_bloque6, muro_concreto)",
+     "wall_typology": "<rotulo del plano si existe: C1, C2, PERIMETRO, etc.; null si no aplica>",
+     "tipo": "<opcional: sinónimo de wall_typology si el plano usa solo \"tipo\"; null>",
+     "ubicacion": "<ejes, niveles, zonas o null>",
      "material": "block_6in|block_8in|block_4in|concrete|drywall|wood|other",
      "location": "interior|exterior",
      "estimated_length_m": <number>,
@@ -132,6 +200,7 @@ _SIMPLE_SCHEMA_HINT = """{
   ],
   "doors": [
     {"id": "descriptive (e.g. puerta_principal, puerta_interior_madera)",
+     "label": "<texto en plano ej 'Polimetalica 0.90x2.10'; null si no>",
      "type": "main_entry|interior|service|bathroom|closet|garage|sliding|folding|other",
      "material": "wood|metal|aluminum|pvc|glass|other",
      "count": <integer>,
@@ -142,6 +211,7 @@ _SIMPLE_SCHEMA_HINT = """{
   ],
   "windows": [
     {"id": "descriptive (e.g. ventana_corrediza_aluminio)",
+     "label": "<texto en plano; null si no>",
      "type": "sliding|fixed|casement|jalousie|louver|awning|other",
      "material": "aluminum|wood|pvc|steel|other",
      "glazing": "clear|tinted|frosted|double|other",
@@ -188,7 +258,7 @@ _SIMPLE_SCHEMA_HINT = """{
      "railing_material": "metal|wood|glass|other|null"}
   ],
   "structural_elements": [
-    {"id": "notation if visible (e.g. V-1, C-1, L-1, Z-1) or descriptive",
+    {"id": "ROTULO exacto del plano (ej: C1, C-1, V3) — misma grafía que la cota/leyenda",
      "type": "column|beam|slab|footing|shear_wall|lintel|tie_beam",
      "count": <integer>,
      "section_width_m": <number or null>,
@@ -198,7 +268,13 @@ _SIMPLE_SCHEMA_HINT = """{
      "span_m": <number or null>,
      "material": "concrete|steel|masonry|other",
      "concrete_grade": "fc_210|fc_250|fc_280|null",
-     "has_reinforcement": true}
+     "has_reinforcement": true/false,
+     "reinforcement_visible": <true si en ESTA imagen se ven barras/estribos o nota de armado; false si no>,
+     "spec_source": "schedule_table|detail_callout|dimension_on_plan|legend_only|unknown",
+     "schedule_row_text": "<texto literal de la fila de tabla si aplica, o null>",
+     "missing_detail_sheets": <true si falta despiece/tablas para cuantificar acero>,
+     "ubicacion": "<ejes/niveles/zonas o null>",
+     "notes": "<breve nota de evidencia o null>"}
   ],
   "floor_finishes": [
     {"id": "descriptive (e.g. piso_porcelanato_sala, piso_ceramica_bano)",
@@ -214,12 +290,14 @@ _SIMPLE_SCHEMA_HINT = """{
   ],
   "electrical": [
     {"id": "descriptive",
+     "label": "<leyenda exacta si aparece (voltaje, fases); null si no>",
      "type": "outlet_110v|outlet_220v|switch_single|switch_double|switch_triple|switch_dimmer|luminaire_ceiling|luminaire_wall|luminaire_recessed|panel_breaker|intercom|doorbell|data_outlet|tv_outlet|phone_outlet|smoke_detector|emergency_light|fan_connection|ac_connection|other",
      "count": <integer>,
      "location": "description or null"}
   ],
   "plumbing": [
     {"id": "descriptive",
+     "label": "<leyenda exacta si aparece; null si no>",
      "type": "water_supply_point|drain_point|vent_pipe|cleanout|floor_drain|water_heater_connection|washing_machine_connection|hose_bib|valve|water_meter|cistern|pump|other",
      "count": <integer>,
      "pipe_diameter_in": <number or null>,
@@ -228,6 +306,7 @@ _SIMPLE_SCHEMA_HINT = """{
   ],
   "fixtures": [
     {"id": "descriptive",
+     "label": "<texto visible en plano o leyenda, ej 'Inodoro ECO', 'Salida tomacorriente doble 110V'; null si no hay>",
      "type": "toilet|sink|shower_base|bathtub|bidet|urinal|laundry_sink|kitchen_sink|water_heater|pump|other",
      "count": <integer>,
      "brand_or_quality": "standard|premium|economy|null"}
@@ -245,22 +324,6 @@ _SIMPLE_SCHEMA_HINT = """{
 }"""
 
 
-def _compose_vision_system_prompt(vision_profile_key: str | None) -> tuple[str, str]:
-    """
-    Prompt de sistema = base (metodología + reglas RD) + foco opcional por disciplina.
-    El JSON pedido al modelo sigue siendo siempre `_SIMPLE_SCHEMA_HINT` para alinear el adaptador.
-    """
-    profile = get_vision_profile(vision_profile_key)
-    base = _SIMPLE_SYSTEM_PROMPT.strip()
-    addon = (profile.focus_addon or "").strip()
-    if not addon:
-        return base, profile.key
-    return (
-        f"{base}\n\nENFOQUE POR DISCIPLINA ({profile.key}):\n{addon}",
-        profile.key,
-    )
-
-
 def _detect_view_type(image_path: Path) -> str:
     name = image_path.name.lower()
     if "elev" in name or "fach" in name or "alzado" in name:
@@ -270,6 +333,52 @@ def _detect_view_type(image_path: Path) -> str:
     if "planta" in name or "floor" in name or "page" in name:
         return "plan"
     return "unknown"
+
+
+# Cuando el runner ya sabe la disciplina (carpetas GEBSA: arquitectura, estructura, …),
+# ese contexto manda sobre heurísticas de nombres de capa.
+# CLI / metadata pueden usar nombres canónicos (-a); prompts y capas GEBSA usan -o/-ura.
+_UPLOAD_DISCIPLINE_ALIASES: dict[str, str] = {
+    "arquitectonica": "arquitectura",
+    "estructural": "estructura",
+    "electrica": "electrico",
+    "sanitaria": "sanitario",
+}
+
+
+_UPLOAD_DISCIPLINE_PROMPT: dict[str, str] = {
+    "arquitectura": (
+        "CONTEXTO DE SUBIDA (prioridad): esta corrida es ARQUITECTURA / terminaciones. "
+        "Usa plan_type=architectural si la hoja es planta arquitectónica, alzados, acabados o instalaciones "
+        "dibujadas en arquitectura. No reclasifiques la disciplina solo por capas CAD que suenen "
+        "estructurales (pueden ser XREF o fondo). structural_elements solo como referencia ligera según reglas."
+    ),
+    "estructura": (
+        "CONTEXTO DE SUBIDA (prioridad): esta corrida es ESTRUCTURA. "
+        "Prioriza structural_elements (rotulos C1, V1, tablas de columnas/vigas, secciones, f'c visible). "
+        "Si falta armado en la imagen, missing_detail_sheets=true sin inventar."
+    ),
+    "electrico": (
+        "CONTEXTO DE SUBIDA (prioridad): esta corrida es INSTALACIONES ELÉCTRICAS. "
+        "Completa el array electrical con conteos; plan_type puede ser electrical."
+    ),
+    "sanitario": (
+        "CONTEXTO DE SUBIDA (prioridad): esta corrida es INSTALACIONES SANITARIAS / plomería. "
+        "Completa plumbing y fixtures; plan_type puede ser plumbing."
+    ),
+}
+
+
+def _cad_suggests_structural(cad_summary: dict[str, Any]) -> bool:
+    """True si capas o nombres del resumen CAD parecen plano estructural (Gebsa / genérico)."""
+    hints = cad_summary.get("inventory_hints") or {}
+    layers = [str(x).lower() for x in (hints.get("layer_names") or [])]
+    blob = " ".join(layers)
+    markers = (
+        "colum", "column", "viga", "beam", "estruct", "struct", "concret", "hormig",
+        "refuerz", "armad", "despiece", "detalle", "elev", "fund",
+    )
+    return any(m in blob for m in markers)
 
 
 def format_cad_facts_for_prompt(cad_summary: dict[str, Any]) -> str:
@@ -316,12 +425,83 @@ def format_cad_facts_for_prompt(cad_summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+_COERCIBLE_VISION_LIST_KEYS: tuple[str, ...] = (
+    "walls",
+    "doors",
+    "windows",
+    "structural_elements",
+    "wet_areas",
+    "kitchens",
+    "stairs",
+    "electrical",
+    "plumbing",
+    "fixtures",
+    "floor_finishes",
+    "ceiling_finishes",
+    "exterior_works",
+    "annotations_and_notes",
+)
+
+
+def _coerce_vision_list(value: Any) -> list[Any]:
+    """Vision sometimes nests lists as {\"items\": [...]}; normalize to a flat list."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict):
+        for key in ("items", "tipos", "types", "rows", "elements", "entries"):
+            inner = value.get(key)
+            if isinstance(inner, list):
+                return inner
+        return [value]
+    return []
+
+
+def _normalize_simple_inventory_lists(simple: dict[str, Any]) -> dict[str, Any]:
+    out = dict(simple)
+    for key in _COERCIBLE_VISION_LIST_KEYS:
+        if key in out:
+            out[key] = _coerce_vision_list(out[key])
+    return out
+
+
+def _substitute_discipline_prompt_placeholders(
+    template: str,
+    *,
+    view_type: str,
+    level_name: str,
+    methodology_block: str,
+    cad_hints: str,
+    upload_block: str,
+    schema_text: str,
+) -> str:
+    """Replace {placeholders} in user_prompt.md without interpreting JSON braces in schema."""
+    text = template.replace("{view_type}", view_type)
+    text = text.replace("{level_name}", level_name)
+    text = text.replace("{methodology_block}", methodology_block)
+    text = text.replace("{upload_block}", upload_block)
+    text = text.replace("{cad_hints}", cad_hints)
+    text = text.replace("{schema}", schema_text)
+    return text
+
+
+def _discipline_prompt_md_path(upload_discipline_id: str | None) -> Path | None:
+    uid_raw = (upload_discipline_id or "").strip().lower()
+    if not uid_raw:
+        return None
+    uid = _UPLOAD_DISCIPLINE_ALIASES.get(uid_raw, uid_raw)
+    path = _REPO_ROOT / "knowledge" / "prompts" / uid / "user_prompt.md"
+    return path if path.is_file() else None
+
+
 def _build_simple_user_prompt(
     image_path: Path,
     level_name: str,
     cad_summary: dict[str, Any],
     *,
     office_methodology: str | None = None,
+    upload_discipline_id: str | None = None,
 ) -> str:
     view_type = _detect_view_type(image_path)
     cad_hints = format_cad_facts_for_prompt(cad_summary)
@@ -342,16 +522,49 @@ def _build_simple_user_prompt(
 
 """
 
+    upload_block = ""
+    uid_raw = (upload_discipline_id or "").strip().lower()
+    uid = _UPLOAD_DISCIPLINE_ALIASES.get(uid_raw, uid_raw)
+    if uid:
+        hint = _UPLOAD_DISCIPLINE_PROMPT.get(uid, "")
+        if hint:
+            upload_block = f"{hint}\n\n"
+
+    structural_cad_hint = ""
+    # Solo sugerimos estructura por capas si el usuario NO fijó ya una disciplina distinta.
+    if uid not in {"arquitectura", "electrico", "sanitario"} and _cad_suggests_structural(cad_summary):
+        structural_cad_hint = (
+            "\nNOTA (CAD): el resumen de capas sugiere contenido estructural — prioriza CUADROS/TABLAS, "
+            "rotulos (C1, V1…) y leyendas de hormigón si encajan con lo visible en la imagen.\n"
+        )
+
+    cad_hints_combined = cad_hints + structural_cad_hint
+
+    md_path = _discipline_prompt_md_path(upload_discipline_id)
+    if md_path is not None:
+        try:
+            template = md_path.read_text(encoding="utf-8")
+            if template.strip():
+                logger.info("Vision user prompt: using discipline template %s", md_path)
+                return _substitute_discipline_prompt_placeholders(
+                    template,
+                    view_type=view_type,
+                    level_name=level_name,
+                    methodology_block=methodology_block,
+                    cad_hints=cad_hints_combined,
+                    upload_block=upload_block,
+                    schema_text=_SIMPLE_SCHEMA_HINT,
+                ).strip()
+        except OSError as exc:
+            logger.warning("Could not read discipline prompt %s: %s — using built-in prompt.", md_path, exc)
+
     return f"""ANALIZA este plano ({view_type}) del nivel: {level_name}
 
-{methodology_block}DATOS DEL CAD (úsalos para verificar y complementar lo que ves):
-{cad_hints}
-
+{methodology_block}{upload_block}DATOS DEL CAD (úsalos para verificar y complementar lo que ves):
+{cad_hints_combined}
 INSTRUCCIONES DE EXTRACCIÓN EXHAUSTIVA:
 
-1. ESTRUCTURA: Busca cuadros de columnas/vigas/zapatas/losas. Lee CADA notación 
-   (V-1, C-1, Z-1, L-1) con su sección (ancho x alto). Si ves "0.30x0.60" cerca 
-   de una viga, esa es la sección. Cuenta CADA elemento individualmente.
+1. ESTRUCTURA: Si el plano es ARQUITECTÓNICO, las columnas/vigas visibles van en structural_elements solo como referencia (sección si está en la hoja); no inventes armados. Si el plano es ESTRUCTURAL o un CUADRO/TABLA de columnas-vigas, llena structural_elements con máximo detalle: id = rotulo del dibujo (C1, C-1…), spec_source, schedule_row_text si hay tabla, reinforcement_visible según lo que veas; si falta despiece de acero, missing_detail_sheets=true.
 
 2. MUROS: Diferencia CADA tipo: bloque 6" (B-6, 0.15m), bloque 8" (B-8, 0.20m), 
    concreto armado (muro cortante), drywall. Mide longitudes de las cotas o estima 
@@ -403,7 +616,9 @@ def _simple_to_level_inventory(
     level_id: str,
     image_name: str,
 ) -> dict[str, Any]:
-    """Convert GPT-4o simple inventory output to a LevelInventory-compatible dict."""
+    """Convert simple vision JSON inventory to a LevelInventory-compatible dict."""
+    simple = _normalize_simple_inventory_lists(simple)
+    page_slug = Path(image_name).stem  # e.g. "page_0001"
 
     _BLOCK_THICKNESS: dict[str, float] = {
         "block_6in": 0.15, "block_8in": 0.20, "block_4in": 0.10,
@@ -429,6 +644,9 @@ def _simple_to_level_inventory(
             wall_system = "drywall_partition"
 
         wall_id = w.get("id") or f"vis-wall-{i:02d}"
+        wall_typology = (
+            (w.get("wall_typology") or w.get("tipo") or w.get("type_label") or "").strip() or None
+        )
         walls.append(
             {
                 "id": wall_id,
@@ -438,6 +656,7 @@ def _simple_to_level_inventory(
                 "assumptions": ["Dimensions extracted from plan analysis."],
                 "inputs": {
                     "raw": w,
+                    "wall_typology": wall_typology,
                     "finish_interior": w.get("finish_interior"),
                     "finish_exterior": w.get("finish_exterior"),
                     "original_material_code": raw_material,
@@ -465,19 +684,29 @@ def _simple_to_level_inventory(
     doors: list[dict[str, Any]] = []
     for i, d in enumerate(simple.get("doors") or [], 1):
         count = d.get("count")
+        door_id_raw = str(d.get("id") or "").strip()
+        door_id = (
+            door_id_raw
+            if door_id_raw and not door_id_raw.lower().startswith("vis-door-")
+            else f"vis-door-{i:02d}"
+        )
         doors.append(
             {
-                "id": f"vis-door-{i:02d}",
+                "id": door_id,
                 "source": "vision",
                 "source_layers": [],
                 "source_refs": [f"vision:{image_name}:door_{i}"],
                 "assumptions": [],
-                "inputs": {"raw": d},
+                "inputs": {
+                    "raw": d,
+                    "door_label": (d.get("label") or "").strip() or None,
+                },
                 "conflict_notes": [],
                 "count": int(count) if count is not None else 1,
                 "width_m": d.get("width_m"),
                 "height_m": d.get("height_m"),
                 "type_hint": d.get("type"),
+                "material_hint": d.get("material"),
                 "confidence": 0.70,
                 "evidence": [
                     f"Counted from plan image: type={d.get('type')}, count={d.get('count')}."
@@ -488,14 +717,23 @@ def _simple_to_level_inventory(
     windows: list[dict[str, Any]] = []
     for i, w in enumerate(simple.get("windows") or [], 1):
         count = w.get("count")
+        win_id_raw = str(w.get("id") or "").strip()
+        win_id = (
+            win_id_raw
+            if win_id_raw and not win_id_raw.lower().startswith("vis-window-")
+            else f"vis-window-{i:02d}"
+        )
         windows.append(
             {
-                "id": f"vis-window-{i:02d}",
+                "id": win_id,
                 "source": "vision",
                 "source_layers": [],
                 "source_refs": [f"vision:{image_name}:window_{i}"],
                 "assumptions": [],
-                "inputs": {"raw": w},
+                "inputs": {
+                    "raw": w,
+                    "window_label": (w.get("label") or "").strip() or None,
+                },
                 "conflict_notes": [],
                 "count": int(count) if count is not None else 1,
                 "width_m": w.get("width_m"),
@@ -571,24 +809,42 @@ def _simple_to_level_inventory(
         etype = e.get("type") or "other"
         raw_count = e.get("count")
         material = e.get("material") or ("concrete" if etype in {"column", "beam", "slab", "footing", "shear_wall", "lintel", "tie_beam"} else None)
-        notation = e.get("id") or ""
-        elem_id = notation if notation and not notation.startswith("vis-") else f"vis-{etype}-{i:02d}"
+        notation = str(e.get("id") or e.get("tipo") or e.get("label") or "").strip()
+        elem_id = notation if notation and not notation.lower().startswith("vis-") else f"vis-{etype}-{i:02d}"
 
         concrete_grade = e.get("concrete_grade")
         concrete_grade_hint = None
         if concrete_grade and concrete_grade != "null":
             concrete_grade_hint = concrete_grade.replace("fc_", "fc'=").replace("_", " ")
 
+        reinf_visible = e.get("reinforcement_visible")
+        missing_sheets = bool(e.get("missing_detail_sheets"))
+        assumptions: list[str] = []
+        if missing_sheets:
+            assumptions.append(
+                "Armado o despiece no visible en esta imagen: no inferir acero desde Vision sola."
+            )
+        if reinf_visible is False and (e.get("has_reinforcement") or material == "concrete"):
+            assumptions.append(
+                "Hormigón/refuerzo asumido por tipo de elemento; detalle de armado no legible en la hoja."
+            )
+
         structural_elements.append(
             {
                 "id": elem_id,
                 "source": "vision",
                 "source_refs": [f"vision:{image_name}:{etype}_{i}"],
-                "assumptions": [],
+                "assumptions": assumptions,
                 "inputs": {
                     "raw": e,
                     "notation": notation,
+                    "structural_label": notation or None,
                     "concrete_grade_raw": concrete_grade,
+                    "spec_source": e.get("spec_source"),
+                    "schedule_row_text": e.get("schedule_row_text"),
+                    "reinforcement_visible": reinf_visible,
+                    "missing_detail_sheets": missing_sheets,
+                    "notes": e.get("notes"),
                 },
                 "conflict_notes": [],
                 "element_type": etype if etype not in {"shear_wall", "lintel", "tie_beam"} else "other",
@@ -605,7 +861,8 @@ def _simple_to_level_inventory(
                 "evidence": [
                     f"Structural element from plan: notation={notation}, type={etype}, "
                     f"section={e.get('section_width_m')}x{e.get('section_height_m')}m, "
-                    f"material={material}, count={raw_count}."
+                    f"material={material}, count={raw_count}, "
+                    f"spec_source={e.get('spec_source')}, reinforcement_visible={reinf_visible}."
                 ],
             }
         )
@@ -615,16 +872,18 @@ def _simple_to_level_inventory(
         count = f_item.get("count")
         fixtures.append(
             {
-                "id": f"vis-fixture-{i:02d}",
+                "id": f"{page_slug}-fixture-{i:02d}",
                 "source": "vision",
                 "source_refs": [f"vision:{image_name}:fixture_{i}"],
                 "assumptions": [],
-                "inputs": {"raw": f_item},
+                "inputs": {
+                    "raw": f_item,
+                    "fixture_label": (f_item.get("label") or "").strip() or None,
+                },
                 "conflict_notes": [],
                 "fixture_type": f_item.get("type") or "other",
                 "count": int(count) if count is not None else 1,
                 "unit": "unit",
-                "confidence": 0.65,
                 "evidence": [f"Counted from plan image: type={f_item.get('type')}."],
             }
         )
@@ -635,17 +894,20 @@ def _simple_to_level_inventory(
         count = e.get("count")
         extra_fixtures.append(
             {
-                "id": f"vis-elec-{i:02d}",
+                "id": f"{page_slug}-elec-{i:02d}",
                 "source": "vision",
                 "source_refs": [f"vision:{image_name}:elec_{i}"],
                 "assumptions": [],
-                "inputs": {"raw": e, "discipline": "electrical"},
+                "inputs": {
+                    "raw": e,
+                    "discipline": "electrical",
+                    "fixture_label": (e.get("label") or "").strip() or None,
+                },
                 "conflict_notes": [],
                 "fixture_type": e.get("type") or "electrical_other",
                 "count": int(count) if count is not None else 1,
                 "unit": "unit",
                 "location_hint": e.get("location"),
-                "confidence": 0.65,
                 "evidence": [f"Electrical element from plan: type={e.get('type')}, count={count}."],
             }
         )
@@ -654,13 +916,14 @@ def _simple_to_level_inventory(
         count = p.get("count")
         extra_fixtures.append(
             {
-                "id": f"vis-plumb-{i:02d}",
+                "id": f"{page_slug}-plumb-{i:02d}",
                 "source": "vision",
                 "source_refs": [f"vision:{image_name}:plumb_{i}"],
                 "assumptions": [],
                 "inputs": {
                     "raw": p,
                     "discipline": "plumbing",
+                    "fixture_label": (p.get("label") or "").strip() or None,
                     "pipe_diameter_in": p.get("pipe_diameter_in"),
                     "pipe_material": p.get("material"),
                 },
@@ -669,7 +932,6 @@ def _simple_to_level_inventory(
                 "count": int(count) if count is not None else 1,
                 "unit": "unit",
                 "location_hint": p.get("location"),
-                "confidence": 0.60,
                 "evidence": [f"Plumbing element from plan: type={p.get('type')}, count={count}."],
             }
         )
@@ -678,7 +940,7 @@ def _simple_to_level_inventory(
         qty = ext.get("quantity")
         extra_fixtures.append(
             {
-                "id": f"vis-ext-{i:02d}",
+                "id": f"{page_slug}-ext-{i:02d}",
                 "source": "vision",
                 "source_refs": [f"vision:{image_name}:ext_{i}"],
                 "assumptions": [],
@@ -693,7 +955,6 @@ def _simple_to_level_inventory(
                 "count": int(qty) if qty is not None else 1,
                 "unit": ext.get("unit") or "unit",
                 "location_hint": ext.get("id"),
-                "confidence": 0.55,
                 "evidence": [f"Exterior work from plan: type={ext.get('type')}."],
             }
         )
@@ -808,7 +1069,7 @@ def analyze_plan(
     level_name: str,
     *,
     office_methodology: str | None = None,
-    vision_profile_key: str | None = None,
+    upload_discipline_id: str | None = None,
 ) -> dict[str, Any]:
     client = get_client()
     image_path = Path(image_path).resolve()
@@ -819,38 +1080,33 @@ def analyze_plan(
     extension = image_path.suffix.lower().replace(".", "")
     mime = f"image/{extension}" if extension in {"png", "jpg", "jpeg", "webp"} else "image/png"
 
-    system_prompt, profile_key = _compose_vision_system_prompt(vision_profile_key)
-
-    # Step 1: Ask GPT-4o to return a simple flat inventory
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": _build_simple_user_prompt(
-                            image_path,
-                            level_name,
-                            cad_summary,
-                            office_methodology=office_methodology,
-                        ),
+    model = vision_model_id()
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": _SIMPLE_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": _build_simple_user_prompt(
+                        image_path,
+                        level_name,
+                        cad_summary,
+                        office_methodology=office_methodology,
+                        upload_discipline_id=upload_discipline_id,
+                    ),
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{mime};base64,{image_b64}",
+                        "detail": "high",
                     },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:{mime};base64,{image_b64}",
-                            "detail": "high",
-                        },
-                    },
-                ],
-            },
-        ],
-        max_tokens=4096,
-        temperature=0.1,
-    )
+                },
+            ],
+        },
+    ]
+    response = _vision_chat_completion(client, model=model, messages=messages)
 
     raw_text = response.choices[0].message.content or ""
     simple_payload = _extract_json(raw_text)
@@ -862,7 +1118,7 @@ def analyze_plan(
             "_metadata": {
                 "file": image_path.name,
                 "timestamp": datetime.now().isoformat(),
-                "vision_profile": profile_key,
+                "model": model,
             },
         }
 
@@ -879,7 +1135,8 @@ def analyze_plan(
         "file": image_path.name,
         "timestamp": datetime.now().isoformat(),
         "office_methodology_chars": len(office_methodology or ""),
-        "vision_profile": profile_key,
+        "model": model,
+        "upload_discipline_id": upload_discipline_id,
     }
     return result
 
@@ -889,7 +1146,7 @@ def run_full_vision_analysis(
     cad_summary: dict[str, Any],
     *,
     office_methodology: str | None = None,
-    vision_profile_key: str | None = None,
+    upload_discipline_id: str | None = None,
 ) -> list[dict[str, Any]]:
     pages_path = Path(pages_dir)
     images = sorted(
@@ -906,7 +1163,7 @@ def run_full_vision_analysis(
                     cad_summary,
                     level_name,
                     office_methodology=office_methodology,
-                    vision_profile_key=vision_profile_key,
+                    upload_discipline_id=upload_discipline_id,
                 )
             )
         except Exception as exc:  # pragma: no cover - depends on external API/runtime
@@ -926,7 +1183,13 @@ if __name__ == "__main__":
             cad_summary = json.load(handle)
 
     if image_path.exists():
-        result = analyze_plan(image_path, cad_summary, level_name=image_path.stem, office_methodology=None)
+        result = analyze_plan(
+            image_path,
+            cad_summary,
+            level_name=image_path.stem,
+            office_methodology=None,
+            upload_discipline_id=None,
+        )
         output_path = Path("vision_inventory_result.json")
         with open(output_path, "w", encoding="utf-8") as handle:
             json.dump(result, handle, indent=2, ensure_ascii=False)
