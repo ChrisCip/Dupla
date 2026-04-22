@@ -298,7 +298,7 @@ def bootstrap_pipeline_inputs(context: ProjectContext) -> dict[str, Any]:
 
     xlsx_path = context.metadata.get("xlsx_path") if context.metadata else None
     if not xlsx_path:
-        default_xlsx = Path(__file__).resolve().parent.parent / "data" / "PRES.xlsx"
+        default_xlsx = Path(__file__).resolve().parent.parent / "data" / "NASAS09_Preliminary_Budget.xlsx"
         if default_xlsx.exists():
             xlsx_path = str(default_xlsx)
     training_pairs: list[Any] = []

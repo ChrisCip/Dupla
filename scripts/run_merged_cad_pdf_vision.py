@@ -164,8 +164,10 @@ def main() -> int:
     dr.OUTPUT_NAME = f"dupla_presupuesto_generado_cad_vision_{suffix}"
     dr.BC3_PATH = "./data/TGIU.bc3"
     if args.use_pres_training:
-        pres_root = REPO_ROOT / "PRES.xlsx"
-        dr.XLSX_TRAINING_PATH = "PRES.xlsx" if pres_root.is_file() else "./data/PRES.xlsx"
+        pres_root = REPO_ROOT / "data" / "NASAS09_Preliminary_Budget.xlsx"
+        dr.XLSX_TRAINING_PATH = (
+            "data/NASAS09_Preliminary_Budget.xlsx" if pres_root.is_file() else "./data/PRES.xlsx"
+        )
         logger.info("Pares de entrenamiento: desde PRES (modo explícito --use-pres-training)")
     else:
         dr.XLSX_TRAINING_PATH = "__no_pres_training__.xlsx"

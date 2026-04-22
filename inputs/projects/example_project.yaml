@@ -9,7 +9,7 @@ paths:
   pdf: "../../data/ejemplo.pdf"       # visión single-PDF (si no usas vision.sources)
   outputs_dir: "../../output/run_ejemplo"
   bc3: "../../data/TGIU.bc3"          # opcional — omitir clave o poner null
-  pres_training: "../../data/PRES.xlsx"
+  pres_training: "../../data/NASAS09_Preliminary_Budget.xlsx"
 
 output_name: "dupla_budget_ready_full"
 use_pdf: true

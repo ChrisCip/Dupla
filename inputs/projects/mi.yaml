@@ -1,5 +1,5 @@
 # Ejemplo local (Enrique): rutas relativas a esta carpeta `inputs/projects/`.
-# Ajusta dwg/pdf si usas otros archivos. Añade pres_training cuando tengas PRES.xlsx en el repo.
+# Ajusta dwg/pdf si usas otros archivos. pres_training por defecto: data/NASAS09_Preliminary_Budget.xlsx
 
 project_name: "Mi proyecto local"
 project_id: "mi_local"
@@ -8,7 +8,7 @@ paths:
   dwg: "../../BLCAD09/BLCAD09001.dwg"
   pdf: "../../BLCAD09/BLCADO900.pdf"
   outputs_dir: "../../output/mi_run"
-  # pres_training: "../../PRES.xlsx"
+  # pres_training: "../../data/NASAS09_Preliminary_Budget.xlsx"
   # bc3: "../../data/TGIU.bc3"
 
 output_name: "dupla_budget_ready_full"

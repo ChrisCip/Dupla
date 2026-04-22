@@ -64,7 +64,9 @@ def _paths() -> dict[str, Path]:
         "planos_pdf_root": arch / "PLANOS RECIBIDOS",
         "pliego_dir": arch / "PLIEGO DE CONDICIONES",
         "revision_root": arch / "REVISION",
-        "baseline_xlsx": root
+        "baseline_xlsx": (REPO_ROOT / "data" / "NASAS09_Preliminary_Budget.xlsx")
+        if (REPO_ROOT / "data" / "NASAS09_Preliminary_Budget.xlsx").is_file()
+        else root
         / "NASAS presupuesto"
         / "ACTUAL"
         / "Prelimary Budget NASAS 9-2, 17-02-2026.xlsx",
@@ -329,6 +331,11 @@ def main() -> int:
         default="general",
         help="Perfil GPT visión (p. ej. structural si solo aplica estructura): ver run_merged_cad_pdf_vision.py",
     )
+    parser.add_argument(
+        "--open-excels",
+        action="store_true",
+        help="Al finalizar, abre en el sistema el presupuesto Preliminary (referencia) y los .xlsx en corrida_*/excel/. Solo Windows (os.startfile).",
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -407,7 +414,32 @@ def main() -> int:
         )
 
     logger.info("Listo. Salidas en %s", paths["outputs"])
+    if args.open_excels:
+        _open_nasas_review_excels(paths)
     return 0
+
+
+def _open_nasas_review_excels(paths: dict[str, Path]) -> None:
+    """Abre el Excel de referencia (incl. hoja GENERAL) y los generados por corrida."""
+    if sys.platform != "win32":
+        logger.warning("--open-excels solo está implementado en Windows")
+        return
+    import os
+
+    baseline = paths["baseline_xlsx"]
+    if baseline.is_file():
+        logger.info("Abriendo referencia: %s", baseline)
+        os.startfile(baseline)  # noqa: S606
+    opened = 0
+    for p in sorted(paths["outputs"].glob("corrida_*/excel/*.xlsx")):
+        if p.is_file():
+            logger.info("Abriendo: %s", p)
+            os.startfile(p)  # noqa: S606
+            opened += 1
+    if not opened and baseline.is_file():
+        logger.info("Aún no hay Excels en corrida_*/excel/ (ejecuta sin --dry-run). Referencia ya abierta.")
+    elif not opened:
+        logger.warning("No se encontró referencia ni corridas con Excel")
 
 
 if __name__ == "__main__":

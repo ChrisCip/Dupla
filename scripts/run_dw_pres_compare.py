@@ -88,6 +88,9 @@ def _default_dwg() -> Path | None:
 
 
 def _default_pres() -> Path:
+    data_nasas = REPO_ROOT / "data" / "NASAS09_Preliminary_Budget.xlsx"
+    if data_nasas.exists():
+        return data_nasas
     root_pres = REPO_ROOT / "PRES.xlsx"
     if root_pres.exists():
         return root_pres

@@ -11,6 +11,8 @@ from typing import Any
 
 from openpyxl import load_workbook
 
+from budget.nasas_preliminary_io import load_nasas_preliminary_budget_rows
+
 
 @dataclass
 class TrainingPair:
@@ -22,7 +24,7 @@ class TrainingPair:
     output_unit: str
     output_quantity: float
     output_price: float
-    source: str = "PRES.xlsx"
+    source: str = "reference_budget.xlsx"
 
 
 @dataclass
@@ -109,10 +111,19 @@ def _infer_item_type(summary: str) -> str:
     return "generic_construction_item"
 
 
-def _iter_budget_rows(xlsx_path: str | Path):
+def _is_nasas_preliminary_path(path: Path) -> bool:
+    n = path.name.lower()
+    if "nasas09" in n and "preliminary" in n:
+        return True
+    if "prelimary" in n and "nasas" in n:
+        return True
+    return False
+
+
+def _iter_budget_rows_presto_first_sheet(xlsx_path: Path):
+    """Formato clásico Presto/Dupla: primera hoja, datos desde fila 4."""
     workbook = load_workbook(filename=str(xlsx_path), data_only=True)
     sheet = workbook[workbook.sheetnames[0]]
-    # Header starts on row 3 in the known PRES format.
     for row in sheet.iter_rows(min_row=4, values_only=True):
         code = _safe_str(row[0] if len(row) > 0 else None)
         nat = _safe_str(row[1] if len(row) > 1 else None)
@@ -132,6 +143,20 @@ def _iter_budget_rows(xlsx_path: str | Path):
             "price": price,
             "amount": amount,
         }
+
+
+def _iter_budget_rows_nasas_preliminary(xlsx_path: Path):
+    for row in load_nasas_preliminary_budget_rows(xlsx_path):
+        r = {**row, "nat": _safe_str(row.get("nat")).lower()}
+        yield r
+
+
+def _iter_budget_rows(xlsx_path: str | Path):
+    path = Path(xlsx_path)
+    if _is_nasas_preliminary_path(path):
+        yield from _iter_budget_rows_nasas_preliminary(path)
+    else:
+        yield from _iter_budget_rows_presto_first_sheet(path)
 
 
 def extract_training_pairs(xlsx_path: str | Path) -> list[TrainingPair]:
@@ -168,6 +193,7 @@ def extract_training_pairs(xlsx_path: str | Path) -> list[TrainingPair]:
                 output_unit=row["unit"],
                 output_quantity=row["quantity"],
                 output_price=row["price"],
+                source=Path(xlsx_path).name,
             )
         )
 

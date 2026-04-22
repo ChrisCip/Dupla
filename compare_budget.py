@@ -3,7 +3,7 @@ Compare generated Dupla budget workbook against real PRES.xlsx baseline.
 
 Usage:
     python compare_budget.py
-    python compare_budget.py --generated "<path>" --real "./data/PRES.xlsx" --output-dir "<dir>"
+    python compare_budget.py --generated "<path>" --real "./data/NASAS09_Preliminary_Budget.xlsx" --output-dir "<dir>" --real-format nasas_preliminary
 """
 
 from __future__ import annotations
@@ -511,11 +511,11 @@ def _resolve_defaults() -> tuple[Path, Path, Path]:
         payload = json.loads(run_summary.read_text(encoding="utf-8"))
         generated = Path(payload["budget_excel"])
         output_dir = generated.parent
-        real = repo_root / "data" / "PRES.xlsx"
+        real = repo_root / "data" / "NASAS09_Preliminary_Budget.xlsx"
         return generated, real, output_dir
     return (
         repo_root / "output" / "dupla_budget_ready_full.xlsx",
-        repo_root / "data" / "PRES.xlsx",
+        repo_root / "data" / "NASAS09_Preliminary_Budget.xlsx",
         repo_root / "output",
     )
 
@@ -564,8 +564,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--real-format",
         choices=("default", "nasas_preliminary"),
-        default="default",
-        help="Layout del Excel de referencia (NASAS Preliminary Budget = nasas_preliminary).",
+        default="nasas_preliminary",
+        help="Layout del Excel de referencia: nasas_preliminary (data/NASAS09_Preliminary_Budget.xlsx) o default (Presto, fila 4).",
     )
     return parser
 

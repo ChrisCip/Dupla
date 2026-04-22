@@ -52,8 +52,8 @@ DWG_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\2- PLANTAS ARQUITECTONI
 PDF_PATH = r"C:\Users\chris\Downloads\archivos dupla\dwg\prueba dupla pdf\prueba dupla full.pdf"   # Used only if USE_PDF = True
 IMAGES_DIR = r"./inputs/rendered_pages"   # Used only if USE_PDF = False
 BC3_PATH = r"./data/TGIU.bc3"             # Optional: can be blank ""
-XLSX_TRAINING_PATH = r"./data/PRES.xlsx"
-# PRES.xlsx still feeds few-shot examples for BC3 matching when present.
+XLSX_TRAINING_PATH = r"./data/NASAS09_Preliminary_Budget.xlsx"
+# Presupuesto Excel de referencia (NASAS 09, formato Preliminary) para few-shot BC3.
 # Set True only to clone PRES rows into takeoffs (calibration); default is measured takeoffs only.
 PRES_TEMPLATE_TAKEOFFS = False
 
