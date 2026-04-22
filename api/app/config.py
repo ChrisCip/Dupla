@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     job_data_dir: Path = Field(
         default=Path(__file__).resolve().parents[1] / "data",
-        description="Root directory for job storage (inputs/outputs per UUID).",
+        description="Root directory for job storage (project_runs/, cache/).",
     )
 
     redis_url: str = Field(default="redis://127.0.0.1:6379/0")
@@ -44,6 +44,27 @@ class Settings(BaseSettings):
     # Budget: static BC3 catalog (override with BC3_CATALOG_PATH). PRES.xlsx optional.
     bc3_catalog_path: Path = Field(default_factory=_default_bc3_catalog_path)
     pres_xlsx_path: Path | None = Field(default=None)
+
+    # Project pipeline (GEBSA IV style)
+    api_data_dir: Path = Field(
+        default_factory=lambda: Path(__file__).resolve().parents[1] / "data",
+        description="Bundled BC3 / PRES under the api/ tree.",
+    )
+    artifact_cache_dir: Path = Field(
+        default_factory=lambda: Path(__file__).resolve().parents[1] / "data" / "cache",
+    )
+    max_download_bytes: int = Field(
+        default=200 * 1024 * 1024,
+        description="Hard cap per file when downloading from URLs (bytes).",
+    )
+    download_timeout_seconds: float = Field(default=600.0)
+    max_parallel_disciplines: int = Field(
+        default=1,
+        ge=1,
+        le=4,
+        description="Run this many discipline pipelines in parallel (watch API rate limits).",
+    )
+    use_render_cache: bool = True
 
 
 def get_settings() -> Settings:

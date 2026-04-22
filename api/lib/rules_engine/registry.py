@@ -17,6 +17,12 @@ SUPPORTED_STRATEGIES = {
     "identity",
     "count_multiplier",
     "conditional_faces",
+    "count_area_or_default",
+    "beam_length_derived",
+    "column_length_derived",
+    "column_count_derived",
+    "slab_area_thickness_derived",
+    "wall_length_finish_derived",
 }
 
 
@@ -67,6 +73,42 @@ def _coerce_int(value: Any, *, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _float_or(value: Any, default: float) -> float:
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _positive_float_from_inputs(takeoff: QuantityTakeoff, key: str) -> float | None:
+    raw = takeoff.inputs.get(key)
+    if raw is not None:
+        try:
+            v = float(raw)
+            if v > 0:
+                return v
+        except (TypeError, ValueError):
+            pass
+    nested = takeoff.inputs.get("raw")
+    if isinstance(nested, dict) and key in nested:
+        try:
+            v = float(nested.get(key))
+            if v > 0:
+                return v
+        except (TypeError, ValueError):
+            pass
+    if key != "area_m2" and isinstance(nested, dict):
+        try:
+            v = float(nested.get("area_m2"))
+            if v > 0:
+                return v
+        except (TypeError, ValueError):
+            pass
+    return None
 
 
 def _strategy_payload(
@@ -131,6 +173,198 @@ def _strategy_payload(
             "resolved_faces": resolved_faces,
             "face_selector_tag": selector_tag,
         }
+        return quantity, formula, metadata, inputs, assumptions
+
+    if strategy == "count_area_or_default":
+        di = derivative.inputs or {}
+        default_area = float(di.get("default_area_per_unit", 5.0))
+        key = str(di.get("plan_area_key", "estimated_area_m2"))
+        plan_area = _positive_float_from_inputs(takeoff, key)
+        if plan_area is not None:
+            area_u = plan_area
+            qsrc = "plan_measurement"
+        else:
+            area_u = default_area
+            qsrc = "default_estimate"
+            assumptions.append(
+                f"Rule {rule.rule_id}: no '{key}' en el takeoff; se usa {default_area:g} m²/unidad por defecto."
+            )
+        quantity = takeoff.quantity * area_u * factor
+        formula = f"{takeoff.item_key}.quantity * {area_u:g} * {factor:g}"
+        metadata = {
+            "quantity_source": qsrc,
+            "area_per_unit_m2": area_u,
+        }
+        inputs = {"area_per_unit_m2": area_u, "quantity_source": qsrc}
+        return quantity, formula, metadata, inputs, assumptions
+
+    if strategy == "beam_length_derived":
+        di = derivative.inputs or {}
+        suff = derivative.suffix
+        sw_raw, sh_raw = takeoff.inputs.get("section_width_m"), takeoff.inputs.get("section_height_m")
+        d_sw = float(di.get("default_section_width_m", 0.30))
+        d_sh = float(di.get("default_section_height_m", 0.50))
+        plan_sec = sw_raw is not None and sh_raw is not None
+        eff_sw = float(sw_raw) if plan_sec else d_sw
+        eff_sh = float(sh_raw) if plan_sec else d_sh
+        qsrc = "plan_measurement" if plan_sec else "default_estimate"
+        if not plan_sec:
+            assumptions.append(
+                f"Rule {rule.rule_id}: sección viga por defecto {d_sw:g}×{d_sh:g} m (no hay section_width_m/height_m en el takeoff)."
+            )
+        if suff == "concrete_volume":
+            def_v = float(di.get("default_volume_m3_per_m", 0.15))
+            per_m = (eff_sw * eff_sh) if plan_sec else def_v
+            quantity = takeoff.quantity * per_m * factor
+            formula = f"{takeoff.item_key}.quantity * section_m2_per_m({per_m:g}) * {factor:g}"
+        elif suff == "formwork":
+            def_f = float(di.get("default_formwork_m2_per_m", 1.30))
+            per_m = (2.0 * eff_sh + eff_sw) if plan_sec else def_f
+            quantity = takeoff.quantity * per_m * factor
+            formula = f"{takeoff.item_key}.quantity * formwork_m2_per_m({per_m:g}) * {factor:g}"
+        else:
+            raise ValueError(f"Unknown beam_length_derived suffix {suff!r}")
+        metadata = {
+            "quantity_source": qsrc,
+            "section_width_m": eff_sw,
+            "section_height_m": eff_sh,
+        }
+        inputs = dict(metadata)
+        return quantity, formula, metadata, inputs, assumptions
+
+    if strategy == "column_length_derived":
+        di = derivative.inputs or {}
+        suff = derivative.suffix
+        sw_raw, sh_raw = takeoff.inputs.get("section_width_m"), takeoff.inputs.get("section_height_m")
+        d_sw = float(di.get("default_section_width_m", 0.40))
+        d_sh = float(di.get("default_section_height_m", 0.40))
+        plan_sec = sw_raw is not None and sh_raw is not None
+        eff_sw = float(sw_raw) if plan_sec else d_sw
+        eff_sh = float(sh_raw) if plan_sec else d_sh
+        qsrc = "plan_measurement" if plan_sec else "default_estimate"
+        if not plan_sec:
+            assumptions.append(
+                f"Rule {rule.rule_id}: sección columna por defecto {d_sw:g}×{d_sh:g} m."
+            )
+        if suff == "concrete_volume":
+            def_v = float(di.get("default_volume_m3_per_m", 0.16))
+            per_m = (eff_sw * eff_sh) if plan_sec else def_v
+            quantity = takeoff.quantity * per_m * factor
+            formula = f"{takeoff.item_key}.quantity * section_m2_per_m({per_m:g}) * {factor:g}"
+        elif suff == "formwork":
+            def_f = float(di.get("default_formwork_m2_per_m", 1.60))
+            per_m = (2.0 * eff_sh + 2.0 * eff_sw) if plan_sec else def_f
+            quantity = takeoff.quantity * per_m * factor
+            formula = f"{takeoff.item_key}.quantity * formwork_m2_per_m({per_m:g}) * {factor:g}"
+        else:
+            raise ValueError(f"Unknown column_length_derived suffix {suff!r}")
+        metadata = {
+            "quantity_source": qsrc,
+            "section_width_m": eff_sw,
+            "section_height_m": eff_sh,
+        }
+        inputs = dict(metadata)
+        return quantity, formula, metadata, inputs, assumptions
+
+    if strategy == "column_count_derived":
+        di = derivative.inputs or {}
+        suff = derivative.suffix
+        count = max(float(takeoff.quantity), 1.0)
+        d_sw = float(di.get("default_section_width_m", 0.40))
+        d_sh = float(di.get("default_section_height_m", 0.40))
+        d_L = float(di.get("default_length_m_per_unit", 2.80))
+        sw_raw, sh_raw = takeoff.inputs.get("section_width_m"), takeoff.inputs.get("section_height_m")
+        plan_sec = sw_raw is not None and sh_raw is not None
+        eff_sw = float(sw_raw) if plan_sec else d_sw
+        eff_sh = float(sh_raw) if plan_sec else d_sh
+        L_raw = takeoff.inputs.get("length_m_per_column")
+        if L_raw is not None:
+            eff_L = float(L_raw)
+            len_src = "plan_measurement"
+        else:
+            eff_L = d_L
+            len_src = "default_estimate"
+            assumptions.append(
+                f"Rule {rule.rule_id}: altura columna por defecto {d_L:g} m por unidad."
+            )
+        used_def = bool(takeoff.trace.metadata.get("used_default_dimensions"))
+        if used_def or (not plan_sec and len_src == "default_estimate"):
+            qsrc = "default_estimate"
+        elif plan_sec and len_src == "plan_measurement":
+            qsrc = "plan_measurement"
+        else:
+            qsrc = "mixed_measurement"
+        if not plan_sec:
+            assumptions.append(
+                f"Rule {rule.rule_id}: sección columna por defecto {d_sw:g}×{d_sh:g} m."
+            )
+        vol_per = eff_sw * eff_sh * eff_L
+        fw_per_plan = 2.0 * (eff_sw + eff_sh) * eff_L
+        fw_default = float(di.get("default_formwork_m2_per_count", 4.48))
+        fw_per = fw_per_plan if plan_sec else fw_default
+        if suff == "concrete_volume":
+            quantity = count * vol_per * factor
+            formula = f"column_count * section_volume({vol_per:g}) * {factor:g}"
+        elif suff == "formwork":
+            if not plan_sec:
+                fw_per = fw_default
+            quantity = count * fw_per * factor
+            formula = f"column_count * formwork_hint_m2({fw_per:g}) * {factor:g}"
+        else:
+            raise ValueError(f"Unknown column_count_derived suffix {suff!r}")
+        metadata = {
+            "quantity_source": qsrc,
+            "section_width_m": eff_sw,
+            "section_height_m": eff_sh,
+            "length_m_per_column": eff_L,
+        }
+        inputs = dict(metadata)
+        return quantity, formula, metadata, inputs, assumptions
+
+    if strategy == "slab_area_thickness_derived":
+        di = derivative.inputs or {}
+        suff = derivative.suffix
+        th_raw = takeoff.inputs.get("section_height_m")
+        d_th = float(di.get("default_thickness_m", 0.20))
+        if th_raw is not None:
+            eff_th = float(th_raw)
+            qsrc = "plan_measurement"
+        else:
+            eff_th = d_th
+            qsrc = "default_estimate"
+            assumptions.append(
+                f"Rule {rule.rule_id}: espesor losa por defecto {d_th:g} m."
+            )
+        if suff == "concrete_volume":
+            quantity = takeoff.quantity * eff_th * factor
+            formula = f"{takeoff.item_key}.quantity * thickness_m({eff_th:g}) * {factor:g}"
+        elif suff == "formwork":
+            quantity = takeoff.quantity * factor
+            formula = f"{takeoff.item_key}.quantity * {factor:g}"
+        else:
+            raise ValueError(f"Unknown slab_area_thickness_derived suffix {suff!r}")
+        metadata = {"quantity_source": qsrc, "slab_thickness_m": eff_th}
+        inputs = dict(metadata)
+        return quantity, formula, metadata, inputs, assumptions
+
+    if strategy == "wall_length_finish_derived":
+        di = derivative.inputs or {}
+        h_raw = takeoff.inputs.get("finish_height_m")
+        default_h = float(di.get("default_height_m", 2.80))
+        faces = float(di.get("faces_multiplier", 2.0))
+        if h_raw is not None:
+            eff_h = float(h_raw)
+            qsrc = str(takeoff.inputs.get("finish_height_source") or "plan_measurement")
+        else:
+            eff_h = default_h
+            qsrc = "default_estimate"
+            assumptions.append(
+                f"Rule {rule.rule_id}: altura muro por defecto {default_h:g} m para acabados desde longitud."
+            )
+        quantity = takeoff.quantity * eff_h * faces * factor
+        formula = f"{takeoff.item_key}.quantity * height_m({eff_h:g}) * faces({faces:g}) * {factor:g}"
+        metadata = {"quantity_source": qsrc, "finish_height_m": eff_h, "faces_multiplier": faces}
+        inputs = dict(metadata)
         return quantity, formula, metadata, inputs, assumptions
 
     raise ValueError(f"Unsupported rule strategy '{strategy}'.")

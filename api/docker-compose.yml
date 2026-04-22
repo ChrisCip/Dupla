@@ -15,7 +15,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./data/jobs:/app/data/jobs
+      - ./data:/app/data
     depends_on:
       - redis
 
@@ -28,6 +28,6 @@ services:
     env_file:
       - .env
     volumes:
-      - ./data/jobs:/app/data/jobs
+      - ./data:/app/data
     depends_on:
       - redis

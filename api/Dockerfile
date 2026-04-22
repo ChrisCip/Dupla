@@ -10,7 +10,7 @@ COPY pyproject.toml README.md ./
 COPY app ./app
 COPY lib ./lib
 COPY worker ./worker
-COPY data/TGIU.bc3 ./data/TGIU.bc3
+COPY data ./data
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir .

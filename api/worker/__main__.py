@@ -13,6 +13,8 @@ _lib = _ROOT / "lib"
 if str(_lib) not in sys.path:
     sys.path.insert(0, str(_lib))
 
+import app.bootstrap_path  # noqa: F401, E402
+
 from redis import Redis
 from rq import Queue, Worker
 

@@ -78,6 +78,32 @@ def _parse_concepts(records: list[str]) -> dict[str, dict[str, Any]]:
     return concepts
 
 
+def _iter_decomposition_child_edges(records: list[str]) -> list[tuple[str, str]]:
+    """Direct (parent_code, child_code) edges from ~D decomposition lines."""
+    edges: list[tuple[str, str]] = []
+
+    for record in records:
+        if not record.startswith("~D|"):
+            continue
+
+        parts = record[3:].split("|")
+        if len(parts) < 2:
+            continue
+
+        parent_code = parts[0].replace("#", "").strip()
+        tokens = [token.strip() for token in parts[1].split("\\") if token.strip()]
+        if not parent_code or not tokens:
+            continue
+
+        # TODO: Expand this parser for the full FIEBDC decomposition grammar.
+        for index in range(0, len(tokens), 3):
+            child_code = tokens[index].replace("#", "").strip()
+            if child_code:
+                edges.append((parent_code, child_code))
+
+    return edges
+
+
 def _parse_hierarchy(records: list[str]) -> dict[str, list[dict[str, Any]]]:
     hierarchy: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
@@ -96,7 +122,7 @@ def _parse_hierarchy(records: list[str]) -> dict[str, list[dict[str, Any]]]:
 
         # TODO: Expand this parser for the full FIEBDC decomposition grammar.
         for index in range(0, len(tokens), 3):
-            child_code = tokens[index]
+            child_code = tokens[index].replace("#", "").strip()
             factor = _to_float(tokens[index + 1]) if index + 1 < len(tokens) else None
             yield_value = _to_float(tokens[index + 2]) if index + 2 < len(tokens) else None
             hierarchy[parent_code].append(
@@ -108,6 +134,26 @@ def _parse_hierarchy(records: list[str]) -> dict[str, list[dict[str, Any]]]:
             )
 
     return hierarchy
+
+
+def _parse_decomposition_parent_candidates(records: list[str]) -> dict[str, list[str]]:
+    """
+    For each component code, BC3 files that list which ~D parents reference it.
+
+    Used to walk upward from a priced line toward chapter-like headers in the same file.
+    Multiple parents are preserved (e.g. shared resources); callers disambiguate.
+    """
+    buckets: dict[str, list[str]] = defaultdict(list)
+    seen_pairs: set[tuple[str, str]] = set()
+
+    for parent_code, child_code in _iter_decomposition_child_edges(records):
+        key = (parent_code, child_code)
+        if key in seen_pairs:
+            continue
+        seen_pairs.add(key)
+        buckets[child_code].append(parent_code)
+
+    return dict(buckets)
 
 
 def _parse_texts(records: list[str]) -> dict[str, str]:
@@ -171,7 +217,12 @@ def parse_bc3(path: str) -> dict[str, Any]:
     records = _split_records(raw_text)
 
     concepts = _parse_concepts(records)
+    origin = bc3_path.name
+    for concept in concepts.values():
+        concept["bc3_origin"] = origin
+
     hierarchy = _parse_hierarchy(records)
+    decomposition_parent_candidates = _parse_decomposition_parent_candidates(records)
     texts = _parse_texts(records)
     measurements = _parse_measurements(records)
 
@@ -183,6 +234,7 @@ def parse_bc3(path: str) -> dict[str, Any]:
             **concept,
             "long_text": texts.get(concept["code"], ""),
             "children": hierarchy.get(concept["code"], []),
+            "bc3_origin": origin,
         }
 
         if enriched["unit"] and float(enriched.get("price", 0) or 0) > 0:
@@ -204,8 +256,99 @@ def parse_bc3(path: str) -> dict[str, Any]:
         "chapters": chapters,
         "items": items,
         "hierarchy": hierarchy,
+        "decomposition_parent_candidates": decomposition_parent_candidates,
         "texts": texts,
         "measurements": measurements,
+    }
+
+
+def merge_bc3_catalogs(*catalogs: dict[str, Any]) -> dict[str, Any]:
+    """
+    Combine several ``parse_bc3`` payloads into one catalog.
+
+    Each priced ``item`` keeps its ``bc3_origin`` (source BC3 filename). ``items`` lists
+    are concatenated so embeddings can represent all sources. ``concepts_by_code`` uses
+    first-seen code; if the same code appears again with a different summary/price, the
+    duplicate is recorded on ``bc3_origin_alternates`` on the kept concept.
+    """
+    if not catalogs:
+        return {}
+    if len(catalogs) == 1:
+        return dict(catalogs[0])
+
+    merged_items: list[dict[str, Any]] = []
+    merged_chapters: list[dict[str, Any]] = []
+    merged_concepts: dict[str, dict[str, Any]] = {}
+    merged_hierarchy: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    merged_texts: dict[str, str] = {}
+    merged_measurements: dict[str, list[dict[str, str]]] = defaultdict(list)
+    merged_decomp: dict[str, list[str]] = defaultdict(list)
+    origins: list[str] = []
+
+    for cat in catalogs:
+        origin = str(cat.get("file") or Path(str(cat.get("path", ""))).name or "unknown.bc3")
+        origins.append(origin)
+        for item in cat.get("items") or []:
+            it = dict(item)
+            it.setdefault("bc3_origin", origin)
+            merged_items.append(it)
+        for ch in cat.get("chapters") or []:
+            c = dict(ch)
+            c.setdefault("bc3_origin", origin)
+            merged_chapters.append(c)
+        for code, concept in (cat.get("concepts_by_code") or {}).items():
+            c0 = dict(concept)
+            c0.setdefault("bc3_origin", origin)
+            if code not in merged_concepts:
+                merged_concepts[code] = c0
+            else:
+                prev = merged_concepts[code]
+                same = (
+                    str(prev.get("summary", "")).strip() == str(c0.get("summary", "")).strip()
+                    and float(prev.get("price") or 0) == float(c0.get("price") or 0)
+                )
+                if same:
+                    continue
+                alts = prev.setdefault("bc3_origin_alternates", [])
+                alts.append(
+                    {
+                        "bc3_origin": origin,
+                        "summary": c0.get("summary", ""),
+                        "price": c0.get("price", 0),
+                        "unit": c0.get("unit", ""),
+                    }
+                )
+        for parent, rows in (cat.get("hierarchy") or {}).items():
+            merged_hierarchy[parent].extend(rows)
+        for code, text in (cat.get("texts") or {}).items():
+            merged_texts[code] = text
+        for parent, rows in (cat.get("measurements") or {}).items():
+            merged_measurements[parent].extend(rows)
+        for child, parents in (cat.get("decomposition_parent_candidates") or {}).items():
+            bucket = merged_decomp[child]
+            seen_parents = set(bucket)
+            for p in parents:
+                if p not in seen_parents:
+                    bucket.append(p)
+                    seen_parents.add(p)
+
+    merged_items.sort(key=lambda x: (str(x.get("code", "")), str(x.get("bc3_origin", ""))))
+    merged_chapters.sort(key=lambda x: (str(x.get("code", "")), str(x.get("bc3_origin", ""))))
+
+    return {
+        "file": "|".join(origins),
+        "path": "|".join(str(c.get("path", "")) for c in catalogs),
+        "record_count": sum(int(c.get("record_count", 0) or 0) for c in catalogs),
+        "concept_count": len(merged_concepts),
+        "chapter_count": len(merged_chapters),
+        "item_count": len(merged_items),
+        "concepts_by_code": merged_concepts,
+        "chapters": merged_chapters,
+        "items": merged_items,
+        "hierarchy": dict(merged_hierarchy),
+        "decomposition_parent_candidates": dict(merged_decomp),
+        "texts": merged_texts,
+        "measurements": dict(merged_measurements),
     }
 
 
