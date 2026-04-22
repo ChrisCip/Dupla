@@ -1,0 +1,9 @@
+{
+  "discipline_to_chapters": {
+    "arquitectonica": ["03", "04", "05", "08", "09"],
+    "estructural": ["01", "02", "03", "04", "05"],
+    "electrica": ["06", "21", "22", "23"],
+    "sanitaria": ["07", "17", "18", "19", "20"]
+  },
+  "completeness_hints": {}
+}
