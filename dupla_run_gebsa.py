@@ -204,6 +204,71 @@ def _load_office_methodology() -> str:
     return ""
 
 
+def _is_likely_valid_code(code: str) -> bool:
+    value = (code or "").strip()
+    if not value or " " in value:
+        return False
+    return len(value) <= 32
+
+
+def _is_likely_valid_unit(unit: str) -> bool:
+    value = (unit or "").strip()
+    if not value:
+        return False
+    if len(value) > 16:
+        return False
+    if value.count(" ") > 1:
+        return False
+    return True
+
+
+def _source_quality_score(pairs: list[Any]) -> float:
+    if not pairs:
+        return 0.0
+    valid = 0
+    for pair in pairs:
+        if (
+            _is_likely_valid_code(getattr(pair, "output_bc3_code", ""))
+            and _is_likely_valid_unit(getattr(pair, "output_unit", ""))
+            and bool(str(getattr(pair, "output_description", "")).strip())
+        ):
+            valid += 1
+    return valid / len(pairs)
+
+
+def _load_training_pairs_from_sources(
+    pres_sources: list[str],
+    *,
+    min_source_quality: float,
+) -> tuple[list[Any], dict[str, int], dict[str, float], dict[str, str]]:
+    training_pairs: list[Any] = []
+    source_pair_counts: dict[str, int] = {}
+    source_quality_scores: dict[str, float] = {}
+    excluded_sources: dict[str, str] = {}
+
+    for source in pres_sources:
+        source_path = Path(source).resolve()
+        if not source_path.exists():
+            logger.warning("Training source not found, skipping: %s", source_path)
+            continue
+
+        extracted = extract_training_pairs(source_path)
+        quality = _source_quality_score(extracted)
+        source_quality_scores[str(source_path)] = round(quality, 4)
+        if extracted and quality < min_source_quality:
+            excluded_sources[str(source_path)] = (
+                f"quality {quality:.2f} below threshold {min_source_quality:.2f}"
+            )
+            continue
+
+        for pair in extracted:
+            pair.source = source_path.name
+        source_pair_counts[str(source_path)] = len(extracted)
+        training_pairs.extend(extracted)
+
+    return training_pairs, source_pair_counts, source_quality_scores, excluded_sources
+
+
 # ---------------------------------------------------------------------------
 # Per-discipline processing
 # ---------------------------------------------------------------------------
@@ -464,6 +529,18 @@ def main() -> None:
         default=0.75,
         help="Minimum source quality score required for each Day 2 PRES source",
     )
+    parser.add_argument(
+        "--training-pres",
+        action="append",
+        default=None,
+        help="PRES source workbook for pipeline few-shot/context training (repeat to add multiple)",
+    )
+    parser.add_argument(
+        "--training-min-source-quality",
+        type=float,
+        default=0.75,
+        help="Minimum source quality score required for each pipeline training source",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -537,11 +614,23 @@ def main() -> None:
         embedding_index = load_or_build_embeddings(bc3_catalog)
         logger.info("Embeddings ready: %d vectors", len(embedding_index.metadata))
 
-    training_pairs = []
-    xlsx_path_resolved = (REPO_ROOT / XLSX_TRAINING_PATH).resolve()
-    if xlsx_path_resolved.exists():
-        training_pairs = extract_training_pairs(xlsx_path_resolved)
-        logger.info("Training pairs: %d from %s", len(training_pairs), xlsx_path_resolved.name)
+    training_pres_sources = args.training_pres or [str((REPO_ROOT / XLSX_TRAINING_PATH).resolve())]
+    training_pairs, source_pair_counts, source_quality_scores, excluded_sources = _load_training_pairs_from_sources(
+        training_pres_sources,
+        min_source_quality=args.training_min_source_quality,
+    )
+    if training_pairs:
+        logger.info("Training pairs loaded: %d", len(training_pairs))
+    else:
+        logger.warning("No training pairs loaded from configured sources")
+    for source, count in source_pair_counts.items():
+        logger.info("Training source included: %s (%d pairs)", source, count)
+    for source, score in source_quality_scores.items():
+        logger.info("Training source quality: %s (%.2f)", source, score)
+    for source, reason in excluded_sources.items():
+        logger.warning("Training source excluded: %s (%s)", source, reason)
+
+    xlsx_path_resolved = Path(training_pres_sources[0]).resolve() if training_pres_sources else None
 
     auto_methodology = generate_methodology_context(
         training_pairs=training_pairs or None,
@@ -553,7 +642,11 @@ def main() -> None:
         "bc3_path_value": str(bc3_catalog.get("path") or bc3_full),
         "embedding_index": embedding_index,
         "training_pairs": training_pairs,
-        "xlsx_path": str(xlsx_path_resolved) if xlsx_path_resolved.exists() else None,
+        "xlsx_path": str(xlsx_path_resolved) if xlsx_path_resolved and xlsx_path_resolved.exists() else None,
+        "training_sources": training_pres_sources,
+        "training_source_pair_counts": source_pair_counts,
+        "training_source_quality_scores": source_quality_scores,
+        "training_excluded_sources": excluded_sources,
         "auto_methodology": auto_methodology,
     }
     logger.info("Shared resources loaded")

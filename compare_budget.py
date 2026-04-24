@@ -9,8 +9,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from openpyxl import load_workbook
@@ -49,6 +51,28 @@ def _normalize(text: str) -> str:
     for src, dst in replacements.items():
         lowered = lowered.replace(src, dst)
     return lowered
+
+
+def _normalize_code(code: Any) -> str:
+    """Normalize code text for resilient matching across workbook formats."""
+    raw = _safe_str(code)
+    if not raw:
+        return ""
+    # Keep only alphanumeric chars and normalize casing.
+    return re.sub(r"[^A-Za-z0-9]", "", raw).upper()
+
+
+def _index_by_normalized_code(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    indexed: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        normalized = _normalize_code(row.get("code"))
+        if not normalized:
+            continue
+        # Prefer the row with the largest amount when normalized codes collide.
+        current = indexed.get(normalized)
+        if current is None or _safe_float(row.get("amount")) > _safe_float(current.get("amount")):
+            indexed[normalized] = row
+    return indexed
 
 
 def _load_budget_rows(path: Path) -> list[dict[str, Any]]:
@@ -139,6 +163,195 @@ def _md_cell(value: Any) -> str:
     return text
 
 
+def _tokenize_summary(text: str) -> set[str]:
+    normalized = _normalize(text)
+    tokens = set(re.findall(r"[a-z0-9]+", normalized))
+    stopwords = {
+        "de", "la", "el", "y", "en", "con", "para", "por", "del", "los", "las",
+        "un", "una", "al", "se", "a", "o", "que", "nivel", "obra",
+    }
+    return {token for token in tokens if len(token) >= 3 and token not in stopwords}
+
+
+def _row_family_tags(row: dict[str, Any]) -> set[str]:
+    summary = _safe_str(row.get("summary"))
+    nat = _safe_str(row.get("nat"))
+    return _discipline_tags(f"{summary} {nat}".strip())
+
+
+def _candidate_mapping_score(generated: dict[str, Any], real: dict[str, Any]) -> float:
+    generated_summary = _normalize(_safe_str(generated.get("summary")))
+    real_summary = _normalize(_safe_str(real.get("summary")))
+    if not generated_summary or not real_summary:
+        return 0.0
+
+    seq_similarity = difflib.SequenceMatcher(None, generated_summary, real_summary).ratio()
+
+    generated_tokens = _tokenize_summary(generated_summary)
+    real_tokens = _tokenize_summary(real_summary)
+    if generated_tokens or real_tokens:
+        token_overlap = len(generated_tokens & real_tokens) / max(1, len(generated_tokens | real_tokens))
+    else:
+        token_overlap = 0.0
+
+    generated_unit = _safe_str(generated.get("unit")).lower()
+    real_unit = _safe_str(real.get("unit")).lower()
+    unit_bonus = 0.12 if generated_unit and real_unit and generated_unit == real_unit else 0.0
+
+    generated_families = _row_family_tags(generated)
+    real_families = _row_family_tags(real)
+    family_bonus = 0.12 if generated_families & real_families else 0.0
+
+    raw_score = 0.58 * seq_similarity + 0.30 * token_overlap + unit_bonus + family_bonus
+    return min(1.0, raw_score)
+
+
+def _semantic_similarity_metrics(
+    generated_partidas: list[dict[str, Any]],
+    real_partidas: list[dict[str, Any]],
+) -> dict[str, float]:
+    """Compute lightweight semantic overlap proxies based on summary text similarity."""
+    real_by_unit: dict[str, list[str]] = {}
+    for row in real_partidas:
+        unit = _safe_str(row.get("unit")).lower()
+        summary = _normalize(_safe_str(row.get("summary")))
+        if not summary:
+            continue
+        real_by_unit.setdefault(unit, []).append(summary)
+
+    best_scores: list[float] = []
+    for row in generated_partidas:
+        unit = _safe_str(row.get("unit")).lower()
+        generated_summary = _normalize(_safe_str(row.get("summary")))
+        if not generated_summary:
+            continue
+
+        candidates = real_by_unit.get(unit) or [
+            summary for summaries in real_by_unit.values() for summary in summaries
+        ]
+        if not candidates:
+            continue
+
+        best = max(
+            difflib.SequenceMatcher(None, generated_summary, candidate).ratio()
+            for candidate in candidates
+        )
+        best_scores.append(best)
+
+    if not best_scores:
+        return {
+            "semantic_avg_best_similarity": 0.0,
+            "semantic_match_rate_60": 0.0,
+            "semantic_match_rate_70": 0.0,
+        }
+
+    rate60 = sum(1 for score in best_scores if score >= 0.60) / len(best_scores)
+    rate70 = sum(1 for score in best_scores if score >= 0.70) / len(best_scores)
+    return {
+        "semantic_avg_best_similarity": 100.0 * _mean(best_scores),
+        "semantic_match_rate_60": 100.0 * rate60,
+        "semantic_match_rate_70": 100.0 * rate70,
+    }
+
+
+def _map_generated_to_real_codes(
+    generated_partidas: list[dict[str, Any]],
+    real_partidas: list[dict[str, Any]],
+    *,
+    min_similarity: float = 0.52,
+) -> dict[str, Any]:
+    """Infer a PRES-code mapping from generated lines using summary/unit similarity.
+
+    Returns a one-to-one mapping (best generated candidate per real code).
+    """
+    real_by_unit: dict[str, list[dict[str, Any]]] = {}
+    for row in real_partidas:
+        unit = _safe_str(row.get("unit")).lower()
+        real_by_unit.setdefault(unit, []).append(row)
+
+    candidate_by_real_code: dict[str, dict[str, Any]] = {}
+
+    for generated in generated_partidas:
+        generated_summary = _safe_str(generated.get("summary"))
+        if not generated_summary:
+            continue
+
+        unit = _safe_str(generated.get("unit")).lower()
+        candidates = real_by_unit.get(unit) or real_partidas
+        generated_families = _row_family_tags(generated)
+        if generated_families:
+            family_candidates = [
+                candidate for candidate in candidates if _row_family_tags(candidate) & generated_families
+            ]
+            if family_candidates:
+                candidates = family_candidates
+        if not candidates:
+            continue
+
+        best_row: dict[str, Any] | None = None
+        best_score = 0.0
+        for real in candidates:
+            score = _candidate_mapping_score(generated, real)
+            if score > best_score:
+                best_score = score
+                best_row = real
+
+        if best_row is None or best_score < min_similarity:
+            continue
+
+        real_code = _safe_str(best_row.get("code"))
+        if not real_code:
+            continue
+
+        previous = candidate_by_real_code.get(real_code)
+        current = {
+            "real": best_row,
+            "generated": generated,
+            "score": best_score,
+        }
+        if previous is None or current["score"] > previous["score"]:
+            candidate_by_real_code[real_code] = current
+
+    mapped_pairs = list(candidate_by_real_code.values())
+    qty_precisions = [
+        _line_precision(pair["real"]["quantity"], pair["generated"]["quantity"])
+        for pair in mapped_pairs
+    ]
+    price_precisions = [
+        _line_precision(pair["real"]["price"], pair["generated"]["price"])
+        for pair in mapped_pairs
+    ]
+
+    mapped_coverage = 100.0 * (len(mapped_pairs) / len(real_partidas)) if real_partidas else 0.0
+
+    top_pairs: list[dict[str, Any]] = []
+    for pair in sorted(mapped_pairs, key=lambda item: item["score"], reverse=True)[:20]:
+        real = pair["real"]
+        generated = pair["generated"]
+        top_pairs.append(
+            {
+                "real_code": _safe_str(real.get("code")),
+                "generated_code": _safe_str(generated.get("code")),
+                "score": round(100.0 * float(pair["score"]), 2),
+                "real_summary": _safe_str(real.get("summary"))[:120],
+                "generated_summary": _safe_str(generated.get("summary"))[:120],
+                "real_unit": _safe_str(real.get("unit")),
+                "generated_unit": _safe_str(generated.get("unit")),
+            }
+        )
+
+    return {
+        "mapped_pairs": mapped_pairs,
+        "mapped_coverage_pres_code": mapped_coverage,
+        "mapped_qty_accuracy": 100.0 * _mean(qty_precisions),
+        "mapped_price_accuracy": 100.0 * _mean(price_precisions),
+        "mapped_codes": sorted(candidate_by_real_code),
+        "mapped_count": len(mapped_pairs),
+        "mapped_top_pairs": top_pairs,
+        "mapped_min_similarity": min_similarity,
+    }
+
+
 def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]:
     """
     Métricas compartidas entre el informe .txt y el informe Markdown.
@@ -157,16 +370,35 @@ def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]
     real_by_code: dict[str, dict[str, Any]] = {
         _safe_str(row["code"]): row for row in real_partidas if _safe_str(row["code"])
     }
-    matching_codes = sorted(set(real_by_code) & set(generated_by_code))
+    generated_by_code_normalized = _index_by_normalized_code(generated_partidas)
+    real_by_code_normalized = _index_by_normalized_code(real_partidas)
+
+    matching_codes_exact = sorted(set(real_by_code) & set(generated_by_code))
+    matching_codes_normalized = sorted(set(real_by_code_normalized) & set(generated_by_code_normalized))
+    matching_codes = matching_codes_normalized
+
     real_only_codes = sorted(set(real_by_code) - set(generated_by_code))
     generated_only_codes = sorted(set(generated_by_code) - set(real_by_code))
 
+    real_only_codes_normalized = sorted(
+        set(real_by_code_normalized) - set(generated_by_code_normalized)
+    )
+    generated_only_codes_normalized = sorted(
+        set(generated_by_code_normalized) - set(real_by_code_normalized)
+    )
+
     qty_precisions = [
-        _line_precision(real_by_code[code]["quantity"], generated_by_code[code]["quantity"])
+        _line_precision(
+            real_by_code_normalized[code]["quantity"],
+            generated_by_code_normalized[code]["quantity"],
+        )
         for code in matching_codes
     ]
     price_precisions = [
-        _line_precision(real_by_code[code]["price"], generated_by_code[code]["price"])
+        _line_precision(
+            real_by_code_normalized[code]["price"],
+            generated_by_code_normalized[code]["price"],
+        )
         for code in matching_codes
     ]
 
@@ -184,17 +416,23 @@ def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]
     real_total = sum(row["amount"] for row in real_partidas)
     generated_total = sum(row["amount"] for row in generated_partidas)
 
-    coverage = 100.0 * (len(matching_codes) / len(real_by_code)) if real_by_code else 0.0
+    coverage_exact = 100.0 * (len(matching_codes_exact) / len(real_by_code)) if real_by_code else 0.0
+    coverage = (
+        100.0 * (len(matching_codes_normalized) / len(real_by_code_normalized))
+        if real_by_code_normalized
+        else 0.0
+    )
     qty_accuracy = 100.0 * _mean(qty_precisions)
     price_accuracy = 100.0 * _mean(price_precisions)
 
     amount_deltas: list[dict[str, Any]] = []
     for code in matching_codes:
-        r = real_by_code[code]
-        g = generated_by_code[code]
+        r = real_by_code_normalized[code]
+        g = generated_by_code_normalized[code]
         amount_deltas.append(
             {
-                "code": code,
+                "code": _safe_str(r.get("code")) or code,
+                "normalized_code": code,
                 "real_amount": r["amount"],
                 "gen_amount": g["amount"],
                 "delta": g["amount"] - r["amount"],
@@ -204,6 +442,8 @@ def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]
             }
         )
     amount_deltas.sort(key=lambda item: abs(float(item["delta"])), reverse=True)
+    semantic = _semantic_similarity_metrics(generated_partidas, real_partidas)
+    mapped = _map_generated_to_real_codes(generated_partidas, real_partidas, min_similarity=0.60)
 
     return {
         "generated_rows": generated_rows,
@@ -214,9 +454,15 @@ def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]
         "real_chapters": real_chapters,
         "generated_by_code": generated_by_code,
         "real_by_code": real_by_code,
+        "generated_by_code_normalized": generated_by_code_normalized,
+        "real_by_code_normalized": real_by_code_normalized,
         "matching_codes": matching_codes,
+        "matching_codes_exact": matching_codes_exact,
+        "matching_codes_normalized": matching_codes_normalized,
         "real_only_codes": real_only_codes,
         "generated_only_codes": generated_only_codes,
+        "real_only_codes_normalized": real_only_codes_normalized,
+        "generated_only_codes_normalized": generated_only_codes_normalized,
         "qty_precisions": qty_precisions,
         "price_precisions": price_precisions,
         "generated_disciplines": generated_disciplines,
@@ -227,9 +473,12 @@ def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]
         "real_total": real_total,
         "generated_total": generated_total,
         "coverage": coverage,
+        "coverage_exact": coverage_exact,
         "qty_accuracy": qty_accuracy,
         "price_accuracy": price_accuracy,
         "amount_deltas": amount_deltas,
+        **semantic,
+        **mapped,
     }
 
 
@@ -270,9 +519,18 @@ def build_comparison_markdown(
         f"| Partidas | {len(stats['generated_partidas'])} | {len(stats['real_partidas'])} |",
         f"| Capítulos (filas Nat) | {len(stats['generated_chapters'])} | {len(stats['real_chapters'])} |",
         f"| Códigos coincidentes | {len(stats['matching_codes'])} | — |",
+        f"| Códigos coincidentes (exactos) | {len(stats['matching_codes_exact'])} | — |",
+        f"| Códigos coincidentes (normalizados) | {len(stats['matching_codes_normalized'])} | — |",
+        f"| Cobertura exacta (código crudo) | {stats['coverage_exact']:.2f}% | — |",
         f"| Cobertura códigos PRES con equivalente generado | {stats['coverage']:.2f}% | — |",
         f"| Precisión cantidad (solo códigos coincidentes) | {stats['qty_accuracy']:.2f}% | — |",
         f"| Precisión precio unitario (solo coincidentes) | {stats['price_accuracy']:.2f}% | — |",
+        f"| Similitud semántica promedio (resumen) | {stats['semantic_avg_best_similarity']:.2f}% | — |",
+        f"| Match semántico >= 60% | {stats['semantic_match_rate_60']:.2f}% | — |",
+        f"| Match semántico >= 70% | {stats['semantic_match_rate_70']:.2f}% | — |",
+        f"| Cobertura mapeada a código PRES (sim>=60%) | {stats['mapped_coverage_pres_code']:.2f}% | — |",
+        f"| Precisión cantidad mapeada | {stats['mapped_qty_accuracy']:.2f}% | — |",
+        f"| Precisión precio mapeada | {stats['mapped_price_accuracy']:.2f}% | — |",
         f"| Suma Importe (ImpPres) | {stats['generated_total']:,.2f} | {stats['real_total']:,.2f} |",
         f"| Delta (generado − real) | {stats['generated_total'] - stats['real_total']:,.2f} | — |",
         "",
@@ -343,6 +601,25 @@ def build_comparison_markdown(
             f"precisión cant. {qty_score:.1f}% | precio {price_score:.1f}%"
         )
 
+    lines.extend(["", "## Top mapeos inferidos (similitud resumen)", ""])
+    if not stats["mapped_top_pairs"]:
+        lines.append("_Sin mapeos inferidos con umbral actual._")
+    else:
+        lines.append("| Código PRES | Código generado | Similitud | U. PRES | U. gen | Resumen PRES | Resumen generado |")
+        lines.append("| --- | --- | ---: | --- | --- | --- | --- |")
+        for row in stats["mapped_top_pairs"]:
+            lines.append(
+                "| {rc} | {gc} | {sc:.2f}% | {ru} | {gu} | {rs} | {gs} |".format(
+                    rc=_md_cell(row["real_code"]),
+                    gc=_md_cell(row["generated_code"]),
+                    sc=float(row["score"]),
+                    ru=_md_cell(row["real_unit"]),
+                    gu=_md_cell(row["generated_unit"]),
+                    rs=_md_cell(row["real_summary"]),
+                    gs=_md_cell(row["generated_summary"]),
+                )
+            )
+
     return "\n".join(lines) + "\n"
 
 
@@ -387,10 +664,18 @@ def build_comparison_report(generated_path: Path, real_path: Path, output_dir: P
         f"- Rows with ImpPres > 0: {generated_non_empty_amount}/{len(generated_partidas)}",
         "",
         "3) Matching quality by code",
-        f"- Matching codes: {len(matching_codes)}",
+        f"- Matching codes (normalized): {len(matching_codes)}",
+        f"- Matching codes (exact raw): {len(stats['matching_codes_exact'])}",
+        f"- Coverage (exact raw): {stats['coverage_exact']:.2f}%",
         f"- Coverage of real partidas by generated equivalent: {coverage:.2f}%",
         f"- Quantity precision (only matched codes): {qty_accuracy:.2f}%",
         f"- Price precision (only matched codes): {price_accuracy:.2f}%",
+        f"- Semantic avg best similarity (summary): {stats['semantic_avg_best_similarity']:.2f}%",
+        f"- Semantic match rate >= 60%: {stats['semantic_match_rate_60']:.2f}%",
+        f"- Semantic match rate >= 70%: {stats['semantic_match_rate_70']:.2f}%",
+        f"- Mapped PRES code coverage (sim >= {100.0*stats['mapped_min_similarity']:.0f}%): {stats['mapped_coverage_pres_code']:.2f}%",
+        f"- Mapped quantity precision: {stats['mapped_qty_accuracy']:.2f}%",
+        f"- Mapped price precision: {stats['mapped_price_accuracy']:.2f}%",
         "",
         "4) Totals",
         f"- Generated total (sum ImpPres): {generated_total:,.2f}",
