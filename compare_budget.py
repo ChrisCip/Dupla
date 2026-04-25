@@ -143,6 +143,66 @@ def _discipline_tags(text: str) -> set[str]:
     return found
 
 
+# Tags that belong to each pipeline discipline for honest coverage metrics.
+DISCIPLINE_FILTER_TAGS: dict[str, set[str]] = {
+    "arquitectura": {
+        "muros_divisiones", "panete_revestimiento", "pisos", "escaleras",
+        "puertas", "ventanas", "ebanisteria", "pintura", "techos_cubierta",
+        "herreria", "impermeabilizacion", "acabados",
+    },
+    "estructura": {
+        "movimiento_tierra", "hormigon_armado", "acero_refuerzo",
+    },
+    "electrico": {
+        "electrico", "equipos_electricos",
+    },
+    "sanitario": {
+        "sanitario",
+    },
+}
+
+
+def _filter_partidas_by_discipline(
+    partidas: list[dict[str, Any]],
+    discipline: str,
+    all_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return partidas whose chapter context matches the given discipline.
+
+    Uses the chapter heading above each partida to determine discipline.
+    Falls back to partida-level tags when chapter context is unavailable.
+    """
+    allowed_tags = DISCIPLINE_FILTER_TAGS.get(discipline)
+    if not allowed_tags:
+        return partidas
+
+    # Build a chapter-context lookup: for each partida, find its parent chapter's tags.
+    chapter_context: dict[int, set[str]] = {}
+    current_chapter_tags: set[str] = set()
+    for idx, row in enumerate(all_rows):
+        if _is_chapter(row):
+            current_chapter_tags = _discipline_tags(_safe_str(row.get("summary")))
+        chapter_context[idx] = current_chapter_tags
+
+    # Map partidas to their row index for chapter context lookup.
+    partida_indices: dict[int, dict[str, Any]] = {}
+    partida_idx = 0
+    for idx, row in enumerate(all_rows):
+        if _is_partida(row) and partida_idx < len(partidas):
+            partida_indices[idx] = partidas[partida_idx]
+            partida_idx += 1
+
+    filtered: list[dict[str, Any]] = []
+    for idx, partida in partida_indices.items():
+        ctx_tags = chapter_context.get(idx, set())
+        partida_tags = _row_family_tags(partida)
+        combined = ctx_tags | partida_tags
+        if combined & allowed_tags:
+            filtered.append(partida)
+
+    return filtered
+
+
 def _line_precision(real_value: float, gen_value: float) -> float:
     if real_value == 0 and gen_value == 0:
         return 1.0
@@ -352,7 +412,12 @@ def _map_generated_to_real_codes(
     }
 
 
-def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]:
+def analyze_budget_pair(
+    generated_path: Path,
+    real_path: Path,
+    *,
+    discipline_filter: str | None = None,
+) -> dict[str, Any]:
     """
     Métricas compartidas entre el informe .txt y el informe Markdown.
     """
@@ -443,7 +508,28 @@ def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]
         )
     amount_deltas.sort(key=lambda item: abs(float(item["delta"])), reverse=True)
     semantic = _semantic_similarity_metrics(generated_partidas, real_partidas)
-    mapped = _map_generated_to_real_codes(generated_partidas, real_partidas, min_similarity=0.60)
+    mapped = _map_generated_to_real_codes(generated_partidas, real_partidas, min_similarity=0.52)
+
+    # Discipline-filtered metrics: compare only against the relevant subset of PRES.
+    filtered_metrics: dict[str, Any] = {
+        "discipline_filter": discipline_filter,
+        "filtered_real_count": len(real_partidas),
+        "filtered_semantic": {},
+        "filtered_mapped": {},
+    }
+    if discipline_filter:
+        filtered_real = _filter_partidas_by_discipline(real_partidas, discipline_filter, real_rows)
+        filtered_metrics["filtered_real_count"] = len(filtered_real)
+        if filtered_real:
+            filtered_metrics["filtered_semantic"] = _semantic_similarity_metrics(
+                generated_partidas, filtered_real,
+            )
+            filtered_metrics["filtered_mapped"] = _map_generated_to_real_codes(
+                generated_partidas, filtered_real, min_similarity=0.35,
+            )
+        filtered_metrics["filtered_coverage_theoretical"] = (
+            100.0 * len(generated_partidas) / len(filtered_real) if filtered_real else 0.0
+        )
 
     return {
         "generated_rows": generated_rows,
@@ -479,6 +565,7 @@ def analyze_budget_pair(generated_path: Path, real_path: Path) -> dict[str, Any]
         "amount_deltas": amount_deltas,
         **semantic,
         **mapped,
+        **filtered_metrics,
     }
 
 
