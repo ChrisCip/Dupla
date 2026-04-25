@@ -20,3 +20,21 @@ demo_files/
 !rules_engine/
 !rules_engine/*.json
 !validation/discipline_rules.json
+
+# Build artifacts (.NET)
+**/bin/
+**/obj/
+.dotnet_cli_home/
+
+# AutoCAD error logs
+acad.err
+
+# AutoCAD accore cache / isolate (ruido de analysis_output)
+analysis_output/**/cache/
+analysis_output/**/isolate/
+analysis_output/**/dump/
+analysis_output/**/*.dwg
+analysis_output/**/*.dxf
+
+# Repositorios de proyecto (archivos grandes, gestión externa)
+repositorios/
