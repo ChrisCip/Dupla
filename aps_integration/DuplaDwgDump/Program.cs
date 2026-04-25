@@ -1,81 +1,87 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
+using System.Runtime.Loader;
 using System.Text.Json;
-using Autodesk.AutoCAD.ApplicationServices.Core;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using Autodesk.AutoCAD.Runtime;
 
-[assembly: CommandClass(typeof(DuplaExtractor.Commands))]
-[assembly: ExtensionApplication(typeof(DuplaExtractor.EntryPoint))]
-
-namespace DuplaExtractor
+namespace DuplaDwgDump
 {
-    public class EntryPoint : IExtensionApplication
+    internal static class Program
     {
-        public void Initialize()
-        {
-        }
+        private const string AutoCadRoot = @"C:\Program Files\Autodesk\AutoCAD 2027";
 
-        public void Terminate()
+        private static int Main(string[] args)
         {
-        }
-    }
+            AssemblyLoadContext.Default.Resolving += ResolveAutodeskAssembly;
 
-    public class Commands
-    {
-        [CommandMethod("ExtractDuplaData")]
-        public void ExtractDuplaData()
-        {
-            var db = HostApplicationServices.WorkingDatabase;
-            var results = new Dictionary<string, object>();
-            var entities = new List<object>();
-            var blocks = new List<object>();
-            var polylines = new List<object>();
-
-            using (var tr = db.TransactionManager.StartTransaction())
+            if (args.Length < 1)
             {
-                var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
-                var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
-
-                foreach (ObjectId objId in btr)
-                {
-                    var ent = tr.GetObject(objId, OpenMode.ForRead) as Entity;
-                    if (ent == null)
-                    {
-                        continue;
-                    }
-
-                    var serialized = SerializeEntity(ent, tr);
-                    if (serialized == null)
-                    {
-                        continue;
-                    }
-
-                    entities.Add(serialized);
-
-                    var entityType = (serialized["Type"] as string) ?? string.Empty;
-                    if (entityType == "BlockReference")
-                    {
-                        blocks.Add(serialized);
-                    }
-                    else if (entityType.StartsWith("Polyline", StringComparison.Ordinal))
-                    {
-                        polylines.Add(serialized);
-                    }
-                }
-
-                tr.Commit();
+                Console.Error.WriteLine("Usage: DuplaDwgDump <input.dwg> [output.json]");
+                return 2;
             }
 
-            results["UnitsToMmFactor"] = UnitsToMmFactor(db);
+            string inputPath = Path.GetFullPath(args[0]);
+            string outputPath = args.Length > 1 ? Path.GetFullPath(args[1]) : Path.Combine(Environment.CurrentDirectory, "resultados.json");
+
+            if (!File.Exists(inputPath))
+            {
+                Console.Error.WriteLine("DWG not found: " + inputPath);
+                return 3;
+            }
+
+            var results = new Dictionary<string, object>();
+            var entities = new List<object>();
+
+            using (var db = new Database(false, true))
+            {
+                db.ReadDwgFile(inputPath, FileOpenMode.OpenForReadAndAllShare, true, null);
+                db.CloseInput(true);
+
+                using (var tr = db.TransactionManager.StartTransaction())
+                {
+                    var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+                    var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+
+                    foreach (ObjectId objId in btr)
+                    {
+                        var ent = tr.GetObject(objId, OpenMode.ForRead) as Entity;
+                        if (ent == null)
+                        {
+                            continue;
+                        }
+
+                        var serialized = SerializeEntity(ent, tr);
+                        if (serialized != null)
+                        {
+                            entities.Add(serialized);
+                        }
+                    }
+
+                    tr.Commit();
+                }
+
+                results["UnitsToMmFactor"] = UnitsToMmFactor(db);
+            }
+
             results["EntityCount"] = entities.Count;
             results["Entities"] = entities;
-            results["Blocks"] = blocks;
-            results["Polylines"] = polylines;
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Environment.CurrentDirectory);
+            File.WriteAllText(outputPath, JsonSerializer.Serialize(results, new JsonSerializerOptions()));
+            Console.WriteLine(outputPath);
+            return 0;
+        }
 
-            File.WriteAllText("resultados.json", JsonSerializer.Serialize(results, new JsonSerializerOptions()));
+        private static Assembly ResolveAutodeskAssembly(AssemblyLoadContext context, AssemblyName assemblyName)
+        {
+            string candidate = Path.Combine(AutoCadRoot, assemblyName.Name + ".dll");
+            if (File.Exists(candidate))
+            {
+                return context.LoadFromAssemblyPath(candidate);
+            }
+            return null;
         }
 
         private static Dictionary<string, object> SerializeEntity(Entity ent, Transaction tr)
@@ -115,9 +121,6 @@ namespace DuplaExtractor
             if (ent is Polyline2d polyline2d)
             {
                 payload["Closed"] = polyline2d.Closed;
-                payload["Area"] = 0.0;
-                payload["Length"] = 0.0;
-                payload["Elevation"] = 0.0;
                 payload["Vertices"] = GetPolyline2dVertices(polyline2d, tr);
                 return payload;
             }
@@ -125,9 +128,6 @@ namespace DuplaExtractor
             if (ent is Polyline3d polyline3d)
             {
                 payload["Closed"] = polyline3d.Closed;
-                payload["Area"] = 0.0;
-                payload["Length"] = 0.0;
-                payload["Elevation"] = 0.0;
                 payload["Vertices"] = GetPolyline3dVertices(polyline3d, tr);
                 return payload;
             }
@@ -136,7 +136,6 @@ namespace DuplaExtractor
             {
                 payload["Center"] = PointDict(circle.Center);
                 payload["Radius"] = circle.Radius;
-                payload["Elevation"] = circle.Center.Z;
                 return payload;
             }
 
@@ -146,7 +145,6 @@ namespace DuplaExtractor
                 payload["Radius"] = arc.Radius;
                 payload["StartAngle"] = arc.StartAngle;
                 payload["EndAngle"] = arc.EndAngle;
-                payload["Elevation"] = arc.Center.Z;
                 return payload;
             }
 
@@ -171,14 +169,6 @@ namespace DuplaExtractor
                     props[att.Tag] = att.TextString ?? string.Empty;
                 }
             }
-
-            if (blockRef.IsDynamicBlock)
-            {
-                foreach (DynamicBlockReferenceProperty prop in blockRef.DynamicBlockReferencePropertyCollection)
-                {
-                    props[prop.PropertyName] = prop.Value != null ? prop.Value.ToString() : string.Empty;
-                }
-            }
             return props;
         }
 
@@ -200,8 +190,7 @@ namespace DuplaExtractor
             var vertices = new List<Dictionary<string, object>>();
             for (int i = 0; i < polyline.NumberOfVertices; i++)
             {
-                var pt = polyline.GetPoint3dAt(i);
-                vertices.Add(PointDict(pt));
+                vertices.Add(PointDict(polyline.GetPoint3dAt(i)));
             }
             return vertices;
         }
