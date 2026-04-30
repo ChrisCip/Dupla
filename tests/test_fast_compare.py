@@ -311,6 +311,65 @@ def test_load_alignment_manifest_normalizes_paths(tmp_path) -> None:
     assert overrides["planos recibidos/arquitectonicos/a.dwg"].translate_mm == (-1000.0, 2500.0)
 
 
+def test_load_alignment_manifest_reads_level_override(tmp_path) -> None:
+    root = tmp_path / "SERENA 18"
+    root.mkdir()
+    manifest = tmp_path / "alignment.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "entries": [
+                    {
+                        "source_file": "PLANOS RECIBIDOS/ARQUITECTONICOS/A.dwg",
+                        "translate_mm": [100.0, 200.0],
+                        "level_id": "TECHO",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    overrides = load_alignment_manifest(manifest, root=root)
+
+    override = overrides["planos recibidos/arquitectonicos/a.dwg"]
+    assert override.level_id == "TECHO"
+    assert override.level_source == "manual_manifest:TECHO"
+
+
+def test_apply_alignment_override_to_candidate_updates_level() -> None:
+    candidate = SourceCandidate(
+        path=Path("a.dwg"),
+        rel_path="PLANOS RECIBIDOS/ARQUITECTONICOS/A.dwg",
+        issue_key="d:20240601",
+        discipline=Discipline.ARCH,
+        suffix=".dwg",
+        level_id="NPT_P1",
+        level_source="pattern:nivel_1",
+        cohort_id="manual",
+    )
+    overrides = {
+        "planos recibidos/arquitectonicos/a.dwg": type(
+            "Override",
+            (),
+            {
+                "translate_mm": (100.0, 200.0),
+                "level_id": "TECHO",
+                "level_source": "manual_manifest:TECHO",
+            },
+        )()
+    }
+
+    updated = runner._apply_alignment_override_to_candidate(
+        candidate=candidate,
+        alignment_overrides=overrides,
+    )
+
+    assert updated.level_id == "TECHO"
+    assert updated.level_source == "manual_manifest:TECHO"
+    assert updated.rel_path == candidate.rel_path
+
+
 def test_apply_translation_to_profile_shifts_dominant_cluster() -> None:
     profile = {
         "bounds_mm": (100.0, 200.0, 300.0, 400.0, 0.0, 0.0),

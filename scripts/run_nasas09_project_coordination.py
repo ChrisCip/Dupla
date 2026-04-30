@@ -635,13 +635,49 @@ def _resolve_candidate_translation(
     alignment_overrides: dict[str, object] | None,
 ) -> tuple[float, float]:
     base_translation = (0.0, 0.0) if args.shared_site_origin else file_translation_mm(candidate.path)
-    if not alignment_overrides:
-        return base_translation
-    override = alignment_overrides.get(normalize_source_text(candidate.rel_path))
+    override = _resolve_candidate_alignment_override(
+        candidate=candidate,
+        alignment_overrides=alignment_overrides,
+    )
     if override is None:
         return base_translation
     dx, dy = override.translate_mm
     return (base_translation[0] + dx, base_translation[1] + dy)
+
+
+def _resolve_candidate_alignment_override(
+    *,
+    candidate,
+    alignment_overrides: dict[str, object] | None,
+):
+    if not alignment_overrides:
+        return None
+    return alignment_overrides.get(normalize_source_text(candidate.rel_path))
+
+
+def _apply_alignment_override_to_candidate(
+    *,
+    candidate,
+    alignment_overrides: dict[str, object] | None,
+):
+    override = _resolve_candidate_alignment_override(
+        candidate=candidate,
+        alignment_overrides=alignment_overrides,
+    )
+    if override is None:
+        return candidate
+    if not getattr(override, "level_id", None):
+        return candidate
+    return candidate.__class__(
+        path=candidate.path,
+        rel_path=candidate.rel_path,
+        issue_key=candidate.issue_key,
+        discipline=candidate.discipline,
+        suffix=candidate.suffix,
+        level_id=override.level_id,
+        level_source=getattr(override, "level_source", None) or candidate.level_source,
+        cohort_id=candidate.cohort_id,
+    )
 
 
 def _apply_translation_to_profile(
@@ -974,7 +1010,14 @@ def _run_fast_compare(
     else:
         selected_candidates = select_comparable_candidates(candidates, comparable_issue_keys=readiness_payload["comparable_issue_keys"])
 
-    selected_candidates = sorted(suppress_visual_backups(selected_candidates), key=lambda candidate: candidate.rel_path)
+    selected_candidates = [
+        _apply_alignment_override_to_candidate(
+            candidate=candidate,
+            alignment_overrides=alignment_overrides,
+        )
+        for candidate in suppress_visual_backups(selected_candidates)
+    ]
+    selected_candidates = sorted(selected_candidates, key=lambda candidate: candidate.rel_path)
     readiness_payload["selected_candidates"] = [
         {
             "rel_path": candidate.rel_path,

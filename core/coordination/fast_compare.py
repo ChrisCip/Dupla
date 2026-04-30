@@ -50,6 +50,8 @@ class CohortManifest:
 class AlignmentOverride:
     source_file: str
     translate_mm: tuple[float, float]
+    level_id: str | None = None
+    level_source: str | None = None
     note: str | None = None
 
 
@@ -138,6 +140,8 @@ def load_alignment_manifest(path: Path, *, root: Path) -> dict[str, AlignmentOve
             continue
         raw_source = entry.get("source_file")
         translate_mm = entry.get("translate_mm")
+        level_id = entry.get("level_id")
+        level_source = entry.get("level_source")
         if not isinstance(raw_source, str) or not raw_source.strip():
             continue
         if (
@@ -152,6 +156,16 @@ def load_alignment_manifest(path: Path, *, root: Path) -> dict[str, AlignmentOve
         overrides[key] = AlignmentOverride(
             source_file=rel,
             translate_mm=(float(translate_mm[0]), float(translate_mm[1])),
+            level_id=str(level_id).strip() if isinstance(level_id, str) and level_id.strip() else None,
+            level_source=(
+                str(level_source).strip()
+                if isinstance(level_source, str) and level_source.strip()
+                else (
+                    f"manual_manifest:{str(level_id).strip()}"
+                    if isinstance(level_id, str) and level_id.strip()
+                    else None
+                )
+            ),
             note=str(entry.get("note")) if entry.get("note") else None,
         )
     if not overrides:
