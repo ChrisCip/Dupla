@@ -32,6 +32,16 @@ class WorkflowTemplateRepository:
         )
         return (await self._session.execute(q)).scalar_one_or_none()
 
+    async def get_default_active_template(self) -> Optional[WorkflowTemplate]:
+        """Primera plantilla no archivada por nombre (mismo criterio que el listado del selector)."""
+        q = (
+            select(WorkflowTemplate)
+            .where(WorkflowTemplate.archived_at.is_(None))
+            .order_by(WorkflowTemplate.name.asc())
+            .limit(1)
+        )
+        return (await self._session.execute(q)).scalar_one_or_none()
+
     async def list_steps_ordered(self, template_id: UUID) -> list[WorkflowTemplateStep]:
         q = (
             select(WorkflowTemplateStep)
@@ -43,22 +53,6 @@ class WorkflowTemplateRepository:
 
     async def get_step_by_uuid(self, step_uuid: UUID) -> Optional[WorkflowTemplateStep]:
         q = select(WorkflowTemplateStep).where(WorkflowTemplateStep.id == step_uuid)
-        return (await self._session.execute(q)).scalar_one_or_none()
-
-    async def first_step_matching_behavior(
-        self,
-        template_id: UUID,
-        behavior_kind: str,
-    ) -> Optional[WorkflowTemplateStep]:
-        q = (
-            select(WorkflowTemplateStep)
-            .where(
-                WorkflowTemplateStep.workflow_template_id == template_id,
-                WorkflowTemplateStep.behavior_kind == behavior_kind,
-            )
-            .order_by(WorkflowTemplateStep.sort_index.asc())
-            .limit(1)
-        )
         return (await self._session.execute(q)).scalar_one_or_none()
 
     async def search_templates_and_projects(

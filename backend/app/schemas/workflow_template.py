@@ -10,7 +10,7 @@ from app.models.workflow_template import WorkflowTemplate, WorkflowTemplateStep
 
 
 class WorkflowTemplateStepInput(BaseModel):
-    """Paso al reemplazar la plantilla; si uuid es null se genera un id nuevo vía stable_key."""
+    """Un ítem del PUT de pasos; la lista completa sustituye todos los pasos (uuid ignorado)."""
 
     uuid: Optional[UUID] = None
     stable_key: str = Field(..., min_length=1, max_length=128)

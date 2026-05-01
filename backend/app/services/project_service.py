@@ -9,10 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.domain.project_kind import ProjectKind
 from app.domain.project_updated import touch_project_updated_at
-from app.domain.workflow_phase import WorkflowPhase
 from app.models.project import Project
 from app.models.user import User, UserRole
-from app.domain.workflow_template_ids import LEGACY_WORKFLOW_TEMPLATE_ID
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.workflow_template_repository import WorkflowTemplateRepository
@@ -87,24 +85,33 @@ class ProjectService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Los proyectos de licitación requieren al menos un archivo al crear el proyecto",
             )
-        wf = (
-            WorkflowPhase.ARCHITECTURE_REVIEW.value
-            if project_kind == ProjectKind.TENDER
-            else WorkflowPhase.BOOTSTRAPPING.value
-        )
-        tid = workflow_template_uuid or LEGACY_WORKFLOW_TEMPLATE_ID
-        tpl = await self._workflow_templates.get_template_by_uuid(tid)
-        if tpl is None or tpl.archived_at is not None:
+        if workflow_template_uuid is not None:
+            tpl = await self._workflow_templates.get_template_by_uuid(workflow_template_uuid)
+            if tpl is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="La plantilla de flujo no existe",
+                )
+        else:
+            tpl = await self._workflow_templates.get_default_active_template()
+            if tpl is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No hay plantillas de flujo activas; creá una en Flujos.",
+                )
+        if tpl.archived_at is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="La plantilla de flujo no existe o está archivada",
+                detail="La plantilla de flujo está archivada",
             )
-        initial_step = await self._workflow_templates.first_step_matching_behavior(tpl.id, wf)
-        if initial_step is None:
+        ordered_steps = await self._workflow_templates.list_steps_ordered(tpl.id)
+        if not ordered_steps:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="La plantilla de flujo no define un paso para la fase inicial requerida",
+                detail="La plantilla de flujo no tiene ningún paso",
             )
+        initial_step = ordered_steps[0]
+        wf = initial_step.behavior_kind
         cn = client_name.strip() if client_name else None
         cn = cn or None
         pc = project_code.strip() if project_code else None

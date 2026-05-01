@@ -48,7 +48,7 @@ export function ProjectsPage() {
   const [viewMode, setViewMode] = useState<'lista' | 'tablero'>('tablero')
   const [boardMsg, setBoardMsg] = useState<string | null>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
-  const [projectKind, setProjectKind] = useState<ProjectKindValue>('RESIDENTIAL')
+  const [projectKind, setProjectKind] = useState<ProjectKindValue>('CLIENT')
   const [createFiles, setCreateFiles] = useState<File[]>([])
   const [createProjectCode, setCreateProjectCode] = useState('')
   const [createLocation, setCreateLocation] = useState('')
@@ -204,6 +204,14 @@ export function ProjectsPage() {
     e?.preventDefault()
     if (!token) return
     setCreateError(null)
+    if (workflowTemplates.length === 0) {
+      setCreateError('No hay plantillas de flujo activas. Creá una en Flujos.')
+      return
+    }
+    if (!workflowTemplateUuid.trim()) {
+      setCreateError('Elegí una plantilla de flujo.')
+      return
+    }
     if (projectKind === 'TENDER' && createFiles.length === 0) {
       setCreateError('Los proyectos de licitación requieren al menos un archivo al crear.')
       return
@@ -214,6 +222,7 @@ export function ProjectsPage() {
       fd.append('name', name.trim())
       fd.append('client_name', client.trim())
       fd.append('project_kind', projectKind)
+      fd.append('workflow_template_uuid', workflowTemplateUuid.trim())
       if (role === 'GERENCIA' && createMembers.size > 0) {
         fd.append('member_user_uuids', JSON.stringify(Array.from(createMembers)))
       }
@@ -223,7 +232,6 @@ export function ProjectsPage() {
       if (createFloors.trim()) fd.append('floor_levels_count', createFloors.trim())
       if (createDeadline.trim()) fd.append('deadline', createDeadline.trim())
       if (createResponsible.trim()) fd.append('responsible_user_uuid', createResponsible.trim())
-      if (workflowTemplateUuid.trim()) fd.append('workflow_template_uuid', workflowTemplateUuid.trim())
       for (const f of createFiles) {
         fd.append('files', f)
       }
@@ -242,7 +250,7 @@ export function ProjectsPage() {
       feedbackClearRef.current = setTimeout(() => setFeedback(null), 6000)
       setName('Nuevo proyecto')
       setClient('')
-      setProjectKind('RESIDENTIAL')
+      setProjectKind('CLIENT')
       setCreateFiles([])
       setCreateMembers(new Set())
       setCreateProjectCode('')

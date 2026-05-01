@@ -87,7 +87,7 @@ async def list_projects(
     status_code=status.HTTP_201_CREATED,
     summary="Create project",
     description=(
-        "Multipart: name, client_name opcional, project_kind (RESIDENTIAL|TENDER), "
+        "Multipart: name, client_name opcional, project_kind (TENDER|CLIENT|DEVELOPMENT), "
         "member_user_uuids opcional como JSON string de UUIDs, files opcional (múltiples). "
         "Licitación (TENDER): fase inicial revisión de arquitectura y obligatorio al menos un archivo."
     ),
@@ -97,7 +97,7 @@ async def create_project(
     session: Annotated[AsyncSession, Depends(get_db)],
     name: str = Form(...),
     client_name: Optional[str] = Form(None),
-    project_kind: str = Form("RESIDENTIAL"),
+    project_kind: str = Form("CLIENT"),
     member_user_uuids: Optional[str] = Form(
         None,
         description='JSON array de UUIDs, ej. ["uuid1","uuid2"]',
@@ -116,7 +116,7 @@ async def create_project(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="project_kind debe ser RESIDENTIAL o TENDER",
+            detail="project_kind debe ser TENDER, CLIENT o DEVELOPMENT",
         ) from e
     members: Optional[list[UUID]] = None
     if member_user_uuids is not None and member_user_uuids.strip():

@@ -144,7 +144,7 @@ async def _ensure_tutorial_project_and_task(session) -> None:
             id=TUTORIAL_PROJECT_UUID,
             name=TUTORIAL_PROJECT_NAME,
             client_name="Dupla (demo)",
-            project_kind=ProjectKind.RESIDENTIAL.value,
+            project_kind=ProjectKind.CLIENT.value,
             created_by=master_id,
             workflow_phase=WorkflowPhase.BOOTSTRAPPING.value,
             workflow_meta=_seed_workflow_meta(),

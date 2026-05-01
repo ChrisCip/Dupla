@@ -21,6 +21,8 @@ export type EnterActionType = 'notify_role' | 'create_task' | 'project_chat_mess
 export type DraftWorkflowStep = {
   /** Id estable solo en el cliente; no se envía al API. Evita que React mezcle inputs al reordenar. */
   draft_id: string
+  /** UUID del paso tras cargar desde el servidor (solo referencia local; el PUT reemplaza todo el flujo). */
+  server_step_uuid?: string | null
   stable_key: string
   title: string
   requires_approval_role: string | null
@@ -373,7 +375,8 @@ export function FlowStepsEditor({ steps, onChange }: FlowStepsEditorProps) {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-black/10 bg-white lg:max-h-full">
         <div className="shrink-0 space-y-3 px-3 pt-3">
           <p className="text-sm font-semibold text-ink">
-            Los pasos siguen el orden del flujo (1 → 2 → 3 …). El orden lo define la lista guardada.
+            Orden 1 → 2 → 3 = orden del flujo. «Guardar» envía solo esta lista y en el servidor sustituye todos los
+            pasos anteriores.
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <label className="min-w-[min(100%,220px)] flex-1">

@@ -25,7 +25,7 @@ class Project(Base):
     project_kind: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
-        default=ProjectKind.RESIDENTIAL.value,
+        default=ProjectKind.CLIENT.value,
     )
     status: Mapped[str] = mapped_column(String(50), default="DRAFT")
     workflow_phase: Mapped[str] = mapped_column(

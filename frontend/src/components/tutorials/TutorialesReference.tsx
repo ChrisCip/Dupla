@@ -84,8 +84,8 @@ export function TutorialesReference() {
         <h3 className={h3Class}>Crear un proyecto</h3>
         <ul className={listClass}>
           <li>
-            Abre el flujo de <strong>Nuevo proyecto</strong> (modal con pasos). Indica un nombre
-            reconocible y, si quieres, cliente.
+            Abre el flujo de <strong>Nuevo proyecto</strong> (varios pasos: identificación, dimensiones,
+            ubicación, tipo y equipo). Indica un nombre reconocible y, si quieres, cliente.
           </li>
           <li>
             <strong>Tipo residencial:</strong> sigue el flujo completo desde criterios de arranque

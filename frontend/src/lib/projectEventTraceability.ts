@@ -1,3 +1,4 @@
+import { projectKindLabel } from '../constants/projectKind'
 import { WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
 
 export type ProjectEventRow = {
@@ -53,12 +54,7 @@ export function describeProjectEvent(ev: ProjectEventRow): ProjectEventTrace {
         { label: 'Cliente', value: str(p.client_name) },
         {
           label: 'Tipo',
-          value:
-            p.project_kind === 'TENDER'
-              ? 'Licitación'
-              : p.project_kind === 'RESIDENTIAL'
-                ? 'Residencial'
-                : str(p.project_kind),
+          value: projectKindLabel(typeof p.project_kind === 'string' ? p.project_kind : undefined),
         },
       )
       return { title: 'Proyecto creado', rows }

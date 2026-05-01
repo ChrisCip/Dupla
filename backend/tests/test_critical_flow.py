@@ -63,11 +63,11 @@ async def test_project_architecture_flow(client, master_auth_headers_async: dict
     create = await client.post(
         "/api/projects",
         headers=master_auth_headers_async,
-        data={"name": "Obra demo", "client_name": "Cliente", "project_kind": "RESIDENTIAL"},
+        data={"name": "Obra demo", "client_name": "Cliente", "project_kind": "CLIENT"},
     )
     assert create.status_code == 201, create.text
     created = create.json()
-    assert created["project_kind"] == "RESIDENTIAL"
+    assert created["project_kind"] == "CLIENT"
     assert created["workflow_phase"] == "BOOTSTRAPPING"
     pid = created["uuid"]
     project_uuid = uuid.UUID(pid)
@@ -146,10 +146,10 @@ async def test_exports_return_bytes(client, master_auth_headers_async: dict[str,
     create = await client.post(
         "/api/projects",
         headers=master_auth_headers_async,
-        data={"name": "Export demo", "project_kind": "RESIDENTIAL"},
+        data={"name": "Export demo", "project_kind": "CLIENT"},
     )
     assert create.status_code == 201
-    assert create.json()["project_kind"] == "RESIDENTIAL"
+    assert create.json()["project_kind"] == "CLIENT"
     assert create.json()["workflow_phase"] == "BOOTSTRAPPING"
     pid = uuid.UUID(create.json()["uuid"])
 
@@ -176,7 +176,7 @@ async def test_pliego_generate_approve_and_transition_to_budget(
     create = await client.post(
         "/api/projects",
         headers=master_auth_headers_async,
-        data={"name": "Pliego flow", "client_name": "C", "project_kind": "RESIDENTIAL"},
+        data={"name": "Pliego flow", "client_name": "C", "project_kind": "CLIENT"},
     )
     assert create.status_code == 201, create.text
     pid = create.json()["uuid"]

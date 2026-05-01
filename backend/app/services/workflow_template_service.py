@@ -5,7 +5,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -128,7 +128,12 @@ class WorkflowTemplateService:
         return t
 
     async def replace_steps(self, template_uuid: UUID, steps: list[WorkflowTemplateStepInput]) -> WorkflowTemplate:
-        t = await self._repo.get_template_by_uuid(template_uuid)
+        """
+        Sustitución total por SQL: filas nuevas desde el body; proyectos al primer paso nuevo;
+        borrado masivo de ids viejos (sin depender de la colección ORM `template.steps`).
+        """
+        tq = select(WorkflowTemplate).where(WorkflowTemplate.id == template_uuid)
+        t = (await self._session.execute(tq)).scalar_one_or_none()
         if t is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plantilla no encontrada")
         if t.archived_at is not None:
@@ -152,70 +157,72 @@ class WorkflowTemplateService:
 
         existing_q = select(WorkflowTemplateStep).where(WorkflowTemplateStep.workflow_template_id == t.id)
         existing_rows = list((await self._session.execute(existing_q)).scalars().all())
-        existing_by_stable = {r.stable_key: r for r in existing_rows}
-        payload_stable = {s.stable_key for s in steps}
-
-        for row in existing_rows:
-            if row.stable_key not in payload_stable:
-                uq = select(Project.id).where(Project.current_workflow_step_id == row.id).limit(1)
-                if (await self._session.execute(uq)).scalar_one_or_none() is not None:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail=f"No se puede eliminar el paso «{row.stable_key}»: hay proyectos en ese paso",
-                    )
+        old_ids: list[UUID] = [r.id for r in existing_rows]
 
         now = datetime.now(timezone.utc)
-        stable_to_row: dict[str, WorkflowTemplateStep] = {}
 
-        for idx, inp in enumerate(steps):
-            row = existing_by_stable.get(inp.stable_key)
-            actions = inp.on_enter_actions if isinstance(inp.on_enter_actions, list) else []
-            if row is None:
-                row = WorkflowTemplateStep(
-                    workflow_template_id=t.id,
-                    sort_index=idx,
-                    stable_key=inp.stable_key,
-                    title=inp.title.strip(),
-                    behavior_kind=inp.behavior_kind.strip(),
-                    blocked_by_step_id=None,
-                    requires_approval_role=inp.requires_approval_role.strip()
-                    if inp.requires_approval_role
-                    else None,
-                    on_enter_actions=actions,
-                    created_at=now,
-                    updated_at=now,
-                )
-                self._session.add(row)
-                await self._session.flush()
-            else:
-                row.sort_index = idx
-                row.title = inp.title.strip()
-                row.behavior_kind = inp.behavior_kind.strip()
-                row.requires_approval_role = (
-                    inp.requires_approval_role.strip() if inp.requires_approval_role else None
-                )
-                row.on_enter_actions = actions
-                row.updated_at = now
-                row.blocked_by_step_id = None
-            stable_to_row[inp.stable_key] = row
-
+        # Quitar dependencias entre pasos viejos (FK recursiva); si no, el DELETE puede fallar o quedar inconsistente.
+        for r in existing_rows:
+            r.blocked_by_step_id = None
         await self._session.flush()
 
-        for inp in steps:
-            row = stable_to_row[inp.stable_key]
+        _old_prefix = "__old_"
+        for r in existing_rows:
+            sk = f"{_old_prefix}{r.id.hex}"
+            r.stable_key = sk if len(sk) <= 128 else sk[:128]
+            r.updated_at = now
+        await self._session.flush()
+
+        new_rows: list[WorkflowTemplateStep] = []
+        for idx, inp in enumerate(steps):
+            actions = inp.on_enter_actions if isinstance(inp.on_enter_actions, list) else []
+            row = WorkflowTemplateStep(
+                workflow_template_id=t.id,
+                sort_index=idx,
+                stable_key=inp.stable_key.strip(),
+                title=inp.title.strip(),
+                behavior_kind=inp.behavior_kind.strip(),
+                blocked_by_step_id=None,
+                requires_approval_role=inp.requires_approval_role.strip()
+                if inp.requires_approval_role
+                else None,
+                on_enter_actions=actions,
+                created_at=now,
+                updated_at=now,
+            )
+            self._session.add(row)
+            new_rows.append(row)
+        await self._session.flush()
+
+        stable_to_row = {r.stable_key: r for r in new_rows}
+        for inp, row in zip(steps, new_rows, strict=True):
             if inp.blocked_by_stable_key:
-                blk = stable_to_row.get(inp.blocked_by_stable_key)
+                blk = stable_to_row.get(inp.blocked_by_stable_key.strip())
                 if blk is None:
-                    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="blocked_by inválido")
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="blocked_by inválido",
+                    )
                 row.blocked_by_step_id = blk.id
             else:
                 row.blocked_by_step_id = None
 
-        to_delete = [r for r in existing_rows if r.stable_key not in payload_stable]
-        for r in to_delete:
-            self._session.delete(r)
+        await self._session.flush()
 
-        t.updated_at = datetime.now(timezone.utc)
+        first_new_id = new_rows[0].id
+        proj_q = select(Project).where(Project.workflow_template_id == t.id)
+        projects = list((await self._session.execute(proj_q)).scalars().all())
+        for p in projects:
+            p.current_workflow_step_id = first_new_id
+            p.updated_at = now
+
+        await self._session.flush()
+
+        if old_ids:
+            await self._session.execute(delete(WorkflowTemplateStep).where(WorkflowTemplateStep.id.in_(old_ids)))
+            await self._session.flush()
+
+        t.updated_at = now
         await self._session.flush()
 
         out = await self._repo.get_template_by_uuid(template_uuid)

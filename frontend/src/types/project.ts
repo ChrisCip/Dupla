@@ -9,7 +9,7 @@ export type Project = {
   uuid: string
   name: string
   client_name: string | null
-  /** RESIDENTIAL = residencial, TENDER = licitación */
+  /** TENDER = licitación, CLIENT = cliente, DEVELOPMENT = desarrollo */
   project_kind: string
   status: string
   workflow_phase: string

@@ -108,6 +108,7 @@ export function FlowsHubPage() {
       .sort((a, b) => a.sort_index - b.sort_index)
       .map((s) => ({
         draft_id: newDraftId(),
+        server_step_uuid: s.uuid,
         stable_key: s.stable_key,
         title: s.title,
         requires_approval_role: s.requires_approval_role,
@@ -115,7 +116,7 @@ export function FlowsHubPage() {
       }))
     setDraftSteps(
       mapped.length > 0
-        ? syncStableKeysForSteps(mapped)
+        ? mapped
         : syncStableKeysForSteps([
             {
               draft_id: newDraftId(),
@@ -134,10 +135,11 @@ export function FlowsHubPage() {
     setEditErr(null)
     setEditBusy(true)
     try {
+      const finalSteps = syncStableKeysForSteps(draftSteps)
       const body = {
-        steps: draftSteps.map((s) => ({
+        steps: finalSteps.map((s) => ({
           stable_key: s.stable_key,
-          title: s.title,
+          title: s.title.trim() || s.stable_key,
           behavior_kind: 'CUSTOM_AUTOMATION',
           blocked_by_stable_key: null,
           requires_approval_role: s.requires_approval_role,
@@ -380,7 +382,8 @@ export function FlowsHubPage() {
             <div className="shrink-0 border-b border-black/10 px-4 py-3">
               <h3 className="text-lg font-semibold text-ink">Editar pasos — {editDetail.name}</h3>
               <p className="text-sm text-muted">
-                Orden de los pasos = orden del proceso (izquierda → derecha). Vista previa del grafo a la derecha.
+                «Guardar pasos» reemplaza por completo el flujo en el servidor con la lista que ves (orden del select =
+                proceso). Los pasos que saques del borrador dejan de existir al guardar. Vista previa a la derecha.
               </p>
             </div>
             <div className="flex max-h-[calc(92vh-8.5rem)] min-h-0 flex-1 flex-col overflow-hidden p-4">
