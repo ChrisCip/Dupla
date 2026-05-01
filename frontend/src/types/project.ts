@@ -30,4 +30,5 @@ export type Project = {
   current_workflow_step_uuid: string
   current_step_title?: string | null
   current_step_behavior_kind?: string | null
+  current_step_icon_key?: string | null
 }

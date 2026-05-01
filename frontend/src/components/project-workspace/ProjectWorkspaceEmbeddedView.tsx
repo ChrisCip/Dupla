@@ -5,12 +5,13 @@ import { Card } from '../Card'
 import { PrimaryButton } from '../PrimaryButton'
 import { TaskboardView } from '../TaskboardView'
 import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
-import { WorkflowPhaseStepper } from './WorkflowPhaseStepper'
+import { WorkflowPhaseStepper, type TemplateStepProgress } from './WorkflowPhaseStepper'
 
 type ProjectWorkspaceEmbeddedViewProps = {
   projectUuid: string
   workflowPhase: string
   phaseLabel: string
+  templateStepProgress?: TemplateStepProgress | null
   nextPhase: string | undefined
   flowBusy: boolean
   flowMsg: string | null
@@ -24,6 +25,7 @@ export function ProjectWorkspaceEmbeddedView({
   projectUuid,
   workflowPhase,
   phaseLabel,
+  templateStepProgress,
   nextPhase,
   flowBusy,
   flowMsg,
@@ -54,7 +56,12 @@ export function ProjectWorkspaceEmbeddedView({
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Estado del flujo</h2>
           {workflowPhase ? (
             <div className="mt-2">
-              <WorkflowPhaseStepper workflowPhase={workflowPhase} compact />
+              <WorkflowPhaseStepper
+                workflowPhase={workflowPhase}
+                compact
+                templateStepProgress={templateStepProgress}
+                stepTitle={phaseLabel}
+              />
             </div>
           ) : (
             <p className="mt-2 text-sm font-medium text-ink">{phaseLabel || '—'}</p>

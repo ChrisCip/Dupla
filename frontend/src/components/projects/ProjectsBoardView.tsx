@@ -1,5 +1,6 @@
 import { LayoutGrid } from 'lucide-react'
 
+import { FlowTemplateIcon } from '../flows/FlowTemplateIcon'
 import { Card } from '../Card'
 import {
   effectivePrevWorkflowPhase,
@@ -19,6 +20,8 @@ export type BoardColumnDef = {
   id: string
   title: string
   behaviorKind?: string
+  /** Lucide key del paso (plantilla); solo en tablero por paso. */
+  iconKey?: string
 }
 
 type ProjectsBoardViewProps = {
@@ -42,6 +45,21 @@ function PhaseLikeIcon({ behaviorKind }: { behaviorKind?: string }) {
   const Icon =
     PROJECT_BOARD_PHASE_ICONS[bk as keyof typeof PROJECT_BOARD_PHASE_ICONS] ?? LayoutGrid
   return <Icon className="h-4 w-4 shrink-0 text-white" strokeWidth={2} aria-hidden />
+}
+
+function ColumnHeaderGlyph({
+  columnMode,
+  behaviorKind,
+  iconKey,
+}: {
+  columnMode: 'phase' | 'step'
+  behaviorKind?: string
+  iconKey?: string
+}) {
+  if (columnMode === 'step' && iconKey?.trim()) {
+    return <FlowTemplateIcon name={iconKey} className="h-4 w-4 shrink-0 text-white" strokeWidth={2} />
+  }
+  return <PhaseLikeIcon behaviorKind={behaviorKind} />
 }
 
 export function ProjectsBoardView({
@@ -112,7 +130,11 @@ export function ProjectsBoardView({
                       className="flex min-h-[5.5rem] shrink-0 flex-col items-center justify-center gap-1.5 border-b border-white/25 bg-primary px-1.5 py-2.5 text-center text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)] sm:min-h-24"
                       title={col.title}
                     >
-                      <PhaseLikeIcon behaviorKind={col.behaviorKind ?? col.id} />
+                      <ColumnHeaderGlyph
+                        columnMode={columnMode}
+                        behaviorKind={col.behaviorKind ?? col.id}
+                        iconKey={col.iconKey}
+                      />
                       <span className="w-full text-[10px] font-semibold uppercase leading-snug tracking-wide sm:text-xs">
                         {col.title}
                       </span>

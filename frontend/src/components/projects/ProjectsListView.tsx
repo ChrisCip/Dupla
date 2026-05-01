@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 
+import { FlowTemplateIcon } from '../flows/FlowTemplateIcon'
 import { Card } from '../Card'
 import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
 import { formatProjectUpdatedAt, isProjectDeadlinePast } from '../../constants/projectsPage'
@@ -76,8 +77,17 @@ export function ProjectsListView({
                   </td>
                   <td className="hidden px-3 py-2 text-muted sm:table-cell">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="inline-block max-w-[11rem] truncate rounded bg-black/[0.06] px-2 py-0.5 text-xs font-medium text-ink">
-                        {WORKFLOW_PHASE_LABELS[p.workflow_phase] ?? p.workflow_phase}
+                      <span className="inline-flex max-w-[min(14rem,100%)] items-center gap-1.5 truncate rounded bg-black/[0.06] px-2 py-0.5 text-xs font-medium text-ink">
+                        <FlowTemplateIcon
+                          name={p.current_step_icon_key ?? undefined}
+                          className="h-3.5 w-3.5 shrink-0 text-primary"
+                          strokeWidth={2}
+                        />
+                        <span className="min-w-0 truncate">
+                          {p.current_step_title?.trim()
+                            ? p.current_step_title
+                            : WORKFLOW_PHASE_LABELS[p.workflow_phase] ?? p.workflow_phase}
+                        </span>
                       </span>
                       {isProjectDeadlinePast(p.deadline, p.workflow_phase) ? (
                         <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">

@@ -76,6 +76,7 @@ export function FlowBoardPage() {
         id: s.uuid,
         title: s.title,
         behaviorKind: s.behavior_kind,
+        iconKey: s.icon_key,
       }))
   }, [template])
 

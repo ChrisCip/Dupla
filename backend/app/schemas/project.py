@@ -32,6 +32,7 @@ class ProjectResponse(BaseModel):
     current_workflow_step_uuid: UUID
     current_step_title: Optional[str] = None
     current_step_behavior_kind: Optional[str] = None
+    current_step_icon_key: Optional[str] = None
 
     @classmethod
     def from_project(cls, project: Project) -> ProjectResponse:
@@ -62,6 +63,7 @@ class ProjectResponse(BaseModel):
             current_workflow_step_uuid=project.current_workflow_step_id,
             current_step_title=cur_step.title if cur_step is not None else None,
             current_step_behavior_kind=cur_step.behavior_kind if cur_step is not None else None,
+            current_step_icon_key=cur_step.icon_key if cur_step is not None else None,
         )
 
 

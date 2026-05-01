@@ -3,6 +3,7 @@ import {
   Background,
   BaseEdge,
   Controls,
+  Handle,
   MarkerType,
   Position,
   ReactFlow,
@@ -18,6 +19,7 @@ import { FlowTemplateIcon } from './FlowTemplateIcon'
 import {
   DEFAULT_FLOW_TEMPLATE_ICON,
   FLOW_TEMPLATE_ICON_KEYS,
+  flowTemplateIconLabelEs,
   type FlowTemplateIconKey,
 } from '../../constants/flowTemplateIcons'
 import { ROLE_LABELS, USER_ROLES, type UserRole } from '../../constants/userRoles'
@@ -145,11 +147,27 @@ type StepPreviewData = { label: string; icon_key: string }
 const StepPreviewNode = memo(function StepPreviewNode({ data }: { data: StepPreviewData }) {
   return (
     <div
-      className="flex items-start gap-1.5 rounded-lg border border-black/12 bg-white px-2 py-1.5 shadow-sm"
+      className="relative flex items-center gap-1.5 rounded-lg border border-black/12 bg-white px-2 py-1.5 shadow-sm"
       style={{ width: FLOW_NODE_W, minHeight: 44 }}
     >
-      <FlowTemplateIcon name={data.icon_key} className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-      <span className="min-w-0 flex-1 break-words text-[11px] font-medium leading-snug text-ink">{data.label}</span>
+      <Handle
+        type="target"
+        position={Position.Left}
+        isConnectable={false}
+        className="!size-2 !border-0 !bg-transparent !opacity-0"
+        aria-hidden
+      />
+      <FlowTemplateIcon name={data.icon_key} className="h-4 w-4 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1 wrap-break-word text-[11px] font-medium leading-snug text-ink">
+        {data.label}
+      </span>
+      <Handle
+        type="source"
+        position={Position.Right}
+        isConnectable={false}
+        className="!size-2 !border-0 !bg-transparent !opacity-0"
+        aria-hidden
+      />
     </div>
   )
 })
@@ -447,7 +465,7 @@ export function FlowStepsEditor({ steps, onChange }: FlowStepsEditorProps) {
                   >
                     {FLOW_TEMPLATE_ICON_KEYS.map((k) => (
                       <option key={k} value={k}>
-                        {k}
+                        {flowTemplateIconLabelEs(k)}
                       </option>
                     ))}
                   </select>

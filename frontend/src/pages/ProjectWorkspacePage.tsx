@@ -38,6 +38,7 @@ import type { PlanDeliveryRow } from '../types/planDelivery'
 import type { PliegoItemState } from '../types/pliegoForm'
 import type { RevisionRow, SubcontractQuoteRow, TechnicalFindingRow } from '../types/projectWorkspace'
 import type { BootstrapCriterion, Project } from '../types/project'
+import type { WorkflowTemplateDetail } from '../types/workflowTemplate'
 
 export function ProjectWorkspacePage() {
   const { projectUuid = '' } = useParams()
@@ -61,6 +62,7 @@ export function ProjectWorkspacePage() {
   const [kind, setKind] = useState<'tirada' | 'plano' | 'fase'>('fase')
   const [title, setTitle] = useState('Nueva sección')
   const [project, setProject] = useState<Project | null>(null)
+  const [flowTemplateDetail, setFlowTemplateDetail] = useState<WorkflowTemplateDetail | null>(null)
   const [projectError, setProjectError] = useState<string | null>(null)
   const [flowMsg, setFlowMsg] = useState<string | null>(null)
   const [flowBusy, setFlowBusy] = useState(false)
@@ -99,6 +101,37 @@ export function ProjectWorkspacePage() {
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
 
   const workspaceTabs = useMemo(() => projectWorkspaceTabs(), [])
+
+  useEffect(() => {
+    if (!token || !project?.workflow_template_uuid) {
+      setFlowTemplateDetail(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const res = await apiFetch(`/api/workflow-templates/${project.workflow_template_uuid}`, { token })
+      if (!res.ok || cancelled) return
+      setFlowTemplateDetail((await res.json()) as WorkflowTemplateDetail)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token, project?.workflow_template_uuid])
+
+  const templateStepProgress = useMemo(() => {
+    if (!project || !flowTemplateDetail?.steps?.length) return null
+    const ordered = [...flowTemplateDetail.steps].sort((a, b) => a.sort_index - b.sort_index)
+    const idx = ordered.findIndex((s) => s.uuid === project.current_workflow_step_uuid)
+    if (idx < 0) return null
+    return { current: idx + 1, total: ordered.length }
+  }, [project, flowTemplateDetail])
+
+  const orderedTemplateSteps = useMemo(() => {
+    if (!flowTemplateDetail?.steps?.length) return null
+    return [...flowTemplateDetail.steps]
+      .sort((a, b) => a.sort_index - b.sort_index)
+      .map((s) => ({ uuid: s.uuid, title: s.title }))
+  }, [flowTemplateDetail])
 
   const refreshProject = useCallback(async () => {
     if (!projectUuid || !token) return
@@ -548,6 +581,7 @@ export function ProjectWorkspacePage() {
           projectUuid={projectUuid}
           workflowPhase={project?.workflow_phase ?? ''}
           phaseLabel={phaseLabel}
+          templateStepProgress={templateStepProgress}
           nextPhase={nextPhase}
           flowBusy={flowBusy}
           flowMsg={flowMsg}
@@ -592,6 +626,8 @@ export function ProjectWorkspacePage() {
                 projectUuid={projectUuid}
                 token={token}
                 phaseLabel={phaseLabel}
+                templateStepProgress={templateStepProgress}
+                orderedTemplateSteps={orderedTemplateSteps}
                 flowMsg={flowMsg}
                 flowBusy={flowBusy}
                 bootstrapDraft={bootstrapDraft}

@@ -7,13 +7,15 @@ import { downloadBlob, filenameFromContentDisposition } from '../../../lib/downl
 import type { BootstrapCriterion, Project } from '../../../types/project'
 import { Card } from '../../Card'
 import { PrimaryButton } from '../../PrimaryButton'
-import { WorkflowPhaseStepper } from '../WorkflowPhaseStepper'
+import { WorkflowPhaseStepper, type TemplateStepProgress } from '../WorkflowPhaseStepper'
 
 type WorkspaceFlujoTabProps = {
   project: Project | null
   projectUuid: string
   token: string | null
   phaseLabel: string
+  templateStepProgress?: TemplateStepProgress | null
+  orderedTemplateSteps?: { uuid: string; title: string }[] | null
   flowMsg: string | null
   flowBusy: boolean
   bootstrapDraft: BootstrapCriterion[]
@@ -39,6 +41,8 @@ export function WorkspaceFlujoTab({
   projectUuid,
   token,
   phaseLabel,
+  templateStepProgress,
+  orderedTemplateSteps,
   flowMsg,
   flowBusy,
   bootstrapDraft,
@@ -86,7 +90,13 @@ export function WorkspaceFlujoTab({
       <h2 className="text-lg font-semibold text-ink">Flujo de trabajo</h2>
       {project ? (
         <>
-          <WorkflowPhaseStepper workflowPhase={project.workflow_phase} />
+          <WorkflowPhaseStepper
+            workflowPhase={project.workflow_phase}
+            templateStepProgress={templateStepProgress}
+            stepTitle={phaseLabel}
+            templateSteps={orderedTemplateSteps}
+            currentWorkflowStepUuid={project.current_workflow_step_uuid}
+          />
           {docHint ? (
             <p className="rounded-md border border-black/10 bg-black/[0.02] px-3 py-2 text-xs text-muted">{docHint}</p>
           ) : null}
