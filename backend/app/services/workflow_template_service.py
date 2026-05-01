@@ -42,6 +42,18 @@ ALLOWED_WORKFLOW_TEMPLATE_ICON_KEYS = frozenset(
 )
 
 
+def _normalize_step_icon_key(icon_key: Optional[str]) -> str:
+    if icon_key is None or not str(icon_key).strip():
+        return "GitBranch"
+    raw = str(icon_key).strip()
+    if raw not in ALLOWED_WORKFLOW_TEMPLATE_ICON_KEYS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="icon_key no permitido",
+        )
+    return raw
+
+
 def _detect_cycle_stable_keys(steps: list[WorkflowTemplateStepInput]) -> None:
     """blocked_by_stable_key forma aristas blocker -> bloqueado; debe ser acíclico."""
     keys = {s.stable_key for s in steps}
@@ -181,6 +193,7 @@ class WorkflowTemplateService:
                 sort_index=idx,
                 stable_key=inp.stable_key.strip(),
                 title=inp.title.strip(),
+                icon_key=_normalize_step_icon_key(inp.icon_key),
                 behavior_kind=inp.behavior_kind.strip(),
                 blocked_by_step_id=None,
                 requires_approval_role=inp.requires_approval_role.strip()

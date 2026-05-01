@@ -25,9 +25,10 @@ export function WorkspaceRevisionesTab({
     <Card className="space-y-4 p-6">
       <h2 className="text-lg font-semibold text-ink">Revisiones de arquitectura</h2>
       <p className="text-sm text-muted">
-        Puedes registrar una revisión en cualquier fase del proyecto. Para avanzar a «Pliego de condiciones» sigue siendo
-        necesaria una revisión <span className="font-medium text-ink">aprobada</span> cuando el flujo esté en revisión
-        de arquitectura.
+        Puedes registrar revisiones cuando las necesites. Para pasar del paso de{' '}
+        <span className="font-medium text-ink">revisión de arquitectura</span> al paso de{' '}
+        <span className="font-medium text-ink">pliego de condiciones</span> en la plantilla de este proyecto, la última
+        revisión debe estar <span className="font-medium text-ink">aprobada</span>.
       </p>
       {flowMsg ? <p className="text-sm text-primary">{flowMsg}</p> : null}
       <div className="space-y-3 border-b border-black/10 pb-4">

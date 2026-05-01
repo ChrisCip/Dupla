@@ -56,6 +56,8 @@ class WorkflowTemplateStep(Base):
     sort_index: Mapped[int] = mapped_column(Integer(), nullable=False)
     stable_key: Mapped[str] = mapped_column(String(128), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Lucide icon name; same allowlist as workflow_templates.icon_key.
+    icon_key: Mapped[str] = mapped_column(String(64), nullable=False, default="GitBranch")
     behavior_kind: Mapped[str] = mapped_column(String(64), nullable=False)
     blocked_by_step_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),

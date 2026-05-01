@@ -13,7 +13,7 @@ import {
   syncStableKeysForSteps,
 } from '../components/flows/FlowStepsEditor'
 import { FlowTemplateIcon } from '../components/flows/FlowTemplateIcon'
-import { DEFAULT_FLOW_TEMPLATE_ICON, FLOW_TEMPLATE_ICON_KEYS } from '../constants/flowTemplateIcons'
+import { coerceFlowTemplateIconKey, DEFAULT_FLOW_TEMPLATE_ICON } from '../constants/flowTemplateIcons'
 import type { WorkflowTemplateDetail, WorkflowTemplateListItem } from '../types/workflowTemplate'
 import { useAuthStore } from '../store/authStore'
 
@@ -36,7 +36,6 @@ export function FlowsHubPage() {
   const [cfgUuid, setCfgUuid] = useState<string | null>(null)
   const [cfgName, setCfgName] = useState('')
   const [cfgDesc, setCfgDesc] = useState('')
-  const [cfgIcon, setCfgIcon] = useState<string>(DEFAULT_FLOW_TEMPLATE_ICON)
   const [cfgBusy, setCfgBusy] = useState(false)
 
   const [editOpen, setEditOpen] = useState(false)
@@ -111,6 +110,7 @@ export function FlowsHubPage() {
         server_step_uuid: s.uuid,
         stable_key: s.stable_key,
         title: s.title,
+        icon_key: coerceFlowTemplateIconKey(s.icon_key),
         requires_approval_role: s.requires_approval_role,
         on_enter_actions: normalizeActionsFromApi(s.on_enter_actions),
       }))
@@ -122,6 +122,7 @@ export function FlowsHubPage() {
               draft_id: newDraftId(),
               stable_key: '',
               title: 'Paso 1',
+              icon_key: DEFAULT_FLOW_TEMPLATE_ICON,
               requires_approval_role: null,
               on_enter_actions: [],
             },
@@ -144,6 +145,7 @@ export function FlowsHubPage() {
           blocked_by_stable_key: null,
           requires_approval_role: s.requires_approval_role,
           on_enter_actions: s.on_enter_actions,
+          icon_key: s.icon_key,
         })),
       }
       const res = await apiFetch(`/api/workflow-templates/${editDetail.uuid}/steps`, {
@@ -173,7 +175,6 @@ export function FlowsHubPage() {
         body: JSON.stringify({
           name: cfgName.trim(),
           description: cfgDesc.trim(),
-          icon_key: cfgIcon,
         }),
       })
       setCfgOpen(false)
@@ -187,7 +188,6 @@ export function FlowsHubPage() {
     setCfgUuid(row.uuid)
     setCfgName(row.name)
     setCfgDesc(row.description)
-    setCfgIcon(row.icon_key ?? DEFAULT_FLOW_TEMPLATE_ICON)
     setCfgOpen(true)
   }
 
@@ -340,20 +340,6 @@ export function FlowsHubPage() {
             <label className="mt-3 block">
               <span className="du-label">Descripción</span>
               <textarea className="du-input mt-1 min-h-[88px] w-full" value={cfgDesc} onChange={(e) => setCfgDesc(e.target.value)} />
-            </label>
-            <label className="mt-3 block">
-              <span className="du-label">Ícono del flujo</span>
-              <select
-                className="du-input mt-1 w-full"
-                value={cfgIcon}
-                onChange={(e) => setCfgIcon(e.target.value)}
-              >
-                {FLOW_TEMPLATE_ICON_KEYS.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </select>
             </label>
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" className="rounded-lg px-3 py-2 text-sm text-muted hover:bg-black/5" onClick={() => setCfgOpen(false)}>

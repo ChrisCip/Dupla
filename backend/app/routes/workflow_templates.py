@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.dependencies import require_gerencia, get_current_user
 from app.models.user import User
+from app.models.workflow_template import WorkflowTemplate
 from app.schemas.project import ProjectResponse
 from app.schemas.workflow_template import (
     WorkflowTemplateCreateRequest,
@@ -20,6 +21,11 @@ from app.repositories.workflow_template_repository import WorkflowTemplateReposi
 from app.services.workflow_template_service import WorkflowTemplateService
 
 router = APIRouter(prefix="/api/workflow-templates", tags=["workflow-templates"])
+
+
+def _card_icon_for_template(t: WorkflowTemplate) -> str:
+    steps = sorted(t.steps or [], key=lambda s: s.sort_index)
+    return steps[0].icon_key if steps else t.icon_key
 
 
 @router.get("", response_model=list[WorkflowTemplateListItemResponse])
@@ -37,7 +43,7 @@ async def list_workflow_templates(
                 uuid=t.id,
                 name=t.name,
                 description=t.description,
-                icon_key=t.icon_key,
+                icon_key=_card_icon_for_template(t),
                 archived_at=t.archived_at,
                 preview_projects=[{"uuid": str(uid), "name": name} for uid, name in previews],
             )

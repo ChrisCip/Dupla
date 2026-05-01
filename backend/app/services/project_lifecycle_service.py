@@ -420,7 +420,6 @@ class ProjectLifecycleService:
                 )
             await self._apply_template_forward_guards(user, project, cur_step, target_step)
 
-        prev_wp = project.workflow_phase
         prev_step_id = project.current_workflow_step_id
 
         project.current_workflow_step_id = target_step.id
@@ -431,8 +430,10 @@ class ProjectLifecycleService:
             actor_user_id=user.id,
             event_type="WORKFLOW_TRANSITION",
             payload={
-                "from_phase": prev_wp,
-                "to_phase": project.workflow_phase,
+                "from_phase": cur_step.behavior_kind,
+                "to_phase": target_step.behavior_kind,
+                "from_step_title": cur_step.title,
+                "to_step_title": target_step.title,
                 "from_step_uuid": str(prev_step_id),
                 "to_step_uuid": str(target_step.id),
                 "direction": "forward" if is_forward else "backward",

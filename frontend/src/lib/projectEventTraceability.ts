@@ -41,9 +41,15 @@ export function describeProjectEvent(ev: ProjectEventRow): ProjectEventTrace {
     case 'WORKFLOW_TRANSITION': {
       const fromP = typeof p.from_phase === 'string' ? p.from_phase : ''
       const toP = typeof p.to_phase === 'string' ? p.to_phase : ''
+      const fromTitle = typeof p.from_step_title === 'string' ? p.from_step_title.trim() : ''
+      const toTitle = typeof p.to_step_title === 'string' ? p.to_step_title.trim() : ''
+      const fromDisplay =
+        fromTitle.length > 0 ? `${fromTitle} (${phaseLabel(fromP)})` : phaseLabel(fromP) || '—'
+      const toDisplay =
+        toTitle.length > 0 ? `${toTitle} (${phaseLabel(toP)})` : phaseLabel(toP) || '—'
       rows.push(
-        { label: 'Fase origen', value: phaseLabel(fromP) },
-        { label: 'Fase destino', value: phaseLabel(toP) },
+        { label: 'Paso origen', value: fromDisplay },
+        { label: 'Paso destino', value: toDisplay },
         { label: 'Dirección', value: directionLabel(p.direction) },
       )
       return { title: 'Cambio de fase del proyecto', rows }

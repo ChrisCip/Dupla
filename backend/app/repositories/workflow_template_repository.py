@@ -63,7 +63,11 @@ class WorkflowTemplateRepository:
     ) -> list[tuple[WorkflowTemplate, list[tuple[UUID, str]]]]:
         """Devuelve plantillas con hasta N proyectos (uuid, nombre) para el hub."""
         qtxt = (query or "").strip().lower()
-        base = select(WorkflowTemplate).where(WorkflowTemplate.archived_at.is_(None))
+        base = (
+            select(WorkflowTemplate)
+            .options(selectinload(WorkflowTemplate.steps))
+            .where(WorkflowTemplate.archived_at.is_(None))
+        )
         if qtxt:
             sub_proj = (
                 select(Project.workflow_template_id)

@@ -19,6 +19,7 @@ class WorkflowTemplateStepInput(BaseModel):
     blocked_by_stable_key: Optional[str] = None
     requires_approval_role: Optional[str] = Field(default=None, max_length=32)
     on_enter_actions: list[dict[str, Any]] = Field(default_factory=list)
+    icon_key: Optional[str] = Field(default=None, max_length=64)
 
 
 class WorkflowTemplateStepsPutRequest(BaseModel):
@@ -52,6 +53,7 @@ class WorkflowTemplateStepResponse(BaseModel):
     blocked_by_step_uuid: Optional[UUID] = None
     requires_approval_role: Optional[str] = None
     on_enter_actions: list[dict[str, Any]] = Field(default_factory=list)
+    icon_key: str = "GitBranch"
 
     @classmethod
     def from_orm_step(cls, s: WorkflowTemplateStep) -> WorkflowTemplateStepResponse:
@@ -64,6 +66,7 @@ class WorkflowTemplateStepResponse(BaseModel):
             blocked_by_step_uuid=s.blocked_by_step_id,
             requires_approval_role=s.requires_approval_role,
             on_enter_actions=list(s.on_enter_actions or []),
+            icon_key=s.icon_key,
         )
 
 
@@ -80,11 +83,12 @@ class WorkflowTemplateDetailResponse(BaseModel):
     @classmethod
     def from_template(cls, t: WorkflowTemplate) -> WorkflowTemplateDetailResponse:
         steps = sorted(t.steps, key=lambda s: s.sort_index)
+        card_icon = steps[0].icon_key if steps else t.icon_key
         return cls(
             uuid=t.id,
             name=t.name,
             description=t.description,
-            icon_key=t.icon_key,
+            icon_key=card_icon,
             archived_at=t.archived_at,
             created_at=t.created_at,
             updated_at=t.updated_at,

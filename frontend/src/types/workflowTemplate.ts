@@ -3,6 +3,7 @@ export type WorkflowTemplateStep = {
   sort_index: number
   stable_key: string
   title: string
+  icon_key: string
   behavior_kind: string
   blocked_by_step_uuid: string | null
   requires_approval_role: string | null

@@ -14,6 +14,12 @@ import {
 
 import '@xyflow/react/dist/style.css'
 
+import { FlowTemplateIcon } from './FlowTemplateIcon'
+import {
+  DEFAULT_FLOW_TEMPLATE_ICON,
+  FLOW_TEMPLATE_ICON_KEYS,
+  type FlowTemplateIconKey,
+} from '../../constants/flowTemplateIcons'
 import { ROLE_LABELS, USER_ROLES, type UserRole } from '../../constants/userRoles'
 
 export type EnterActionType = 'notify_role' | 'create_task' | 'project_chat_message'
@@ -25,6 +31,7 @@ export type DraftWorkflowStep = {
   server_step_uuid?: string | null
   stable_key: string
   title: string
+  icon_key: FlowTemplateIconKey
   requires_approval_role: string | null
   on_enter_actions: Record<string, unknown>[]
 }
@@ -132,6 +139,22 @@ const edgeTypes = { dotArrow: memo(DotArrowEdge) }
 const FLOW_NODE_W = 152
 const FLOW_NODE_GAP = 56
 const FLOW_ROW_Y = 56
+
+type StepPreviewData = { label: string; icon_key: string }
+
+const StepPreviewNode = memo(function StepPreviewNode({ data }: { data: StepPreviewData }) {
+  return (
+    <div
+      className="flex items-start gap-1.5 rounded-lg border border-black/12 bg-white px-2 py-1.5 shadow-sm"
+      style={{ width: FLOW_NODE_W, minHeight: 44 }}
+    >
+      <FlowTemplateIcon name={data.icon_key} className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1 break-words text-[11px] font-medium leading-snug text-ink">{data.label}</span>
+    </div>
+  )
+})
+
+const nodeTypes = { stepPreview: StepPreviewNode }
 
 function EnterActionsBlock({
   actions,
@@ -318,6 +341,7 @@ export function FlowStepsEditor({ steps, onChange }: FlowStepsEditorProps) {
           draft_id: nid,
           stable_key: '',
           title: `Paso ${i + 1}`,
+          icon_key: DEFAULT_FLOW_TEMPLATE_ICON,
           requires_approval_role: null,
           on_enter_actions: [],
         },
@@ -337,19 +361,11 @@ export function FlowStepsEditor({ steps, onChange }: FlowStepsEditorProps) {
   const { nodes, edges } = useMemo(() => {
     const n: Node[] = steps.map((s, i) => ({
       id: s.draft_id,
+      type: 'stepPreview',
       position: { x: i * (FLOW_NODE_W + FLOW_NODE_GAP), y: FLOW_ROW_Y },
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
-      data: { label: s.title || s.stable_key },
-      style: {
-        fontSize: 11,
-        padding: 8,
-        borderRadius: 8,
-        border: '1px solid rgba(0,0,0,0.12)',
-        background: '#fff',
-        width: FLOW_NODE_W,
-        minHeight: 44,
-      },
+      data: { label: s.title || s.stable_key, icon_key: s.icon_key },
     }))
     const e: Edge[] = []
     for (let i = 0; i < steps.length - 1; i++) {
@@ -420,6 +436,22 @@ export function FlowStepsEditor({ steps, onChange }: FlowStepsEditorProps) {
                     onChange={(e) => updateStep(selected.draft_id, { title: e.target.value })}
                   />
                 </label>
+                <label className="block">
+                  <span className="du-label">Ícono del paso</span>
+                  <select
+                    className="du-input mt-0.5 w-full"
+                    value={selected.icon_key}
+                    onChange={(e) =>
+                      updateStep(selected.draft_id, { icon_key: e.target.value as FlowTemplateIconKey })
+                    }
+                  >
+                    {FLOW_TEMPLATE_ICON_KEYS.map((k) => (
+                      <option key={k} value={k}>
+                        {k}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <div className="block">
                   <span className="du-label">Clave estable</span>
                   <p className="mt-0.5 rounded-md border border-black/10 bg-black/[0.03] px-3 py-2 font-mono text-xs text-ink">
@@ -459,6 +491,7 @@ export function FlowStepsEditor({ steps, onChange }: FlowStepsEditorProps) {
           className="min-h-[260px] min-w-[480px] lg:min-h-[320px]"
           nodes={nodes}
           edges={edges}
+          nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
           fitViewOptions={{ padding: 0.15 }}
