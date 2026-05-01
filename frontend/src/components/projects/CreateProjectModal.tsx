@@ -309,7 +309,7 @@ export function CreateProjectModal({
                     </div>
                     <div>
                       <label htmlFor="modal-project-code" className="du-label">
-                        Código <span className="font-normal text-muted">(opcional)</span>
+                        Código de registro <span className="font-normal text-muted">(opcional)</span>
                       </label>
                       <input
                         id="modal-project-code"
