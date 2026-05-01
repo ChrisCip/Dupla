@@ -10,12 +10,20 @@ import { WorkspaceDetallesTab } from '../components/project-workspace/tabs/Works
 import { WorkspaceEntregaPlanosTab } from '../components/project-workspace/tabs/WorkspaceEntregaPlanosTab'
 import { WorkspaceEspecificacionesTab } from '../components/project-workspace/tabs/WorkspaceEspecificacionesTab'
 import { WorkspaceEventosTab } from '../components/project-workspace/tabs/WorkspaceEventosTab'
+import { WorkspaceHallazgosTab } from '../components/project-workspace/tabs/WorkspaceHallazgosTab'
 import { WorkspaceFlujoTab } from '../components/project-workspace/tabs/WorkspaceFlujoTab'
 import { WorkspaceMaterialesTab } from '../components/project-workspace/tabs/WorkspaceMaterialesTab'
 import { WorkspacePliegosTab } from '../components/project-workspace/tabs/WorkspacePliegosTab'
 import { WorkspacePresupuestoTab } from '../components/project-workspace/tabs/WorkspacePresupuestoTab'
 import { WorkspaceRevisionesTab } from '../components/project-workspace/tabs/WorkspaceRevisionesTab'
 import { WorkspaceTabsLayout } from '../components/project-workspace/WorkspaceTabsLayout'
+import {
+  BUSINESS_PLIEGO_SECTION_KEYS,
+  emptyBusinessPliegoSections,
+  isBusinessPliegoReady,
+  parseBusinessPliegoFromSpec,
+  type BusinessPliegoSectionKey,
+} from '../constants/businessPliego'
 import { TUTORIAL_PROJECT_UUID } from '../constants/tutorialProject'
 import { loadAdminDirectoryUsers } from '../lib/adminUsersDirectoryCache'
 import type { DirectoryUserRow } from '../lib/directoryUsers'
@@ -28,7 +36,7 @@ import { useAuthStore } from '../store/authStore'
 import { useWorkspaceStore } from '../store/workspaceStore'
 import type { PlanDeliveryRow } from '../types/planDelivery'
 import type { PliegoItemState } from '../types/pliegoForm'
-import type { RevisionRow, SubcontractQuoteRow } from '../types/projectWorkspace'
+import type { RevisionRow, SubcontractQuoteRow, TechnicalFindingRow } from '../types/projectWorkspace'
 import type { BootstrapCriterion, Project } from '../types/project'
 
 export function ProjectWorkspacePage() {
@@ -62,6 +70,13 @@ export function ProjectWorkspacePage() {
     mergePliegoItemStates(undefined),
   )
   const [specSaveBusy, setSpecSaveBusy] = useState(false)
+  const [businessPliegoSections, setBusinessPliegoSections] = useState(() => emptyBusinessPliegoSections())
+  const [pliegoMeta, setPliegoMeta] = useState<{ approved: boolean; generatedAt: string | null }>({
+    approved: false,
+    generatedAt: null,
+  })
+  const [pliegoGenerateBusy, setPliegoGenerateBusy] = useState(false)
+  const [pliegoApproveBusy, setPliegoApproveBusy] = useState(false)
   const [revisions, setRevisions] = useState<RevisionRow[]>([])
   const [quotes, setQuotes] = useState<SubcontractQuoteRow[]>([])
   const [revDecision, setRevDecision] = useState('APPROVED')
@@ -79,6 +94,7 @@ export function ProjectWorkspacePage() {
   const [memberSelection, setMemberSelection] = useState<Set<string>>(new Set())
   const [planDeliveryRows, setPlanDeliveryRows] = useState<PlanDeliveryRow[]>([])
   const [planDeliveryMsg, setPlanDeliveryMsg] = useState<string | null>(null)
+  const [findings, setFindings] = useState<TechnicalFindingRow[]>([])
   const [configOpen, setConfigOpen] = useState(false)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
 
@@ -103,6 +119,9 @@ export function ProjectWorkspacePage() {
         ? (ga as { item_states?: Record<string, unknown> }).item_states
         : undefined
     setPliegoItemStates(mergePliegoItemStates(rawPliegoStates))
+    const bpParsed = parseBusinessPliegoFromSpec(body.specifications_document)
+    setBusinessPliegoSections(bpParsed.sections)
+    setPliegoMeta({ approved: bpParsed.approved, generatedAt: bpParsed.generatedAt })
     setBpDraft(budgetPipeline(body.workflow_meta ?? {}))
     setClientVersion(
       typeof budgetPipeline(body.workflow_meta ?? {}).client_approved_version_label === 'string'
@@ -151,6 +170,13 @@ export function ProjectWorkspacePage() {
     ])
     if (fr.ok) setRevisions((await fr.json()) as RevisionRow[])
     if (fq.ok) setQuotes((await fq.json()) as SubcontractQuoteRow[])
+  }, [token, projectUuid])
+
+  const loadFindings = useCallback(async () => {
+    if (!token || !projectUuid) return
+    const res = await apiFetch(`/api/projects/${projectUuid}/technical-findings`, { token })
+    if (!res.ok) return
+    setFindings((await res.json()) as TechnicalFindingRow[])
   }, [token, projectUuid])
 
   const loadPlanDelivery = useCallback(async () => {
@@ -223,6 +249,11 @@ export function ProjectWorkspacePage() {
   }, [tab, projectUuid, token, loadAuxLists])
 
   useEffect(() => {
+    if (!projectUuid || !token) return
+    if (tab === 'hallazgos') void loadFindings()
+  }, [tab, projectUuid, token, loadFindings])
+
+  useEffect(() => {
     if (tab !== 'entregaPlanos' || !projectUuid || !token) return
     void loadPlanDelivery()
   }, [tab, projectUuid, token, loadPlanDelivery])
@@ -264,6 +295,37 @@ export function ProjectWorkspacePage() {
     if (!token || !project) return
     const next = NEXT_WORKFLOW_PHASE[project.workflow_phase]
     if (!next) return
+    if (next === 'BUDGETING_PIPELINE') {
+      const spec = project.specifications_document
+      const specObj = spec && typeof spec === 'object' ? (spec as Record<string, unknown>) : undefined
+      const hasStructured = Boolean(
+        specObj?.business_pliego && typeof specObj.business_pliego === 'object',
+      )
+      const parsed = parseBusinessPliegoFromSpec(specObj)
+      if (hasStructured) {
+        if (!isBusinessPliegoReady(parsed.sections, parsed.approved)) {
+          setFlowMsg(
+            'Completa las nueve secciones del pliego (mín. 10 caracteres cada una) y obtén aprobación de Gerencia o Arquitectura.',
+          )
+          return
+        }
+      } else if (specSummary.trim().length < 10) {
+        setFlowMsg('Completa el pliego: resumen mínimo 10 caracteres o genera el pliego estructurado.')
+        return
+      }
+    }
+    if (next === 'BUDGET_APPROVED') {
+      if (!bpDraft.control_review_done) {
+        setFlowMsg('Completa la revisión de Control en la pestaña Presupuesto antes de avanzar a presupuesto aprobado.')
+        return
+      }
+      if (!clientVersion.trim()) {
+        setFlowMsg(
+          'Indica la etiqueta de versión aprobada por el cliente en Presupuesto antes de avanzar a presupuesto aprobado.',
+        )
+        return
+      }
+    }
     setFlowMsg(null)
     setFlowBusy(true)
     try {
@@ -305,13 +367,35 @@ export function ProjectWorkspacePage() {
     setFlowMsg(null)
     setSpecSaveBusy(true)
     try {
-      const doc = {
-        ...project.specifications_document,
+      const prev = project.specifications_document ?? {}
+      const prevBp =
+        prev && typeof prev === 'object' && 'business_pliego' in prev
+          ? (prev as Record<string, unknown>).business_pliego
+          : null
+      const pbd = prevBp && typeof prevBp === 'object' ? (prevBp as Record<string, unknown>) : null
+      const hasSectionText = BUSINESS_PLIEGO_SECTION_KEYS.some(
+        (k) => (businessPliegoSections[k]?.trim().length ?? 0) > 0,
+      )
+      const includeBusinessPliego =
+        pbd != null || pliegoMeta.generatedAt != null || hasSectionText
+      const doc: Record<string, unknown> = {
+        ...prev,
         summary: specSummary,
         ga_fo_01_arquitectura: {
           schema_version: 1 as const,
           item_states: pliegoItemStates,
         },
+      }
+      if (includeBusinessPliego) {
+        doc.business_pliego = {
+          schema_version: 1,
+          sections: businessPliegoSections,
+          generated_at: typeof pbd?.generated_at === 'string' ? pbd.generated_at : null,
+          approved: Boolean(pbd?.approved),
+          approved_at: typeof pbd?.approved_at === 'string' ? pbd.approved_at : null,
+          approved_by_user_uuid:
+            typeof pbd?.approved_by_user_uuid === 'string' ? pbd.approved_by_user_uuid : null,
+        }
       }
       const res = await apiFetch(`/api/projects/${projectUuid}/specifications`, {
         method: 'PUT',
@@ -323,10 +407,68 @@ export function ProjectWorkspacePage() {
         setFlowMsg((j as { detail?: string }).detail ?? 'Error al guardar el pliego de condiciones')
         return
       }
-      setProject(j as Project)
+      const p = j as Project
+      setProject(p)
+      const parsed = parseBusinessPliegoFromSpec(p.specifications_document)
+      setBusinessPliegoSections(parsed.sections)
+      setPliegoMeta({ approved: parsed.approved, generatedAt: parsed.generatedAt })
     } finally {
       setSpecSaveBusy(false)
     }
+  }
+
+  async function generatePliego(force: boolean) {
+    if (!token) return
+    setFlowMsg(null)
+    setPliegoGenerateBusy(true)
+    try {
+      const res = await apiFetch(`/api/projects/${projectUuid}/specifications/generate`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ force }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setFlowMsg((j as { detail?: string }).detail ?? 'No se pudo generar el borrador')
+        return
+      }
+      const p = j as Project
+      setProject(p)
+      const parsed = parseBusinessPliegoFromSpec(p.specifications_document)
+      setBusinessPliegoSections(parsed.sections)
+      setPliegoMeta({ approved: parsed.approved, generatedAt: parsed.generatedAt })
+    } finally {
+      setPliegoGenerateBusy(false)
+    }
+  }
+
+  async function approvePliego() {
+    if (!token) return
+    setFlowMsg(null)
+    setPliegoApproveBusy(true)
+    try {
+      const res = await apiFetch(`/api/projects/${projectUuid}/specifications/approve`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({}),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setFlowMsg((j as { detail?: string }).detail ?? 'No se pudo aprobar el pliego')
+        return
+      }
+      const p = j as Project
+      setProject(p)
+      const parsed = parseBusinessPliegoFromSpec(p.specifications_document)
+      setBusinessPliegoSections(parsed.sections)
+      setPliegoMeta({ approved: parsed.approved, generatedAt: parsed.generatedAt })
+    } finally {
+      setPliegoApproveBusy(false)
+    }
+  }
+
+  function onBusinessSectionChange(key: BusinessPliegoSectionKey, value: string) {
+    setBusinessPliegoSections((s) => ({ ...s, [key]: value }))
   }
 
   async function saveBudgetPipeline() {
@@ -381,7 +523,11 @@ export function ProjectWorkspacePage() {
   }
 
   const displayTitle = project?.name ?? 'Proyecto'
-  const phaseLabel = project ? WORKFLOW_PHASE_LABELS[project.workflow_phase] ?? project.workflow_phase : ''
+  const phaseLabel = project
+    ? project.current_step_title?.trim()
+      ? project.current_step_title
+      : (WORKFLOW_PHASE_LABELS[project.workflow_phase] ?? project.workflow_phase)
+    : ''
   const nextPhase = project ? NEXT_WORKFLOW_PHASE[project.workflow_phase] : undefined
 
   return (
@@ -400,6 +546,7 @@ export function ProjectWorkspacePage() {
       {!workspaceOpen ? (
         <ProjectWorkspaceEmbeddedView
           projectUuid={projectUuid}
+          workflowPhase={project?.workflow_phase ?? ''}
           phaseLabel={phaseLabel}
           nextPhase={nextPhase}
           flowBusy={flowBusy}
@@ -429,119 +576,148 @@ export function ProjectWorkspacePage() {
             onSelect={setTab}
             labelledBy="workspace-heading"
           >
-        {tab === 'detalles' ? (
-                <WorkspaceDetallesTab
-                  project={project}
-                  projectError={projectError}
-                  phaseLabel={phaseLabel}
-                  onOpenChat={() => void openProjectChat()}
-                />
-        ) : null}
+            {tab === 'detalles' ? (
+              <WorkspaceDetallesTab
+                project={project}
+                projectError={projectError}
+                phaseLabel={phaseLabel}
+                token={token}
+                onOpenChat={() => void openProjectChat()}
+              />
+            ) : null}
 
-        {tab === 'flujo' ? (
-                <WorkspaceFlujoTab
-                  project={project}
-                  phaseLabel={phaseLabel}
-                  flowMsg={flowMsg}
-                  flowBusy={flowBusy}
-                  bootstrapDraft={bootstrapDraft}
-                  setBootstrapDraft={setBootstrapDraft}
-                  nextPhase={nextPhase}
-                  role={role}
-                  onSaveBootstrap={() => void saveBootstrap()}
-                  onAdvancePhase={() => void advancePhase()}
-                />
-        ) : null}
+            {tab === 'flujo' ? (
+              <WorkspaceFlujoTab
+                project={project}
+                projectUuid={projectUuid}
+                token={token}
+                phaseLabel={phaseLabel}
+                flowMsg={flowMsg}
+                flowBusy={flowBusy}
+                bootstrapDraft={bootstrapDraft}
+                setBootstrapDraft={setBootstrapDraft}
+                nextPhase={nextPhase}
+                role={role}
+                onSaveBootstrap={() => void saveBootstrap()}
+                onAdvancePhase={() => void advancePhase()}
+              />
+            ) : null}
 
-        {tab === 'archivos' ? (
-                <WorkspaceArchivosTab projectUuid={projectUuid} token={token} flowMsg={flowMsg} />
-        ) : null}
+            {tab === 'archivos' ? (
+              <WorkspaceArchivosTab projectUuid={projectUuid} token={token} flowMsg={flowMsg} />
+            ) : null}
 
-        {tab === 'entregaPlanos' ? (
-                <WorkspaceEntregaPlanosTab
-                  projectUuid={projectUuid}
-                  token={token}
-                  planDeliveryRows={planDeliveryRows}
-                  planDeliveryMsg={planDeliveryMsg}
-                  setPlanDeliveryRows={setPlanDeliveryRows}
-                  onAddRow={(payload) => addPlanDeliveryRow(payload)}
-                  onPatchRow={(rowUuid, patch) => void patchPlanDeliveryRow(rowUuid, patch)}
-                  onDeleteRow={(rowUuid) => void deletePlanDeliveryRow(rowUuid)}
-                />
-        ) : null}
+            {tab === 'entregaPlanos' ? (
+              <WorkspaceEntregaPlanosTab
+                projectUuid={projectUuid}
+                token={token}
+                planDeliveryRows={planDeliveryRows}
+                planDeliveryMsg={planDeliveryMsg}
+                setPlanDeliveryRows={setPlanDeliveryRows}
+                onAddRow={(payload) => addPlanDeliveryRow(payload)}
+                onPatchRow={(rowUuid, patch) => void patchPlanDeliveryRow(rowUuid, patch)}
+                onDeleteRow={(rowUuid) => void deletePlanDeliveryRow(rowUuid)}
+              />
+            ) : null}
 
-        {tab === 'revisiones' ? (
-                <WorkspaceRevisionesTab
-                  flowMsg={flowMsg}
-                  revDecision={revDecision}
-                  setRevDecision={setRevDecision}
-                  revNotes={revNotes}
-                  setRevNotes={setRevNotes}
-                  revisions={revisions}
-                  onSubmitRevision={() => void submitRevision()}
-                />
-        ) : null}
+            {tab === 'revisiones' ? (
+              <WorkspaceRevisionesTab
+                flowMsg={flowMsg}
+                revDecision={revDecision}
+                setRevDecision={setRevDecision}
+                revNotes={revNotes}
+                setRevNotes={setRevNotes}
+                revisions={revisions}
+                onSubmitRevision={() => void submitRevision()}
+              />
+            ) : null}
 
-        {tab === 'especificaciones' ? (
-                <WorkspaceEspecificacionesTab
-              projectUuid={projectUuid}
-              token={token}
-              specSummary={specSummary}
-                  setSpecSummary={setSpecSummary}
-                  pliegoItemStates={pliegoItemStates}
-                  setPliegoItemStates={setPliegoItemStates}
-                  onPersist={() => saveSpecifications()}
-                  specSaveBusy={specSaveBusy}
-              flowMsg={flowMsg}
-            />
-        ) : null}
+            {tab === 'hallazgos' ? (
+              <WorkspaceHallazgosTab
+                projectUuid={projectUuid}
+                token={token}
+                findings={findings}
+                onRefresh={() => loadFindings()}
+              />
+            ) : null}
 
-        {tab === 'presupuesto' ? (
-                <WorkspacePresupuestoTab
-                  projectUuid={projectUuid}
-                  token={token}
-                  flowMsg={flowMsg}
-                  bpDraft={bpDraft}
-                  setBpDraft={setBpDraft}
-                  clientVersion={clientVersion}
-                  setClientVersion={setClientVersion}
-                  onSaveBudgetPipeline={() => void saveBudgetPipeline()}
-                  newQuoteTitle={newQuoteTitle}
-                  setNewQuoteTitle={setNewQuoteTitle}
-                  activeQuote={activeQuote}
-                  setActiveQuote={setActiveQuote}
-                  lineItem={lineItem}
-                  setLineItem={setLineItem}
-                  linePrice={linePrice}
-                  setLinePrice={setLinePrice}
-                  quotes={quotes}
-                  onLoadAuxLists={loadAuxLists}
-                />
-        ) : null}
+            {tab === 'especificaciones' ? (
+              <WorkspaceEspecificacionesTab
+                projectUuid={projectUuid}
+                token={token}
+                role={role}
+                specSummary={specSummary}
+                setSpecSummary={setSpecSummary}
+                pliegoItemStates={pliegoItemStates}
+                setPliegoItemStates={setPliegoItemStates}
+                onPersist={async () => {
+                  await saveSpecifications()
+                }}
+                specSaveBusy={specSaveBusy}
+                flowMsg={flowMsg}
+                businessSections={businessPliegoSections}
+                onBusinessSectionChange={onBusinessSectionChange}
+                onGeneratePliego={async (f) => {
+                  await generatePliego(f)
+                }}
+                onApprovePliego={async () => {
+                  await approvePliego()
+                }}
+                pliegoGenerateBusy={pliegoGenerateBusy}
+                pliegoApproveBusy={pliegoApproveBusy}
+                pliegoApproved={pliegoMeta.approved}
+                pliegoGeneratedAt={pliegoMeta.generatedAt}
+              />
+            ) : null}
 
-              {tab === 'eventos' ? <WorkspaceEventosTab token={token} projectUuid={projectUuid} /> : null}
+            {tab === 'presupuesto' ? (
+              <WorkspacePresupuestoTab
+                role={role}
+                workflowPhase={project?.workflow_phase ?? null}
+                projectUuid={projectUuid}
+                token={token}
+                flowMsg={flowMsg}
+                bpDraft={bpDraft}
+                setBpDraft={setBpDraft}
+                clientVersion={clientVersion}
+                setClientVersion={setClientVersion}
+                onSaveBudgetPipeline={() => void saveBudgetPipeline()}
+                newQuoteTitle={newQuoteTitle}
+                setNewQuoteTitle={setNewQuoteTitle}
+                activeQuote={activeQuote}
+                setActiveQuote={setActiveQuote}
+                lineItem={lineItem}
+                setLineItem={setLineItem}
+                linePrice={linePrice}
+                setLinePrice={setLinePrice}
+                quotes={quotes}
+                onLoadAuxLists={loadAuxLists}
+              />
+            ) : null}
 
-        {tab === 'pliegos' ? (
-                <WorkspacePliegosTab
-                  kind={kind}
-                  setKind={setKind}
-                  title={title}
-                  setTitle={setTitle}
-                  data={data}
-                  addGroup={addGroup}
-                  addItem={addItem}
-                  updateItem={updateItem}
-                />
-              ) : null}
+            {tab === 'eventos' ? <WorkspaceEventosTab token={token} projectUuid={projectUuid} /> : null}
 
-              {tab === 'materiales' ? (
-                <WorkspaceMaterialesTab
-                  data={data}
-                  addMaterial={addMaterial}
-                  updateMaterial={updateMaterial}
-                  removeMaterial={removeMaterial}
-                />
-                        ) : null}
+            {tab === 'pliegos' ? (
+              <WorkspacePliegosTab
+                kind={kind}
+                setKind={setKind}
+                title={title}
+                setTitle={setTitle}
+                data={data}
+                addGroup={addGroup}
+                addItem={addItem}
+                updateItem={updateItem}
+              />
+            ) : null}
+
+            {tab === 'materiales' ? (
+              <WorkspaceMaterialesTab
+                data={data}
+                addMaterial={addMaterial}
+                updateMaterial={updateMaterial}
+                removeMaterial={removeMaterial}
+              />
+            ) : null}
           </WorkspaceTabsLayout>
         </div>
       )}
@@ -568,6 +744,6 @@ export function ProjectWorkspacePage() {
         setMembersMsg={setMembersMsg}
         setMemberRows={setMemberRows}
       />
-              </div>
+    </div>
   )
 }

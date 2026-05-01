@@ -27,10 +27,13 @@ from app.schemas.project_lifecycle import (
     ProjectFileSearchResponse,
     ProjectPatchRequest,
     ProjectTransitionRequest,
+    PliegoGenerateRequest,
     SpecificationsReplaceRequest,
     SubcontractLineCreateRequest,
     SubcontractQuoteCreateRequest,
     SubcontractQuoteResponse,
+    TechnicalFindingCreateRequest,
+    TechnicalFindingResponse,
     WorkflowMetaPatchRequest,
 )
 from app.services.chat_service import ChatService
@@ -67,12 +70,8 @@ async def patch_project(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectResponse:
     svc = ProjectLifecycleService(session)
-    p = await svc.update_project_meta(
-        current,
-        project_uuid,
-        name=body.name,
-        client_name=body.client_name,
-    )
+    raw = body.model_dump(exclude_unset=True, mode="json")
+    p = await svc.update_project_meta(current, project_uuid, raw)
     await session.commit()
     return ProjectResponse.from_project(p)
 
@@ -84,9 +83,14 @@ async def post_transition(
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectResponse:
-    target = _parse_target_phase(body.target_phase)
+    target = _parse_target_phase(body.target_phase) if body.target_phase else None
     svc = ProjectLifecycleService(session)
-    p = await svc.transition_phase(current, project_uuid, target)
+    p = await svc.transition_phase(
+        current,
+        project_uuid,
+        target,
+        target_step_uuid=body.target_step_uuid,
+    )
     await session.commit()
     return ProjectResponse.from_project(p)
 
@@ -117,6 +121,39 @@ async def put_specifications(
 ) -> ProjectResponse:
     svc = ProjectLifecycleService(session)
     p = await svc.put_specifications(current, project_uuid, body.document)
+    await session.commit()
+    return ProjectResponse.from_project(p)
+
+
+@router.post(
+    "/{project_uuid}/specifications/generate",
+    response_model=ProjectResponse,
+    summary="Generar borrador del pliego (autocompletado)",
+)
+async def post_specifications_generate(
+    project_uuid: UUID,
+    body: PliegoGenerateRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = ProjectLifecycleService(session)
+    p = await svc.generate_business_pliego(current, project_uuid, body.force)
+    await session.commit()
+    return ProjectResponse.from_project(p)
+
+
+@router.post(
+    "/{project_uuid}/specifications/approve",
+    response_model=ProjectResponse,
+    summary="Aprobar pliego de condiciones estructurado",
+)
+async def post_specifications_approve(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = ProjectLifecycleService(session)
+    p = await svc.approve_business_pliego(current, project_uuid)
     await session.commit()
     return ProjectResponse.from_project(p)
 
@@ -470,6 +507,47 @@ async def delete_subcontract_quote(
     svc = ProjectLifecycleService(session)
     await svc.delete_subcontract_quote(current, project_uuid, quote_uuid)
     await session.commit()
+
+
+@router.get(
+    "/{project_uuid}/technical-findings",
+    response_model=list[TechnicalFindingResponse],
+    summary="Hallazgos técnicos (registro manual / futuro pipeline IA)",
+)
+async def list_technical_findings(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[TechnicalFindingResponse]:
+    svc = ProjectLifecycleService(session)
+    rows = await svc.list_technical_findings(current, project_uuid)
+    return [TechnicalFindingResponse.from_row(r) for r in rows]
+
+
+@router.post(
+    "/{project_uuid}/technical-findings",
+    response_model=TechnicalFindingResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar hallazgo técnico",
+)
+async def create_technical_finding(
+    project_uuid: UUID,
+    body: TechnicalFindingCreateRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TechnicalFindingResponse:
+    svc = ProjectLifecycleService(session)
+    row = await svc.create_technical_finding(
+        current,
+        project_uuid,
+        discipline=body.discipline,
+        severity=body.severity,
+        title=body.title,
+        description=body.description,
+        evidence_ref=body.evidence_ref,
+    )
+    await session.commit()
+    return TechnicalFindingResponse.from_row(row)
 
 
 @router.post(

@@ -7,7 +7,10 @@ import { LoginPage } from './pages/LoginPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { ProjectWorkspacePage } from './pages/ProjectWorkspacePage'
 import { TaskboardPage } from './pages/TaskboardPage'
+import { DashboardPage } from './pages/DashboardPage'
 import { TutorialesPage } from './pages/TutorialesPage'
+import { FlowsHubPage } from './pages/FlowsHubPage'
+import { FlowBoardPage } from './pages/FlowBoardPage'
 import { useAuthStore } from './store/authStore'
 
 function RequireAuth() {
@@ -36,6 +39,9 @@ export default function App() {
           <Route path="/app/tutoriales" element={<TutorialesPage />} />
           <Route element={<RequireGerencia />}>
             <Route path="/app/admin" element={<AdminUsersPage />} />
+            <Route path="/app/dashboard" element={<DashboardPage />} />
+            <Route path="/app/flows" element={<FlowsHubPage />} />
+            <Route path="/app/flows/:flowUuid" element={<FlowBoardPage />} />
           </Route>
         </Route>
       </Route>

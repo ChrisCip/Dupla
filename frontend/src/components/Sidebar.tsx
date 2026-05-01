@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
+  BarChart3,
   BookOpen,
+  GitBranch,
   ChevronLeft,
   ChevronRight,
   FolderKanban,
@@ -101,6 +103,18 @@ export function Sidebar() {
           <FolderKanban className="h-5 w-5 shrink-0" aria-hidden />
           <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Proyectos</span>
         </NavLink>
+        {role === 'GERENCIA' ? (
+          <NavLink
+            to="/app/flows"
+            title="Flujos"
+            className={({ isActive }) =>
+              `${linkBase} ${collapsed ? linkCollapsed : linkExpanded} ${isActive ? activeClass : ''}`
+            }
+          >
+            <GitBranch className="h-5 w-5 shrink-0" aria-hidden />
+            <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Flujos</span>
+          </NavLink>
+        ) : null}
         <NavLink
           data-tour="sidebar-chat"
           to="/app/chat"
@@ -146,17 +160,30 @@ export function Sidebar() {
           <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Tutoriales</span>
         </NavLink>
         {role === 'GERENCIA' ? (
-          <NavLink
-            data-tour="sidebar-admin"
-            to="/app/admin"
-            title="Usuarios"
-            className={({ isActive }) =>
-              `${linkBase} ${collapsed ? linkCollapsed : linkExpanded} ${isActive ? activeClass : ''}`
-            }
-          >
-            <Users className="h-5 w-5 shrink-0" aria-hidden />
-            <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Usuarios</span>
-          </NavLink>
+          <>
+            <NavLink
+              data-tour="sidebar-dashboard"
+              to="/app/dashboard"
+              title="Panel gerencial"
+              className={({ isActive }) =>
+                `${linkBase} ${collapsed ? linkCollapsed : linkExpanded} ${isActive ? activeClass : ''}`
+              }
+            >
+              <BarChart3 className="h-5 w-5 shrink-0" aria-hidden />
+              <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Panel</span>
+            </NavLink>
+            <NavLink
+              data-tour="sidebar-admin"
+              to="/app/admin"
+              title="Usuarios"
+              className={({ isActive }) =>
+                `${linkBase} ${collapsed ? linkCollapsed : linkExpanded} ${isActive ? activeClass : ''}`
+              }
+            >
+              <Users className="h-5 w-5 shrink-0" aria-hidden />
+              <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Usuarios</span>
+            </NavLink>
+          </>
         ) : null}
       </nav>
 

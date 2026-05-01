@@ -1,13 +1,17 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { apiFetch } from '../../../api/client'
 import { projectKindLabel } from '../../../constants/projectKind'
-import { Card } from '../../Card'
+import { downloadBlob, filenameFromContentDisposition } from '../../../lib/download'
 import type { Project } from '../../../types/project'
+import { Card } from '../../Card'
 
 type WorkspaceDetallesTabProps = {
   project: Project | null
   projectError: string | null
   phaseLabel: string
+  token: string | null
   onOpenChat: () => void
 }
 
@@ -15,8 +19,24 @@ export function WorkspaceDetallesTab({
   project,
   projectError,
   phaseLabel,
+  token,
   onOpenChat,
 }: WorkspaceDetallesTabProps) {
+  const [docBusy, setDocBusy] = useState(false)
+
+  async function downloadDocumentaryReport() {
+    if (!token || !project) return
+    setDocBusy(true)
+    try {
+      const res = await apiFetch(`/api/projects/${project.uuid}/exports/documentary-report.pdf`, { token })
+      if (!res.ok) return
+      const blob = await res.blob()
+      downloadBlob(blob, filenameFromContentDisposition(res, `informe-documental-${project.uuid}.pdf`))
+    } finally {
+      setDocBusy(false)
+    }
+  }
+
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold text-ink">Detalles del proyecto</h2>
@@ -45,6 +65,28 @@ export function WorkspaceDetallesTab({
               <dt className="du-meta">Fase del flujo</dt>
               <dd className="mt-1 text-sm font-medium text-ink">{phaseLabel}</dd>
             </div>
+            <div>
+              <dt className="du-meta">Código de proyecto</dt>
+              <dd className="mt-1 text-sm text-ink">{project.project_code ?? '—'}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="du-meta">Ubicación</dt>
+              <dd className="mt-1 text-sm text-ink">{project.location_text ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="du-meta">Área estimada (m²)</dt>
+              <dd className="mt-1 text-sm text-ink">{project.estimated_area_sqm ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="du-meta">Niveles</dt>
+              <dd className="mt-1 text-sm text-ink">
+                {project.floor_levels_count != null ? String(project.floor_levels_count) : '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="du-meta">Fecha límite</dt>
+              <dd className="mt-1 text-sm text-ink">{project.deadline ?? '—'}</dd>
+            </div>
             <div className="sm:col-span-2">
               <dt className="du-meta">Identificador</dt>
               <dd className="mt-1 font-mono text-xs text-muted">{project.uuid}</dd>
@@ -65,6 +107,14 @@ export function WorkspaceDetallesTab({
               onClick={onOpenChat}
             >
               Chat del proyecto
+            </button>
+            <button
+              type="button"
+              disabled={docBusy || !token}
+              className="du-pill-action border-primary/25 bg-primary/[0.05] font-semibold text-primary"
+              onClick={() => void downloadDocumentaryReport()}
+            >
+              {docBusy ? 'Generando…' : 'Informe documental (PDF)'}
             </button>
           </div>
         </>

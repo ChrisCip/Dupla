@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Optional
 from uuid import UUID
 
@@ -21,9 +22,24 @@ class ProjectResponse(BaseModel):
     specifications_document: dict[str, Any]
     created_by_user_uuid: Optional[UUID] = None
     updated_at: datetime
+    project_code: Optional[str] = None
+    location_text: Optional[str] = None
+    estimated_area_sqm: Optional[Decimal] = None
+    floor_levels_count: Optional[int] = None
+    deadline: Optional[date] = None
+    responsible_user_uuid: Optional[UUID] = None
+    workflow_template_uuid: UUID
+    current_workflow_step_uuid: UUID
+    current_step_title: Optional[str] = None
+    current_step_behavior_kind: Optional[str] = None
 
     @classmethod
     def from_project(cls, project: Project) -> ProjectResponse:
+        area = project.estimated_area_sqm
+        area_out: Optional[Decimal] = None
+        if area is not None:
+            area_out = Decimal(str(area)) if not isinstance(area, Decimal) else area
+        cur_step = project.current_workflow_step
         return cls(
             uuid=project.id,
             name=project.name,
@@ -36,6 +52,16 @@ class ProjectResponse(BaseModel):
             specifications_document=project.specifications_document or {},
             created_by_user_uuid=project.created_by,
             updated_at=project.updated_at,
+            project_code=project.project_code,
+            location_text=project.location_text,
+            estimated_area_sqm=area_out,
+            floor_levels_count=project.floor_levels_count,
+            deadline=project.deadline,
+            responsible_user_uuid=project.responsible_user_id,
+            workflow_template_uuid=project.workflow_template_id,
+            current_workflow_step_uuid=project.current_workflow_step_id,
+            current_step_title=cur_step.title if cur_step is not None else None,
+            current_step_behavior_kind=cur_step.behavior_kind if cur_step is not None else None,
         )
 
 

@@ -7,6 +7,7 @@ Cada documento incluye: **finalidad del módulo**, **flujos** (secuencias usuari
 | Autenticación, sesión y perfil | [auth-y-usuarios.md](./auth-y-usuarios.md) |
 | Catálogo de módulos (Arquitectura, etc.) | [modulos-producto.md](./modulos-producto.md) |
 | Proyectos, workspace y ciclo de vida | [proyectos-y-flujo.md](./proyectos-y-flujo.md) |
+| Doc externo «Flujo IA» vs implementación | [flujo-doc-vs-dupla.md](./flujo-doc-vs-dupla.md) |
 | Archivos, carpetas y búsqueda | [archivos-y-carpetas.md](./archivos-y-carpetas.md) |
 | Chat interno | [chat.md](./chat.md) |
 | Tablero de tareas | [tablero-tareas.md](./tablero-tareas.md) |
@@ -22,3 +23,4 @@ Cada documento incluye: **finalidad del módulo**, **flujos** (secuencias usuari
 | `/app/chat` | Chat |
 | `/app/tasks` | Tablero de tareas (query `project_uuid` opcional) |
 | `/app/admin` | Usuarios (solo Gerencia) |
+| `/app/dashboard` | KPIs agregados (solo Gerencia) |

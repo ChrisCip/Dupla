@@ -51,6 +51,12 @@ export function ProjectConfigModal({
 }: ProjectConfigModalProps) {
   const [name, setName] = useState('')
   const [clientName, setClientName] = useState('')
+  const [projectCode, setProjectCode] = useState('')
+  const [locationText, setLocationText] = useState('')
+  const [areaSqm, setAreaSqm] = useState('')
+  const [floors, setFloors] = useState('')
+  const [deadline, setDeadline] = useState('')
+  const [responsibleUuid, setResponsibleUuid] = useState('')
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
 
@@ -58,6 +64,12 @@ export function ProjectConfigModal({
     if (!open || !project) return
     setName(project.name)
     setClientName(project.client_name ?? '')
+    setProjectCode(project.project_code ?? '')
+    setLocationText(project.location_text ?? '')
+    setAreaSqm(project.estimated_area_sqm != null ? String(project.estimated_area_sqm) : '')
+    setFloors(project.floor_levels_count != null ? String(project.floor_levels_count) : '')
+    setDeadline(project.deadline ?? '')
+    setResponsibleUuid(project.responsible_user_uuid ?? '')
     setSaveMsg(null)
   }, [open, project])
 
@@ -65,13 +77,29 @@ export function ProjectConfigModal({
     if (!token || !projectUuid || !project) return
     setSaveBusy(true)
     setSaveMsg(null)
+    const payload: Record<string, unknown> = {
+      name: name.trim() || project.name,
+      client_name: clientName.trim() || null,
+      project_code: projectCode.trim() || null,
+      location_text: locationText.trim() || null,
+    }
+    if (areaSqm.trim()) {
+      payload.estimated_area_sqm = Number(areaSqm)
+    } else {
+      payload.estimated_area_sqm = null
+    }
+    if (floors.trim()) {
+      payload.floor_levels_count = parseInt(floors, 10)
+    } else {
+      payload.floor_levels_count = null
+    }
+    payload.deadline = deadline.trim() || null
+    payload.responsible_user_uuid = responsibleUuid.trim() || null
+
     const res = await apiFetch(`/api/projects/${projectUuid}`, {
       method: 'PATCH',
       token,
-      body: JSON.stringify({
-        name: name.trim() || project.name,
-        client_name: clientName.trim() || null,
-      }),
+      body: JSON.stringify(payload),
     })
     setSaveBusy(false)
     if (!res.ok) {
@@ -81,7 +109,20 @@ export function ProjectConfigModal({
     const body = (await res.json()) as Project
     onProjectSaved(body)
     setSaveMsg('Guardado')
-  }, [token, projectUuid, project, name, clientName, onProjectSaved])
+  }, [
+    token,
+    projectUuid,
+    project,
+    name,
+    clientName,
+    projectCode,
+    locationText,
+    areaSqm,
+    floors,
+    deadline,
+    responsibleUuid,
+    onProjectSaved,
+  ])
 
   if (!open) return null
 
@@ -131,6 +172,76 @@ export function ProjectConfigModal({
                     onChange={(e) => setClientName(e.target.value)}
                     maxLength={255}
                   />
+                </label>
+                <label className="mt-3 block text-sm text-muted">
+                  Código de proyecto
+                  <input
+                    className="du-input mt-1"
+                    value={projectCode}
+                    onChange={(e) => setProjectCode(e.target.value)}
+                    maxLength={80}
+                  />
+                </label>
+                <label className="mt-3 block text-sm text-muted">
+                  Ubicación
+                  <textarea
+                    className="du-input mt-1 min-h-[72px]"
+                    value={locationText}
+                    onChange={(e) => setLocationText(e.target.value)}
+                    rows={3}
+                  />
+                </label>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm text-muted">
+                    Área estimada (m²)
+                    <input
+                      className="du-input mt-1"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={areaSqm}
+                      onChange={(e) => setAreaSqm(e.target.value)}
+                    />
+                  </label>
+                  <label className="block text-sm text-muted">
+                    Niveles
+                    <input
+                      className="du-input mt-1"
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={floors}
+                      onChange={(e) => setFloors(e.target.value)}
+                    />
+                  </label>
+                </div>
+                <label className="mt-3 block text-sm text-muted">
+                  Fecha límite
+                  <input
+                    className="du-input mt-1"
+                    type="date"
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                  />
+                </label>
+                <label className="mt-3 block text-sm text-muted">
+                  Responsable interno
+                  <select
+                    className="du-input mt-1"
+                    value={responsibleUuid}
+                    onChange={(e) => setResponsibleUuid(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {project.created_by_user_uuid &&
+                    !memberRows.some((r) => r.uuid === project.created_by_user_uuid) ? (
+                      <option value={project.created_by_user_uuid}>Creador del proyecto</option>
+                    ) : null}
+                    {memberRows.map((r) => (
+                      <option key={r.uuid} value={r.uuid}>
+                        {formatPersonFullName(r.first_name, r.last_name, r.email)}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 {saveMsg ? <p className="mt-2 text-sm text-primary">{saveMsg}</p> : null}
                 <PrimaryButton type="button" className="mt-4" disabled={saveBusy} onClick={() => void saveMeta()}>

@@ -8,6 +8,7 @@ const TAB_DEFS: { id: string; label: string }[] = [
   { id: 'archivos', label: 'Archivos' },
   { id: 'entregaPlanos', label: 'Entrega planos' },
   { id: 'revisiones', label: 'Revisiones' },
+  { id: 'hallazgos', label: 'Hallazgos' },
   { id: 'especificaciones', label: 'Especificaciones' },
   { id: 'presupuesto', label: 'Presupuesto' },
   { id: 'eventos', label: 'Eventos' },

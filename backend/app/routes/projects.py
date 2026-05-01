@@ -1,5 +1,6 @@
 import json
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated, Optional
 from uuid import UUID
 
@@ -27,6 +28,42 @@ from app.services.project_lifecycle_service import ProjectLifecycleService
 from app.services.project_service import ProjectService
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
+
+
+def _opt_date(raw: Optional[str]) -> Optional[date]:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    return date.fromisoformat(s)
+
+
+def _opt_decimal(raw: Optional[str]) -> Optional[Decimal]:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    return Decimal(s)
+
+
+def _opt_int(raw: Optional[str]) -> Optional[int]:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    return int(s, 10)
+
+
+def _opt_uuid(raw: Optional[str]) -> Optional[UUID]:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    return UUID(s)
 
 
 @router.get(
@@ -65,6 +102,13 @@ async def create_project(
         None,
         description='JSON array de UUIDs, ej. ["uuid1","uuid2"]',
     ),
+    project_code: Optional[str] = Form(None),
+    location_text: Optional[str] = Form(None),
+    estimated_area_sqm: Optional[str] = Form(None),
+    floor_levels_count: Optional[str] = Form(None),
+    deadline: Optional[str] = Form(None),
+    responsible_user_uuid: Optional[str] = Form(None),
+    workflow_template_uuid: Optional[str] = Form(None),
     files: Annotated[Optional[list[UploadFile]], File()] = None,
 ) -> ProjectResponse:
     try:
@@ -96,13 +140,20 @@ async def create_project(
         project_kind=kind,
         member_user_uuids=members,
         files=file_list,
+        project_code=project_code,
+        location_text=location_text,
+        estimated_area_sqm=_opt_decimal(estimated_area_sqm),
+        floor_levels_count=_opt_int(floor_levels_count),
+        deadline=_opt_date(deadline),
+        responsible_user_uuid=_opt_uuid(responsible_user_uuid),
+        workflow_template_uuid=_opt_uuid(workflow_template_uuid),
     )
     for upload in file_list:
         if not getattr(upload, "filename", None):
             continue
         await lifecycle.upload_file(current, project.id, upload, None)
     await session.commit()
-    await session.refresh(project)
+    await session.refresh(project, ["current_workflow_step"])
     return ProjectResponse.from_project(project)
 
 
@@ -259,6 +310,28 @@ async def delete_plan_delivery_request(
     svc = PlanDeliveryService(session)
     await svc.delete_row(current, project_uuid, row_uuid)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{project_uuid}/exports/documentary-report.pdf",
+    summary="Informe documental (PDF)",
+    description="Checklist de arranque, archivos cargados y posibles duplicados por nombre.",
+)
+async def export_documentary_pdf(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    svc = ExportService(session)
+    lifecycle = ProjectLifecycleService(session)
+    data = await svc.export_documentary_pdf(current, project_uuid)
+    await lifecycle.maybe_automation_after_documentary_export(current, project_uuid)
+    await session.commit()
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="informe-documental-{project_uuid}.pdf"'},
+    )
 
 
 @router.get(

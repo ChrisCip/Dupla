@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Optional, Tuple
 from uuid import UUID
 
@@ -11,8 +12,10 @@ from app.domain.project_updated import touch_project_updated_at
 from app.domain.workflow_phase import WorkflowPhase
 from app.models.project import Project
 from app.models.user import User, UserRole
+from app.domain.workflow_template_ids import LEGACY_WORKFLOW_TEMPLATE_ID
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
+from app.repositories.workflow_template_repository import WorkflowTemplateRepository
 from app.schemas.architecture import ArchitectureDocumentPayload
 
 settings = get_settings()
@@ -22,6 +25,7 @@ class ProjectService:
     def __init__(self, session: AsyncSession) -> None:
         self._projects = ProjectRepository(session)
         self._users = UserRepository(session)
+        self._workflow_templates = WorkflowTemplateRepository(session)
 
     async def ensure_architecture_access(self, user: User) -> None:
         ok = await self._users.has_module(user.id, settings.architecture_module_id)
@@ -36,6 +40,18 @@ class ProjectService:
         is_master = user.role == UserRole.GERENCIA
         return await self._projects.list_for_user(user.id, is_master=is_master)
 
+    async def list_projects_for_template(self, user: User, template_uuid: UUID) -> list[Project]:
+        await self.ensure_architecture_access(user)
+        tpl = await self._workflow_templates.get_template_by_uuid(template_uuid)
+        if tpl is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plantilla no encontrada")
+        is_master = user.role == UserRole.GERENCIA
+        return await self._projects.list_for_template(
+            tpl.id,
+            is_master=is_master,
+            user_uuid=user.id,
+        )
+
     async def create_project(
         self,
         user: User,
@@ -45,6 +61,13 @@ class ProjectService:
         project_kind: ProjectKind,
         member_user_uuids: Optional[list[UUID]],
         files: list[UploadFile],
+        project_code: Optional[str] = None,
+        location_text: Optional[str] = None,
+        estimated_area_sqm: Optional[Decimal] = None,
+        floor_levels_count: Optional[int] = None,
+        deadline: Optional[date] = None,
+        responsible_user_uuid: Optional[UUID] = None,
+        workflow_template_uuid: Optional[UUID] = None,
     ) -> Project:
         await self.ensure_architecture_access(user)
         if user.role != UserRole.GERENCIA:
@@ -69,14 +92,57 @@ class ProjectService:
             if project_kind == ProjectKind.TENDER
             else WorkflowPhase.BOOTSTRAPPING.value
         )
+        tid = workflow_template_uuid or LEGACY_WORKFLOW_TEMPLATE_ID
+        tpl = await self._workflow_templates.get_template_by_uuid(tid)
+        if tpl is None or tpl.archived_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La plantilla de flujo no existe o está archivada",
+            )
+        initial_step = await self._workflow_templates.first_step_matching_behavior(tpl.id, wf)
+        if initial_step is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La plantilla de flujo no define un paso para la fase inicial requerida",
+            )
         cn = client_name.strip() if client_name else None
         cn = cn or None
+        pc = project_code.strip() if project_code else None
+        pc = pc or None
+        if pc is not None:
+            existing = await self._projects.get_by_project_code(pc)
+            if existing is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Ya existe un proyecto con ese código",
+                )
+        allowed_ids: set[UUID] = {user.id}
+        if member_user_uuids is not None:
+            allowed_ids |= set(member_user_uuids)
+        if responsible_user_uuid is not None and responsible_user_uuid not in allowed_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El responsable debe ser el creador o un miembro seleccionado para el proyecto",
+            )
+        area_float: Optional[float] = None
+        if estimated_area_sqm is not None:
+            area_float = float(estimated_area_sqm)
+        loc = location_text.strip() if location_text else None
+        loc = loc or None
         project = await self._projects.create_with_architecture(
             name=name_clean,
             client_name=cn,
             created_by=user.id,
             project_kind=project_kind.value,
             workflow_phase=wf,
+            workflow_template_id=tpl.id,
+            current_workflow_step_id=initial_step.id,
+            project_code=pc,
+            location_text=loc,
+            estimated_area_sqm=area_float,
+            floor_levels_count=floor_levels_count,
+            deadline=deadline,
+            responsible_user_id=responsible_user_uuid,
         )
         await self._projects.record_event(
             project_id=project.id,

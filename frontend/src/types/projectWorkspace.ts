@@ -44,3 +44,14 @@ export type SubcontractQuoteRow = {
   created_at: string
   lines: SubcontractLine[]
 }
+
+export type TechnicalFindingRow = {
+  uuid: string
+  discipline: string
+  severity: string
+  title: string
+  description: string
+  evidence_ref: string | null
+  created_at: string
+  created_by_user_uuid: string | null
+}

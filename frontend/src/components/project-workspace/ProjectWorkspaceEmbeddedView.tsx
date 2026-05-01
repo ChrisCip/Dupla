@@ -5,9 +5,11 @@ import { Card } from '../Card'
 import { PrimaryButton } from '../PrimaryButton'
 import { TaskboardView } from '../TaskboardView'
 import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
+import { WorkflowPhaseStepper } from './WorkflowPhaseStepper'
 
 type ProjectWorkspaceEmbeddedViewProps = {
   projectUuid: string
+  workflowPhase: string
   phaseLabel: string
   nextPhase: string | undefined
   flowBusy: boolean
@@ -20,6 +22,7 @@ type ProjectWorkspaceEmbeddedViewProps = {
 
 export function ProjectWorkspaceEmbeddedView({
   projectUuid,
+  workflowPhase,
   phaseLabel,
   nextPhase,
   flowBusy,
@@ -49,7 +52,13 @@ export function ProjectWorkspaceEmbeddedView({
       <aside className="flex w-full shrink-0 flex-col gap-2 overflow-y-auto md:w-52 lg:w-56 xl:w-64">
         <Card className="p-3 md:p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Estado del flujo</h2>
-          <p className="mt-2 text-sm font-medium text-ink">{phaseLabel || '—'}</p>
+          {workflowPhase ? (
+            <div className="mt-2">
+              <WorkflowPhaseStepper workflowPhase={workflowPhase} compact />
+            </div>
+          ) : (
+            <p className="mt-2 text-sm font-medium text-ink">{phaseLabel || '—'}</p>
+          )}
           {nextPhase ? (
             <PrimaryButton
               type="button"

@@ -164,6 +164,20 @@ export function ProjectWorkspaceHeader({
                   >
                     {exportBusy === 'control-pdf' ? 'Generando…' : 'Control planos (PDF)'}
                   </PrimaryButton>
+                  <PrimaryButton
+                    type="button"
+                    className="w-full justify-center sm:w-auto"
+                    disabled={exportBusy !== null}
+                    onClick={() =>
+                      void exportFile(
+                        `/api/projects/${projectUuid}/exports/documentary-report.pdf`,
+                        `informe-documental-${projectUuid}.pdf`,
+                        'doc-pdf',
+                      )
+                    }
+                  >
+                    {exportBusy === 'doc-pdf' ? 'Generando…' : 'Informe documental (PDF)'}
+                  </PrimaryButton>
                 </div>
               </div>
             </details>

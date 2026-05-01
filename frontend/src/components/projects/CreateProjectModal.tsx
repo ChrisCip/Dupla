@@ -106,12 +106,27 @@ type CreateProjectModalProps = {
   setProjectKind: React.Dispatch<React.SetStateAction<ProjectKindValue>>
   createFiles: File[]
   setCreateFiles: React.Dispatch<React.SetStateAction<File[]>>
+  createProjectCode: string
+  setCreateProjectCode: React.Dispatch<React.SetStateAction<string>>
+  createLocation: string
+  setCreateLocation: React.Dispatch<React.SetStateAction<string>>
+  createArea: string
+  setCreateArea: React.Dispatch<React.SetStateAction<string>>
+  createFloors: string
+  setCreateFloors: React.Dispatch<React.SetStateAction<string>>
+  createDeadline: string
+  setCreateDeadline: React.Dispatch<React.SetStateAction<string>>
+  createResponsible: string
+  setCreateResponsible: React.Dispatch<React.SetStateAction<string>>
   createMembers: Set<string>
   setCreateMembers: React.Dispatch<React.SetStateAction<Set<string>>>
   adminUsersCreate: DirectoryUserRow[]
   userUuid: string | null
   error: string | null
   submitting: boolean
+  workflowTemplates: { uuid: string; name: string }[]
+  workflowTemplateUuid: string
+  setWorkflowTemplateUuid: React.Dispatch<React.SetStateAction<string>>
 }
 
 export function CreateProjectModal({
@@ -125,12 +140,27 @@ export function CreateProjectModal({
   setProjectKind,
   createFiles,
   setCreateFiles,
+  createProjectCode,
+  setCreateProjectCode,
+  createLocation,
+  setCreateLocation,
+  createArea,
+  setCreateArea,
+  createFloors,
+  setCreateFloors,
+  createDeadline,
+  setCreateDeadline,
+  createResponsible,
+  setCreateResponsible,
   createMembers,
   setCreateMembers,
   adminUsersCreate,
   userUuid,
   error,
   submitting,
+  workflowTemplates,
+  workflowTemplateUuid,
+  setWorkflowTemplateUuid,
 }: CreateProjectModalProps) {
   const [step, setStep] = useState(1)
   const [tenderFileRejectNote, setTenderFileRejectNote] = useState<string | null>(null)
@@ -256,6 +286,103 @@ export function CreateProjectModal({
                         disabled={submitting}
                       />
                     </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="modal-project-code" className="du-label">
+                          Código <span className="font-normal text-muted">(opcional)</span>
+                        </label>
+                        <input
+                          id="modal-project-code"
+                          className="du-input mt-1 w-full"
+                          value={createProjectCode}
+                          onChange={(e) => setCreateProjectCode(e.target.value)}
+                          maxLength={80}
+                          disabled={submitting}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="modal-project-deadline" className="du-label">
+                          Fecha límite
+                        </label>
+                        <input
+                          id="modal-project-deadline"
+                          type="date"
+                          className="du-input mt-1 w-full"
+                          value={createDeadline}
+                          onChange={(e) => setCreateDeadline(e.target.value)}
+                          disabled={submitting}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="modal-project-location" className="du-label">
+                        Ubicación
+                      </label>
+                      <textarea
+                        id="modal-project-location"
+                        className="du-input mt-1 min-h-[72px] w-full"
+                        value={createLocation}
+                        onChange={(e) => setCreateLocation(e.target.value)}
+                        rows={2}
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="modal-project-area" className="du-label">
+                          Área estimada (m²)
+                        </label>
+                        <input
+                          id="modal-project-area"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="du-input mt-1 w-full"
+                          value={createArea}
+                          onChange={(e) => setCreateArea(e.target.value)}
+                          disabled={submitting}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="modal-project-floors" className="du-label">
+                          Niveles
+                        </label>
+                        <input
+                          id="modal-project-floors"
+                          type="number"
+                          min={0}
+                          step="1"
+                          className="du-input mt-1 w-full"
+                          value={createFloors}
+                          onChange={(e) => setCreateFloors(e.target.value)}
+                          disabled={submitting}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="modal-project-responsible" className="du-label">
+                        Responsable interno
+                      </label>
+                      <select
+                        id="modal-project-responsible"
+                        className="du-input mt-1 w-full"
+                        value={createResponsible}
+                        onChange={(e) => setCreateResponsible(e.target.value)}
+                        disabled={submitting}
+                      >
+                        <option value="">—</option>
+                        {userUuid ? (
+                          <option value={userUuid}>Yo (creador)</option>
+                        ) : null}
+                        {adminUsersCreate
+                          .filter((u) => !userUuid || u.uuid !== userUuid)
+                          .map((u) => (
+                            <option key={u.uuid} value={u.uuid}>
+                              {u.first_name} {u.last_name} ({u.email})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
                   </div>
                 ) : null}
 
@@ -281,6 +408,21 @@ export function CreateProjectModal({
                         />
                       ))}
                     </div>
+                    <label className="mt-6 block">
+                      <span className="du-label">Plantilla de flujo</span>
+                      <select
+                        className="du-input mt-1 w-full"
+                        value={workflowTemplateUuid}
+                        onChange={(e) => setWorkflowTemplateUuid(e.target.value)}
+                        disabled={submitting || workflowTemplates.length === 0}
+                      >
+                        {workflowTemplates.map((t) => (
+                          <option key={t.uuid} value={t.uuid}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 ) : null}
 

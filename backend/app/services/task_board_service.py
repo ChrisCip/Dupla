@@ -12,7 +12,8 @@ from sqlalchemy.orm import selectinload
 from app.config import get_settings
 from app.models.project import Project
 from app.models.task_board import TaskCard, TaskCardComment, TaskList
-from app.models.user import User, UserModule
+from app.domain.tutorial_project import TASK_LIST_TODO_UUID
+from app.models.user import User, UserModule, UserRole
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.task_board import (
@@ -464,3 +465,35 @@ class TaskBoardService:
         await self._session.flush()
         await self._session.refresh(row, attribute_names=["author"])
         return row
+
+    async def create_automation_card_for_phase(
+        self,
+        actor: User,
+        *,
+        project_id: uuid.UUID,
+        title: str,
+        description: Optional[str],
+        preferred_roles: list[UserRole],
+    ) -> Optional[TaskCard]:
+        settings = get_settings()
+        mid = settings.architecture_module_id
+        assignee: Optional[uuid.UUID] = None
+        for role in preferred_roles:
+            uid = await self._users.first_team_member_with_role(project_id, role)
+            if uid is not None:
+                assignee = uid
+                break
+        if assignee is None:
+            for role in preferred_roles:
+                ids = await self._users.list_ids_by_module_and_roles(mid, [role])
+                if ids:
+                    assignee = ids[0]
+                    break
+        body = TaskCardCreateRequest(
+            list_uuid=TASK_LIST_TODO_UUID,
+            title=title.strip(),
+            description=(description.strip() if description else None),
+            assignee_uuid=assignee,
+            project_uuid=project_id,
+        )
+        return await self.create_card(actor, body)

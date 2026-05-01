@@ -13,6 +13,8 @@ import type { TaskAssigneeOption, TaskBoardDto, TaskCardDto, TaskListDto } from 
 export type TaskboardViewProps = {
   /** Filtro fijo por proyecto; vacío = tablero global */
   projectUuid?: string
+  /** Desde query `?mine=true` al abrir el tablero desde enlaces. */
+  initialMineOnly?: boolean
   variant: 'full' | 'embedded'
   /**
    * En modo embebido: ancho máximo del viewport del tablero en columnas (resto con scroll horizontal).
@@ -25,6 +27,7 @@ export type TaskboardViewProps = {
 
 export function TaskboardView({
   projectUuid: projectFilter = '',
+  initialMineOnly = false,
   variant,
   maxVisibleColumns,
   hideEmbeddedHeader = false,
@@ -35,7 +38,7 @@ export function TaskboardView({
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [includeArchived, setIncludeArchived] = useState(false)
-  const [mineOnly, setMineOnly] = useState(false)
+  const [mineOnly, setMineOnly] = useState(initialMineOnly)
   const [filterAssignee, setFilterAssignee] = useState('')
   const [boardSearch, setBoardSearch] = useState('')
   const [modalCard, setModalCard] = useState<TaskCardDto | null>(null)

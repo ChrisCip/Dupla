@@ -21,6 +21,7 @@ export const WORKFLOW_PHASE_LABELS: Record<string, string> = {
   MANAGEMENT_APPROVAL: 'Aprobación de gerencia',
   BUDGET_APPROVED: 'Presupuesto aprobado por cliente',
   COMPLETE: 'Completo',
+  CUSTOM_AUTOMATION: 'Automatización',
 }
 
 /** Siguiente fase en el flujo lineal (ISO). */

@@ -1,18 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Plus } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowRight, ClipboardList, Plus, Settings } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
+import { Card } from '../components/Card'
 import { CreateProjectModal } from '../components/projects/CreateProjectModal'
 import { ProjectsBoardView } from '../components/projects/ProjectsBoardView'
 import { ProjectsListView } from '../components/projects/ProjectsListView'
 import { PROJECT_CARD_MIME } from '../constants/projectsPage'
 import { isAdjacentWorkflowTransitionAllowed } from '../constants/workflowPhases'
 import type { Project } from '../types/project'
+import type { WorkflowTemplateDetail } from '../types/workflowTemplate'
+
+const PROJECTS_VIEW_FLOW_STORAGE_KEY = 'dupla.projects.viewWorkflowTemplateUuid'
 import { useAuthStore } from '../store/authStore'
 import type { ProjectKindValue } from '../constants/projectKind'
 import type { DirectoryUserRow } from '../lib/directoryUsers'
 import { loadAdminDirectoryUsers } from '../lib/adminUsersDirectoryCache'
+
+function readStoredViewFlowUuid(): string | null {
+  try {
+    const raw = localStorage.getItem(PROJECTS_VIEW_FLOW_STORAGE_KEY)
+    if (!raw || raw === 'all') return null
+    const t = raw.trim()
+    return t || null
+  } catch {
+    return null
+  }
+}
 
 export function ProjectsPage() {
   const navigate = useNavigate()
@@ -35,25 +50,78 @@ export function ProjectsPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [projectKind, setProjectKind] = useState<ProjectKindValue>('RESIDENTIAL')
   const [createFiles, setCreateFiles] = useState<File[]>([])
+  const [createProjectCode, setCreateProjectCode] = useState('')
+  const [createLocation, setCreateLocation] = useState('')
+  const [createArea, setCreateArea] = useState('')
+  const [createFloors, setCreateFloors] = useState('')
+  const [createDeadline, setCreateDeadline] = useState('')
+  const [createResponsible, setCreateResponsible] = useState('')
   const [projectSearch, setProjectSearch] = useState('')
   const dragRef = useRef(false)
+  const [workflowTemplates, setWorkflowTemplates] = useState<{ uuid: string; name: string }[]>([])
+  const [workflowTemplateUuid, setWorkflowTemplateUuid] = useState('')
+  const [viewFlowUuid, setViewFlowUuid] = useState<string | null>(readStoredViewFlowUuid)
+  const [boardTemplate, setBoardTemplate] = useState<WorkflowTemplateDetail | null>(null)
+  const [projectsSettingsOpen, setProjectsSettingsOpen] = useState(false)
 
   const filteredProjects = useMemo(() => {
     const q = projectSearch.trim().toLowerCase()
     if (!q) return projects
-    return projects.filter((p) => p.name.toLowerCase().includes(q))
+    return projects.filter((p) => {
+      const blob = `${p.name} ${p.project_code ?? ''} ${p.client_name ?? ''}`.toLowerCase()
+      return blob.includes(q)
+    })
   }, [projects, projectSearch])
+
+  const boardColumns = useMemo(() => {
+    if (!boardTemplate) return undefined
+    return boardTemplate.steps
+      .slice()
+      .sort((a, b) => a.sort_index - b.sort_index)
+      .map((s) => ({
+        id: s.uuid,
+        title: s.title,
+        behaviorKind: s.behavior_kind,
+      }))
+  }, [boardTemplate])
 
   const refresh = useCallback(async () => {
     if (!token) return
     setProjectsLoadError(null)
+    if (viewFlowUuid) {
+      const [pRes, tRes] = await Promise.all([
+        apiFetch(`/api/workflow-templates/${viewFlowUuid}/projects`, { token }),
+        apiFetch(`/api/workflow-templates/${viewFlowUuid}`, { token }),
+      ])
+      if (!pRes.ok || !tRes.ok) {
+        try {
+          localStorage.removeItem(PROJECTS_VIEW_FLOW_STORAGE_KEY)
+        } catch {
+          /* ignore */
+        }
+        setViewFlowUuid(null)
+        setBoardTemplate(null)
+        const fallback = await apiFetch('/api/projects', { token })
+        if (!fallback.ok) {
+          setProjectsLoadError('No se pudieron cargar proyectos')
+          return
+        }
+        setProjects((await fallback.json()) as Project[])
+        setProjectsLoadError('El flujo guardado ya no está disponible; se muestran todos los proyectos.')
+        return
+      }
+      setProjects((await pRes.json()) as Project[])
+      setBoardTemplate((await tRes.json()) as WorkflowTemplateDetail)
+      return
+    }
     const res = await apiFetch('/api/projects', { token })
     if (!res.ok) {
       setProjectsLoadError('No se pudieron cargar proyectos')
       return
     }
     setProjects((await res.json()) as Project[])
-  }, [token])
+    setBoardTemplate(null)
+  }, [token, viewFlowUuid])
 
   useEffect(() => {
     let cancelled = false
@@ -67,6 +135,25 @@ export function ProjectsPage() {
       cancelled = true
     }
   }, [refresh])
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    void (async () => {
+      const res = await apiFetch('/api/workflow-templates/active', { token })
+      if (!res.ok || cancelled) return
+      const list = (await res.json()) as WorkflowTemplateDetail[]
+      const opts = list.map((t) => ({ uuid: t.uuid, name: t.name }))
+      setWorkflowTemplates(opts)
+      setWorkflowTemplateUuid((prev) => {
+        if (prev && opts.some((x) => x.uuid === prev)) return prev
+        return opts[0]?.uuid ?? ''
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   useEffect(() => {
     if (role !== 'GERENCIA' || !token) return
@@ -99,6 +186,15 @@ export function ProjectsPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [createModalOpen])
 
+  useEffect(() => {
+    if (!projectsSettingsOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setProjectsSettingsOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [projectsSettingsOpen])
+
   function closeCreateModal() {
     setCreateModalOpen(false)
     setCreateError(null)
@@ -121,6 +217,13 @@ export function ProjectsPage() {
       if (role === 'GERENCIA' && createMembers.size > 0) {
         fd.append('member_user_uuids', JSON.stringify(Array.from(createMembers)))
       }
+      if (createProjectCode.trim()) fd.append('project_code', createProjectCode.trim())
+      if (createLocation.trim()) fd.append('location_text', createLocation.trim())
+      if (createArea.trim()) fd.append('estimated_area_sqm', createArea.trim())
+      if (createFloors.trim()) fd.append('floor_levels_count', createFloors.trim())
+      if (createDeadline.trim()) fd.append('deadline', createDeadline.trim())
+      if (createResponsible.trim()) fd.append('responsible_user_uuid', createResponsible.trim())
+      if (workflowTemplateUuid.trim()) fd.append('workflow_template_uuid', workflowTemplateUuid.trim())
       for (const f of createFiles) {
         fd.append('files', f)
       }
@@ -142,6 +245,12 @@ export function ProjectsPage() {
       setProjectKind('RESIDENTIAL')
       setCreateFiles([])
       setCreateMembers(new Set())
+      setCreateProjectCode('')
+      setCreateLocation('')
+      setCreateArea('')
+      setCreateFloors('')
+      setCreateDeadline('')
+      setCreateResponsible('')
       closeCreateModal()
       await refresh()
     } finally {
@@ -149,9 +258,39 @@ export function ProjectsPage() {
     }
   }
 
-  async function transitionProjectOnBoard(p: Project, targetPhase: string) {
+  async function transitionProjectOnBoard(p: Project, targetColumnId: string) {
     if (!token) return
-    if (!isAdjacentWorkflowTransitionAllowed(p.project_kind, p.workflow_phase, targetPhase)) {
+    if (boardTemplate) {
+      const ordered = boardTemplate.steps
+        .slice()
+        .sort((a, b) => a.sort_index - b.sort_index)
+        .map((s) => s.uuid)
+      const cur = p.current_workflow_step_uuid
+      const ci = ordered.indexOf(cur)
+      const ti = ordered.indexOf(targetColumnId)
+      if (ci < 0 || ti < 0) {
+        setBoardMsg('Este proyecto no está en un paso reconocido de este flujo.')
+        return
+      }
+      if (ti !== ci + 1 && ti !== ci - 1) {
+        setBoardMsg('Solo puedes mover el proyecto al paso inmediatamente anterior o siguiente.')
+        return
+      }
+      setBoardMsg(null)
+      const res = await apiFetch(`/api/projects/${p.uuid}/transitions`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ target_step_uuid: targetColumnId }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setBoardMsg((j as { detail?: string }).detail ?? 'No se pudo actualizar el paso')
+        return
+      }
+      await refresh()
+      return
+    }
+    if (!isAdjacentWorkflowTransitionAllowed(p.project_kind, p.workflow_phase, targetColumnId)) {
       setBoardMsg(
         p.project_kind === 'TENDER'
           ? 'Los proyectos de licitación no pueden retroceder por debajo de «Revisión de arquitectura». Solo puedes mover a la fase inmediatamente siguiente o, si aplica, retroceder un paso desde esa fase en adelante.'
@@ -163,7 +302,7 @@ export function ProjectsPage() {
     const res = await apiFetch(`/api/projects/${p.uuid}/transitions`, {
       method: 'POST',
       token,
-      body: JSON.stringify({ target_phase: targetPhase }),
+      body: JSON.stringify({ target_phase: targetColumnId }),
     })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
@@ -226,11 +365,23 @@ export function ProjectsPage() {
       ) : null}
       <div className="flex shrink-0 flex-col gap-4">
         <div className="min-w-0" data-tour="projects-heading">
-          <h1 className="text-3xl font-semibold text-ink md:text-4xl">Proyectos</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-3xl font-semibold text-ink md:text-4xl">Proyectos</h1>
+            <button
+              type="button"
+              className="rounded-lg border border-black/10 bg-white p-2 text-ink shadow-[var(--shadow-card)] transition-colors hover:bg-black/[0.03]"
+              aria-label="Configuración de vista: flujo por defecto"
+              onClick={() => setProjectsSettingsOpen(true)}
+            >
+              <Settings className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+            </button>
+          </div>
           <p className="mt-3 text-lg text-muted md:text-xl">
-            {role === 'GERENCIA'
-              ? 'Tablero de proyectos. Arrastra una tarjeta a la columna de al lado para ir a la fase anterior o siguiente.'
-              : 'Proyectos a los que tienes acceso.'}
+            {boardTemplate
+              ? `Proyectos del flujo «${boardTemplate.name}». Arrastra una tarjeta al paso anterior o siguiente.`
+              : role === 'GERENCIA'
+                ? 'Tablero de proyectos. Arrastra una tarjeta a la columna de al lado para ir a la fase anterior o siguiente.'
+                : 'Proyectos a los que tienes acceso.'}
           </p>
           {projectsLoadError ? (
             <p className="mt-2 text-sm font-medium text-primary" role="alert">
@@ -244,7 +395,7 @@ export function ProjectsPage() {
             <input
               type="search"
               className="du-input h-9 w-full rounded-lg border-black/10 py-0 text-sm placeholder:text-muted/90"
-              placeholder="Buscar por nombre…"
+              placeholder="Buscar por nombre o código…"
               value={projectSearch}
               onChange={(e) => setProjectSearch(e.target.value)}
               autoComplete="off"
@@ -295,6 +446,30 @@ export function ProjectsPage() {
         </div>
       </div>
 
+      <Card
+        data-tour="projects-mi-trabajo"
+        className="flex flex-wrap items-start justify-between gap-3 border-primary/15 bg-primary/[0.04] p-4"
+      >
+        <div className="flex min-w-0 gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary [&>svg]:size-5">
+            <ClipboardList strokeWidth={2} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="font-semibold text-ink">Mis tareas</p>
+            <p className="mt-0.5 text-sm text-muted">
+              Abre el tablero ya filtrado solo con tarjetas asignadas a ti.
+            </p>
+          </div>
+        </div>
+        <Link
+          className="du-pill-action inline-flex shrink-0 items-center gap-2 font-semibold no-underline"
+          to="/app/tasks?mine=true"
+        >
+          Ir al tablero
+          <ArrowRight className="size-4" strokeWidth={2.5} aria-hidden />
+        </Link>
+      </Card>
+
       {viewMode === 'lista' ? (
         <ProjectsListView
           loadingList={loadingList}
@@ -316,8 +491,67 @@ export function ProjectsPage() {
           onDragStartProject={onDragStartProject}
           onDragEndBoard={onDragEndBoard}
           onOpenCard={openCard}
+          boardColumns={boardColumns}
+          columnMode={boardTemplate ? 'step' : 'phase'}
         />
       )}
+
+      {projectsSettingsOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="projects-view-settings-title"
+          onClick={() => setProjectsSettingsOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-black/10 bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="projects-view-settings-title" className="text-lg font-semibold text-ink">
+              Vista de proyectos
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              Elige el flujo por defecto: solo verás proyectos de ese flujo y el tablero usará columnas por paso.
+            </p>
+            <label className="mt-4 block">
+              <span className="du-label">Flujo por defecto</span>
+              <select
+                className="du-input mt-1 w-full"
+                value={viewFlowUuid ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value
+                  const next = v ? v : null
+                  try {
+                    if (next) localStorage.setItem(PROJECTS_VIEW_FLOW_STORAGE_KEY, next)
+                    else localStorage.removeItem(PROJECTS_VIEW_FLOW_STORAGE_KEY)
+                  } catch {
+                    /* ignore */
+                  }
+                  setViewFlowUuid(next)
+                  setProjectsSettingsOpen(false)
+                }}
+              >
+                <option value="">Todos los proyectos (por fase)</option>
+                {workflowTemplates.map((t) => (
+                  <option key={t.uuid} value={t.uuid}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                className="du-pill-action"
+                onClick={() => setProjectsSettingsOpen(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {createModalOpen && role === 'GERENCIA' ? (
         <CreateProjectModal
@@ -331,12 +565,27 @@ export function ProjectsPage() {
           setProjectKind={setProjectKind}
           createFiles={createFiles}
           setCreateFiles={setCreateFiles}
+          createProjectCode={createProjectCode}
+          setCreateProjectCode={setCreateProjectCode}
+          createLocation={createLocation}
+          setCreateLocation={setCreateLocation}
+          createArea={createArea}
+          setCreateArea={setCreateArea}
+          createFloors={createFloors}
+          setCreateFloors={setCreateFloors}
+          createDeadline={createDeadline}
+          setCreateDeadline={setCreateDeadline}
+          createResponsible={createResponsible}
+          setCreateResponsible={setCreateResponsible}
           createMembers={createMembers}
           setCreateMembers={setCreateMembers}
           adminUsersCreate={adminUsersCreate}
           userUuid={userUuid}
           error={createError}
           submitting={submitting}
+          workflowTemplates={workflowTemplates}
+          workflowTemplateUuid={workflowTemplateUuid}
+          setWorkflowTemplateUuid={setWorkflowTemplateUuid}
         />
       ) : null}
     </div>

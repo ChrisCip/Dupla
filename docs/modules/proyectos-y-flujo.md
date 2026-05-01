@@ -6,6 +6,8 @@ Centralizar la **obra** como entidad `Project`: metadatos (nombre, cliente), **t
 
 Además incluye **control de entrega de planos** (filas SDP), **exportaciones** Excel/PDF del pliego y control de planos, y la **apertura del chat del proyecto** (delegando en el módulo Chat).
 
+Para alinear expectativas con el documento de negocio «Flujo Software IA Construcción», ver la **matriz estado por estado** en [flujo-doc-vs-dupla.md](./flujo-doc-vs-dupla.md).
+
 ## Superficie API (resumen)
 
 ### Router `projects` — `/api/projects`
@@ -16,7 +18,9 @@ Además incluye **control de entrega de planos** (filas SDP), **exportaciones** 
 | Proyecto y miembros | `GET /api/projects/{uuid}` · `GET/PUT .../members` (PUT solo **Gerencia**) |
 | Datos de arquitectura (JSON) | `GET/PUT .../architecture` — documento pliegos + materiales |
 | Entrega de planos | `GET/POST/PATCH/DELETE .../plan-delivery-requests/...` |
-| Exportaciones | `GET .../exports/pliego.xlsx` · `.../pliego.pdf` · `.../control-planos.xlsx` · `.../control-planos.pdf` |
+| Exportaciones | `GET .../exports/pliego.xlsx` · `.../pliego.pdf` · `.../control-planos.xlsx` · `.../control-planos.pdf` · `.../exports/documentary-report.pdf` (informe checklist/archivos) |
+| Hallazgos técnicos | `GET/POST .../technical-findings` |
+| Dashboard gerencia | `GET /api/dashboard/summary` (solo Gerencia) |
 
 ### Router `project_lifecycle` — mismo prefijo `/api/projects`
 

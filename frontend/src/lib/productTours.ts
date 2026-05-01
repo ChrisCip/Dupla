@@ -176,6 +176,16 @@ export function startProjectsTour(navigate: NavigateFunction, role: string | nul
       })
     }
     steps.push({
+      element: '[data-tour="projects-mi-trabajo"]',
+      popover: {
+        title: 'Mis tareas',
+        description:
+          'Abre el tablero Kanban ya filtrado con las tarjetas asignadas a ti (equivale a activar «Solo lo mío» en el tablero).',
+        side: 'bottom',
+        align: 'start',
+      },
+    })
+    steps.push({
       element: '[data-tour="projects-board"]',
       popover: {
         title: 'Contenido',
@@ -318,7 +328,7 @@ export function startWorkspaceTour(navigate: NavigateFunction): void {
           popover: {
             title: 'Secciones del workspace',
             description:
-              'Lista de secciones de la obra: datos, trámite, archivos, entregas, revisiones, especificaciones, presupuesto, historial, pliegos y materiales. En el móvil, el botón «Secciones» abre o cierra esta lista.',
+              'Lista de secciones de la obra: datos, flujo (pasos del proceso), archivos, entregas, revisiones, hallazgos técnicos, especificaciones, presupuesto, eventos, pliegos y materiales. En el móvil, el botón «Secciones» abre o cierra esta lista.',
             side: 'right',
             align: 'start',
           },
@@ -328,7 +338,7 @@ export function startWorkspaceTour(navigate: NavigateFunction): void {
           popover: {
             title: 'Contenido de la sección',
             description:
-              'Aquí cambia el contenido según la sección que elijas: documentos, historial, revisiones, presupuesto, etc. El ejemplo «Tutorial · Workspace Dupla» sirve para practicar sin tocar obras reales.',
+              'Aquí cambia el contenido según la sección que elijas: en Flujo verás el paso activo del proceso y el informe documental; en el resto, documentos, revisiones, hallazgos, presupuesto, etc. El ejemplo «Tutorial · Workspace Dupla» sirve para practicar sin tocar obras reales.',
             side: 'top',
             align: 'start',
           },
