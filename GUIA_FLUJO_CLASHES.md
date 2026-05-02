@@ -230,6 +230,8 @@ Cuando una corrida `fast_compare` sale bien, deja este paquete:
 - `primary_incidents.json/md`
 - `debug_candidates.json`
 - `hotspot_incidents.json/md` si hay suficientes casos
+- `technical_coordination_report.md`
+- `coordination_report_context.json`
 - `alignment_manifest.json` si hubo alineacion manual
 
 Lectura rapida:
@@ -238,8 +240,85 @@ Lectura rapida:
 - `comparison_readiness_report.md`: si habia cohorte comparable desde el inicio
 - `coordinate_audit.md`: que archivos son confiables o no
 - `pair_schedule.json`: que pares realmente entraron
-- `primary_incidents.md`: salida operativa para revision humana
+- `primary_incidents.md`: registro defendible de incidencias primarias
+- `technical_coordination_report.md`: resumen ejecutivo + lectura por perfil + prioridades
 - `debug_candidates.json`: por que todavia hay ruido o supresiones
+
+## 11. Capa de presentacion para revision real
+
+Desde esta rama, el pipeline ya no se queda solo en listados tecnicos.
+Ahora genera una capa de presentacion pensada para mesa de coordinacion:
+
+- resumen ejecutivo
+- hallazgos defendibles
+- hallazgos que requieren validacion manual
+- secciones por perfil:
+  - arquitectura
+  - electrico
+  - sanitario
+- separacion explicita entre:
+  - incidencias primarias
+  - ruido tecnico
+  - hotspots
+  - bloqueos de audit o schedule
+
+La logica nueva vive en:
+
+- `core/coordination/reporting.py`
+- `scripts/render_coordination_report.py`
+
+## 12. Criterio editorial del informe
+
+### Hallazgo defendible
+
+Se publica como defendible solo si viene de `primary_incidents` y conserva:
+
+- par comparable
+- mismo nivel
+- geometria primaria
+- confianza de reporte distinta de `low`
+
+### Ruido tecnico
+
+Se mantiene fuera del resumen ejecutivo cuando cae en alguno de estos grupos:
+
+- `debug_conflicts`
+- elementos `suppressed`
+- geometria `bbox` o señal debil
+- `default_level` o fallback que baja la confianza
+- pares bloqueados por `coordinate_band_mismatch`, `level_mismatch` o status de audit
+
+### Severidad, prioridad y confianza
+
+El render ahora calcula tres ejes distintos:
+
+- `severity`
+  - `critical`, `high`, `medium`, `low`
+- `priority`
+  - `P1`, `P2`, `P3`
+- `report_confidence`
+  - `high`, `medium`, `low`
+
+Regla practica:
+
+- `severity` estima impacto tecnico
+- `priority` ordena la revision
+- `report_confidence` dice que tan defendible es el hallazgo con la extraccion actual
+
+## 13. Re-render desde outputs existentes
+
+No hace falta relanzar todo el pipeline para mejorar el informe.
+Se puede regenerar desde una carpeta de outputs ya creada:
+
+```powershell
+python scripts/render_coordination_report.py --run-dir analysis_output/serena18_analysis_05_NPT_P1 --refresh-supporting-md
+```
+
+Eso vuelve a escribir:
+
+- `technical_coordination_report.md`
+- `coordination_report_context.json`
+- y opcionalmente refresca `primary_incidents.md`, `coordinate_audit.md`, `hotspot_incidents.md`
 
 ## Reglas de negocio que ya quedaron claras
 
