@@ -40,7 +40,7 @@ export function TutorialesPage() {
         id: 'tasks',
         title: 'Tablero de tareas',
         description:
-          'Recorre el tablero general de tareas del equipo: encabezado, filtros y columnas donde mueves las tarjetas.',
+          'Recorre tu tablero Kanban: encabezado, barra de búsqueda y archivadas, y columnas donde movés las tarjetas (solo ves las tareas propias).',
         onStart: () => startTasksTour(navigate),
       },
       {
@@ -112,8 +112,8 @@ export function TutorialesPage() {
       <section id="guia-escrita" className="border-t border-black/10 pt-10">
         <h2 className="text-lg font-semibold text-ink">Guía de referencia por escrito</h2>
         <p className="mt-2 text-sm text-muted">
-          Textos para consultar cuando quieras, sin seguir el recorrido animado: menú, obras, cada sección
-          de una obra abierta, avisos y, si aplica, administración de usuarios.
+          Textos para consultar cuando quieras, sin seguir el recorrido animado: menú, obras, inicio del
+          workspace y cada sección (incluida Hallazgos), avisos y, si aplica, administración de usuarios.
         </p>
         <div className="mt-6">
           <TutorialesReference />

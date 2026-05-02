@@ -8,6 +8,7 @@ export const TUTORIALS_TOC: { id: string; label: string }[] = [
   { id: 'archivos', label: 'Pestaña Archivos' },
   { id: 'entrega-planos', label: 'Pestaña Control de entregas' },
   { id: 'revisiones', label: 'Pestaña Revisiones' },
+  { id: 'hallazgos', label: 'Pestaña Hallazgos' },
   { id: 'pliego', label: 'Pestaña Pliego' },
   { id: 'eventos', label: 'Pestaña Eventos' },
   { id: 'config-proyecto', label: 'Configuración del proyecto' },

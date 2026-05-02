@@ -6,14 +6,15 @@ import { Link } from 'react-router-dom'
 import { formatAllowedProjectExtensionsHint } from '../../constants/projectAllowedFiles'
 import { TUTORIAL_PROJECT_PATH } from '../../constants/tutorialProject'
 import { TUTORIALS_TOC } from '../../constants/tutorialesToc'
+import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
 
 const TUTORIAL_HASH_ALIASES: Record<string, string> = {
   especificaciones: 'pliego',
   presupuesto: 'flujo',
   pliegos: 'pliego',
   materiales: 'archivos',
+  observaciones: 'hallazgos',
 }
-import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
 
 const sectionClass = 'space-y-3'
 const h3Class = 'text-base font-semibold text-ink'
@@ -121,11 +122,11 @@ export function TutorialesReference() {
     workspace: (
       <div className={sectionClass}>
         <p className={pClass}>
-          Cuando abres una obra desde la lista, entras a la <strong>vista de la obra</strong>: a la
-          izquierda tienes las secciones (datos, archivos, etc.) y al centro el contenido. Puedes pasar
-          de una sección a otra en cualquier momento; lo que puedas hacer en cada una depende de la etapa
-          del proceso y de tu perfil. Si aparece la opción de pantalla completa, úsala cuando necesites más
-          espacio.
+          Cuando abres una obra desde la lista, entras a la <strong>vista de la obra</strong>. Primero ves{' '}
+          <strong>Inicio</strong>: una rejilla con tarjetas para cada área (Detalles, Flujo, Archivos,
+          Control de entregas, Revisiones, Hallazgos, Pliego y Eventos). Al abrir un área, arriba aparece{' '}
+          <strong>Volver al inicio</strong> para regresar a la rejilla. El contenido central cambia según
+          la sección; lo que puedas hacer depende de la etapa del proceso y de tu perfil.
         </p>
         <p className={pClass}>
           Para practicar sin tocar obras reales, usa el{' '}
@@ -211,9 +212,20 @@ export function TutorialesReference() {
     revisiones: (
       <div className={sectionClass}>
         <p className={pClass}>
-          Registro y decisión sobre <strong>revisiones</strong> del proyecto: revisa el listado,
-          aporta notas y utiliza la decisión aprobada / rechazada (u opciones equivalentes) según el
-          formulario visible. Los datos concretos dependen del estado del proyecto y de tu rol.
+          Registro y decisión sobre <strong>revisiones</strong> del proyecto (por rol: arquitectura,
+          control, presupuesto, según corresponda): revisa el listado, aporta notas y utiliza la decisión
+          aprobada / rechazada (u opciones equivalentes) según el formulario visible. Los datos concretos
+          dependen del estado del proyecto y de tu rol.
+        </p>
+      </div>
+    ),
+    hallazgos: (
+      <div className={sectionClass}>
+        <p className={pClass}>
+          <strong>Hallazgos técnicos:</strong> registro manual de interferencias u observaciones en la obra.
+          Puedes dar de alta filas con disciplina, severidad (por ejemplo crítico, alto, medio, bajo), título,
+          descripción y, si aplica, referencia a evidencia. El listado muestra lo ya cargado; los mensajes de
+          error en pantalla indican si falta algún dato obligatorio o hubo un fallo al guardar.
         </p>
       </div>
     ),
@@ -265,22 +277,27 @@ export function TutorialesReference() {
     tablero: (
       <div className={sectionClass}>
         <p className={pClass}>
-          En <strong>Tablero</strong> (menú lateral) ves <strong>tus tareas asignadas</strong> (y borradores
-          que hayas creado sin asignar) en columnas por estado: mueve tarjetas y ábrelas para ver el detalle.
-          En cada tarjeta se muestra la obra cuando aplica.
+          En <strong>Tablero</strong> (menú lateral) ves <strong>solo las tareas de tu cuenta</strong>:
+          las asignadas a ti y los borradores que hayas creado sin asignar, en columnas por estado. Mueves
+          tarjetas y las abres para ver el detalle; en cada tarjeta se muestra la obra cuando aplica. No se
+          listan las tareas de otras personas.
         </p>
         <ul className={listClass}>
           <li>
-            <strong>Nueva tarea:</strong> botón para crear una tarea; si el formulario lo permite,
-            puedes asociarla a una obra concreta.
+            <strong>Nueva tarea:</strong> botón para crear una tarea; si el formulario lo permite, puedes
+            asociarla a una obra concreta.
           </li>
           <li>
-            <strong>Filtros:</strong> tareas archivadas y búsqueda de texto en el tablero (no se pueden ver
-            las tareas asignadas a otras personas).
+            <strong>Búsqueda y archivadas:</strong> buscas texto en las tarjetas y puedes incluir tareas
+            archivadas con el interruptor correspondiente.
           </li>
           <li>
-            <strong>Solo una obra:</strong> desde la sección Detalles de esa obra, el enlace al tablero abre
-            esta vista filtrada por esa obra.
+            <strong>Desde Proyectos:</strong> el bloque <strong>Mis tareas</strong> te lleva al mismo tablero
+            (equivalente al acceso del menú).
+          </li>
+          <li>
+            <strong>Solo una obra:</strong> desde Detalles de esa obra, el enlace al tablero abre esta vista
+            filtrada por esa obra.
           </li>
         </ul>
       </div>

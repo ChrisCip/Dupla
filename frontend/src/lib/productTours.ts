@@ -67,7 +67,7 @@ export function startSidebarTour(role: string | null | undefined): void {
       popover: {
         title: 'Tablero',
         description:
-          'Todas las tareas del equipo en columnas. Desde una obra abierta también puedes llegar aquí ya filtrado solo a esa obra.',
+          'Tus tareas en columnas (asignadas a tu cuenta y borradores sin asignar que creaste). Desde una obra abierta puedes abrir el mismo tablero ya filtrado solo a esa obra.',
         side: 'right',
         align: 'start',
       },
@@ -180,7 +180,7 @@ export function startProjectsTour(navigate: NavigateFunction, role: string | nul
       popover: {
         title: 'Mis tareas',
         description:
-          'Abre el tablero Kanban ya filtrado con las tarjetas asignadas a ti (equivale a activar «Solo lo mío» en el tablero).',
+          'Atajo al tablero Kanban: la app solo muestra tus tarjetas (asignadas a ti o creadas por ti sin asignar), igual que el ítem Tablero del menú.',
         side: 'bottom',
         align: 'start',
       },
@@ -231,9 +231,9 @@ export function startTasksTour(navigate: NavigateFunction): void {
         {
           element: '[data-tour="taskboard-toolbar"]',
           popover: {
-            title: 'Filtros y búsqueda',
+            title: 'Herramientas del tablero',
             description:
-              'Busca texto, limita por persona o deja solo lo tuyo; si hace falta, muestra también tareas archivadas.',
+              'Búsqueda en las tarjetas, alta de tarea si tienes permiso y opción para ver también archivadas. Solo ves tareas asignadas a tu cuenta o creadas por ti sin asignar.',
             side: 'bottom',
             align: 'start',
           },
