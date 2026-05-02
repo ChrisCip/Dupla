@@ -7,10 +7,13 @@ from pathlib import Path
 import scripts.run_nasas09_project_coordination as runner
 from core.coordination.clash import ClashConflict, group_conflicts_into_incidents
 from core.coordination.fast_compare import (
+    PreMatchCandidate,
     SourceCandidate,
+    build_pre_match_candidates,
     compute_readiness_payload,
     load_alignment_manifest,
     normalize_fast_compare_element,
+    select_preferred_candidates,
 )
 from core.coordination.models_25d import Discipline, Element25D, ProjectLevel, ZInterval
 from core.coordination.registry import ProjectLevelRegistryDocument
@@ -59,6 +62,97 @@ def test_compute_readiness_payload_requires_coherent_issue() -> None:
     assert payload["comparable_issue_keys"] == []
     assert len(payload["cohorts"]) == 2
     assert payload["cohorts"][0]["is_comparable"] is False
+    assert payload["decision_summary"]["auto_comparable_count"] == 0
+
+
+def test_build_pre_match_candidates_scores_cross_cohort_npt_p1_pair() -> None:
+    candidates = [
+        SourceCandidate(
+            path=Path("Serena 18 -PLANTA PISOS 10-10-2022.dwg"),
+            rel_path="PLANOS RECIBIDOS/ARQUITECTONICOS/06. JUNIO 2024/Serena 18 -PLANTA PISOS 10-10-2022.dwg",
+            issue_key="dir:planos recibidos/arquitectonicos/06. junio 2024",
+            discipline=Discipline.ARCH,
+            suffix=".dwg",
+            level_id="NPT_P1",
+            level_source="default_level",
+            drawing_type="floor_plan",
+        ),
+        SourceCandidate(
+            path=Path("EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg"),
+            rel_path="PLANOS RECIBIDOS/TECNICOS/ESTRUCTURAL/01. ENERO 2023/EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg",
+            issue_key="dir:planos recibidos/tecnicos/estructural/01. enero 2023",
+            discipline=Discipline.STRUC,
+            suffix=".dwg",
+            level_id="NPT_P1",
+            level_source="default_level",
+            drawing_type="formwork",
+        ),
+    ]
+
+    pair_candidates = build_pre_match_candidates(
+        candidates,
+        required_disciplines=(Discipline.ARCH, Discipline.STRUC),
+    )
+
+    assert len(pair_candidates) == 1
+    assert pair_candidates[0].decision == "auto_comparable"
+    assert pair_candidates[0].documentary_cohort_relation == "cross_cohort"
+    assert pair_candidates[0].score >= 0.75
+
+
+def test_select_preferred_candidates_keeps_best_architecture_anchor() -> None:
+    candidates = [
+        SourceCandidate(
+            path=Path("Serena 18 -PLANTA PISOS 10-10-2022.dwg"),
+            rel_path="PLANOS RECIBIDOS/ARQUITECTONICOS/06. JUNIO 2024/Serena 18 -PLANTA PISOS 10-10-2022.dwg",
+            issue_key="dir:planos recibidos/arquitectonicos/06. junio 2024",
+            discipline=Discipline.ARCH,
+            suffix=".dwg",
+            level_id="NPT_P1",
+            level_source="default_level",
+            drawing_type="floor_plan",
+        ),
+        SourceCandidate(
+            path=Path("2208-Serena18-ID-Base.dwg"),
+            rel_path="PLANOS RECIBIDOS/ARQUITECTONICOS/06. JUNIO 2024/2208-Serena18-ID-Base.dwg",
+            issue_key="dir:planos recibidos/arquitectonicos/06. junio 2024",
+            discipline=Discipline.ARCH,
+            suffix=".dwg",
+            level_id="NPT_P1",
+            level_source="default_level",
+            drawing_type="base_plan",
+        ),
+        SourceCandidate(
+            path=Path("EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg"),
+            rel_path="PLANOS RECIBIDOS/TECNICOS/ESTRUCTURAL/01. ENERO 2023/EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg",
+            issue_key="dir:planos recibidos/tecnicos/estructural/01. enero 2023",
+            discipline=Discipline.STRUC,
+            suffix=".dwg",
+            level_id="NPT_P1",
+            level_source="default_level",
+            drawing_type="formwork",
+        ),
+        SourceCandidate(
+            path=Path("EST. SERENA 18 - E09 - PLANTA EST. LOSAS DE PISO SOBRE TERRENO  Y DETALLES  CASA.dwg"),
+            rel_path="PLANOS RECIBIDOS/TECNICOS/ESTRUCTURAL/01. ENERO 2023/EST. SERENA 18 - E09 - PLANTA EST. LOSAS DE PISO SOBRE TERRENO  Y DETALLES  CASA.dwg",
+            issue_key="dir:planos recibidos/tecnicos/estructural/01. enero 2023",
+            discipline=Discipline.STRUC,
+            suffix=".dwg",
+            level_id="NPT_P1",
+            level_source="pattern:nivel_1",
+            drawing_type="ground_slab",
+        ),
+    ]
+
+    selected = select_preferred_candidates(
+        candidates,
+        pair_candidates=build_pre_match_candidates(candidates, required_disciplines=(Discipline.ARCH, Discipline.STRUC)),
+    )
+
+    selected_names = {Path(candidate.rel_path).name for candidate in selected}
+    assert "Serena 18 -PLANTA PISOS 10-10-2022.dwg" in selected_names
+    assert "2208-Serena18-ID-Base.dwg" not in selected_names
+    assert len(selected) == 3
 
 
 def test_normalize_fast_compare_element_clamps_large_z() -> None:
@@ -200,6 +294,7 @@ def test_run_fast_compare_skips_extraction_when_no_pairs_scheduled(tmp_path, mon
             suffix=".dwg",
             level_id="NPT_P1",
             level_source="pattern:test",
+            drawing_type="floor_plan",
         ),
         SourceCandidate(
             path=tmp_path / "PLANOS RECIBIDOS" / "TECNICOS" / "ESTRUCTURAL" / "B.dwg",
@@ -210,6 +305,7 @@ def test_run_fast_compare_skips_extraction_when_no_pairs_scheduled(tmp_path, mon
             suffix=".dwg",
             level_id="NPT_P1",
             level_source="pattern:test",
+            drawing_type="formwork",
         ),
     ]
 

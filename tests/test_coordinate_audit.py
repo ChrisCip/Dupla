@@ -9,6 +9,7 @@ from core.coordination.coordinate_audit import (
     build_pair_schedule,
     build_source_audit,
 )
+from core.coordination.fast_compare import PreMatchCandidate
 from core.coordination.models_25d import Discipline, Element25D, ZInterval
 
 
@@ -21,6 +22,7 @@ def _candidate(rel_path: str, discipline: Discipline, level_id: str = "NPT_P1"):
         discipline=discipline,
         level_id=level_id,
         level_source="pattern:test",
+        drawing_type="generic_plan",
     )
 
 
@@ -172,3 +174,62 @@ def test_build_pair_schedule_blocks_level_mismatch_after_band_match() -> None:
     assert len(schedule) == 1
     assert schedule[0].scheduled is False
     assert schedule[0].block_reason == "level_mismatch"
+
+
+def test_build_pair_schedule_promotes_cross_cohort_pair_from_audit() -> None:
+    arch = SourceAudit(
+        rel_path="PLANOS/ARQ/PLANTA.dwg",
+        file_name="PLANTA.dwg",
+        suffix=".dwg",
+        issue_key="dir:arq",
+        cohort_id="prematch_npt_p1_arch_01",
+        discipline=Discipline.ARCH.value,
+        level_id="NPT_P1",
+        level_source="default_level",
+        drawing_type="floor_plan",
+        coordinate_band_key=(337, 1249),
+        coordinate_band="X~168.82M, Y~624.64M",
+        audit_status="eligible",
+    )
+    struc = arch.model_copy(
+        update={
+            "rel_path": "PLANOS/EST/E03.dwg",
+            "file_name": "E03.dwg",
+            "issue_key": "dir:est",
+            "discipline": Discipline.STRUC.value,
+            "drawing_type": "formwork",
+        }
+    )
+    pre_match = PreMatchCandidate(
+        file_a=arch.rel_path,
+        file_b=struc.rel_path,
+        file_name_a=arch.file_name,
+        file_name_b=struc.file_name,
+        issue_key_a="dir:arq",
+        issue_key_b="dir:est",
+        discipline_a=Discipline.ARCH.value,
+        discipline_b=Discipline.STRUC.value,
+        level_id="NPT_P1",
+        drawing_type_a="floor_plan",
+        drawing_type_b="formwork",
+        drawing_type_compatibility=1.0,
+        revision_proximity=0.4,
+        geometry_overlap_hint=1.0,
+        anchor_quality=0.9,
+        score=0.79,
+        decision="auto_comparable",
+        reason_codes=("cross_revision_pair_required",),
+        documentary_cohort_relation="cross_cohort",
+    )
+
+    schedule = build_pair_schedule(
+        [arch, struc],
+        required_disciplines=(Discipline.ARCH, Discipline.STRUC),
+        pre_match_candidates=[pre_match],
+    )
+
+    assert len(schedule) == 1
+    assert schedule[0].scheduled is True
+    assert schedule[0].selection_reason == "promoted_from_coordinate_audit"
+    assert schedule[0].documentary_cohort_relation == "cross_cohort_promoted"
+    assert "audit_promoted" in schedule[0].reason_codes

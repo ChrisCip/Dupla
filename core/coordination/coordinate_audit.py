@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.coordination.fast_compare import primary_geometry_role
+from core.coordination.fast_compare import PreMatchCandidate, primary_geometry_role
 from core.coordination.models_25d import Element25D
 
 AuditStatus = Literal["eligible", "needs_alignment", "annotation_noise", "bbox_only", "extract_failed"]
@@ -26,6 +26,7 @@ class SourceAudit(BaseModel):
     discipline: str
     level_id: str
     level_source: str
+    drawing_type: str = "generic"
     coordinate_band_key: tuple[int, int] | None = None
     coordinate_band: str | None = None
     centroid_mm: tuple[float, float] | None = None
@@ -50,6 +51,12 @@ class PairScheduleItem(BaseModel):
     file_b: str
     coordinate_band: str | None = None
     level_ids: tuple[str, str]
+    decision: str = "not_comparable"
+    score: float = 0.0
+    reason_codes: list[str] = Field(default_factory=list)
+    selection_reason: str | None = None
+    promotion_basis: str | None = None
+    documentary_cohort_relation: str = "same_cohort"
     scheduled: bool
     block_reason: str | None = None
 
@@ -152,6 +159,7 @@ def build_source_audit(
         discipline=str(candidate.discipline.value),
         level_id=str(candidate.level_id),
         level_source=str(candidate.level_source),
+        drawing_type=str(getattr(candidate, "drawing_type", "generic")),
         coordinate_band_key=coordinate_band_key,
         coordinate_band=coordinate_band,
         centroid_mm=centroid_mm,
@@ -208,35 +216,67 @@ def build_pair_schedule(
     audits: list[SourceAudit],
     *,
     required_disciplines: tuple[Any, ...],
+    pre_match_candidates: list[PreMatchCandidate] | None = None,
 ) -> list[PairScheduleItem]:
     required_values = {
         discipline.value if hasattr(discipline, "value") else str(discipline)
         for discipline in required_disciplines
     }
     schedule: list[PairScheduleItem] = []
-    ordered = sorted(audits, key=lambda item: (item.cohort_id, item.rel_path))
-    for index, left in enumerate(ordered):
-        if left.discipline not in required_values:
-            continue
-        for right in ordered[index + 1 :]:
-            if right.cohort_id != left.cohort_id:
+    audit_by_rel = {audit.rel_path: audit for audit in audits}
+    if pre_match_candidates:
+        seen: set[tuple[str, str]] = set()
+        for pair in pre_match_candidates:
+            key = tuple(sorted((pair.file_a, pair.file_b)))
+            if key in seen:
                 continue
-            if right.discipline not in required_values or right.discipline == left.discipline:
+            seen.add(key)
+            left = audit_by_rel.get(pair.file_a)
+            right = audit_by_rel.get(pair.file_b)
+            if left is None or right is None:
+                continue
+            if left.discipline not in required_values or right.discipline not in required_values:
                 continue
             block_reason = None
             scheduled = True
+            selection_reason = "documentary_auto_match"
+            promotion_basis = None
+            reason_codes = list(pair.reason_codes)
+            updated_score = float(pair.score)
             if left.audit_status != "eligible":
                 scheduled = False
                 block_reason = f"{left.file_name}:{left.audit_status}"
             elif right.audit_status != "eligible":
                 scheduled = False
                 block_reason = f"{right.file_name}:{right.audit_status}"
-            elif left.coordinate_band_key != right.coordinate_band_key:
-                scheduled = False
-                block_reason = "coordinate_band_mismatch"
             elif left.level_id != right.level_id:
                 scheduled = False
                 block_reason = "level_mismatch"
+            elif left.coordinate_band_key != right.coordinate_band_key:
+                if pair.decision == "auto_comparable":
+                    scheduled = False
+                    block_reason = "coordinate_band_mismatch"
+                else:
+                    updated_score = max(updated_score - 0.15, 0.0)
+                    scheduled = False
+                    block_reason = "coordinate_band_mismatch"
+            else:
+                updated_score = min(round(updated_score + 0.15, 3), 1.0)
+                if pair.documentary_cohort_relation == "cross_cohort":
+                    selection_reason = "promoted_from_coordinate_audit"
+                    promotion_basis = "eligible + same_level + compatible_band + compatible_type"
+                    if "audit_promoted" not in reason_codes:
+                        reason_codes.append("audit_promoted")
+
+            if pair.decision != "auto_comparable" and scheduled:
+                if updated_score >= 0.75:
+                    selection_reason = "promoted_from_coordinate_audit"
+                    promotion_basis = "eligible + same_level + compatible_band + compatible_type"
+                    if "audit_promoted" not in reason_codes:
+                        reason_codes.append("audit_promoted")
+                else:
+                    scheduled = False
+                    block_reason = "manual_pairing_needed"
 
             schedule.append(
                 PairScheduleItem(
@@ -245,10 +285,59 @@ def build_pair_schedule(
                     file_b=right.rel_path,
                     coordinate_band=left.coordinate_band if left.coordinate_band == right.coordinate_band else None,
                     level_ids=(left.level_id, right.level_id),
+                    decision=pair.decision,
+                    score=updated_score,
+                    reason_codes=reason_codes,
+                    selection_reason=selection_reason,
+                    promotion_basis=promotion_basis,
+                    documentary_cohort_relation=(
+                        "same_cohort" if pair.documentary_cohort_relation == "same_cohort" else "cross_cohort_promoted"
+                    ),
                     scheduled=scheduled,
                     block_reason=block_reason,
                 )
             )
+    else:
+        ordered = sorted(audits, key=lambda item: (item.cohort_id, item.rel_path))
+        for index, left in enumerate(ordered):
+            if left.discipline not in required_values:
+                continue
+            for right in ordered[index + 1 :]:
+                if right.cohort_id != left.cohort_id:
+                    continue
+                if right.discipline not in required_values or right.discipline == left.discipline:
+                    continue
+                block_reason = None
+                scheduled = True
+                if left.audit_status != "eligible":
+                    scheduled = False
+                    block_reason = f"{left.file_name}:{left.audit_status}"
+                elif right.audit_status != "eligible":
+                    scheduled = False
+                    block_reason = f"{right.file_name}:{right.audit_status}"
+                elif left.coordinate_band_key != right.coordinate_band_key:
+                    scheduled = False
+                    block_reason = "coordinate_band_mismatch"
+                elif left.level_id != right.level_id:
+                    scheduled = False
+                    block_reason = "level_mismatch"
+
+                schedule.append(
+                    PairScheduleItem(
+                        cohort_id=left.cohort_id,
+                        file_a=left.rel_path,
+                        file_b=right.rel_path,
+                        coordinate_band=left.coordinate_band if left.coordinate_band == right.coordinate_band else None,
+                        level_ids=(left.level_id, right.level_id),
+                        decision="auto_comparable" if scheduled else "not_comparable",
+                        score=1.0 if scheduled else 0.0,
+                        reason_codes=[] if scheduled else [block_reason or "unknown"],
+                        selection_reason="same_cohort_schedule",
+                        documentary_cohort_relation="same_cohort",
+                        scheduled=scheduled,
+                        block_reason=block_reason,
+                    )
+                )
     return schedule
 
 
@@ -258,22 +347,34 @@ def render_coordinate_audit_markdown(
     project_name: str,
     root: Path,
 ) -> str:
+    status_counts = Counter(audit.audit_status for audit in audits)
     lines = [
         f"# Coordinate Audit - {project_name}",
         "",
         f"- Root: `{root.as_posix()}`",
         f"- Files audited: {len(audits)}",
+        f"- Status mix: {_counter_label(status_counts)}",
+        "",
+        "## Reading Guide",
+        "- `eligible` can enter the scheduled clash flow.",
+        "- `needs_alignment`, `annotation_noise`, `bbox_only`, and `extract_failed` are technical blockers or low-trust inputs.",
         "",
         "## Sources",
+        "| File | Discipline | Level | Drawing type | Status | Coordinate band | Raw primary | Raw annotation | Notes |",
+        "| --- | --- | --- | --- | --- | --- | ---: | ---: | --- |",
     ]
     for audit in audits:
         lines.append(
-            "- "
-            f"`{audit.file_name}` [{audit.discipline} / {audit.level_id}] "
-            f"status `{audit.audit_status}`; band `{audit.coordinate_band or 'none'}`; "
-            f"raw primary {audit.raw_primary_candidate_count}; "
-            f"selected primary {audit.selected_primary_count}/{audit.selected_total_count}; "
-            f"raw entities {audit.raw_entity_count}; raw annotation {audit.raw_annotation_count}"
+            "| "
+            f"`{audit.file_name}` | "
+            f"{audit.discipline} | "
+            f"`{audit.level_id}` | "
+            f"`{audit.drawing_type}` | "
+            f"`{audit.audit_status}` | "
+            f"`{audit.coordinate_band or 'none'}` | "
+            f"{audit.raw_primary_candidate_count} | "
+            f"{audit.raw_annotation_count} | "
+            f"{'; '.join(audit.notes) or '-'} |"
         )
     lines.append("")
     return "\n".join(lines)
@@ -291,21 +392,34 @@ def render_hotspot_markdown(
         f"- Root: `{root.as_posix()}`",
         f"- Incident count: {len(incidents)}",
         "",
+        "## Reading Guide",
+        "- Hotspots show concentration zones, not final defendable clashes.",
+        "- Use them to detect repeated noise, dense overlap areas, or candidate review regions.",
+        "",
         "## Hotspots",
+        "| Pair | Members | Level | Geometry | Center | Notes |",
+        "| --- | ---: | --- | --- | --- | --- |",
     ]
     for incident in incidents:
         representative = incident.representative_conflict
         x, y = incident.plan_centroid_mm
         lines.append(
-            "- "
-            f"`{Path(incident.file_pair[0]).name}` vs `{Path(incident.file_pair[1]).name}`: "
-            f"{incident.member_count} miembros, "
-            f"centro ({round(x):,}, {round(y):,}) mm, "
-            f"geometrias {' / '.join(incident.geometry_sources)}, "
-            f"niveles {' / '.join(representative.level_ids)}"
+            "| "
+            f"`{Path(incident.file_pair[0]).name} vs {Path(incident.file_pair[1]).name}` | "
+            f"{incident.member_count} | "
+            f"`{' / '.join(representative.level_ids)}` | "
+            f"`{' / '.join(incident.geometry_sources)}` | "
+            f"({round(x):,}, {round(y):,}) mm | "
+            f"{'; '.join(representative.notes) or '-'} |"
         )
     lines.append("")
     return "\n".join(lines)
+
+
+def _counter_label(counter: Counter[str]) -> str:
+    if not counter:
+        return "none"
+    return ", ".join(f"{label}={count}" for label, count in counter.most_common())
 
 
 def _coordinate_band(

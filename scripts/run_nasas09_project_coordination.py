@@ -35,16 +35,27 @@ from core.coordination.fast_compare import (
     CAD_SUFFIXES,
     FAST_COMPARE_ANALYSIS_PROFILE,
     apply_manifest_selection,
+    build_pre_match_candidates,
     build_source_candidates,
     compute_readiness_payload,
+    finalize_readiness_payload,
     load_alignment_manifest,
     load_cohort_manifest,
     normalize_fast_compare_element,
     parse_include_disciplines,
     primary_geometry_role,
     render_readiness_markdown,
+    select_preferred_candidates,
     select_comparable_candidates,
     suppress_visual_backups,
+)
+from core.coordination.reporting import (
+    build_analysis_bot_context,
+    build_coordination_report_context,
+    render_coordination_human_report_html,
+    render_coordination_human_report_markdown,
+    render_coordination_report_markdown,
+    render_primary_incidents_markdown,
 )
 from core.coordination.from_autodesk_properties import bulk_elements_from_autodesk_raw, load_autodesk_raw
 from core.coordination.from_dwg_accore import (
@@ -984,7 +995,15 @@ def _run_fast_compare(
     )
 
     readiness_start = perf_counter()
-    readiness_payload = compute_readiness_payload(candidates, required_disciplines=include_disciplines)
+    pre_match_candidates = build_pre_match_candidates(
+        candidates,
+        required_disciplines=include_disciplines,
+    )
+    readiness_payload = compute_readiness_payload(
+        candidates,
+        required_disciplines=include_disciplines,
+        pre_match_candidates=pre_match_candidates,
+    )
     readiness_payload["analysis_profile"] = FAST_COMPARE_ANALYSIS_PROFILE
     readiness_payload["project_name"] = doc.project_name
     readiness_payload["scan_skips"] = scan_skips
@@ -1008,7 +1027,7 @@ def _run_fast_compare(
             "selected_count": len(selected_candidates),
         }
     else:
-        selected_candidates = select_comparable_candidates(candidates, comparable_issue_keys=readiness_payload["comparable_issue_keys"])
+        selected_candidates = select_preferred_candidates(candidates, pair_candidates=pre_match_candidates)
 
     selected_candidates = [
         _apply_alignment_override_to_candidate(
@@ -1025,6 +1044,7 @@ def _run_fast_compare(
             "cohort_id": candidate.cohort_id or candidate.issue_key,
             "discipline": candidate.discipline.value,
             "level_id": candidate.level_id,
+            "drawing_type": candidate.drawing_type,
             "suffix": candidate.suffix,
         }
         for candidate in selected_candidates
@@ -1032,11 +1052,6 @@ def _run_fast_compare(
 
     readiness_json = args.output.parent / "comparison_readiness_report.json"
     readiness_md = args.output.parent / "comparison_readiness_report.md"
-    _write_json(readiness_json, readiness_payload)
-    readiness_md.write_text(
-        render_readiness_markdown(readiness_payload, project_name=doc.project_name or "Proyecto", root=nasas_root),
-        encoding="utf-8",
-    )
     logger.info(
         "Fast compare readiness: %d candidatos seleccionados en %.2fs",
         len(selected_candidates),
@@ -1044,6 +1059,11 @@ def _run_fast_compare(
     )
 
     if not selected_candidates:
+        _write_json(readiness_json, readiness_payload)
+        readiness_md.write_text(
+            render_readiness_markdown(readiness_payload, project_name=doc.project_name or "Proyecto", root=nasas_root),
+            encoding="utf-8",
+        )
         return _write_fast_compare_summary(
             args=args,
             doc=doc,
@@ -1106,23 +1126,32 @@ def _run_fast_compare(
     pair_schedule = build_pair_schedule(
         candidate_audits,
         required_disciplines=include_disciplines,
+        pre_match_candidates=pre_match_candidates if args.cohort_manifest is None else None,
     )
     scheduled_pairs = [item for item in pair_schedule if item.scheduled]
     scheduled_file_set = {path for item in scheduled_pairs for path in (item.file_a, item.file_b)}
     overall_metrics["scheduled_pair_count"] = len(scheduled_pairs)
     overall_metrics["scheduled_file_count"] = len(scheduled_file_set)
     overall_metrics["schedule_seconds"] = round(perf_counter() - schedule_start, 3)
-    _write_json(
-        coordinate_audit_json,
-        {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "project_name": doc.project_name,
-            "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
-            "stage": args.stage,
-            "audit_count": len(candidate_audits),
-            "audits": [audit.model_dump() for audit in candidate_audits],
-        },
+    coordinate_audit_payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "project_name": doc.project_name,
+        "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
+        "stage": args.stage,
+        "audit_count": len(candidate_audits),
+        "audits": [audit.model_dump() for audit in candidate_audits],
+    }
+    readiness_payload = finalize_readiness_payload(
+        readiness_payload,
+        audits=coordinate_audit_payload["audits"],
+        pair_schedule=[item.model_dump() for item in pair_schedule],
     )
+    _write_json(readiness_json, readiness_payload)
+    readiness_md.write_text(
+        render_readiness_markdown(readiness_payload, project_name=doc.project_name or "Proyecto", root=nasas_root),
+        encoding="utf-8",
+    )
+    _write_json(coordinate_audit_json, coordinate_audit_payload)
     coordinate_audit_md.write_text(
         render_coordinate_audit_markdown(
             candidate_audits,
@@ -1131,18 +1160,16 @@ def _run_fast_compare(
         ),
         encoding="utf-8",
     )
-    _write_json(
-        pair_schedule_json,
-        {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "project_name": doc.project_name,
-            "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
-            "stage": args.stage,
-            "pair_count": len(pair_schedule),
-            "scheduled_pair_count": len(scheduled_pairs),
-            "pairs": [item.model_dump() for item in pair_schedule],
-        },
-    )
+    pair_schedule_payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "project_name": doc.project_name,
+        "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
+        "stage": args.stage,
+        "pair_count": len(pair_schedule),
+        "scheduled_pair_count": len(scheduled_pairs),
+        "pairs": [item.model_dump() for item in pair_schedule],
+    }
+    _write_json(pair_schedule_json, pair_schedule_payload)
     logger.info(
         "Fast compare schedule: %d/%d pares programados en %.2fs",
         len(scheduled_pairs),
@@ -1240,49 +1267,46 @@ def _run_fast_compare(
     debug_json = args.output.parent / "debug_candidates.json"
     hotspot_json = args.output.parent / "hotspot_incidents.json"
     hotspot_md = args.output.parent / "hotspot_incidents.md"
-    _write_json(
-        primary_json,
-        {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "project_name": doc.project_name,
-            "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
-            "incident_count": len(primary_incidents),
-            "incident_conflict_count": len(primary_conflicts),
-            "incidents": [incident.model_dump() for incident in primary_incidents],
-        },
-    )
+    primary_payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "project_name": doc.project_name,
+        "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
+        "incident_count": len(primary_incidents),
+        "incident_conflict_count": len(primary_conflicts),
+        "incidents": [incident.model_dump() for incident in primary_incidents],
+    }
+    _write_json(primary_json, primary_payload)
     primary_md.write_text(
-        _render_primary_incidents_markdown(
+        render_primary_incidents_markdown(
             project_name=doc.project_name or "Proyecto",
-            nasas_root=nasas_root,
-            incidents=primary_incidents,
+            root=nasas_root,
+            primary_payload=primary_payload,
         ),
         encoding="utf-8",
     )
-    _write_json(
-        debug_json,
-        {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "project_name": doc.project_name,
-            "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
-            "debug_conflict_count": len(debug_conflicts),
-            "suppressed_element_count": len(suppressed_elements),
-            "suppressed_elements": [
-                {
-                    "id": element.id,
-                    "source_ref": element.source_ref,
-                    "discipline": element.discipline.value,
-                    "geometry_source": element.metadata.get("geometry_source"),
-                    "geometry_role": element.metadata.get("geometry_role"),
-                    "suppression_reason": element.metadata.get("suppression_reason"),
-                    "file_level_id": element.metadata.get("file_level_id"),
-                    "cohort_id": element.metadata.get("cohort_id"),
-                }
-                for element in suppressed_elements
-            ],
-            "debug_conflicts": [conflict.model_dump() for conflict in debug_conflicts],
-        },
-    )
+    debug_payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "project_name": doc.project_name,
+        "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
+        "debug_conflict_count": len(debug_conflicts),
+        "suppressed_element_count": len(suppressed_elements),
+        "suppressed_elements": [
+            {
+                "id": element.id,
+                "source_ref": element.source_ref,
+                "discipline": element.discipline.value,
+                "geometry_source": element.metadata.get("geometry_source"),
+                "geometry_role": element.metadata.get("geometry_role"),
+                "suppression_reason": element.metadata.get("suppression_reason"),
+                "file_level_id": element.metadata.get("file_level_id"),
+                "cohort_id": element.metadata.get("cohort_id"),
+            }
+            for element in suppressed_elements
+        ],
+        "debug_conflicts": [conflict.model_dump() for conflict in debug_conflicts],
+    }
+    _write_json(debug_json, debug_payload)
+    hotspot_payload = None
     hotspot_incidents = []
     if args.stage in {"full", "hotspots"} and primary_conflicts:
         hotspot_incidents = _build_hotspot_incidents(
@@ -1290,16 +1314,14 @@ def _run_fast_compare(
             debug_conflicts=debug_conflicts,
         )
         if hotspot_incidents:
-            _write_json(
-                hotspot_json,
-                {
-                    "generated_at": datetime.now(timezone.utc).isoformat(),
-                    "project_name": doc.project_name,
-                    "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
-                    "incident_count": len(hotspot_incidents),
-                    "incidents": [incident.model_dump() for incident in hotspot_incidents],
-                },
-            )
+            hotspot_payload = {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "project_name": doc.project_name,
+                "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
+                "incident_count": len(hotspot_incidents),
+                "incidents": [incident.model_dump() for incident in hotspot_incidents],
+            }
+            _write_json(hotspot_json, hotspot_payload)
             hotspot_md.write_text(
                 render_hotspot_markdown(
                     hotspot_incidents,
@@ -1308,6 +1330,95 @@ def _run_fast_compare(
                 ),
                 encoding="utf-8",
             )
+
+    technical_report_md = args.output.parent / "technical_coordination_report.md"
+    technical_report_context_json = args.output.parent / "coordination_report_context.json"
+    analysis_bot_context_json = args.output.parent / "analysis_bot_context.json"
+    coordination_human_md = args.output.parent / "coordination_report_human.md"
+    coordination_human_html = args.output.parent / "coordination_report_human.html"
+    technical_report_context = build_coordination_report_context(
+        summary_payload={
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "project_name": doc.project_name,
+            "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
+            "status": "completed",
+            "selected_candidate_count": len(selected_candidates),
+            "element_count": len(all_elements),
+            "scheduled_pair_count": len(scheduled_pairs),
+            "scheduled_file_count": len(scheduled_file_set),
+        }
+        | overall_metrics,
+        primary_payload=primary_payload,
+        debug_payload=debug_payload,
+        hotspot_payload=hotspot_payload,
+        coordinate_audit_payload=coordinate_audit_payload,
+        pair_schedule_payload=pair_schedule_payload,
+    )
+    _write_json(technical_report_context_json, technical_report_context)
+    technical_report_md.write_text(
+        render_coordination_report_markdown(
+            project_name=doc.project_name or "Proyecto",
+            root=nasas_root,
+            summary_payload={
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "project_name": doc.project_name,
+                "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
+                "status": "completed",
+                "selected_candidate_count": len(selected_candidates),
+                "element_count": len(all_elements),
+                "scheduled_pair_count": len(scheduled_pairs),
+                "scheduled_file_count": len(scheduled_file_set),
+            }
+            | overall_metrics,
+            primary_payload=primary_payload,
+            debug_payload=debug_payload,
+            hotspot_payload=hotspot_payload,
+            coordinate_audit_payload=coordinate_audit_payload,
+            pair_schedule_payload=pair_schedule_payload,
+        ),
+        encoding="utf-8",
+    )
+    analysis_bot_context = build_analysis_bot_context(
+        project_name=doc.project_name or "Proyecto",
+        nasas_root=nasas_root,
+        run_label=args.output.parent.name,
+        summary_payload={
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "project_name": doc.project_name,
+            "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
+            "status": "completed",
+        }
+        | overall_metrics,
+        readiness_payload=readiness_payload,
+        coordinate_audit_payload=coordinate_audit_payload,
+        pair_schedule_payload=pair_schedule_payload,
+        report_context=technical_report_context,
+    )
+    _write_json(analysis_bot_context_json, analysis_bot_context)
+    human_report_md = render_coordination_human_report_markdown(
+        project_name=doc.project_name or "Proyecto",
+        run_label=args.output.parent.name,
+        summary_payload={
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "project_name": doc.project_name,
+            "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
+            "status": "completed",
+        }
+        | overall_metrics,
+        readiness_payload=readiness_payload,
+        coordinate_audit_payload=coordinate_audit_payload,
+        pair_schedule_payload=pair_schedule_payload,
+        report_context=technical_report_context,
+    )
+    coordination_human_md.write_text(human_report_md, encoding="utf-8")
+    coordination_human_html.write_text(
+        render_coordination_human_report_html(
+            project_name=doc.project_name or "Proyecto",
+            run_label=args.output.parent.name,
+            markdown=human_report_md,
+        ),
+        encoding="utf-8",
+    )
 
     return _write_fast_compare_summary(
         args=args,
@@ -1330,6 +1441,11 @@ def _run_fast_compare(
         debug_json=debug_json,
         hotspot_json=hotspot_json if hotspot_incidents else None,
         hotspot_md=hotspot_md if hotspot_incidents else None,
+        technical_report_md=technical_report_md,
+        technical_report_context_json=technical_report_context_json,
+        analysis_bot_context_json=analysis_bot_context_json,
+        coordination_human_md=coordination_human_md,
+        coordination_human_html=coordination_human_html,
     )
 
 
@@ -1459,6 +1575,11 @@ def _write_fast_compare_summary(
     debug_json: Path | None = None,
     hotspot_json: Path | None = None,
     hotspot_md: Path | None = None,
+    technical_report_md: Path | None = None,
+    technical_report_context_json: Path | None = None,
+    analysis_bot_context_json: Path | None = None,
+    coordination_human_md: Path | None = None,
+    coordination_human_html: Path | None = None,
 ) -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -1482,6 +1603,11 @@ def _write_fast_compare_summary(
         "debug_candidates_json": str(debug_json) if debug_json else None,
         "hotspot_incidents_json": str(hotspot_json) if hotspot_json else None,
         "hotspot_incidents_md": str(hotspot_md) if hotspot_md else None,
+        "technical_coordination_report_md": str(technical_report_md) if technical_report_md else None,
+        "coordination_report_context_json": str(technical_report_context_json) if technical_report_context_json else None,
+        "analysis_bot_context_json": str(analysis_bot_context_json) if analysis_bot_context_json else None,
+        "coordination_report_human_md": str(coordination_human_md) if coordination_human_md else None,
+        "coordination_report_human_html": str(coordination_human_html) if coordination_human_html else None,
     }
     if metrics:
         payload.update(metrics)
@@ -1501,25 +1627,6 @@ def _write_fast_compare_summary(
     if len(primary_incidents) > 30:
         print(f"... y {len(primary_incidents) - 30} incidencias mas (ver JSON/MD).")
     return 0
-
-
-def _render_primary_incidents_markdown(
-    *,
-    project_name: str,
-    nasas_root: Path,
-    incidents: list,
-) -> str:
-    lines = [
-        f"# Primary Incidents - {project_name}",
-        "",
-        f"- Root: `{nasas_root.as_posix()}`",
-        f"- Incident count: {len(incidents)}",
-        "",
-        "## Incidents",
-    ]
-    lines.extend(_render_primary_incident_lines(incidents))
-    lines.append("")
-    return "\n".join(lines)
 
 
 def _render_primary_incident_lines(incidents: list) -> list[str]:
