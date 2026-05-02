@@ -46,6 +46,8 @@ class Project(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    responsible_external_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    responsible_external_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),

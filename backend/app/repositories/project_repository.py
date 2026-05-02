@@ -9,7 +9,6 @@ from sqlalchemy.orm import selectinload
 
 from app.domain.bootstrap_defaults import default_bootstrap_criteria
 from app.domain.project_updated import touch_project_updated_at
-from app.domain.workflow_phase import WorkflowPhase
 from app.models.project import Project, ProjectArchitectureData
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
@@ -159,12 +158,11 @@ class ProjectRepository:
         floor_levels_count: Optional[int] = None,
         deadline: Optional[date] = None,
         responsible_user_id: Optional[UUID] = None,
+        responsible_external_name: Optional[str] = None,
+        responsible_external_email: Optional[str] = None,
     ) -> Project:
-        bootstrap = (
-            default_bootstrap_criteria()
-            if workflow_phase == WorkflowPhase.BOOTSTRAPPING.value
-            else []
-        )
+        # Siempre sembramos el checklist por defecto; las transiciones solo lo exigen en fase Arranque.
+        bootstrap = default_bootstrap_criteria()
         pc = project_code.strip() if project_code else None
         pc = pc or None
         loc = location_text.strip() if location_text else None
@@ -186,6 +184,8 @@ class ProjectRepository:
             floor_levels_count=floor_levels_count,
             deadline=deadline,
             responsible_user_id=responsible_user_id,
+            responsible_external_name=responsible_external_name,
+            responsible_external_email=responsible_external_email,
         )
         self._session.add(project)
         await self._session.flush()

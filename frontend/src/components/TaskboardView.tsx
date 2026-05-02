@@ -13,8 +13,6 @@ import type { TaskAssigneeOption, TaskBoardDto, TaskCardDto, TaskListDto } from 
 export type TaskboardViewProps = {
   /** Filtro fijo por proyecto; vacío = tablero global */
   projectUuid?: string
-  /** Desde query `?mine=true` al abrir el tablero desde enlaces. */
-  initialMineOnly?: boolean
   variant: 'full' | 'embedded'
   /**
    * En modo embebido: ancho máximo del viewport del tablero en columnas (resto con scroll horizontal).
@@ -27,19 +25,17 @@ export type TaskboardViewProps = {
 
 export function TaskboardView({
   projectUuid: projectFilter = '',
-  initialMineOnly = false,
   variant,
   maxVisibleColumns,
   hideEmbeddedHeader = false,
 }: TaskboardViewProps) {
   const token = useAuthStore((s) => s.token)
+  const userUuid = useAuthStore((s) => s.userUuid)
   const [board, setBoard] = useState<TaskBoardDto | null>(null)
   const [assignees, setAssignees] = useState<TaskAssigneeOption[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [includeArchived, setIncludeArchived] = useState(false)
-  const [mineOnly, setMineOnly] = useState(initialMineOnly)
-  const [filterAssignee, setFilterAssignee] = useState('')
   const [boardSearch, setBoardSearch] = useState('')
   const [modalCard, setModalCard] = useState<TaskCardDto | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
@@ -53,7 +49,7 @@ export function TaskboardView({
   const load = useCallback(async () => {
     if (!token) return
     setError(null)
-    const qs = boardQueryParams(mineOnly, filterAssignee, includeArchived, projectFilter)
+    const qs = boardQueryParams(includeArchived, projectFilter)
     const res = await apiFetch(`/api/tasks/board${qs}`, { token })
     if (!res.ok) {
       setError('No se pudo cargar el tablero')
@@ -61,7 +57,7 @@ export function TaskboardView({
       return
     }
     setBoard((await res.json()) as TaskBoardDto)
-  }, [token, mineOnly, filterAssignee, includeArchived, projectFilter])
+  }, [token, includeArchived, projectFilter])
 
   const loadAssignees = useCallback(async () => {
     if (!token) return
@@ -72,6 +68,11 @@ export function TaskboardView({
     if (!res.ok) return
     setAssignees((await res.json()) as TaskAssigneeOption[])
   }, [token, assigneeProjectScope])
+
+  const selfAssignees = useMemo(
+    () => (userUuid ? assignees.filter((a) => a.uuid === userUuid) : []),
+    [assignees, userUuid],
+  )
 
   useEffect(() => {
     void loadAssignees()
@@ -172,8 +173,6 @@ export function TaskboardView({
 
   const listOptions = lists.map((l) => ({ uuid: l.uuid, title: l.title }))
 
-  const todosSelected = !mineOnly && filterAssignee === ''
-
   const embedded = variant === 'embedded'
 
   const boardViewportMaxWidth = useMemo(() => {
@@ -190,20 +189,20 @@ export function TaskboardView({
         <div className="shrink-0" data-tour="taskboard-header">
           <h1 className="text-2xl font-semibold text-ink md:text-3xl">Tablero de tareas</h1>
           <p className="mt-2 text-sm text-muted">
-            Asigna personas, descripciones breves y archiva lo completado. Clic en una tarjeta para el detalle.
+            Solo tus tareas asignadas. Descripciones breves y archivado. Clic en una tarjeta para el detalle.
           </p>
           {projectFilter ? (
             <p className="mt-2 text-sm text-ink">
               Filtrando por proyecto.{' '}
               <Link className="font-semibold text-primary underline-offset-2 hover:underline" to="/app/tasks">
-                Ver tablero global
+                Ver todas mis tareas
               </Link>{' '}
               ·{' '}
               <Link
                 className="font-semibold text-primary underline-offset-2 hover:underline"
                 to={`/app/projects/${projectFilter}`}
               >
-                Volver al workspace
+                Volver al proyecto
               </Link>
             </p>
           ) : null}
@@ -224,14 +223,8 @@ export function TaskboardView({
             onAddTask={() => setCreateOpen(true)}
             boardSearch={boardSearch}
             setBoardSearch={setBoardSearch}
-            mineOnly={mineOnly}
-            setMineOnly={setMineOnly}
-            filterAssignee={filterAssignee}
-            setFilterAssignee={setFilterAssignee}
             includeArchived={includeArchived}
             setIncludeArchived={setIncludeArchived}
-            assignees={assignees}
-            todosSelected={todosSelected}
           />
 
           <div
@@ -348,6 +341,22 @@ export function TaskboardView({
                                   embedded ? 'mt-1.5 space-y-1 pt-1.5' : 'mt-2 space-y-2 pt-2'
                                 }`}
                               >
+                                {card.project_uuid &&
+                                (card.project_name?.trim() || card.project_code?.trim()) ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-semibold uppercase tracking-wide text-muted">
+                                      Proyecto
+                                    </span>
+                                    <span className="min-w-0 break-words font-medium text-ink">
+                                      {card.project_name?.trim() || 'Obra'}
+                                      {card.project_code?.trim() ? (
+                                        <span className="ml-1 font-mono text-muted">
+                                          ({card.project_code.trim()})
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  </div>
+                                ) : null}
                                 {createdPhaseLabel ? (
                                   <div className="flex flex-col gap-0.5">
                                     <span className="font-semibold uppercase tracking-wide text-muted">
@@ -455,7 +464,7 @@ export function TaskboardView({
         <TaskboardCardModal
           token={token}
           card={modalCard}
-          assignees={assignees}
+          assignees={selfAssignees.length > 0 ? selfAssignees : assignees}
           readOnly={false}
           onClose={() => setModalCard(null)}
           onSaved={() => void load()}
@@ -466,7 +475,7 @@ export function TaskboardView({
         <TaskboardCreateModal
           token={token}
           lists={listOptions}
-          assignees={assignees}
+          assignees={selfAssignees.length > 0 ? selfAssignees : assignees}
           defaultProjectUuid={projectFilter || undefined}
           onClose={() => setCreateOpen(false)}
           onCreated={() => void load()}

@@ -17,6 +17,7 @@ from app.domain.tutorial_project import (
     TUTORIAL_TASK_TITLE,
 )
 from app.domain.workflow_phase import WorkflowPhase
+from app.domain.workflow_template_phase import effective_workflow_phase_for_step
 from app.models.chat_conversation import (
     GENERAL_CONVERSATION_UUID,
     ChatConversation,
@@ -27,6 +28,7 @@ from app.models.project import Project, ProjectArchitectureData
 from app.models.task_board import TaskCard, TaskList
 from app.models.user import User, UserModule, UserRole
 from app.repositories.project_repository import ProjectRepository
+from app.repositories.workflow_template_repository import WorkflowTemplateRepository
 from app.security.password import hash_password
 
 
@@ -136,6 +138,16 @@ async def _ensure_tutorial_project_and_task(session) -> None:
     if master_id is None:
         return
 
+    wtr = WorkflowTemplateRepository(session)
+    tpl = await wtr.get_default_active_template()
+    if tpl is None:
+        return
+    ordered_steps = await wtr.list_steps_ordered(tpl.id)
+    if not ordered_steps:
+        return
+    initial_step = ordered_steps[0]
+    initial_phase = effective_workflow_phase_for_step(0)
+
     repo = ProjectRepository(session)
     project = await session.get(Project, TUTORIAL_PROJECT_UUID)
     if project is None:
@@ -146,10 +158,12 @@ async def _ensure_tutorial_project_and_task(session) -> None:
             client_name="Dupla (demo)",
             project_kind=ProjectKind.CLIENT.value,
             created_by=master_id,
-            workflow_phase=WorkflowPhase.BOOTSTRAPPING.value,
+            workflow_phase=initial_phase,
             workflow_meta=_seed_workflow_meta(),
             project_bootstrap_criteria=default_bootstrap_criteria(),
             specifications_document={},
+            workflow_template_id=tpl.id,
+            current_workflow_step_id=initial_step.id,
             created_at=now,
             updated_at=now,
         )

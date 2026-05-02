@@ -44,11 +44,41 @@ class Settings(BaseSettings):
             description="Directorio raíz para archivos de proyecto (DWG/DXF, etc.).",
         ),
     ]
+    project_file_max_mb: Annotated[
+        int,
+        Field(
+            default=200,
+            ge=1,
+            le=2048,
+            description="Tamaño máximo por archivo de proyecto (MB). CAD/BIM suele superar 50 MB.",
+        ),
+    ]
     openai_api_key: Annotated[
         Optional[str],
-        Field(default=None, description="API key para clasificación y descripción de archivos."),
+        Field(default=None, description="API key OpenAI: clasificación de archivos y Dupla Assistant (léela desde backend/.env)."),
     ] = None
     openai_model: Annotated[str, Field(default="gpt-4o-mini")] = "gpt-4o-mini"
+    ai_assistant_context_ttl_seconds: Annotated[
+        int,
+        Field(
+            default=604800,
+            ge=60,
+            le=60 * 60 * 24 * 90,
+            description=(
+                "TTL en Redis del historial del asistente IA por usuario (~7 días; cubre ~5 días laborales). "
+                "Se renueva en cada mensaje (ventana deslizante)."
+            ),
+        ),
+    ] = 604800
+    ai_assistant_max_context_messages: Annotated[
+        int,
+        Field(
+            default=40,
+            ge=4,
+            le=200,
+            description="Máximo de mensajes user+assistant guardados en Redis (recorte por cola).",
+        ),
+    ] = 40
 
     @field_validator("database_url")
     @classmethod

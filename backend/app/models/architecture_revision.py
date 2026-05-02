@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +33,7 @@ class ArchitectureRevision(Base):
         index=True,
     )
     version: Mapped[int] = mapped_column(Integer(), nullable=False)
+    revision_role: Mapped[str] = mapped_column(String(32), nullable=False, default="ARQUITECTURA")
     decision: Mapped[ArchitectureRevisionDecision] = mapped_column(
         Enum(
             ArchitectureRevisionDecision,

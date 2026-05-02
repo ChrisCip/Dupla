@@ -1,8 +1,9 @@
-/** Alineado con backend: `app/domain/project_uploads.py` (solo .dwg, .dxf, .pdf). */
+/** Alineado con backend: `app/domain/project_uploads.py`. */
 
-export const PROJECT_ALLOWED_FILE_EXTENSIONS = ['dwg', 'dxf', 'pdf'] as const
+export const PROJECT_ALLOWED_FILE_EXTENSIONS = ['dwg', 'dxf', 'pdf', 'ifc', 'docx'] as const
 
-export const PROJECT_FILE_ACCEPT_ATTR = '.dwg,.dxf,.pdf,application/pdf'
+export const PROJECT_FILE_ACCEPT_ATTR =
+  '.dwg,.dxf,.pdf,.ifc,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 export function isAllowedProjectFileName(name: string): boolean {
   const i = name.lastIndexOf('.')

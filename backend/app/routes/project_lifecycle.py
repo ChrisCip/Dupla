@@ -1,12 +1,13 @@
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.dependencies import get_current_user
+from app.domain.file_discipline import FileIngestStatus
 from app.domain.workflow_phase import WorkflowPhase
 from app.models.architecture_revision import ArchitectureRevisionDecision
 from app.models.user import User
@@ -37,6 +38,7 @@ from app.schemas.project_lifecycle import (
     WorkflowMetaPatchRequest,
 )
 from app.services.chat_service import ChatService
+from app.services.project_file_classification_service import run_file_classification_task
 from app.services.project_lifecycle_service import ProjectLifecycleService
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -323,6 +325,7 @@ async def post_project_file(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     category: Annotated[Optional[str], Form()] = None,
     folder_uuid: Annotated[Optional[UUID], Form()] = None,
@@ -338,6 +341,8 @@ async def post_project_file(
         wizard=wizard,
     )
     await session.commit()
+    if row.ingest_status == FileIngestStatus.PUBLISHED.value:
+        background_tasks.add_task(run_file_classification_task, row.id)
     return ProjectFileResponse.from_row(row)
 
 
@@ -391,12 +396,16 @@ async def patch_project_file(
     body: ProjectFilePatchRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ) -> ProjectFileResponse:
     svc = ProjectLifecycleService(session)
     patch = body.model_dump(exclude_unset=True)
     row = await svc.patch_project_file(current, project_uuid, file_uuid, patch)
     await session.commit()
     await session.refresh(row)
+    ing = patch.get("ingest_status")
+    if ing is not None and str(ing).strip().upper() == FileIngestStatus.PUBLISHED.value:
+        background_tasks.add_task(run_file_classification_task, row.id)
     return ProjectFileResponse.from_row(row)
 
 

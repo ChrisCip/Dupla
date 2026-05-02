@@ -1,21 +1,24 @@
 /**
  * Pestañas del workspace de proyecto (`ProjectWorkspacePage`).
- * Todas las secciones están disponibles con independencia de la fase del flujo.
+ * `hub` es la vista de inicio (rejilla); no tiene formulario propio.
  */
 const TAB_DEFS: { id: string; label: string }[] = [
+  { id: 'hub', label: 'Inicio' },
   { id: 'detalles', label: 'Detalles' },
   { id: 'flujo', label: 'Flujo' },
   { id: 'archivos', label: 'Archivos' },
-  { id: 'entregaPlanos', label: 'Entrega planos' },
+  { id: 'entregaPlanos', label: 'Control de entregas' },
   { id: 'revisiones', label: 'Revisiones' },
   { id: 'hallazgos', label: 'Hallazgos' },
-  { id: 'especificaciones', label: 'Especificaciones' },
-  { id: 'presupuesto', label: 'Presupuesto' },
+  { id: 'pliego', label: 'Pliego' },
   { id: 'eventos', label: 'Eventos' },
-  { id: 'pliegos', label: 'Pliegos' },
-  { id: 'materiales', label: 'Materiales' },
 ]
 
 export function projectWorkspaceTabs(): { id: string; label: string }[] {
   return TAB_DEFS.map(({ id, label }) => ({ id, label }))
+}
+
+/** Pestañas con panel de contenido (excluye inicio). */
+export function projectWorkspaceSectionTabs(): { id: string; label: string }[] {
+  return TAB_DEFS.filter((t) => t.id !== 'hub').map(({ id, label }) => ({ id, label }))
 }

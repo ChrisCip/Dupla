@@ -326,9 +326,9 @@ export function startWorkspaceTour(navigate: NavigateFunction): void {
         {
           element: '[data-tour="workspace-tab-nav"]',
           popover: {
-            title: 'Secciones del workspace',
+            title: 'Accesos del workspace',
             description:
-              'Lista de secciones de la obra: datos, flujo (pasos del proceso), archivos, entregas, revisiones, hallazgos técnicos, especificaciones, presupuesto, eventos, pliegos y materiales. En el móvil, el botón «Secciones» abre o cierra esta lista.',
+              'Desde el inicio elegís la tarjeta de cada área (detalles, flujo, archivos, control de entregas, revisiones, hallazgos, pliego, eventos). El presupuesto y el pipeline se gestionan en Flujo. «Volver al inicio» te regresa a las tarjetas.',
             side: 'right',
             align: 'start',
           },
@@ -338,7 +338,7 @@ export function startWorkspaceTour(navigate: NavigateFunction): void {
           popover: {
             title: 'Contenido de la sección',
             description:
-              'Aquí cambia el contenido según la sección que elijas: en Flujo verás el paso activo del proceso y el informe documental; en el resto, documentos, revisiones, hallazgos, presupuesto, etc. El ejemplo «Tutorial · Workspace Dupla» sirve para practicar sin tocar obras reales.',
+              'Aquí cambia el contenido según la sección que elijas: en Flujo verás el paso activo, el pliego y el pipeline de presupuesto; en el resto, archivos, revisiones, hallazgos, etc. El ejemplo «Tutorial · Workspace Dupla» sirve para practicar sin tocar obras reales.',
             side: 'top',
             align: 'start',
           },
@@ -377,7 +377,7 @@ export function startWorkspaceDetallesShortcutsTour(navigate: NavigateFunction):
           popover: {
             title: 'Tareas solo de este proyecto',
             description:
-              'Te lleva al tablero de tareas ya filtrado para que solo veas lo de esta obra.',
+              'Te lleva al tablero de tareas filtrado por esta obra; solo verás las tareas que te correspondan.',
             side: 'bottom',
             align: 'start',
           },
@@ -416,7 +416,7 @@ export function startWorkspaceArchivosTour(navigate: NavigateFunction): void {
           popover: {
             title: 'Sección Archivos',
             description:
-              'Pulsa «Archivos» en la lista para trabajar con carpetas y documentos de esta obra. En este recorrido la sección Archivos ya está abierta.',
+              'Desde el inicio del proyecto abre la tarjeta «Archivos» para trabajar con carpetas y documentos. En este recorrido Archivos ya está abierta.',
             side: 'right',
             align: 'start',
           },

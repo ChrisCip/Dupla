@@ -45,7 +45,7 @@ export function ProjectsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const feedbackClearRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [viewMode, setViewMode] = useState<'lista' | 'tablero'>('tablero')
+  const [viewMode, setViewMode] = useState<'lista' | 'tablero'>('lista')
   const [boardMsg, setBoardMsg] = useState<string | null>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [projectKind, setProjectKind] = useState<ProjectKindValue>('CLIENT')
@@ -56,6 +56,8 @@ export function ProjectsPage() {
   const [createFloors, setCreateFloors] = useState('')
   const [createDeadline, setCreateDeadline] = useState('')
   const [createResponsible, setCreateResponsible] = useState('')
+  const [createResponsibleExternalName, setCreateResponsibleExternalName] = useState('')
+  const [createResponsibleExternalEmail, setCreateResponsibleExternalEmail] = useState('')
   const [projectSearch, setProjectSearch] = useState('')
   const dragRef = useRef(false)
   const [workflowTemplates, setWorkflowTemplates] = useState<{ uuid: string; name: string }[]>([])
@@ -233,6 +235,10 @@ export function ProjectsPage() {
       if (createFloors.trim()) fd.append('floor_levels_count', createFloors.trim())
       if (createDeadline.trim()) fd.append('deadline', createDeadline.trim())
       if (createResponsible.trim()) fd.append('responsible_user_uuid', createResponsible.trim())
+      if (createResponsibleExternalName.trim())
+        fd.append('responsible_external_name', createResponsibleExternalName.trim())
+      if (createResponsibleExternalEmail.trim())
+        fd.append('responsible_external_email', createResponsibleExternalEmail.trim())
       for (const f of createFiles) {
         fd.append('files', f)
       }
@@ -260,6 +266,8 @@ export function ProjectsPage() {
       setCreateFloors('')
       setCreateDeadline('')
       setCreateResponsible('')
+      setCreateResponsibleExternalName('')
+      setCreateResponsibleExternalEmail('')
       closeCreateModal()
       await refresh()
     } finally {
@@ -586,6 +594,10 @@ export function ProjectsPage() {
           setCreateDeadline={setCreateDeadline}
           createResponsible={createResponsible}
           setCreateResponsible={setCreateResponsible}
+          createResponsibleExternalName={createResponsibleExternalName}
+          setCreateResponsibleExternalName={setCreateResponsibleExternalName}
+          createResponsibleExternalEmail={createResponsibleExternalEmail}
+          setCreateResponsibleExternalEmail={setCreateResponsibleExternalEmail}
           createMembers={createMembers}
           setCreateMembers={setCreateMembers}
           adminUsersCreate={adminUsersCreate}

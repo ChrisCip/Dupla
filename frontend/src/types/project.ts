@@ -26,6 +26,9 @@ export type Project = {
   /** YYYY-MM-DD */
   deadline?: string | null
   responsible_user_uuid?: string | null
+  /** Contacto responsable fuera del equipo de la app (cliente, consultor, etc.) */
+  responsible_external_name?: string | null
+  responsible_external_email?: string | null
   workflow_template_uuid: string
   current_workflow_step_uuid: string
   current_step_title?: string | null

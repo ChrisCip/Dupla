@@ -28,6 +28,8 @@ class ProjectResponse(BaseModel):
     floor_levels_count: Optional[int] = None
     deadline: Optional[date] = None
     responsible_user_uuid: Optional[UUID] = None
+    responsible_external_name: Optional[str] = None
+    responsible_external_email: Optional[str] = None
     workflow_template_uuid: UUID
     current_workflow_step_uuid: UUID
     current_step_title: Optional[str] = None
@@ -59,6 +61,8 @@ class ProjectResponse(BaseModel):
             floor_levels_count=project.floor_levels_count,
             deadline=project.deadline,
             responsible_user_uuid=project.responsible_user_id,
+            responsible_external_name=project.responsible_external_name,
+            responsible_external_email=project.responsible_external_email,
             workflow_template_uuid=project.workflow_template_id,
             current_workflow_step_uuid=project.current_workflow_step_id,
             current_step_title=cur_step.title if cur_step is not None else None,

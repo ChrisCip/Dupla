@@ -5,6 +5,7 @@ import { apiFetch } from '../api/client'
 import type { UserRole } from '../constants/userRoles'
 import { useChatSync } from '../hooks/useChatSync'
 import { useAuthStore } from '../store/authStore'
+import { DuplaAssistantChat } from './DuplaAssistantChat'
 import { Sidebar } from './Sidebar'
 
 type MeRole = UserRole
@@ -33,6 +34,7 @@ export function MainLayout() {
 
   return (
     <div className="flex h-dvh min-h-0 overflow-hidden bg-surface text-ink">
+      <DuplaAssistantChat />
       <Sidebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-5 py-5 sm:px-6 sm:py-6 md:px-8 md:py-8">

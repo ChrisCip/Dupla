@@ -25,6 +25,7 @@ export type ProjectFileFolderRow = {
 export type RevisionRow = {
   uuid: string
   version: number
+  revision_role: string
   decision: string
   notes: string | null
   created_at: string

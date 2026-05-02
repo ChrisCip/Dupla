@@ -27,7 +27,7 @@ const STEP = {
   ubicacion: {
     title: 'Ubicación y coordinación',
     description:
-      'Dónde está la obra, fecha límite deseada y quién lleva el proyecto por dentro del estudio.',
+      'Dónde está la obra, fecha límite, responsable interno en Dupla y, si aplica, contacto externo (cliente u otro).',
     footerHint: 'Ubicación',
   },
   tipo: {
@@ -133,6 +133,10 @@ type CreateProjectModalProps = {
   setCreateDeadline: React.Dispatch<React.SetStateAction<string>>
   createResponsible: string
   setCreateResponsible: React.Dispatch<React.SetStateAction<string>>
+  createResponsibleExternalName: string
+  setCreateResponsibleExternalName: React.Dispatch<React.SetStateAction<string>>
+  createResponsibleExternalEmail: string
+  setCreateResponsibleExternalEmail: React.Dispatch<React.SetStateAction<string>>
   createMembers: Set<string>
   setCreateMembers: React.Dispatch<React.SetStateAction<Set<string>>>
   adminUsersCreate: DirectoryUserRow[]
@@ -167,6 +171,10 @@ export function CreateProjectModal({
   setCreateDeadline,
   createResponsible,
   setCreateResponsible,
+  createResponsibleExternalName,
+  setCreateResponsibleExternalName,
+  createResponsibleExternalEmail,
+  setCreateResponsibleExternalEmail,
   createMembers,
   setCreateMembers,
   adminUsersCreate,
@@ -414,6 +422,35 @@ export function CreateProjectModal({
                             </option>
                           ))}
                       </select>
+                    </div>
+                    <div>
+                      <label htmlFor="modal-project-responsible-ext-name" className="du-label">
+                        Responsable externo (nombre)
+                      </label>
+                      <input
+                        id="modal-project-responsible-ext-name"
+                        className="du-input mt-1 w-full"
+                        value={createResponsibleExternalName}
+                        onChange={(e) => setCreateResponsibleExternalName(e.target.value)}
+                        disabled={submitting}
+                        maxLength={255}
+                        placeholder="Ej. contacto del cliente"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="modal-project-responsible-ext-email" className="du-label">
+                        Responsable externo (correo)
+                      </label>
+                      <input
+                        id="modal-project-responsible-ext-email"
+                        type="email"
+                        className="du-input mt-1 w-full"
+                        value={createResponsibleExternalEmail}
+                        onChange={(e) => setCreateResponsibleExternalEmail(e.target.value)}
+                        disabled={submitting}
+                        maxLength={255}
+                        placeholder="Opcional"
+                      />
                     </div>
                   </div>
                 ) : null}

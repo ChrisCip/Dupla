@@ -6,6 +6,13 @@ import { Link } from 'react-router-dom'
 import { formatAllowedProjectExtensionsHint } from '../../constants/projectAllowedFiles'
 import { TUTORIAL_PROJECT_PATH } from '../../constants/tutorialProject'
 import { TUTORIALS_TOC } from '../../constants/tutorialesToc'
+
+const TUTORIAL_HASH_ALIASES: Record<string, string> = {
+  especificaciones: 'pliego',
+  presupuesto: 'flujo',
+  pliegos: 'pliego',
+  materiales: 'archivos',
+}
 import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
 
 const sectionClass = 'space-y-3'
@@ -42,9 +49,10 @@ export function TutorialesReference() {
   useEffect(() => {
     const applyHash = (hash: string) => {
       const raw = hash.startsWith('#') ? hash.slice(1) : hash
-      if (raw && TUTORIALS_TOC.some((t) => t.id === raw)) {
-        setExpandedId(raw)
-        scrollTargetIntoViewSmooth(raw)
+      const canonical = raw ? TUTORIAL_HASH_ALIASES[raw] ?? raw : ''
+      if (canonical && TUTORIALS_TOC.some((t) => t.id === canonical)) {
+        setExpandedId(canonical)
+        scrollTargetIntoViewSmooth(canonical)
       } else if (!raw) {
         setExpandedId(null)
       }
@@ -150,6 +158,10 @@ export function TutorialesReference() {
             Las acciones de <strong>avanzar fase</strong> u otros cambios dependen de tu perfil y de las
             reglas del proceso; la aplicación te dirá en pantalla si algo falta o si se guardó bien.
           </li>
+          <li>
+            Cuando el proyecto está en etapa de <strong>presupuesto</strong>, las cotizaciones, volumetría y
+            metadatos del pipeline se gestionan aquí (ya no hay una pestaña aparte solo para presupuesto).
+          </li>
         </ul>
       </div>
     ),
@@ -190,9 +202,9 @@ export function TutorialesReference() {
     'entrega-planos': (
       <div className={sectionClass}>
         <p className={pClass}>
-          Administración de solicitudes de <strong>entrega de planos (SDP)</strong>: altas, ediciones y
-          bajas de filas según los botones disponibles. Los detalles de cada fila (fechas, estados,
-          observaciones) siguen el formulario que muestre la aplicación.
+          Administración de solicitudes de <strong>control de entregas</strong> (entrega de planos): altas,
+          ediciones y bajas de filas según los botones disponibles. Los detalles de cada fila (fechas,
+          estados, observaciones) siguen el formulario que muestre la aplicación.
         </p>
       </div>
     ),
@@ -205,21 +217,13 @@ export function TutorialesReference() {
         </p>
       </div>
     ),
-    especificaciones: (
+    pliego: (
       <div className={sectionClass}>
         <p className={pClass}>
-          Trabajo con el <strong>pliego / especificaciones</strong>: resumen, campos estructurados y
-          guardado. Sincroniza cambios con el botón de guardar cuando proceda; los mensajes de error
-          indican campos obligatorios o conflictos de versión.
-        </p>
-      </div>
-    ),
-    presupuesto: (
-      <div className={sectionClass}>
-        <p className={pClass}>
-          Aquí se sigue el <strong>presupuesto de la obra</strong> (versiones acordadas, hitos con el
-          cliente, etc.). Completa los campos que puedas editar y guarda; verás reflejado el estado del
-          trámite presupuestario.
+          Trabajo con el <strong>pliego de condiciones</strong>: resumen, campos estructurados y guardado.
+          Tras publicar archivos, el sistema puede sugerir clasificaciones que aparecen como referencia en el
+          documento del pliego. Sincroniza cambios con el botón de guardar cuando proceda; los mensajes de
+          error indican campos obligatorios o conflictos de versión.
         </p>
       </div>
     ),
@@ -249,23 +253,6 @@ export function TutorialesReference() {
         </ul>
       </div>
     ),
-    pliegos: (
-      <div className={sectionClass}>
-        <p className={pClass}>
-          Formularios y estado de ítems del <strong>pliego</strong> (incluye integración con datos de
-          arquitectura cuando el flujo lo requiera). Completa y guarda los bloques según las secciones
-          visibles; respeta las validaciones indicadas en pantalla.
-        </p>
-      </div>
-    ),
-    materiales: (
-      <div className={sectionClass}>
-        <p className={pClass}>
-          Listado y edición de <strong>materiales</strong> vinculados al proyecto: altas, cambios y
-          bajas según los controles mostrados. Útil para cubicación y trazabilidad documental.
-        </p>
-      </div>
-    ),
     'config-proyecto': (
       <div className={sectionClass}>
         <p className={pClass}>
@@ -278,8 +265,9 @@ export function TutorialesReference() {
     tablero: (
       <div className={sectionClass}>
         <p className={pClass}>
-          En <strong>Tablero</strong> (menú lateral) ves <strong>todas las tareas del equipo</strong> en
-          columnas por estado: mueve tarjetas y ábrelas para ver el detalle.
+          En <strong>Tablero</strong> (menú lateral) ves <strong>tus tareas asignadas</strong> (y borradores
+          que hayas creado sin asignar) en columnas por estado: mueve tarjetas y ábrelas para ver el detalle.
+          En cada tarjeta se muestra la obra cuando aplica.
         </p>
         <ul className={listClass}>
           <li>
@@ -287,12 +275,12 @@ export function TutorialesReference() {
             puedes asociarla a una obra concreta.
           </li>
           <li>
-            <strong>Filtros:</strong> solo lo tuyo, por persona, tareas archivadas y búsqueda de texto en
-            el tablero.
+            <strong>Filtros:</strong> tareas archivadas y búsqueda de texto en el tablero (no se pueden ver
+            las tareas asignadas a otras personas).
           </li>
           <li>
-            <strong>Solo una obra:</strong> desde la sección Detalles de esa obra, el enlace «Tablero del
-            proyecto» abre este mismo tablero ya filtrado para que solo veas las tareas de esa obra.
+            <strong>Solo una obra:</strong> desde la sección Detalles de esa obra, el enlace al tablero abre
+            esta vista filtrada por esa obra.
           </li>
         </ul>
       </div>

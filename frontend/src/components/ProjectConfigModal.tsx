@@ -57,6 +57,8 @@ export function ProjectConfigModal({
   const [floors, setFloors] = useState('')
   const [deadline, setDeadline] = useState('')
   const [responsibleUuid, setResponsibleUuid] = useState('')
+  const [responsibleExternalName, setResponsibleExternalName] = useState('')
+  const [responsibleExternalEmail, setResponsibleExternalEmail] = useState('')
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
 
@@ -70,6 +72,8 @@ export function ProjectConfigModal({
     setFloors(project.floor_levels_count != null ? String(project.floor_levels_count) : '')
     setDeadline(project.deadline ?? '')
     setResponsibleUuid(project.responsible_user_uuid ?? '')
+    setResponsibleExternalName(project.responsible_external_name ?? '')
+    setResponsibleExternalEmail(project.responsible_external_email ?? '')
     setSaveMsg(null)
   }, [open, project])
 
@@ -95,6 +99,8 @@ export function ProjectConfigModal({
     }
     payload.deadline = deadline.trim() || null
     payload.responsible_user_uuid = responsibleUuid.trim() || null
+    payload.responsible_external_name = responsibleExternalName.trim() || null
+    payload.responsible_external_email = responsibleExternalEmail.trim() || null
 
     const res = await apiFetch(`/api/projects/${projectUuid}`, {
       method: 'PATCH',
@@ -121,6 +127,8 @@ export function ProjectConfigModal({
     floors,
     deadline,
     responsibleUuid,
+    responsibleExternalName,
+    responsibleExternalEmail,
     onProjectSaved,
   ])
 
@@ -242,6 +250,27 @@ export function ProjectConfigModal({
                       </option>
                     ))}
                   </select>
+                </label>
+                <label className="mt-3 block text-sm text-muted">
+                  Responsable externo (nombre)
+                  <input
+                    className="du-input mt-1"
+                    value={responsibleExternalName}
+                    onChange={(e) => setResponsibleExternalName(e.target.value)}
+                    maxLength={255}
+                    placeholder="Ej. contacto del cliente"
+                  />
+                </label>
+                <label className="mt-3 block text-sm text-muted">
+                  Responsable externo (correo)
+                  <input
+                    type="email"
+                    className="du-input mt-1"
+                    value={responsibleExternalEmail}
+                    onChange={(e) => setResponsibleExternalEmail(e.target.value)}
+                    maxLength={255}
+                    placeholder="Opcional"
+                  />
                 </label>
                 {saveMsg ? <p className="mt-2 text-sm text-primary">{saveMsg}</p> : null}
                 <PrimaryButton type="button" className="mt-4" disabled={saveBusy} onClick={() => void saveMeta()}>

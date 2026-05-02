@@ -30,7 +30,10 @@ from app.domain.business_pliego import (
     sections_dict,
     transition_blockers_for_business_pliego,
 )
-from app.domain.workflow_step_behavior import WorkflowStepBehaviorKind
+from app.domain.workflow_template_phase import (
+    effective_workflow_phase_for_step,
+    workflow_phase_from_template_step_index,
+)
 from app.domain.workflow_phase import LINEAR_NEXT, LINEAR_PREV, WorkflowPhase
 from app.models.architecture_revision import ArchitectureRevision, ArchitectureRevisionDecision
 from app.models.project import Project
@@ -65,12 +68,6 @@ class ProjectLifecycleService:
 
     @staticmethod
     def _domain_phase_for_project(project: Project) -> WorkflowPhase:
-        step = project.current_workflow_step
-        if step is not None and step.behavior_kind != WorkflowStepBehaviorKind.CUSTOM_AUTOMATION.value:
-            try:
-                return WorkflowPhase(step.behavior_kind)
-            except ValueError:
-                pass
         try:
             return WorkflowPhase(project.workflow_phase)
         except ValueError:
@@ -218,38 +215,30 @@ class ProjectLifecycleService:
         )
         return int((await self._session.execute(q)).scalar_one())
 
-    def _sync_workflow_phase_denorm(self, project: Project, target_step: WorkflowTemplateStep) -> None:
-        if target_step.behavior_kind == WorkflowStepBehaviorKind.CUSTOM_AUTOMATION.value:
-            return
-        project.workflow_phase = target_step.behavior_kind
+    def _sync_workflow_phase_denorm(
+        self,
+        project: Project,
+        target_step: WorkflowTemplateStep,
+        *,
+        step_index: int,
+    ) -> None:
+        project.workflow_phase = effective_workflow_phase_for_step(step_index)
 
     async def _apply_template_forward_guards(
         self,
         user: User,
         project: Project,
-        from_step: WorkflowTemplateStep,
-        to_step: WorkflowTemplateStep,
+        from_step_index: int,
+        to_step_index: int,
     ) -> None:
-        fb = from_step.behavior_kind
-        tb = to_step.behavior_kind
-        custom = WorkflowStepBehaviorKind.CUSTOM_AUTOMATION.value
-
-        if fb == WorkflowPhase.SPECIFICATIONS.value and tb == custom:
-            await self._assert_transition_guards_pair(
-                user,
-                project,
-                WorkflowPhase.SPECIFICATIONS,
-                WorkflowPhase.BUDGETING_PIPELINE,
-            )
-            return
-        if fb == custom and tb == WorkflowPhase.BUDGETING_PIPELINE.value:
-            return
-        try:
-            cf = WorkflowPhase(fb)
-            ct = WorkflowPhase(tb)
-        except ValueError:
-            return
-        await self._assert_transition_guards_pair(user, project, cf, ct)
+        from_eff = workflow_phase_from_template_step_index(from_step_index)
+        to_eff = workflow_phase_from_template_step_index(to_step_index)
+        await self._assert_transition_guards_pair(
+            user,
+            project,
+            WorkflowPhase(from_eff),
+            WorkflowPhase(to_eff),
+        )
 
     async def _run_step_enter_actions(self, actor: User, project: Project, to_step: WorkflowTemplateStep) -> None:
         raw_actions = to_step.on_enter_actions or []
@@ -347,9 +336,9 @@ class ProjectLifecycleService:
             fwd = steps[cur_i + 1] if cur_i + 1 < len(steps) else None
             back = steps[cur_i - 1] if cur_i > 0 else None
             candidates: list[WorkflowTemplateStep] = []
-            if fwd is not None and fwd.behavior_kind == tpv:
+            if fwd is not None and workflow_phase_from_template_step_index(cur_i + 1) == tpv:
                 candidates.append(fwd)
-            if back is not None and back.behavior_kind == tpv:
+            if back is not None and workflow_phase_from_template_step_index(cur_i - 1) == tpv:
                 candidates.append(back)
             if not candidates:
                 raise HTTPException(
@@ -378,10 +367,11 @@ class ProjectLifecycleService:
                 detail="Solo se permite avanzar o retroceder un paso en el flujo",
             )
 
+        tgt_effective_phase = effective_workflow_phase_for_step(tgt_i)
         if (
             is_backward
             and project.project_kind == ProjectKind.TENDER.value
-            and target_step.behavior_kind
+            and tgt_effective_phase
             in (WorkflowPhase.BOOTSTRAPPING.value, WorkflowPhase.AWAITING_FILES.value)
         ):
             raise HTTPException(
@@ -418,20 +408,20 @@ class ProjectLifecycleService:
                         "Complétalas o archívalas antes de avanzar de fase."
                     ),
                 )
-            await self._apply_template_forward_guards(user, project, cur_step, target_step)
+            await self._apply_template_forward_guards(user, project, cur_i, tgt_i)
 
         prev_step_id = project.current_workflow_step_id
 
         project.current_workflow_step_id = target_step.id
-        self._sync_workflow_phase_denorm(project, target_step)
+        self._sync_workflow_phase_denorm(project, target_step, step_index=tgt_i)
 
         await self._projects.record_event(
             project_id=project.id,
             actor_user_id=user.id,
             event_type="WORKFLOW_TRANSITION",
             payload={
-                "from_phase": cur_step.behavior_kind,
-                "to_phase": target_step.behavior_kind,
+                "from_phase": workflow_phase_from_template_step_index(cur_i),
+                "to_phase": workflow_phase_from_template_step_index(tgt_i),
                 "from_step_title": cur_step.title,
                 "to_step_title": target_step.title,
                 "from_step_uuid": str(prev_step_id),
@@ -441,18 +431,14 @@ class ProjectLifecycleService:
         )
 
         if is_forward:
-            if (
-                cur_step.behavior_kind == WorkflowPhase.ARCHITECTURE_REVIEW.value
-                and target_step.behavior_kind == WorkflowPhase.SPECIFICATIONS.value
-            ):
+            cur_eff = workflow_phase_from_template_step_index(cur_i)
+            tgt_eff = workflow_phase_from_template_step_index(tgt_i)
+            if cur_eff == WorkflowPhase.ARCHITECTURE_REVIEW.value and tgt_eff == WorkflowPhase.SPECIFICATIONS.value:
                 await self._notify_architecture_complete(project)
-            if target_step.behavior_kind == WorkflowPhase.BUDGET_APPROVED.value:
+            if tgt_eff == WorkflowPhase.BUDGET_APPROVED.value:
                 await self._notify_budget_approved(project)
-            try:
-                tgt_auto = WorkflowPhase(target_step.behavior_kind)
-            except ValueError:
-                tgt_auto = WorkflowPhase.BOOTSTRAPPING
-            await self._run_phase_automation(user, project, cur_step.behavior_kind, tgt_auto)
+            tgt_auto = WorkflowPhase(tgt_eff)
+            await self._run_phase_automation(user, project, cur_eff, tgt_auto)
             await self._run_step_enter_actions(user, project, target_step)
 
         touch_project_updated_at(project)
@@ -579,6 +565,26 @@ class ProjectLifecycleService:
                     )
                 payload["responsible_user_uuid"] = str(uid)
                 project.responsible_user_id = uid
+        if "responsible_external_name" in patch:
+            ren = patch["responsible_external_name"]
+            prev = project.responsible_external_name
+            if ren is None:
+                nxt = None
+            else:
+                s = str(ren).strip()
+                nxt = s or None
+            payload["responsible_external_name"] = {"from": prev, "to": nxt}
+            project.responsible_external_name = nxt
+        if "responsible_external_email" in patch:
+            ree = patch["responsible_external_email"]
+            prev = project.responsible_external_email
+            if ree is None:
+                nxt = None
+            else:
+                s = str(ree).strip()
+                nxt = s or None
+            payload["responsible_external_email"] = {"from": prev, "to": nxt}
+            project.responsible_external_email = nxt
         if payload:
             await self._projects.record_event(
                 project_id=project.id,
@@ -831,10 +837,14 @@ class ProjectLifecycleService:
     ) -> ArchitectureRevision:
         project = await self._project_svc.get_project(user, project_uuid)
         ver = await self._next_revision_version(project.id)
+        role_val = user.role.value if hasattr(user.role, "value") else str(user.role)
+        if role_val not in {"GERENCIA", "ARQUITECTURA", "CONTROL", "PRESUPUESTO"}:
+            role_val = "GERENCIA"
         rev = ArchitectureRevision(
             id=uuid.uuid4(),
             project_id=project.id,
             version=ver,
+            revision_role=role_val,
             decision=decision,
             notes=notes,
             checklist=checklist or {},
@@ -846,7 +856,7 @@ class ProjectLifecycleService:
             project_id=project.id,
             actor_user_id=user.id,
             event_type="ARCHITECTURE_REVISION",
-            payload={"version": ver, "decision": decision.value},
+            payload={"version": ver, "decision": decision.value, "revision_role": role_val},
         )
         touch_project_updated_at(project)
         await self._session.flush()
@@ -903,8 +913,12 @@ class ProjectLifecycleService:
                 detail="No se aceptan archivos en esta fase",
             )
         raw = await upload.read()
-        if len(raw) > 50 * 1024 * 1024:
-            raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Archivo demasiado grande")
+        max_bytes = self._settings.project_file_max_mb * 1024 * 1024
+        if len(raw) > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Archivo demasiado grande (máx. {self._settings.project_file_max_mb} MB)",
+            )
         fid = uuid.uuid4()
         root = Path(self._settings.upload_root)
         dest_dir = root / str(project.id)

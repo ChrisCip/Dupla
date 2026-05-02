@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { LayoutGrid } from 'lucide-react'
 
 import { FlowTemplateIcon } from '../flows/FlowTemplateIcon'
@@ -86,13 +87,22 @@ export function ProjectsBoardView({
     return { hasNext: i < orderedStepIds.length - 1, hasPrev: i > 0 }
   }
 
-  const columns: BoardColumnDef[] = useSteps
-    ? boardColumns!
-    : WORKFLOW_PHASE_ORDER.map((pk) => ({
-        id: pk,
-        title: WORKFLOW_PHASE_LABELS[pk] ?? pk,
-        behaviorKind: pk,
-      }))
+  const phaseColumns: BoardColumnDef[] = useMemo(() => {
+    const order = [...WORKFLOW_PHASE_ORDER]
+    const fixedIds = new Set<string>(order)
+    const extras = new Set<string>()
+    for (const p of filteredProjects) {
+      if (!fixedIds.has(p.workflow_phase)) extras.add(p.workflow_phase)
+    }
+    const ids = [...order, ...Array.from(extras).sort()]
+    return ids.map((pk) => ({
+      id: pk,
+      title: WORKFLOW_PHASE_LABELS[pk] ?? pk,
+      behaviorKind: pk,
+    }))
+  }, [filteredProjects])
+
+  const columns: BoardColumnDef[] = useSteps ? boardColumns! : phaseColumns
 
   return (
     <Card

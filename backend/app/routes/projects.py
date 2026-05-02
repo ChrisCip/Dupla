@@ -88,7 +88,9 @@ async def list_projects(
     summary="Create project",
     description=(
         "Multipart: name, client_name opcional, project_kind (TENDER|CLIENT|DEVELOPMENT), "
-        "member_user_uuids opcional como JSON string de UUIDs, files opcional (múltiples). "
+        "member_user_uuids opcional como JSON string de UUIDs, "
+        "responsible_external_name / responsible_external_email opcional (contacto fuera del equipo), "
+        "files opcional (múltiples). "
         "Licitación (TENDER): fase inicial revisión de arquitectura y obligatorio al menos un archivo."
     ),
 )
@@ -108,6 +110,8 @@ async def create_project(
     floor_levels_count: Optional[str] = Form(None),
     deadline: Optional[str] = Form(None),
     responsible_user_uuid: Optional[str] = Form(None),
+    responsible_external_name: Optional[str] = Form(None),
+    responsible_external_email: Optional[str] = Form(None),
     workflow_template_uuid: Optional[str] = Form(None),
     files: Annotated[Optional[list[UploadFile]], File()] = None,
 ) -> ProjectResponse:
@@ -146,6 +150,8 @@ async def create_project(
         floor_levels_count=_opt_int(floor_levels_count),
         deadline=_opt_date(deadline),
         responsible_user_uuid=_opt_uuid(responsible_user_uuid),
+        responsible_external_name=responsible_external_name,
+        responsible_external_email=responsible_external_email,
         workflow_template_uuid=_opt_uuid(workflow_template_uuid),
     )
     for upload in file_list:

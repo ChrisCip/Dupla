@@ -87,6 +87,28 @@ export function WorkspaceDetallesTab({
               <dt className="du-meta">Fecha límite</dt>
               <dd className="mt-1 text-sm text-ink">{project.deadline ?? '—'}</dd>
             </div>
+            <div>
+              <dt className="du-meta">Responsable externo</dt>
+              <dd className="mt-1 text-sm text-ink">
+                {project.responsible_external_name?.trim() ||
+                project.responsible_external_email?.trim() ? (
+                  <>
+                    {project.responsible_external_name?.trim() ? (
+                      <span>{project.responsible_external_name.trim()}</span>
+                    ) : null}
+                    {project.responsible_external_name?.trim() &&
+                    project.responsible_external_email?.trim() ? (
+                      <span className="text-muted"> · </span>
+                    ) : null}
+                    {project.responsible_external_email?.trim() ? (
+                      <span className="break-all">{project.responsible_external_email.trim()}</span>
+                    ) : null}
+                  </>
+                ) : (
+                  '—'
+                )}
+              </dd>
+            </div>
             <div className="sm:col-span-2">
               <dt className="du-meta">Identificador</dt>
               <dd className="mt-1 font-mono text-xs text-muted">{project.uuid}</dd>

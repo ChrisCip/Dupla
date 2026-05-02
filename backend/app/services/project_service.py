@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.domain.project_kind import ProjectKind
+from app.domain.workflow_template_phase import effective_workflow_phase_for_step
 from app.domain.project_updated import touch_project_updated_at
 from app.models.project import Project
 from app.models.user import User, UserRole
@@ -65,6 +66,8 @@ class ProjectService:
         floor_levels_count: Optional[int] = None,
         deadline: Optional[date] = None,
         responsible_user_uuid: Optional[UUID] = None,
+        responsible_external_name: Optional[str] = None,
+        responsible_external_email: Optional[str] = None,
         workflow_template_uuid: Optional[UUID] = None,
     ) -> Project:
         await self.ensure_architecture_access(user)
@@ -111,7 +114,7 @@ class ProjectService:
                 detail="La plantilla de flujo no tiene ningún paso",
             )
         initial_step = ordered_steps[0]
-        wf = initial_step.behavior_kind
+        wf = effective_workflow_phase_for_step(0)
         cn = client_name.strip() if client_name else None
         cn = cn or None
         pc = project_code.strip() if project_code else None
@@ -136,6 +139,10 @@ class ProjectService:
             area_float = float(estimated_area_sqm)
         loc = location_text.strip() if location_text else None
         loc = loc or None
+        ext_name = responsible_external_name.strip() if responsible_external_name else None
+        ext_name = ext_name or None
+        ext_email = responsible_external_email.strip() if responsible_external_email else None
+        ext_email = ext_email or None
         project = await self._projects.create_with_architecture(
             name=name_clean,
             client_name=cn,
@@ -150,6 +157,8 @@ class ProjectService:
             floor_levels_count=floor_levels_count,
             deadline=deadline,
             responsible_user_id=responsible_user_uuid,
+            responsible_external_name=ext_name,
+            responsible_external_email=ext_email,
         )
         await self._projects.record_event(
             project_id=project.id,

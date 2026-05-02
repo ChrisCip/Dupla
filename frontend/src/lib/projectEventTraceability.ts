@@ -91,6 +91,21 @@ export function describeProjectEvent(ev: ProjectEventRow): ProjectEventTrace {
         const o = clientField as { from?: unknown; to?: unknown }
         rows.push({ label: 'Cliente', value: `${str(o.from)} → ${str(o.to)}` })
       }
+      const ru = p.responsible_user_uuid
+      if (ru && typeof ru === 'object' && ru !== null) {
+        const o = ru as { from?: unknown; to?: unknown }
+        rows.push({ label: 'Responsable interno (UUID)', value: `${str(o.from)} → ${str(o.to)}` })
+      }
+      const ren = p.responsible_external_name
+      if (ren && typeof ren === 'object' && ren !== null) {
+        const o = ren as { from?: unknown; to?: unknown }
+        rows.push({ label: 'Responsable externo (nombre)', value: `${str(o.from)} → ${str(o.to)}` })
+      }
+      const ree = p.responsible_external_email
+      if (ree && typeof ree === 'object' && ree !== null) {
+        const o = ree as { from?: unknown; to?: unknown }
+        rows.push({ label: 'Responsable externo (correo)', value: `${str(o.from)} → ${str(o.to)}` })
+      }
       return { title: 'Datos del proyecto modificados', rows }
     }
     case 'BOOTSTRAP_UPDATED': {

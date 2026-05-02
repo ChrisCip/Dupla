@@ -7,6 +7,12 @@ import redis.asyncio as redis
 from app.config import get_settings
 
 
+def ai_assistant_context_key(user_id: UUID, project_uuid: Optional[UUID] = None) -> str:
+    if project_uuid is None:
+        return f"ai:assistant:ctx:{user_id}"
+    return f"ai:assistant:ctx:{user_id}:p:{project_uuid}"
+
+
 def chat_message_epoch_key(conversation_uuid: UUID) -> str:
     return f"chat:msg_epoch:{conversation_uuid}"
 
@@ -59,3 +65,34 @@ async def chat_message_epoch_bump(conversation_uuid: UUID) -> int:
         return 0
     finally:
         await client.aclose()
+
+
+def _sanitize_ai_turns(raw: Any) -> list[dict[str, str]]:
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        content = item.get("content")
+        if role in ("user", "assistant") and isinstance(content, str) and content.strip():
+            out.append({"role": str(role), "content": content})
+    return out
+
+
+async def ai_assistant_context_load(user_id: UUID, project_uuid: Optional[UUID] = None) -> list[dict[str, str]]:
+    key = ai_assistant_context_key(user_id, project_uuid)
+    raw = await cache_get_json(key)
+    return _sanitize_ai_turns(raw)
+
+
+async def ai_assistant_context_save(
+    user_id: UUID,
+    turns: list[dict[str, str]],
+    ttl_seconds: int,
+    *,
+    project_uuid: Optional[UUID] = None,
+) -> None:
+    key = ai_assistant_context_key(user_id, project_uuid)
+    await cache_set_json(key, turns, ttl_seconds)

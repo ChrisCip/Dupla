@@ -37,6 +37,8 @@ class ProjectPatchRequest(BaseModel):
     floor_levels_count: Optional[int] = Field(default=None, ge=0)
     deadline: Optional[date] = None
     responsible_user_uuid: Optional[UUID] = None
+    responsible_external_name: Optional[str] = Field(default=None, max_length=255)
+    responsible_external_email: Optional[str] = Field(default=None, max_length=255)
 
 
 class BootstrapCriteriaReplaceRequest(BaseModel):
@@ -183,6 +185,7 @@ class ArchitectureRevisionCreateRequest(BaseModel):
 class ArchitectureRevisionResponse(BaseModel):
     uuid: UUID
     version: int
+    revision_role: str
     decision: str
     notes: Optional[str]
     checklist: dict[str, Any]
@@ -194,6 +197,7 @@ class ArchitectureRevisionResponse(BaseModel):
         return cls(
             uuid=row.id,
             version=row.version,
+            revision_role=row.revision_role,
             decision=row.decision.value,
             notes=row.notes,
             checklist=row.checklist or {},

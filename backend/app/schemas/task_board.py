@@ -24,6 +24,8 @@ class TaskCardResponse(BaseModel):
     position: int
     list_uuid: UUID
     project_uuid: Optional[UUID]
+    project_name: Optional[str] = None
+    project_code: Optional[str] = None
     created_at: datetime
     created_by_uuid: Optional[UUID]
     creator_email: Optional[str]
@@ -42,6 +44,7 @@ class TaskCardResponse(BaseModel):
         st = inspect(card)
         creator = None if "creator" in st.unloaded else card.creator
         assignee = None if "assignee" in st.unloaded else card.assignee
+        proj = None if "project" in st.unloaded else card.project
         return cls(
             uuid=card.id,
             title=card.title,
@@ -49,6 +52,8 @@ class TaskCardResponse(BaseModel):
             position=card.position,
             list_uuid=card.list_id,
             project_uuid=card.project_id,
+            project_name=proj.name if proj is not None else None,
+            project_code=proj.project_code if proj is not None else None,
             created_at=card.created_at,
             created_by_uuid=card.created_by,
             creator_email=creator.email if creator is not None else None,

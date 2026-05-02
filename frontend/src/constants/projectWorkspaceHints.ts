@@ -1,7 +1,7 @@
 export type PhaseHint = {
   title: string
   body: string
-  tabId: 'resumen' | 'flujo' | 'documentos' | 'revisiones' | 'historial'
+  tabId: 'resumen' | 'flujo' | 'documentos' | 'revisiones' | 'historial' | 'pliego' | 'hub'
   cta: string
 }
 
@@ -14,7 +14,7 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
   },
   AWAITING_FILES: {
     title: 'Subir archivos',
-    body: 'Carga DWG/DXF o adjuntos en Archivos. Con al menos un archivo cargado, puedes avanzar a revisión de arquitectura.',
+    body: 'Carga planos (DWG/DXF), PDF, IFC u otros adjuntos permitidos en Archivos. Con al menos un archivo cargado, puedes avanzar a revisión de arquitectura.',
     tabId: 'documentos',
     cta: 'Ir a Archivos',
   },
@@ -27,8 +27,8 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
   SPECIFICATIONS: {
     title: 'Pliego de condiciones',
     body: 'Aquí se documenta el pliego de condiciones: es el paso obligatorio antes del presupuesto. Redacta el resumen (mín. 10 caracteres) y guarda; luego podrás avanzar la fase a Presupuesto.',
-    tabId: 'flujo',
-    cta: 'Ir a Flujo — pliego',
+    tabId: 'pliego',
+    cta: 'Ir al Pliego',
   },
   BUDGETING_PIPELINE: {
     title: 'Pipeline de presupuesto',
@@ -44,9 +44,9 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
   },
   BUDGET_APPROVED: {
     title: 'Presupuesto aprobado',
-    body: 'Continúa con pliegos y materiales; cuando el proyecto esté cerrado, avanza a la fase final «Completo».',
+    body: 'Continúa con archivos, el pliego y el control de entregas; cuando el proyecto esté cerrado, avanza a la fase final «Completo».',
     tabId: 'documentos',
-    cta: 'Ir a Pliegos',
+    cta: 'Ir a Archivos',
   },
   COMPLETE: {
     title: 'Proyecto completo',
