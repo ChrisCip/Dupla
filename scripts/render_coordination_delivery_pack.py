@@ -165,6 +165,14 @@ def _render_result_markdown(
             f"- Prompt ChatGPT: [{prompt_path_name(date_label, run_label)}]({run_dir.as_posix()}/{prompt_path_name(date_label, run_label)}:1)",
         ]
     )
+    if (summary.get("elements_by_dwg_json") or "").strip():
+        lines.append(
+            f"- Elementos por DWG: [elements_by_dwg.json]({run_dir.as_posix()}/elements_by_dwg.json:1)"
+        )
+    if (summary.get("clash_element_links_json") or "").strip():
+        lines.append(
+            f"- Links clash-element: [clash_element_links.json]({run_dir.as_posix()}/clash_element_links.json:1)"
+        )
     lines.append("")
     return "\n".join(lines)
 
@@ -238,6 +246,7 @@ def _render_chatgpt_prompt_markdown(
         "- Usa `analysis_bot_context.json` como fuente factual primaria para conteos, cobertura, pares y limitaciones.",
         "- Si el readiness documental contradice el run final, explica que el coordinate audit promovio la comparabilidad real.",
         "- No conviertas layers en nombres de elementos constructivos reales si no existe mapeo semantico.",
+        "- Solo usa nombres de elementos si el contexto estructurado indica `mapping_confidence` medium o high.",
         "",
         "Resumen por pares:",
     ]

@@ -1,4 +1,6 @@
 .env
+.pydeps311/
+.venv_maple311/
 # Excel lock files (opened workbook); [$] is literal $
 **/~[$]*.xlsx
 *.pyc

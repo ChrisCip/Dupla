@@ -7,6 +7,7 @@ from pathlib import Path
 import scripts.run_nasas09_project_coordination as runner
 from core.coordination.clash import ClashConflict, group_conflicts_into_incidents
 from core.coordination.fast_compare import (
+    AlignmentOverride,
     PreMatchCandidate,
     SourceCandidate,
     build_pre_match_candidates,
@@ -153,6 +154,37 @@ def test_select_preferred_candidates_keeps_best_architecture_anchor() -> None:
     assert "Serena 18 -PLANTA PISOS 10-10-2022.dwg" in selected_names
     assert "2208-Serena18-ID-Base.dwg" not in selected_names
     assert len(selected) == 3
+
+
+def test_apply_alignment_override_to_candidate_preserves_drawing_type_fields() -> None:
+    candidate = SourceCandidate(
+        path=Path("a.dwg"),
+        rel_path="PLANOS/ARQ/A.dwg",
+        issue_key="dir:arq",
+        discipline=Discipline.ARCH,
+        suffix=".dwg",
+        level_id="NPT_P1",
+        level_source="pattern:nivel_1",
+        cohort_id="cohort_01",
+        drawing_type="floor_plan",
+        drawing_type_source="path_heuristic",
+    )
+    override = AlignmentOverride(
+        source_file=candidate.rel_path,
+        translate_mm=(0.0, 0.0),
+        level_id="NPT_P2",
+        level_source="manual_override",
+    )
+
+    updated = runner._apply_alignment_override_to_candidate(
+        candidate=candidate,
+        alignment_overrides={runner.normalize_source_text(candidate.rel_path): override},
+    )
+
+    assert updated.level_id == "NPT_P2"
+    assert updated.level_source == "manual_override"
+    assert updated.drawing_type == "floor_plan"
+    assert updated.drawing_type_source == "path_heuristic"
 
 
 def test_normalize_fast_compare_element_clamps_large_z() -> None:

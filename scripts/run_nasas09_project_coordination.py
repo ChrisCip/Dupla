@@ -24,6 +24,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from core.coordination import clash_pairs, conflicts_to_conflict_notes
 from core.coordination.clash import ClashConflict, group_conflicts_into_incidents
+from core.coordination.clash_element_mapper import map_primary_incidents_to_elements
 from core.coordination.coordinate_audit import (
     apply_coordinate_band_gating,
     build_pair_schedule,
@@ -78,6 +79,10 @@ from core.coordination.nasas_paths import (
     file_translation_mm,
 )
 from core.coordination.registry import ProjectLevelRegistryDocument
+from core.coordination.semantic_elements import (
+    build_semantic_elements_from_accore_payload,
+    export_elements_by_dwg_json,
+)
 from core.coordination.source_selection import collect_coordination_media, normalize_source_text, relative_posix
 
 logger = logging.getLogger("dupla.nasas09.coordination")
@@ -108,6 +113,11 @@ def main() -> int:
         choices=("full", "coordinate_audit", "arq_est", "hotspots"),
         default="full",
         help="Etapa del perfil fast_compare. full ejecuta audit + arq_est + hotspots.",
+    )
+    parser.add_argument(
+        "--enable-semantic-mapping",
+        action="store_true",
+        help="Genera elements_by_dwg.json y clash_element_links.json como capa MVP posterior a primary_incidents.",
     )
     parser.add_argument("--nasas-root", type=Path, default=DEFAULT_NASAS)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
@@ -688,6 +698,8 @@ def _apply_alignment_override_to_candidate(
         level_id=override.level_id,
         level_source=getattr(override, "level_source", None) or candidate.level_source,
         cohort_id=candidate.cohort_id,
+        drawing_type=getattr(candidate, "drawing_type", "generic"),
+        drawing_type_source=getattr(candidate, "drawing_type_source", "heuristic"),
     )
 
 
@@ -952,6 +964,61 @@ def _extract_fast_compare_scheduled_elements(
             candidate.level_id,
         )
     return (all_elements, suppressed_elements, skipped_runtime)
+
+
+def _build_semantic_mapping_payloads(
+    *,
+    generated_at: str,
+    project_name: str,
+    run_label: str,
+    selected_candidates: list,
+    scheduled_file_set: set[str],
+    all_elements: list[Element25D],
+    profiled_payloads: dict[str, dict[str, object]],
+    primary_payload: dict[str, object],
+) -> tuple[dict[str, object], dict[str, object]]:
+    candidate_by_rel = {
+        candidate.rel_path: candidate for candidate in selected_candidates if candidate.rel_path in scheduled_file_set
+    }
+    elements_by_rel: dict[str, list[Element25D]] = defaultdict(list)
+    for element in all_elements:
+        rel_path = str(element.metadata.get("source_rel_path") or "")
+        if rel_path:
+            elements_by_rel[rel_path].append(element)
+
+    semantic_elements = []
+    for rel_path in sorted(scheduled_file_set):
+        candidate = candidate_by_rel.get(rel_path)
+        if candidate is None:
+            continue
+        raw_elements = elements_by_rel.get(rel_path, [])
+        if not raw_elements:
+            continue
+        payload_entry = profiled_payloads.get(rel_path, {})
+        payload = payload_entry.get("payload")
+        semantic_elements.extend(
+            build_semantic_elements_from_accore_payload(
+                raw_elements=raw_elements,
+                source_file=candidate.path,
+                source_rel_path=rel_path,
+                payload=payload if isinstance(payload, dict) else None,
+            )
+        )
+
+    elements_by_dwg_payload = export_elements_by_dwg_json(
+        generated_at=generated_at,
+        project_name=project_name,
+        run_label=run_label,
+        semantic_elements=semantic_elements,
+    )
+    clash_element_links_payload = map_primary_incidents_to_elements(
+        generated_at=generated_at,
+        project_name=project_name,
+        run_label=run_label,
+        primary_payload=primary_payload,
+        elements_by_dwg_payload=elements_by_dwg_payload,
+    )
+    return (elements_by_dwg_payload, clash_element_links_payload)
 
 
 def _run_fast_compare(
@@ -1267,8 +1334,11 @@ def _run_fast_compare(
     debug_json = args.output.parent / "debug_candidates.json"
     hotspot_json = args.output.parent / "hotspot_incidents.json"
     hotspot_md = args.output.parent / "hotspot_incidents.md"
+    elements_by_dwg_json = args.output.parent / "elements_by_dwg.json"
+    clash_element_links_json = args.output.parent / "clash_element_links.json"
+    generated_at = datetime.now(timezone.utc).isoformat()
     primary_payload = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": generated_at,
         "project_name": doc.project_name,
         "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
         "incident_count": len(primary_incidents),
@@ -1285,7 +1355,7 @@ def _run_fast_compare(
         encoding="utf-8",
     )
     debug_payload = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": generated_at,
         "project_name": doc.project_name,
         "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
         "debug_conflict_count": len(debug_conflicts),
@@ -1315,7 +1385,7 @@ def _run_fast_compare(
         )
         if hotspot_incidents:
             hotspot_payload = {
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": generated_at,
                 "project_name": doc.project_name,
                 "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
                 "incident_count": len(hotspot_incidents),
@@ -1336,9 +1406,29 @@ def _run_fast_compare(
     analysis_bot_context_json = args.output.parent / "analysis_bot_context.json"
     coordination_human_md = args.output.parent / "coordination_report_human.md"
     coordination_human_html = args.output.parent / "coordination_report_human.html"
+    semantic_elements_payload = None
+    clash_element_links_payload = None
+    if args.enable_semantic_mapping:
+        try:
+            semantic_elements_payload, clash_element_links_payload = _build_semantic_mapping_payloads(
+                generated_at=generated_at,
+                project_name=doc.project_name,
+                run_label=args.output.parent.name,
+                selected_candidates=selected_candidates,
+                scheduled_file_set=scheduled_file_set,
+                all_elements=all_elements,
+                profiled_payloads=profiled_payloads,
+                primary_payload=primary_payload,
+            )
+            _write_json(elements_by_dwg_json, semantic_elements_payload)
+            _write_json(clash_element_links_json, clash_element_links_payload)
+        except Exception:
+            semantic_elements_payload = None
+            clash_element_links_payload = None
+            logger.exception("Semantic mapping MVP failed; continuing without semantic artifacts.")
     technical_report_context = build_coordination_report_context(
         summary_payload={
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": generated_at,
             "project_name": doc.project_name,
             "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
             "status": "completed",
@@ -1360,7 +1450,7 @@ def _run_fast_compare(
             project_name=doc.project_name or "Proyecto",
             root=nasas_root,
             summary_payload={
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": generated_at,
                 "project_name": doc.project_name,
                 "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
                 "status": "completed",
@@ -1383,7 +1473,7 @@ def _run_fast_compare(
         nasas_root=nasas_root,
         run_label=args.output.parent.name,
         summary_payload={
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": generated_at,
             "project_name": doc.project_name,
             "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
             "status": "completed",
@@ -1393,13 +1483,15 @@ def _run_fast_compare(
         coordinate_audit_payload=coordinate_audit_payload,
         pair_schedule_payload=pair_schedule_payload,
         report_context=technical_report_context,
+        semantic_elements_payload=semantic_elements_payload,
+        clash_element_links_payload=clash_element_links_payload,
     )
     _write_json(analysis_bot_context_json, analysis_bot_context)
     human_report_md = render_coordination_human_report_markdown(
         project_name=doc.project_name or "Proyecto",
         run_label=args.output.parent.name,
         summary_payload={
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": generated_at,
             "project_name": doc.project_name,
             "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
             "status": "completed",
@@ -1409,6 +1501,7 @@ def _run_fast_compare(
         coordinate_audit_payload=coordinate_audit_payload,
         pair_schedule_payload=pair_schedule_payload,
         report_context=technical_report_context,
+        clash_element_links_payload=clash_element_links_payload,
     )
     coordination_human_md.write_text(human_report_md, encoding="utf-8")
     coordination_human_html.write_text(
@@ -1446,6 +1539,8 @@ def _run_fast_compare(
         analysis_bot_context_json=analysis_bot_context_json,
         coordination_human_md=coordination_human_md,
         coordination_human_html=coordination_human_html,
+        elements_by_dwg_json=elements_by_dwg_json if semantic_elements_payload else None,
+        clash_element_links_json=clash_element_links_json if clash_element_links_payload else None,
     )
 
 
@@ -1580,6 +1675,8 @@ def _write_fast_compare_summary(
     analysis_bot_context_json: Path | None = None,
     coordination_human_md: Path | None = None,
     coordination_human_html: Path | None = None,
+    elements_by_dwg_json: Path | None = None,
+    clash_element_links_json: Path | None = None,
 ) -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -1608,6 +1705,8 @@ def _write_fast_compare_summary(
         "analysis_bot_context_json": str(analysis_bot_context_json) if analysis_bot_context_json else None,
         "coordination_report_human_md": str(coordination_human_md) if coordination_human_md else None,
         "coordination_report_human_html": str(coordination_human_html) if coordination_human_html else None,
+        "elements_by_dwg_json": str(elements_by_dwg_json) if elements_by_dwg_json else None,
+        "clash_element_links_json": str(clash_element_links_json) if clash_element_links_json else None,
     }
     if metrics:
         payload.update(metrics)

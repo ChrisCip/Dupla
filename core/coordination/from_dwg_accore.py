@@ -388,6 +388,9 @@ def extract_elements_from_accore_payload(
             thickness = z_thickness_mm
 
         handle = str(entity.get("Handle") or index)
+        block_name = str(entity.get("Name") or entity.get("BlockName") or "").strip() or None
+        bbox_mm = _bounds_bbox_mm(bounds, factor_mm=factor_mm, translation_mm=translation_mm)
+        centroid_mm = _centroid_from_footprint(footprint)
         candidates.append(
             (
                 area,
@@ -405,15 +408,24 @@ def extract_elements_from_accore_payload(
                     ),
                     metadata={
                         "file": path.name,
+                        "source_file": path.as_posix(),
                         "layer": layer,
                         "handle": handle,
+                        "cad_handle": handle,
+                        "entity_type": entity_type,
+                        "block_name": block_name,
                         "area_mm2": area,
                         "source": "cad_accore",
                         "geometry_source": geometry_source,
                         "geometry_quality": geometry_quality,
+                        "geometry_confidence": _geometry_confidence_label(geometry_quality),
                         "geometry_role": geometry_role,
                         "suppression_reason": suppression_reason,
                         "sheet_or_view_name": path.stem,
+                        "bbox_mm": bbox_mm,
+                        "centroid_mm": centroid_mm,
+                        "level_id": level_id,
+                        "discipline": discipline.value,
                     },
                 ),
             )
@@ -558,6 +570,45 @@ def _bbox_from_bounds(bounds: Any, *, factor_mm: float) -> list[tuple[float, flo
         (max_x, max_y),
         (min_x, max_y),
     ]
+
+
+def _bounds_bbox_mm(
+    bounds: Any,
+    *,
+    factor_mm: float,
+    translation_mm: tuple[float, float] = (0.0, 0.0),
+) -> tuple[float, float, float, float] | None:
+    if not isinstance(bounds, dict):
+        return None
+    min_pt = bounds.get("Min") or {}
+    max_pt = bounds.get("Max") or {}
+    min_x = float(min_pt.get("X") or 0.0) * factor_mm
+    min_y = float(min_pt.get("Y") or 0.0) * factor_mm
+    max_x = float(max_pt.get("X") or 0.0) * factor_mm
+    max_y = float(max_pt.get("Y") or 0.0) * factor_mm
+    if max_x <= min_x or max_y <= min_y:
+        return None
+    dx, dy = translation_mm
+    return (min_x + dx, min_y + dy, max_x + dx, max_y + dy)
+
+
+def _centroid_from_footprint(footprint: list[tuple[float, float]]) -> tuple[float, float] | None:
+    if not footprint:
+        return None
+    polygon = Polygon(footprint + [footprint[0]])
+    if polygon.is_empty:
+        return None
+    centroid = polygon.centroid
+    return (float(centroid.x), float(centroid.y))
+
+
+def _geometry_confidence_label(geometry_quality: str) -> str:
+    label = str(geometry_quality or "medium").lower()
+    if label in {"high", "exact"}:
+        return "high"
+    if label in {"medium", "proxy"}:
+        return "medium"
+    return "low"
 
 
 def _buffered_line_from_vertices(

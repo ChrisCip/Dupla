@@ -340,6 +340,8 @@ def build_analysis_bot_context(
     coordinate_audit_payload: dict[str, Any],
     pair_schedule_payload: dict[str, Any],
     report_context: dict[str, Any],
+    semantic_elements_payload: dict[str, Any] | None = None,
+    clash_element_links_payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     counts = report_context.get("counts") or {}
     defendable = report_context.get("defendable_incidents") or []
@@ -353,6 +355,14 @@ def build_analysis_bot_context(
         "sanitario": _coverage_for_bot(audits, "HIDROSANITARIO"),
         "mecanico": _coverage_for_bot(audits, "MECANICO"),
     }
+    semantic_summary = semantic_elements_payload or {}
+    mapping_summary = clash_element_links_payload or {}
+    mapped_links = list(mapping_summary.get("mapped") or [])
+    semantic_publishable_types = sum(
+        1
+        for item in mapped_links
+        if _link_has_publishable_types(item)
+    )
     return {
         "project": {
             "name": project_name,
@@ -427,12 +437,42 @@ def build_analysis_bot_context(
         "validation_incidents": validation,
         "coverage": coverage,
         "noise_summary": report_context.get("noise_summary") or {},
+        "elements_by_dwg_summary": {
+            "file_count": int(semantic_summary.get("file_count") or 0),
+            "element_count": int(semantic_summary.get("element_count") or 0),
+            "element_type_mix": semantic_summary.get("element_type_mix") or {},
+            "semantic_type_confidence_mix": semantic_summary.get("semantic_type_confidence_mix") or {},
+        },
+        "clash_element_links_summary": {
+            "mapped_incidents_count": int(mapping_summary.get("mapped_incidents_count") or 0),
+            "unmapped_incidents_count": int(mapping_summary.get("unmapped_incidents_count") or 0),
+            "mapping_confidence_mix": mapping_summary.get("mapping_confidence_mix") or {},
+            "publishable_semantic_type_count": semantic_publishable_types,
+        },
         "limitations": [
             "Element-level semantic clash names are not yet resolved.",
             "Layer names are available, but layers are not equivalent to real building elements.",
             "Hotspots are concentration zones, not final clashes.",
             "Debug conflicts are technical signal and must not be presented as final findings.",
         ],
+        "element_mapping_limitations": [
+            "The MVP mapper is bbox-first and centroid-distance-second.",
+            "Annotation layers and title graphics never produce defendable semantic naming.",
+            "Low-confidence mapping must not be verbalized as a real constructible element.",
+        ],
+        "exact_entity_links_summary": {
+            "mapped_with_exact_entity_count": int(mapping_summary.get("mapped_incidents_count") or 0),
+            "requires_exact_entity_fallback_count": sum(1 for item in mapped_links if not _link_has_publishable_types(item)),
+        },
+        "semantic_typing_summary": {
+            "semantic_type_confidence_mix": semantic_summary.get("semantic_type_confidence_mix") or {},
+            "publishable_semantic_type_count": semantic_publishable_types,
+        },
+        "publishability_rules": {
+            "publish_semantic_type_if": "mapping_confidence>=medium and semantic_type_confidence>=medium",
+            "publish_element_name_if": "mapping_confidence>=medium and name_confidence>=medium",
+            "fallback_if_not_publishable": "exact CAD entity handle + entity_type + layer + coordinates",
+        },
         "resolved_readiness_contradiction": {
             "documentary_readiness_found_pairs": len(readiness_payload.get("auto_pair_candidates") or []),
             "audit_promoted_pairs": len(readiness_payload.get("promoted_pair_candidates") or []),
@@ -445,11 +485,18 @@ def build_analysis_bot_context(
             {"question": "¿Qué archivos DWG se compararon?", "answer_source": "scheduled_pairs"},
             {"question": "¿Hay eléctrico o sanitario en este run?", "answer_source": "coverage"},
         ],
-        "clash_element_links": [],
+        "mapped_incidents_count": int(mapping_summary.get("mapped_incidents_count") or 0),
+        "unmapped_incidents_count": int(mapping_summary.get("unmapped_incidents_count") or 0),
+        "mapping_confidence_mix": mapping_summary.get("mapping_confidence_mix") or {},
+        "clash_element_links": {
+            "mapped": mapping_summary.get("mapped") or [],
+            "unmapped": mapping_summary.get("unmapped") or [],
+        },
         "future_elements_by_dwg_contract": {
             "expected_file": "elements_by_dwg.json",
             "required_fields": [
-                "element_id",
+                "semantic_element_id",
+                "source_element_id",
                 "source_file",
                 "cad_handle",
                 "element_name",
@@ -475,6 +522,7 @@ def render_coordination_human_report_markdown(
     coordinate_audit_payload: dict[str, Any],
     pair_schedule_payload: dict[str, Any],
     report_context: dict[str, Any],
+    clash_element_links_payload: dict[str, Any] | None = None,
 ) -> str:
     counts = report_context.get("counts") or {}
     defendable = report_context.get("defendable_incidents") or []
@@ -484,6 +532,10 @@ def render_coordination_human_report_markdown(
     scheduled_pairs = [item for item in pair_schedule_payload.get("pairs") or [] if bool(item.get("scheduled"))]
     promoted_pairs = readiness_payload.get("promoted_pair_candidates") or []
     eligible_files = (readiness_payload.get("audit_promotion_summary") or {}).get("eligible_files") or []
+    mapped_lookup = {
+        str(item.get("incident_id") or ""): item
+        for item in (clash_element_links_payload or {}).get("mapped") or []
+    }
 
     lines = [
         f"# Coordination Report Human - {project_name}",
@@ -550,14 +602,23 @@ def render_coordination_human_report_markdown(
         ]
     )
     for card in defendable[:10]:
-        lines.append(
+        mapped = mapped_lookup.get(card["incident_id"])
+        evidence_text = f"`{card['layer_pair']}`"
+        exact_entity_text = None
+        if mapped:
+            evidence_text = _report_evidence_text(mapped, fallback_layer_pair=card["layer_pair"])
+            exact_entity_text = _exact_entity_text(mapped)
+        line = (
             f"- `{card['incident_id']}` | `{card['priority']}` | `{card['severity']}` | `{card['report_confidence']}`"
             f"\n  nivel: `{card['level_id']}`"
             f"\n  disciplinas: `{card['discipline_pair']}`"
             f"\n  ubicacion: `{card['location_short']}`"
-            f"\n  layers: `{card['layer_pair']}`"
+            f"\n  evidencia: {evidence_text}"
             f"\n  accion: {card['recommended_action']}"
         )
+        if exact_entity_text:
+            line = line.replace(f"\n  accion: {card['recommended_action']}", f"\n  entidades CAD: {exact_entity_text}\n  accion: {card['recommended_action']}")
+        lines.append(line)
     if not defendable:
         lines.append("- No hubo hallazgos defendibles en esta corrida.")
 
@@ -568,13 +629,18 @@ def render_coordination_human_report_markdown(
         ]
     )
     for card in validation[:10]:
-        lines.append(
+        mapped = mapped_lookup.get(card["incident_id"])
+        line = (
             f"- `{card['incident_id']}` | razon: {card['validation_reason']}"
             f"\n  nivel: `{card['level_id']}`"
             f"\n  par: `{card['pair_label']}`"
             f"\n  layers: `{card['layer_pair']}`"
             f"\n  accion: {card['recommended_action']}"
         )
+        exact_entity_text = _exact_entity_text(mapped) if mapped else None
+        if exact_entity_text:
+            line = line.replace(f"\n  accion: {card['recommended_action']}", f"\n  entidades CAD: {exact_entity_text}\n  accion: {card['recommended_action']}")
+        lines.append(line)
     if not validation:
         lines.append("- No quedaron incidencias abiertas para validación manual.")
 
@@ -632,6 +698,68 @@ def render_coordination_human_report_html(
         + "".join(body)
         + "</body></html>"
     )
+
+
+def _link_has_publishable_types(link: dict[str, Any]) -> bool:
+    if str(link.get("mapping_confidence") or "") not in {"medium", "high"}:
+        return False
+    left = link.get("file_a") or {}
+    right = link.get("file_b") or {}
+    return _publishable_type_from_side(left) is not None and _publishable_type_from_side(right) is not None
+
+
+def _publishable_type_from_side(side: dict[str, Any]) -> str | None:
+    confidence = str(side.get("semantic_type_confidence") or "unknown")
+    element_type = str(side.get("element_type") or "")
+    if confidence not in {"medium", "high"}:
+        return None
+    if not element_type or element_type.startswith("unknown_"):
+        return None
+    return element_type
+
+
+def _publishable_name_from_side(side: dict[str, Any]) -> str | None:
+    confidence = str(side.get("name_confidence") or "low")
+    name = side.get("element_name")
+    if confidence not in {"medium", "high"}:
+        return None
+    return str(name) if name else None
+
+
+def _report_evidence_text(link: dict[str, Any], *, fallback_layer_pair: str) -> str:
+    if str(link.get("mapping_confidence") or "") not in {"medium", "high"}:
+        return f"`{fallback_layer_pair}`"
+    left = link.get("file_a") or {}
+    right = link.get("file_b") or {}
+    left_name = _publishable_name_from_side(left)
+    right_name = _publishable_name_from_side(right)
+    if left_name and right_name:
+        return f"`{left_name} / {right_name}`"
+    left_type = _publishable_type_from_side(left)
+    right_type = _publishable_type_from_side(right)
+    if left_type and right_type:
+        return f"`{left_type} / {right_type}`"
+    return f"`{fallback_layer_pair}`"
+
+
+def _exact_entity_text(link: dict[str, Any] | None) -> str | None:
+    if not link:
+        return None
+    left = link.get("file_a") or {}
+    right = link.get("file_b") or {}
+    if not left and not right:
+        return None
+    left_label = _exact_entity_side_label(left)
+    right_label = _exact_entity_side_label(right)
+    return f"`{left_label}` vs `{right_label}`"
+
+
+def _exact_entity_side_label(side: dict[str, Any]) -> str:
+    handle = str(side.get("cad_handle") or "no_handle")
+    entity_type = str(side.get("entity_type") or "unknown")
+    layer = str(side.get("layer") or "0")
+    source_id = str(side.get("source_element_id") or "unknown")
+    return f"{handle}/{entity_type}/{layer}/{source_id}"
 
 
 def _incident_card(incident: dict[str, Any]) -> dict[str, Any]:

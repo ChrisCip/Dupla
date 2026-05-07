@@ -61,11 +61,22 @@ def test_accore_payload_generates_polyline_and_bbox_elements() -> None:
     assert elements[0].metadata["geometry_source"] == "dwg_accore_polyline"
     assert elements[0].metadata["geometry_quality"] == "high"
     assert elements[0].metadata["geometry_role"] == "primary"
+    assert elements[0].metadata["source_file"] == "sample.dwg"
+    assert elements[0].metadata["cad_handle"] == "10"
+    assert elements[0].metadata["entity_type"] == "Polyline"
+    assert elements[0].metadata["block_name"] is None
+    assert elements[0].metadata["geometry_confidence"] == "high"
+    assert elements[0].metadata["bbox_mm"] == (10.0, -20.0, 3010.0, 3980.0)
+    assert elements[0].metadata["centroid_mm"] == (1510.0, 1980.0)
     assert elements[0].footprint_coords_mm[0] == (10.0, -20.0)
     assert elements[1].metadata["geometry_source"] == "dwg_accore_bbox"
     assert elements[1].metadata["geometry_quality"] == "medium"
     assert elements[1].metadata["geometry_role"] == "suppressed"
     assert elements[1].metadata["suppression_reason"] == "container_bbox"
+    assert elements[1].metadata["source_file"] == "sample.dwg"
+    assert elements[1].metadata["cad_handle"] == "20"
+    assert elements[1].metadata["entity_type"] == "BlockReference"
+    assert elements[1].metadata["geometry_confidence"] == "medium"
     assert elements[1].z_data.thickness_mm == 500.0
 
 
