@@ -1,6 +1,6 @@
 # analysis_06 - SERENA 18
 
-- Fecha: `2026-05-02`
+- Fecha: `2026-05-03`
 - Perfil: `fast_compare`
 - Estado: `completed`
 - Carpeta: `C:/Users/Enrique Casanova/Dupla/analysis_output/serena18_analysis_06`
@@ -38,32 +38,32 @@
   nivel: `NPT_P1`
   par: `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg`
   ubicacion: `NPT_P1; (168,817,815, 624,648,464) mm`
-  accion: Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion.
+  accion: Revisar el par directamente y escalar en la siguiente ronda de coordinacion.
 - `incident_0021` | `P2` | `high` | `medium`
   nivel: `NPT_P1`
   par: `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg`
   ubicacion: `NPT_P1; (168,812,817, 624,648,464) mm`
-  accion: Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion.
+  accion: Revisar el par directamente y escalar en la siguiente ronda de coordinacion.
 - `incident_0034` | `P2` | `high` | `medium`
   nivel: `NPT_P1`
   par: `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg`
   ubicacion: `NPT_P1; (168,832,736, 624,649,470) mm`
-  accion: Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion.
+  accion: Revisar el par directamente y escalar en la siguiente ronda de coordinacion.
 - `incident_0051` | `P2` | `high` | `medium`
   nivel: `NPT_P1`
   par: `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E09 - PLANTA EST. LOSAS DE PISO SOBRE TERRENO  Y DETALLES  CASA.dwg`
   ubicacion: `NPT_P1; (168,826,979, 624,644,583) mm`
-  accion: Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion.
+  accion: Revisar el par directamente y escalar en la siguiente ronda de coordinacion.
 - `incident_0005` | `P2` | `high` | `medium`
   nivel: `NPT_P1`
   par: `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg`
   ubicacion: `NPT_P1; (168,802,950, 624,651,070) mm`
-  accion: Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion.
+  accion: Revisar el par directamente y escalar en la siguiente ronda de coordinacion.
 - `incident_0035` | `P2` | `medium` | `medium`
   nivel: `NPT_P1`
   par: `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg`
   ubicacion: `NPT_P1; (168,833,404, 624,651,010) mm`
-  accion: Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada.
+  accion: Revisar el par directamente y revisar con validacion acotada.
 
 ## Vista por perfil
 - Arquitectura: `direct`
@@ -85,4 +85,6 @@
 - Registro primario: [primary_incidents.md](C:/Users/Enrique Casanova/Dupla/analysis_output/serena18_analysis_06/primary_incidents.md:1)
 - Audit: [coordinate_audit.md](C:/Users/Enrique Casanova/Dupla/analysis_output/serena18_analysis_06/coordinate_audit.md:1)
 - Hotspots: [hotspot_incidents.md](C:/Users/Enrique Casanova/Dupla/analysis_output/serena18_analysis_06/hotspot_incidents.md:1)
-- Prompt ChatGPT: [2026-05-02_analysis_06_chatgpt_prompt.md](C:/Users/Enrique Casanova/Dupla/analysis_output/serena18_analysis_06/2026-05-02_analysis_06_chatgpt_prompt.md:1)
+- Prompt ChatGPT: [2026-05-03_analysis_06_chatgpt_prompt.md](C:/Users/Enrique Casanova/Dupla/analysis_output/serena18_analysis_06/2026-05-03_analysis_06_chatgpt_prompt.md:1)
+- Elementos por DWG: [elements_by_dwg.json](C:/Users/Enrique Casanova/Dupla/analysis_output/serena18_analysis_06/elements_by_dwg.json:1)
+- Links clash-element: [clash_element_links.json](C:/Users/Enrique Casanova/Dupla/analysis_output/serena18_analysis_06/clash_element_links.json:1)

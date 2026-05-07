@@ -30,7 +30,7 @@ Estructura requerida:
 
 Datos del run:
 - run_label: analysis_06
-- generated_at: 2026-05-02T12:49:40.059323+00:00
+- generated_at: 2026-05-06T00:42:36.243548+00:00
 - analysis_profile: fast_compare
 - status: completed
 - selected_candidates: 3
@@ -50,18 +50,19 @@ Contexto estructurado adicional:
 - Usa `analysis_bot_context.json` como fuente factual primaria para conteos, cobertura, pares y limitaciones.
 - Si el readiness documental contradice el run final, explica que el coordinate audit promovio la comparabilidad real.
 - No conviertas layers en nombres de elementos constructivos reales si no existe mapeo semantico.
+- Solo usa nombres de elementos si el contexto estructurado indica `mapping_confidence` medium o high.
 
 Resumen por pares:
 - Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | incidents=36 | members=253 | top_priority=P2 | confidence_mix=low=31, medium=5 | severity_mix=low=23, medium=9, high=4
 - Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E09 - PLANTA EST. LOSAS DE PISO SOBRE TERRENO  Y DETALLES  CASA.dwg | incidents=17 | members=70 | top_priority=P2 | confidence_mix=low=16, medium=1 | severity_mix=low=13, medium=3, high=1
 
 Hallazgos defendibles top:
-- incident_0026 | priority=P2 | severity=high | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | location=NPT_P1; (168,817,815, 624,648,464) mm | layers=MARCO / EST_PROYECCION | action=Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion.
-- incident_0021 | priority=P2 | severity=high | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | location=NPT_P1; (168,812,817, 624,648,464) mm | layers=MARCO / EST - BORDE EXTERIOR | action=Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion.
-- incident_0034 | priority=P2 | severity=high | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | location=NPT_P1; (168,832,736, 624,649,470) mm | layers=MARCO / TITULOS | action=Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion.
-- incident_0051 | priority=P2 | severity=high | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E09 - PLANTA EST. LOSAS DE PISO SOBRE TERRENO  Y DETALLES  CASA.dwg | location=NPT_P1; (168,826,979, 624,644,583) mm | layers=MARCO / EST_PROYECCION | action=Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion.
-- incident_0005 | priority=P2 | severity=high | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | location=NPT_P1; (168,802,950, 624,651,070) mm | layers=Solares / EST. MADERA | action=Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion.
-- incident_0035 | priority=P2 | severity=medium | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | location=NPT_P1; (168,833,404, 624,651,010) mm | layers=MUROS / TITULOS | action=Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada.
+- incident_0026 | priority=P2 | severity=high | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | location=NPT_P1; (168,817,815, 624,648,464) mm | layers=MARCO / EST_PROYECCION | action=Revisar el par directamente y escalar en la siguiente ronda de coordinacion.
+- incident_0021 | priority=P2 | severity=high | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | location=NPT_P1; (168,812,817, 624,648,464) mm | layers=MARCO / EST - BORDE EXTERIOR | action=Revisar el par directamente y escalar en la siguiente ronda de coordinacion.
+- incident_0034 | priority=P2 | severity=high | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | location=NPT_P1; (168,832,736, 624,649,470) mm | layers=MARCO / TITULOS | action=Revisar el par directamente y escalar en la siguiente ronda de coordinacion.
+- incident_0051 | priority=P2 | severity=high | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E09 - PLANTA EST. LOSAS DE PISO SOBRE TERRENO  Y DETALLES  CASA.dwg | location=NPT_P1; (168,826,979, 624,644,583) mm | layers=MARCO / EST_PROYECCION | action=Revisar el par directamente y escalar en la siguiente ronda de coordinacion.
+- incident_0005 | priority=P2 | severity=high | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | location=NPT_P1; (168,802,950, 624,651,070) mm | layers=Solares / EST. MADERA | action=Revisar el par directamente y escalar en la siguiente ronda de coordinacion.
+- incident_0035 | priority=P2 | severity=medium | confidence=medium | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | location=NPT_P1; (168,833,404, 624,651,010) mm | layers=MUROS / TITULOS | action=Revisar el par directamente y revisar con validacion acotada.
 
 Casos con validacion manual top:
 - incident_0029 | reason=low confidence signal | level=NPT_P1 | pair=Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg | layers=MARCO / EST_PROYECCION

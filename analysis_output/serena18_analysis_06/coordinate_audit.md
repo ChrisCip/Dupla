@@ -9,8 +9,8 @@
 - `needs_alignment`, `annotation_noise`, `bbox_only`, and `extract_failed` are technical blockers or low-trust inputs.
 
 ## Sources
-| File | Discipline | Level | Status | Coordinate band | Raw primary | Raw annotation | Notes |
-| --- | --- | --- | --- | --- | ---: | ---: | --- |
-| `Serena 18 -PLANTA PISOS 10-10-2022.dwg` | ARQUITECTURA | `NPT_P1` | `eligible` | `X~168.82M, Y~624.64M` | 10229 | 1207 | - |
-| `EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` | ESTRUCTURA | `NPT_P1` | `eligible` | `X~168.81M, Y~624.65M` | 2178 | 306 | - |
-| `EST. SERENA 18 - E09 - PLANTA EST. LOSAS DE PISO SOBRE TERRENO  Y DETALLES  CASA.dwg` | ESTRUCTURA | `NPT_P1` | `eligible` | `X~168.82M, Y~624.64M` | 2086 | 517 | - |
+| File | Discipline | Level | Drawing type | Status | Coordinate band | Raw primary | Raw annotation | Notes |
+| --- | --- | --- | --- | --- | --- | ---: | ---: | --- |
+| `Serena 18 -PLANTA PISOS 10-10-2022.dwg` | ARQUITECTURA | `NPT_P1` | `floor_plan` | `eligible` | `X~168.82M, Y~624.64M` | 10229 | 1207 | - |
+| `EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` | ESTRUCTURA | `NPT_P1` | `formwork` | `eligible` | `X~168.81M, Y~624.65M` | 2178 | 306 | - |
+| `EST. SERENA 18 - E09 - PLANTA EST. LOSAS DE PISO SOBRE TERRENO  Y DETALLES  CASA.dwg` | ESTRUCTURA | `NPT_P1` | `detail` | `eligible` | `X~168.82M, Y~624.64M` | 2086 | 517 | - |

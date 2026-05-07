@@ -3,7 +3,7 @@
 - Root: `C:/Users/Enrique Casanova/Dupla/repositorios/SERENA 18`
 - Profile: `fast_compare`
 - Status: `completed`
-- Generated: `2026-05-02T12:49:40.059323+00:00`
+- Generated: `2026-05-06T00:42:35.930477+00:00`
 
 ## Executive Summary
 - Scheduled pairs reviewed: `2` across `3` source files.
@@ -33,45 +33,35 @@
 ## Defendable Findings
 | ID | Priority | Severity | Confidence | Level | Disciplines | Location | Action owner | Recommended action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `incident_0026` | P2 | high | medium | `NPT_P1` | ARQUITECTURA / ESTRUCTURA | NPT_P1; (168,817,815, 624,648,464) mm | Arquitectura + Estructura | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion. |
-| `incident_0021` | P2 | high | medium | `NPT_P1` | ARQUITECTURA / ESTRUCTURA | NPT_P1; (168,812,817, 624,648,464) mm | Arquitectura + Estructura | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion. |
-| `incident_0034` | P2 | high | medium | `NPT_P1` | ARQUITECTURA / ESTRUCTURA | NPT_P1; (168,832,736, 624,649,470) mm | Arquitectura + Estructura | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion. |
-| `incident_0051` | P2 | high | medium | `NPT_P1` | ARQUITECTURA / ESTRUCTURA | NPT_P1; (168,826,979, 624,644,583) mm | Arquitectura + Estructura | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion. |
-| `incident_0005` | P2 | high | medium | `NPT_P1` | ARQUITECTURA / ESTRUCTURA | NPT_P1; (168,802,950, 624,651,070) mm | Arquitectura + Estructura | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego escalar en la siguiente ronda de coordinacion. |
-| `incident_0035` | P2 | medium | medium | `NPT_P1` | ARQUITECTURA / ESTRUCTURA | NPT_P1; (168,833,404, 624,651,010) mm | Arquitectura + Estructura | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
+| `incident_0026` | P2 | high | medium | `NPT_P1` | Discipline.ARCH / Discipline.STRUC | NPT_P1; (168,817,815, 624,648,464) mm | Discipline.Arch + Discipline.Struc | Revisar el par directamente y escalar en la siguiente ronda de coordinacion. |
+| `incident_0021` | P2 | high | medium | `NPT_P1` | Discipline.ARCH / Discipline.STRUC | NPT_P1; (168,812,817, 624,648,464) mm | Discipline.Arch + Discipline.Struc | Revisar el par directamente y escalar en la siguiente ronda de coordinacion. |
+| `incident_0034` | P2 | high | medium | `NPT_P1` | Discipline.ARCH / Discipline.STRUC | NPT_P1; (168,832,736, 624,649,470) mm | Discipline.Arch + Discipline.Struc | Revisar el par directamente y escalar en la siguiente ronda de coordinacion. |
+| `incident_0051` | P2 | high | medium | `NPT_P1` | Discipline.ARCH / Discipline.STRUC | NPT_P1; (168,826,979, 624,644,583) mm | Discipline.Arch + Discipline.Struc | Revisar el par directamente y escalar en la siguiente ronda de coordinacion. |
+| `incident_0005` | P2 | high | medium | `NPT_P1` | Discipline.ARCH / Discipline.STRUC | NPT_P1; (168,802,950, 624,651,070) mm | Discipline.Arch + Discipline.Struc | Revisar el par directamente y escalar en la siguiente ronda de coordinacion. |
+| `incident_0035` | P2 | medium | medium | `NPT_P1` | Discipline.ARCH / Discipline.STRUC | NPT_P1; (168,833,404, 624,651,010) mm | Discipline.Arch + Discipline.Struc | Revisar el par directamente y revisar con validacion acotada. |
 
 ## Findings Requiring Manual Validation
 | ID | Reason | Level | Layers | Suggested handling |
 | --- | --- | --- | --- | --- |
-| `incident_0029` | low confidence signal | `NPT_P1` | `MARCO / EST_PROYECCION` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0020` | low confidence signal | `NPT_P1` | `MARCO / EST - EJE DE VIGA` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0017` | low confidence signal | `NPT_P1` | `MARCO / piso` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0008` | low confidence signal | `NPT_P1` | `MARCO / EST - BORDE INTERIOR` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0016` | low confidence signal | `NPT_P1` | `MARCO / EST - BORDE INTERIOR` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0022` | low confidence signal | `NPT_P1` | `MARCO / EST - BORDE EXTERIOR` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0024` | low confidence signal | `NPT_P1` | `MARCO / piso` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0039` | low confidence signal | `NPT_P1` | `MARCO / ESCALA_HUMANA` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0003` | low confidence signal | `NPT_P1` | `MARCO / EST. MADERA` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0036` | low confidence signal | `NPT_P1` | `MARCO / EST. MUROS DE BLOQUE BAJO NIVEL DE PISO` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0045` | low confidence signal | `NPT_P1` | `MARCO / EST.  COLUMNAS` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
-| `incident_0015` | low confidence signal | `NPT_P1` | `MARCO / EST - EJE DE VIGA` | Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego revisar con validacion acotada. |
+| `incident_0029` | low confidence signal | `NPT_P1` | `MARCO / EST_PROYECCION` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0020` | low confidence signal | `NPT_P1` | `MARCO / EST - EJE DE VIGA` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0017` | low confidence signal | `NPT_P1` | `MARCO / piso` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0008` | low confidence signal | `NPT_P1` | `MARCO / EST - BORDE INTERIOR` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0016` | low confidence signal | `NPT_P1` | `MARCO / EST - BORDE INTERIOR` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0022` | low confidence signal | `NPT_P1` | `MARCO / EST - BORDE EXTERIOR` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0024` | low confidence signal | `NPT_P1` | `MARCO / piso` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0039` | low confidence signal | `NPT_P1` | `MARCO / ESCALA_HUMANA` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0003` | low confidence signal | `NPT_P1` | `MARCO / EST. MADERA` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0036` | low confidence signal | `NPT_P1` | `MARCO / EST. MUROS DE BLOQUE BAJO NIVEL DE PISO` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0045` | low confidence signal | `NPT_P1` | `MARCO / EST.  COLUMNAS` | Revisar el par directamente y revisar con validacion acotada. |
+| `incident_0015` | low confidence signal | `NPT_P1` | `MARCO / EST - EJE DE VIGA` | Revisar el par directamente y revisar con validacion acotada. |
 
 ## Reader Sections
 
 ### Arquitectura
 - Coverage in this run: `direct`
-- Current focus: review top defendable conflicts first
-
-| ID | Priority | Level | Pair | Why this reader should care |
-| --- | --- | --- | --- | --- |
-| `incident_0026` | P2 | `NPT_P1` | `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` | una decision arquitectonica puede crear o resolver un conflicto estructural |
-| `incident_0021` | P2 | `NPT_P1` | `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` | una decision arquitectonica puede crear o resolver un conflicto estructural |
-| `incident_0034` | P2 | `NPT_P1` | `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` | una decision arquitectonica puede crear o resolver un conflicto estructural |
-| `incident_0051` | P2 | `NPT_P1` | `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E09 - PLANTA EST. LOSAS DE PISO SOBRE TERRENO  Y DETALLES  CASA.dwg` | una decision arquitectonica puede crear o resolver un conflicto estructural |
-| `incident_0005` | P2 | `NPT_P1` | `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` | una decision arquitectonica puede crear o resolver un conflicto estructural |
-| `incident_0029` | P2 | `NPT_P1` | `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` | la geometria arquitectonica o la reserva espacial estan implicadas |
-| `incident_0020` | P2 | `NPT_P1` | `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` | la geometria arquitectonica o la reserva espacial estan implicadas |
-| `incident_0017` | P2 | `NPT_P1` | `Serena 18 -PLANTA PISOS 10-10-2022.dwg vs EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` | la geometria arquitectonica o la reserva espacial estan implicadas |
+- Current focus: no direct pair for this profile in the current run
+- No direct incidents were mapped to this reader profile in the current run.
 
 ### Electrico
 - Coverage in this run: `not_in_run`
