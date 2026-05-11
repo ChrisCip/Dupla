@@ -28,6 +28,7 @@ from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.pres_expansion import synthetic_takeoffs_from_pres
 from knowledge.training_data import extract_training_pairs
 from pricing.construcosto_loader import load_construcosto_snapshot
+from pricing.schemas import PricingStore
 from processors.bc3_parser import parse_bc3
 from processors.json_processor import process_autodesk_json
 from rules_engine import RulesEngine, default_rules_engine
@@ -162,6 +163,8 @@ def build_final_budget(
     *,
     bc3_catalog: dict[str, Any] | None = None,
     construcosto_snapshot: Any | None = None,
+    pricing_store: PricingStore | None = None,
+    apu_matcher: Any | None = None,
 ) -> dict[str, Any]:
     takeoff_list = list(takeoffs)
     lines = []
@@ -175,10 +178,23 @@ def build_final_budget(
             }
         )
 
+    if apu_matcher is None and pricing_store is not None:
+        try:
+            from pricing.apu_matcher import APUMatcher
+            apu_matcher = APUMatcher(pricing_store)
+            logger.info(
+                "Constructor APUMatcher built lazily (materials=%d, labor=%d, apus=%d)",
+                len(pricing_store.materials), len(pricing_store.labor), len(pricing_store.apus),
+            )
+        except Exception:
+            logger.warning("Failed to build APUMatcher; continuing without it", exc_info=True)
+            apu_matcher = None
+
     composed = compose_budget(
         context, takeoff_list, candidates_by_takeoff,
         bc3_catalog=bc3_catalog,
         construcosto_snapshot=construcosto_snapshot,
+        apu_matcher=apu_matcher,
     )
     composed["budget_lines"] = lines
     composed["takeoffs"] = [takeoff.to_dict() for takeoff in takeoff_list]
@@ -197,6 +213,8 @@ def build_budget_from_inventory(
     *,
     embedding_index: Any | None = None,
     training_pairs: list[Any] | None = None,
+    pricing_store: PricingStore | None = None,
+    apu_matcher: Any | None = None,
 ) -> dict[str, Any]:
     engine = rules_engine or default_rules_engine()
     project_discipline = _runner_discipline_canonical(context)
@@ -223,6 +241,8 @@ def build_budget_from_inventory(
         context, expanded_takeoffs, candidates,
         bc3_catalog=bc3_catalog_for_budget,
         construcosto_snapshot=snapshot,
+        pricing_store=pricing_store,
+        apu_matcher=apu_matcher,
     )
 
 
@@ -373,6 +393,8 @@ def build_budget_from_sources(
     *,
     embedding_index: Any | None = None,
     training_pairs: list[Any] | None = None,
+    pricing_store: PricingStore | None = None,
+    apu_matcher: Any | None = None,
 ) -> dict[str, Any]:
     logger.info("build_budget_from_sources: starting hybrid inventory + takeoffs")
     hybrid_inventory = build_hybrid_inventory(cad_facts, vision_payloads)
@@ -453,6 +475,8 @@ def build_budget_from_sources(
         context, expanded_takeoffs, candidates,
         bc3_catalog=bc3_catalog_for_budget,
         construcosto_snapshot=snapshot,
+        pricing_store=pricing_store,
+        apu_matcher=apu_matcher,
     )
     budget["hybrid_inventory"] = [level.to_dict() for level in hybrid_inventory]
     budget["base_takeoffs"] = [takeoff.to_dict() for takeoff in base_takeoffs]

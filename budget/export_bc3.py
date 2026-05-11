@@ -298,8 +298,10 @@ def export_budget_bc3(
 
             comment = _escape_bc3(row.summary[:64]) if row.summary else ""
 
-            # PARENT\CHILD
-            field1 = f"{ch_code}\\{code}"
+            # PARENT#\CHILD — the '#' marks the chapter-relationship form
+            # used by Presto-produced BC3s; without it the parent/child
+            # separator is ambiguous and some readers swallow it as one token.
+            field1 = f"{ch_code}#\\{code}"
             # POSITION: chapter path + line position within chapter
             field2 = f"{pos_path}\\{line_idx}" if pos_path else str(line_idx)
             # TOTAL_MEASUREMENT

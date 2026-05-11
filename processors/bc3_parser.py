@@ -189,6 +189,9 @@ def _parse_measurements(records: list[str]) -> dict[str, list[dict[str, str]]]:
         codes = parts[0].strip()
         if "#" in codes:
             parent, child = codes.split("#", 1)
+        elif "\\" in codes:
+            # Older / non-Presto producers omit '#' and rely on '\' alone.
+            parent, _, child = codes.partition("\\")
         else:
             parent, child = codes, ""
 

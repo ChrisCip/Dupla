@@ -35,20 +35,20 @@ PROJECT_ID = "gebsa_iv"
 
 DISCIPLINES: dict[str, dict[str, str]] = {
     "arquitectura": {
-        "pdf": r"C:\Users\jimif\Downloads\DUPLA GEBSA\prueba dupla full.pdf",
-        "dwg": r"C:\Users\jimif\Downloads\DUPLA GEBSA\2- PLANTAS ARQUITECTONICAS.dwg",
+        "pdf": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\TERMINACIONES GEBSA PDF\prueba dupla full.pdf",
+        "dwg": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\DISEÑOS GEBSA DWG\2- PLANTAS ARQUITECTONICAS.dwg",
     },
     "estructura": {
-        "pdf": r"C:\Users\jimif\Downloads\DUPLA GEBSA\full gebsa estructural.pdf",
-        "dwg": r"C:\Users\jimif\Downloads\DUPLA GEBSA\ESTRUCTURA GEBSA IV.dwg",
+        "pdf": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\ESTRUCTURAL GEBSA PDF\full gebsa estructural.pdf",
+        "dwg": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\DISEÑOS GEBSA DWG\ESTRUCTURA GEBSA IV.dwg",
     },
     "electrico": {
-        "pdf": r"C:\Users\jimif\Downloads\DUPLA GEBSA\electrico gebsa full.pdf",
-        "dwg": r"C:\Users\jimif\Downloads\DUPLA GEBSA\GEBSA IV- EL01 definitivos1 FINAL.dwg",
+        "pdf": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\ELECTRICOS GEBSA PDF\electrico gebsa full.pdf",
+        "dwg": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\DISEÑOS GEBSA DWG\GEBSA IV- EL01 definitivos1 FINAL.dwg",
     },
     "sanitario": {
-        "pdf": r"C:\Users\jimif\Downloads\DUPLA GEBSA\sanitario full pdf gebsa.pdf",
-        "dwg": r"C:\Users\jimif\Downloads\DUPLA GEBSA\SANITARIAS FINAL ODELIN.dwg",
+        "pdf": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\SANITARIOS GEBSA PDF\sanitario full pdf gebsa.pdf",
+        "dwg": r"C:\Users\chris\Downloads\DUPLA PDF GEBSA\DISEÑOS GEBSA DWG\SANITARIAS FINAL ODELIN.dwg",
     },
 }
 
@@ -58,7 +58,7 @@ BC3_PATH = r"data\GIV00001 (1).bc3"
 XLSX_TRAINING_PATH = r"data\PRES.xlsx"
 OFFICE_METHODOLOGY_PATH = r"knowledge\office_methodology.md"
 
-OUTPUTS_DIR = r"C:\Users\jimif\Downloads\DUPLA GEBSA\output"
+OUTPUTS_DIR = r"C:\Users\chris\Downloads\dupla1"
 
 TRANSLATION_VIEWS = ("2d",)
 TRANSLATION_TIMEOUT_SECONDS = 3600
@@ -407,12 +407,22 @@ def process_discipline(
         },
     )
 
-    logger.info("[%s] Building budget...", disc_id)
+    apu_matcher = shared.get("apu_matcher")
+    pricing_store = shared.get("pricing_store")
+    if apu_matcher is not None:
+        logger.info(
+            "[%s] Building budget with constructor APU matcher (apus=%d)",
+            disc_id, len(pricing_store.apus) if pricing_store is not None else -1,
+        )
+    else:
+        logger.info("[%s] Building budget (BC3 catalog only, no --pricing-excel)", disc_id)
     budget = build_budget_from_sources(
         context, cad_facts, vision_results,
         shared["bc3_catalog"],
         embedding_index=shared.get("embedding_index"),
         training_pairs=shared.get("training_pairs"),
+        pricing_store=pricing_store,
+        apu_matcher=apu_matcher,
     )
 
     budget_lines = len(budget.get("lines", []))
@@ -541,6 +551,13 @@ def main() -> None:
         default=0.75,
         help="Minimum source quality score required for each pipeline training source",
     )
+    parser.add_argument(
+        "--pricing-excel",
+        type=str,
+        default=None,
+        help="Path to the constructor pricing Excel (materials + labor + APUs). "
+             "When given, build_budget uses APU prices and components over BC3 catalog fallback.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -637,6 +654,30 @@ def main() -> None:
         bc3_catalog=bc3_catalog or None,
     )
 
+    pricing_store = None
+    apu_matcher = None
+    if args.pricing_excel:
+        pricing_excel_path = Path(args.pricing_excel).resolve()
+        if not pricing_excel_path.exists():
+            logger.error("Pricing Excel not found: %s", pricing_excel_path)
+            sys.exit(1)
+        from pricing.excel_price_loader import load_or_cache_constructor_pricing
+        from pricing.apu_matcher import APUMatcher
+
+        pricing_store = load_or_cache_constructor_pricing(
+            pricing_excel_path,
+            project_id=PROJECT_ID,
+        )
+        logger.info(
+            "Constructor PricingStore loaded from %s (materials=%d, labor=%d, apus=%d)",
+            pricing_excel_path,
+            len(pricing_store.materials),
+            len(pricing_store.labor),
+            len(pricing_store.apus),
+        )
+        apu_matcher = APUMatcher(pricing_store)
+        logger.info("APUMatcher initialised (shared across all disciplines this run)")
+
     shared = {
         "bc3_catalog": bc3_catalog,
         "bc3_path_value": str(bc3_catalog.get("path") or bc3_full),
@@ -648,6 +689,8 @@ def main() -> None:
         "training_source_quality_scores": source_quality_scores,
         "training_excluded_sources": excluded_sources,
         "auto_methodology": auto_methodology,
+        "pricing_store": pricing_store,
+        "apu_matcher": apu_matcher,
     }
     logger.info("Shared resources loaded")
 
