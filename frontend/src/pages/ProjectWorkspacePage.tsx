@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
@@ -211,6 +211,28 @@ export function ProjectWorkspacePage() {
       cancelled = true
     }
   }, [refreshProject])
+
+  const pliegoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const schedulePliegoRefresh = useCallback(() => {
+    if (tab !== 'pliego' || !token || !projectUuid) return
+    if (pliegoRefreshTimerRef.current) clearTimeout(pliegoRefreshTimerRef.current)
+    pliegoRefreshTimerRef.current = setTimeout(() => {
+      pliegoRefreshTimerRef.current = null
+      void refreshProject()
+    }, 450)
+  }, [tab, token, projectUuid, refreshProject])
+
+  useEffect(() => {
+    if (tab === 'pliego') schedulePliegoRefresh()
+  }, [tab, schedulePliegoRefresh])
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible' && tab === 'pliego') schedulePliegoRefresh()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [tab, schedulePliegoRefresh])
 
   const loadAuxLists = useCallback(async () => {
     if (!token || !projectUuid) return
