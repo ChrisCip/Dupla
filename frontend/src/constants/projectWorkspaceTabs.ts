@@ -11,6 +11,7 @@ const TAB_DEFS: { id: string; label: string }[] = [
   { id: 'revisiones', label: 'Revisiones' },
   { id: 'hallazgos', label: 'Hallazgos' },
   { id: 'pliego', label: 'Pliego' },
+  { id: 'presupuestoMaestro', label: 'Presupuesto maestro' },
   { id: 'eventos', label: 'Eventos' },
 ]
 

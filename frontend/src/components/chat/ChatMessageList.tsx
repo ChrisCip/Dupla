@@ -33,7 +33,7 @@ function MessageGroupBlock({
       <div
         className={`du-meta mb-0.5 max-w-[85%] px-0.5 ${mine ? 'text-right' : 'text-left'}`}
       >
-        <span className={mine ? 'text-primary' : 'text-muted'}>
+        <span className={mine ? 'font-semibold text-ink' : 'text-muted'}>
           {formatPersonFullName(group.author.first_name, group.author.last_name, group.author.email)}
         </span>
         <span className="text-muted"> · {headerTime}</span>
@@ -43,9 +43,9 @@ function MessageGroupBlock({
         return (
           <div
             key={m.uuid}
-            className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+            className={`max-w-[85%] rounded-2xl px-3 py-2.5 text-sm shadow-sm ${
               mine
-                ? 'border border-primary/25 bg-primary/10 text-ink'
+                ? 'border border-primary/20 bg-primary text-white'
                 : 'border border-black/10 bg-white text-ink'
             } ${pending ? 'opacity-75' : ''}`}
           >

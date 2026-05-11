@@ -3,9 +3,11 @@ import { useParams, useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
 import { ProjectConfigModal } from '../components/ProjectConfigModal'
-import { ProjectWorkspaceFlowAside } from '../components/project-workspace/ProjectWorkspaceFlowAside'
-import { ProjectWorkspaceHeader } from '../components/project-workspace/ProjectWorkspaceHeader'
-import { ProjectWorkspaceHub } from '../components/project-workspace/ProjectWorkspaceHub'
+import {
+  ProjectWorkspaceConsoleHeader,
+  type WorkspaceConsoleTabId,
+} from '../components/project-workspace/ProjectWorkspaceConsoleHeader'
+import { ProjectWorkspaceDashboard } from '../components/project-workspace/ProjectWorkspaceDashboard'
 import { WorkspaceArchivosTab } from '../components/project-workspace/tabs/WorkspaceArchivosTab'
 import { WorkspaceDetallesTab } from '../components/project-workspace/tabs/WorkspaceDetallesTab'
 import { WorkspaceEntregaPlanosTab } from '../components/project-workspace/tabs/WorkspaceEntregaPlanosTab'
@@ -13,6 +15,7 @@ import { WorkspaceEspecificacionesTab } from '../components/project-workspace/ta
 import { WorkspaceEventosTab } from '../components/project-workspace/tabs/WorkspaceEventosTab'
 import { WorkspaceHallazgosTab } from '../components/project-workspace/tabs/WorkspaceHallazgosTab'
 import { WorkspaceFlujoTab } from '../components/project-workspace/tabs/WorkspaceFlujoTab'
+import { WorkspacePresupuestoMaestroTab } from '../components/project-workspace/tabs/WorkspacePresupuestoMaestroTab'
 import { WorkspaceRevisionesTab } from '../components/project-workspace/tabs/WorkspaceRevisionesTab'
 import { WorkspaceTabsLayout } from '../components/project-workspace/WorkspaceTabsLayout'
 import {
@@ -27,10 +30,12 @@ import { TUTORIAL_PROJECT_UUID } from '../constants/tutorialProject'
 import { loadAdminDirectoryUsers } from '../lib/adminUsersDirectoryCache'
 import type { DirectoryUserRow } from '../lib/directoryUsers'
 import { normalizeDirectoryUsers } from '../lib/directoryUsers'
-import { projectWorkspaceSectionTabs, projectWorkspaceTabs } from '../constants/projectWorkspaceTabs'
+import { projectWorkspaceTabs } from '../constants/projectWorkspaceTabs'
 import { NEXT_WORKFLOW_PHASE, WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
+import { downloadBlob, filenameFromContentDisposition } from '../lib/download'
 import { budgetPipeline } from '../lib/budgetPipeline'
 import { mergePliegoItemStates } from '../lib/pliegoFormState'
+import { userDisplayInitials } from '../lib/taskboard'
 import { useAuthStore } from '../store/authStore'
 import type { PlanDeliveryRow } from '../types/planDelivery'
 import type { PliegoItemState } from '../types/pliegoForm'
@@ -43,6 +48,9 @@ export function ProjectWorkspacePage() {
   const [searchParams] = useSearchParams()
   const token = useAuthStore((s) => s.token)
   const role = useAuthStore((s) => s.role)
+  const email = useAuthStore((s) => s.email)
+  const firstName = useAuthStore((s) => s.firstName)
+  const lastName = useAuthStore((s) => s.lastName)
   const [tab, setTab] = useState<string>('hub')
   const [project, setProject] = useState<Project | null>(null)
   const [flowTemplateDetail, setFlowTemplateDetail] = useState<WorkflowTemplateDetail | null>(null)
@@ -81,9 +89,9 @@ export function ProjectWorkspacePage() {
   const [planDeliveryMsg, setPlanDeliveryMsg] = useState<string | null>(null)
   const [findings, setFindings] = useState<TechnicalFindingRow[]>([])
   const [configOpen, setConfigOpen] = useState(false)
+  const [headerUnread, setHeaderUnread] = useState(0)
 
   const workspaceTabs = useMemo(() => projectWorkspaceTabs(), [])
-  const sectionTabs = useMemo(() => projectWorkspaceSectionTabs(), [])
 
   useEffect(() => {
     if (!token || !project?.workflow_template_uuid) {
@@ -293,21 +301,43 @@ export function ProjectWorkspacePage() {
   }, [workspaceTabs, tab])
 
   useEffect(() => {
-    if (!token || !projectUuid || role !== 'GERENCIA' || !project) return
+    if (!token) return
     let cancelled = false
     void (async () => {
-      const [m, adminRows] = await Promise.all([
-        apiFetch(`/api/projects/${projectUuid}/members`, { token }),
-        loadAdminDirectoryUsers(token),
-      ])
-      if (cancelled) return
-      if (m.ok) setMemberRows(normalizeDirectoryUsers(await m.json()))
-      if (adminRows !== null) setAdminUsers(adminRows)
+      const res = await apiFetch('/api/me/notifications?unread_only=true', { token })
+      if (!res.ok || cancelled) return
+      const rows = (await res.json()) as unknown[]
+      if (!cancelled) setHeaderUnread(rows.length)
     })()
     return () => {
       cancelled = true
     }
-  }, [token, projectUuid, role, project])
+  }, [token])
+
+  useEffect(() => {
+    if (!token || !projectUuid || !project) return
+    let cancelled = false
+    void (async () => {
+      const m = await apiFetch(`/api/projects/${projectUuid}/members`, { token })
+      if (!m.ok || cancelled) return
+      setMemberRows(normalizeDirectoryUsers(await m.json()))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token, projectUuid, project])
+
+  useEffect(() => {
+    if (!token || role !== 'GERENCIA') return
+    let cancelled = false
+    void (async () => {
+      const adminRows = await loadAdminDirectoryUsers(token)
+      if (!cancelled && adminRows !== null) setAdminUsers(adminRows)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token, role])
 
   useEffect(() => {
     const creator = project?.created_by_user_uuid
@@ -552,6 +582,23 @@ export function ProjectWorkspacePage() {
   }
 
   const displayTitle = project?.name ?? 'Proyecto'
+
+  const exportPliegoPdf = useCallback(async () => {
+    if (!token || !projectUuid) return
+    const res = await apiFetch(`/api/projects/${projectUuid}/exports/pliego.pdf`, { token })
+    if (!res.ok) return
+    const blob = await res.blob()
+    downloadBlob(blob, filenameFromContentDisposition(res, `pliego-${projectUuid}.pdf`))
+  }, [token, projectUuid])
+
+  const exportPliegoXlsx = useCallback(async () => {
+    if (!token || !projectUuid) return
+    const res = await apiFetch(`/api/projects/${projectUuid}/exports/pliego.xlsx`, { token })
+    if (!res.ok) return
+    const blob = await res.blob()
+    downloadBlob(blob, filenameFromContentDisposition(res, `pliego-${projectUuid}.xlsx`))
+  }, [token, projectUuid])
+
   const phaseLabel = project
     ? project.current_step_title?.trim()
       ? project.current_step_title
@@ -561,37 +608,44 @@ export function ProjectWorkspacePage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-      <ProjectWorkspaceHeader
+      <ProjectWorkspaceConsoleHeader
         displayTitle={displayTitle}
-        phaseLabel={phaseLabel}
         projectUuid={projectUuid}
         token={token}
-        status="idle"
-        lastSavedAt={null}
-        lastError={null}
+        tab={tab}
+        onSelectTab={(id: WorkspaceConsoleTabId) => setTab(id)}
         onOpenConfig={() => setConfigOpen(true)}
+        unreadAlerts={headerUnread}
+        userInitials={userDisplayInitials(firstName, lastName, email ?? '?')}
+        userEmail={email}
+        role={role}
+        onGoPresupuesto={() => setTab('presupuestoMaestro')}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <WorkspaceTabsLayout tabs={workspaceTabs} activeId={tab} onSelect={setTab} labelledBy="workspace-heading">
-          {tab === 'hub' ? (
-            <div className="flex min-h-0 flex-1 flex-col gap-3 px-3 py-4 sm:px-5 sm:py-5 md:flex-row md:items-stretch">
-              <ProjectWorkspaceHub sectionTabs={sectionTabs} onOpenSection={(id) => setTab(id)} />
-              <ProjectWorkspaceFlowAside
-                projectUuid={projectUuid}
-                workflowPhase={project?.workflow_phase ?? ''}
-                phaseLabel={phaseLabel}
-                templateStepProgress={templateStepProgress}
-                nextPhase={nextPhase}
-                flowBusy={flowBusy}
-                flowMsg={flowMsg}
-                role={role}
-                onAdvancePhase={() => void advancePhase()}
-                onOpenChat={() => void openProjectChat()}
-              />
-            </div>
-          ) : null}
+      {tab === 'hub' && project ? (
+        <ProjectWorkspaceDashboard
+          project={project}
+          projectUuid={projectUuid}
+          token={token}
+          phaseLabel={phaseLabel}
+          bpDraft={bpDraft}
+          templateStepProgress={templateStepProgress}
+          orderedTemplateSteps={orderedTemplateSteps}
+          flowMsg={flowMsg}
+          flowBusy={flowBusy}
+          nextPhase={nextPhase}
+          role={role}
+          memberRows={memberRows}
+          quotesCount={quotes.length}
+          onAdvancePhase={() => void advancePhase()}
+          onOpenChat={() => void openProjectChat()}
+          onOpenTab={(id) => setTab(id)}
+        />
+      ) : null}
 
+      {tab !== 'hub' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <WorkspaceTabsLayout tabs={workspaceTabs} activeId={tab} onSelect={setTab} labelledBy="workspace-heading">
           {tab === 'detalles' ? (
             <WorkspaceDetallesTab
               project={project}
@@ -674,15 +728,16 @@ export function ProjectWorkspacePage() {
             />
           ) : null}
 
+          {tab === 'presupuestoMaestro' ? <WorkspacePresupuestoMaestroTab project={project} /> : null}
+
           {tab === 'pliego' ? (
             <WorkspaceEspecificacionesTab
               projectUuid={projectUuid}
+              projectDisplayName={displayTitle}
               token={token}
               role={role}
               specSummary={specSummary}
               setSpecSummary={setSpecSummary}
-              pliegoItemStates={pliegoItemStates}
-              setPliegoItemStates={setPliegoItemStates}
               onPersist={async () => {
                 await saveSpecifications()
               }}
@@ -700,12 +755,19 @@ export function ProjectWorkspacePage() {
               pliegoApproveBusy={pliegoApproveBusy}
               pliegoApproved={pliegoMeta.approved}
               pliegoGeneratedAt={pliegoMeta.generatedAt}
+              onExportPliegoPdf={() => void exportPliegoPdf()}
+              onExportPliegoXlsx={() => void exportPliegoXlsx()}
             />
           ) : null}
 
           {tab === 'eventos' ? <WorkspaceEventosTab token={token} projectUuid={projectUuid} /> : null}
-        </WorkspaceTabsLayout>
-      </div>
+          </WorkspaceTabsLayout>
+        </div>
+      ) : null}
+
+      {tab === 'hub' && !project ? (
+        <p className="text-sm text-muted">Cargando proyecto…</p>
+      ) : null}
 
       <ProjectConfigModal
         open={configOpen}

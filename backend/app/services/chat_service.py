@@ -220,10 +220,12 @@ class ChatService:
             )
         if conv.kind == ChatConversationKind.PROJECT:
             title = "Proyecto"
+            proj_uuid: Optional[uuid.UUID] = None
             if conv.project_id is not None:
                 proj = await self._session.get(Project, conv.project_id)
                 if proj is not None:
                     title = proj.name
+                    proj_uuid = proj.id
             return ChatConversationResponse(
                 uuid=conv.id,
                 kind=conv.kind.value,
@@ -233,6 +235,7 @@ class ChatService:
                 unread_count=unread_count,
                 participant_count=participant_count,
                 participants=None,
+                project_uuid=proj_uuid,
             )
         stmt = (
             select(User)

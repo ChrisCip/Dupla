@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import {
   ArrowLeft,
+  Calculator,
   ClipboardCheck,
   FolderOpen,
   GitBranch,
@@ -24,6 +25,7 @@ const WORKSPACE_TAB_ICONS: Record<string, LucideIcon> = {
   revisiones: ClipboardCheck,
   hallazgos: SearchCheck,
   pliego: ScrollText,
+  presupuestoMaestro: Calculator,
   eventos: History,
 }
 

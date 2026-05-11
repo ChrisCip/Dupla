@@ -1,16 +1,15 @@
+import { useAuthStore } from '../../../store/authStore'
 import { BusinessPliegoForm } from '../../BusinessPliegoForm'
-import { PliegoCondicionesForm } from '../../PliegoCondicionesForm'
+import { PliegoSideRail } from '../PliegoSideRail'
 import type { BusinessPliegoSectionKey } from '../../../constants/businessPliego'
-import type { PliegoItemState } from '../../../types/pliegoForm'
 
 type WorkspaceEspecificacionesTabProps = {
   projectUuid: string
+  projectDisplayName: string
   token: string | null
   role: string | null
   specSummary: string
   setSpecSummary: React.Dispatch<React.SetStateAction<string>>
-  pliegoItemStates: Record<string, PliegoItemState>
-  setPliegoItemStates: React.Dispatch<React.SetStateAction<Record<string, PliegoItemState>>>
   onPersist: () => Promise<void>
   specSaveBusy: boolean
   flowMsg: string | null
@@ -22,16 +21,17 @@ type WorkspaceEspecificacionesTabProps = {
   pliegoApproveBusy: boolean
   pliegoApproved: boolean
   pliegoGeneratedAt: string | null
+  onExportPliegoPdf?: () => void
+  onExportPliegoXlsx?: () => void
 }
 
 export function WorkspaceEspecificacionesTab({
   projectUuid,
+  projectDisplayName,
   token,
   role,
   specSummary,
   setSpecSummary,
-  pliegoItemStates,
-  setPliegoItemStates,
   onPersist,
   specSaveBusy,
   flowMsg,
@@ -43,36 +43,43 @@ export function WorkspaceEspecificacionesTab({
   pliegoApproveBusy,
   pliegoApproved,
   pliegoGeneratedAt,
+  onExportPliegoPdf,
+  onExportPliegoXlsx,
 }: WorkspaceEspecificacionesTabProps) {
+  const userUuid = useAuthStore((s) => s.userUuid)
   const canApprove = role === 'GERENCIA' || role === 'ARQUITECTURA'
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-ink">Pliego de condiciones</h2>
-      <BusinessPliegoForm
+    <div className="flex min-h-0 flex-col gap-6 lg:flex-row lg:items-start lg:gap-6">
+      <div className="min-w-0 flex-1 space-y-8">
+        <BusinessPliegoForm
+          documentTitle={`Pliego de condiciones — ${projectDisplayName}`}
+          sections={businessSections}
+          onSectionChange={onBusinessSectionChange}
+          specSummary={specSummary}
+          onSpecSummaryChange={setSpecSummary}
+          onGenerate={onGeneratePliego}
+          generateBusy={pliegoGenerateBusy}
+          saveBusy={specSaveBusy}
+          onSave={onPersist}
+          approved={pliegoApproved}
+          generatedAt={pliegoGeneratedAt}
+          flowMsg={flowMsg}
+          onExportPdf={onExportPliegoPdf}
+          onExportXlsx={onExportPliegoXlsx}
+        />
+      </div>
+
+      <PliegoSideRail
+        projectUuid={projectUuid}
+        token={token}
+        userUuid={userUuid}
         sections={businessSections}
-        onSectionChange={onBusinessSectionChange}
-        onGenerate={onGeneratePliego}
-        onApprove={onApprovePliego}
-        generateBusy={pliegoGenerateBusy}
-        approveBusy={pliegoApproveBusy}
-        saveBusy={specSaveBusy}
-        onSave={onPersist}
         approved={pliegoApproved}
         generatedAt={pliegoGeneratedAt}
         canApprove={canApprove}
-        flowMsg={flowMsg}
-      />
-      <h2 className="text-lg font-semibold text-ink">Formulario GA-FO-01 (ítems)</h2>
-      <PliegoCondicionesForm
-        projectUuid={projectUuid}
-        token={token}
-        specSummary={specSummary}
-        onSpecSummaryChange={setSpecSummary}
-        itemStates={pliegoItemStates}
-        onItemStatesChange={setPliegoItemStates}
-        onPersist={onPersist}
-        persistBusy={specSaveBusy}
-        flowMsg={flowMsg}
+        approveBusy={pliegoApproveBusy}
+        onApprove={onApprovePliego}
       />
     </div>
   )

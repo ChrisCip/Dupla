@@ -26,7 +26,7 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
   },
   SPECIFICATIONS: {
     title: 'Pliego de condiciones',
-    body: 'Aquí se documenta el pliego de condiciones: es el paso obligatorio antes del presupuesto. Redacta el resumen (mín. 10 caracteres) y guarda; luego podrás avanzar la fase a Presupuesto.',
+    body: 'Aquí se arma el pliego técnico por secciones (documento tipo borrador), con lista de revisión y comentarios. Completa todas las secciones, guarda y solicita aprobación antes de avanzar a Presupuesto.',
     tabId: 'pliego',
     cta: 'Ir al Pliego',
   },

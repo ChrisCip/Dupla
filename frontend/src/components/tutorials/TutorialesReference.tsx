@@ -232,10 +232,10 @@ export function TutorialesReference() {
     pliego: (
       <div className={sectionClass}>
         <p className={pClass}>
-          Trabajo con el <strong>pliego de condiciones</strong>: resumen, campos estructurados y guardado.
-          Tras publicar archivos, el sistema puede sugerir clasificaciones que aparecen como referencia en el
-          documento del pliego. Sincroniza cambios con el botón de guardar cuando proceda; los mensajes de
-          error indican campos obligatorios o conflictos de versión.
+          Trabajo con el <strong>pliego de condiciones</strong>: documento técnico por acordeones (alcance,
+          especificaciones, materiales, etc.), resumen ejecutivo, lista de revisión en el panel derecho y hilo de
+          comentarios del proyecto. Guardá el borrador con el botón correspondiente y seguí el estado hasta la
+          aprobación.
         </p>
       </div>
     ),

@@ -82,13 +82,21 @@ export function Sidebar() {
           collapsed ? 'items-center justify-center px-2.5 py-4 md:py-5' : 'px-4 py-5 md:px-5 md:py-7'
         }`}
       >
-        <DuplaLogo
-          className={
-            collapsed
-              ? 'mx-auto h-9 w-9 object-contain'
-              : 'h-10 w-auto max-w-[min(100%,320px)] object-contain object-left md:h-12'
-          }
-        />
+        <div className={collapsed ? 'flex justify-center' : 'flex flex-col gap-1'}>
+          <DuplaLogo
+            className={
+              collapsed
+                ? 'mx-auto h-9 w-9 object-contain'
+                : 'h-10 w-auto max-w-[min(100%,320px)] object-contain object-left md:h-11'
+            }
+          />
+          {!collapsed ? (
+            <div className="pt-0.5">
+              <p className="text-lg font-semibold leading-none tracking-tight text-ink">dupla</p>
+              <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-muted">Gestión de obras</p>
+            </div>
+          ) : null}
+        </div>
       </div>
       <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden p-2.5" aria-label="Principal">
         <NavLink

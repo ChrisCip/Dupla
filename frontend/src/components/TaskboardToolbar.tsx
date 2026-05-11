@@ -47,9 +47,9 @@ export function TaskboardToolbar({
             type="search"
             value={boardSearch}
             onChange={(e) => setBoardSearch(e.target.value)}
-            placeholder="Buscar en el tablero"
+            placeholder="Buscar tareas…"
             className="du-input h-9 w-full rounded-md border-black/10 bg-white py-0 pl-9 pr-3 text-sm placeholder:text-muted/90 focus:border-primary/35 focus:ring-1 focus:ring-primary/25"
-            aria-label="Buscar en el tablero"
+            aria-label="Buscar tareas"
           />
         </div>
         {showAddTask ? (

@@ -145,9 +145,9 @@ export function startProjectsTour(navigate: NavigateFunction, role: string | nul
       {
         element: '[data-tour="projects-view-toggle"]',
         popover: {
-          title: 'Lista o tablero',
+          title: 'Resumen o tablero',
           description:
-            'Alterna entre ver filas o columnas por etapa del proceso. En columnas puedes arrastrar una tarjeta a la siguiente etapa cuando la aplicación lo permita.',
+            'En Resumen ves métricas, filtros y tarjetas de obra; en Tablero, columnas por fase o paso para arrastrar tarjetas cuando corresponda.',
           side: 'left',
           align: 'start',
         },
@@ -190,7 +190,7 @@ export function startProjectsTour(navigate: NavigateFunction, role: string | nul
       popover: {
         title: 'Contenido',
         description:
-          'En columnas verás cada etapa; en lista, filas con las obras. Pulsa una obra para abrirla y trabajar dentro.',
+          'En Resumen: tarjetas con progreso y estado; en Tablero: columnas por etapa. Pulsa una obra para abrirla.',
         side: 'top',
         align: 'start',
       },
@@ -328,7 +328,7 @@ export function startWorkspaceTour(navigate: NavigateFunction): void {
           popover: {
             title: 'Accesos del workspace',
             description:
-              'Desde el inicio elegís la tarjeta de cada área (detalles, flujo, archivos, control de entregas, revisiones, hallazgos, pliego, eventos). El presupuesto y el pipeline se gestionan en Flujo. «Volver al inicio» te regresa a las tarjetas.',
+              'Desde el inicio elegís la tarjeta de cada área (detalles, flujo, presupuesto maestro, archivos, control de entregas, revisiones, hallazgos, pliego, eventos). El pipeline operativo sigue en Flujo; el presupuesto maestro (takeoff) tiene su propia pestaña. «Volver al inicio» te regresa a las tarjetas.',
             side: 'right',
             align: 'start',
           },
@@ -338,7 +338,7 @@ export function startWorkspaceTour(navigate: NavigateFunction): void {
           popover: {
             title: 'Contenido de la sección',
             description:
-              'Aquí cambia el contenido según la sección que elijas: en Flujo verás el paso activo, el pliego y el pipeline de presupuesto; en el resto, archivos, revisiones, hallazgos, etc. El ejemplo «Tutorial · Workspace Dupla» sirve para practicar sin tocar obras reales.',
+              'Aquí cambia el contenido según la sección que elijas: en Flujo verás el paso activo y el pipeline; en Presupuesto maestro, la cuadrilla takeoff demo; en Pliego, el documento técnico; en el resto, archivos, revisiones, hallazgos, etc. El ejemplo «Tutorial · Workspace Dupla» sirve para practicar sin tocar obras reales.',
             side: 'top',
             align: 'start',
           },
