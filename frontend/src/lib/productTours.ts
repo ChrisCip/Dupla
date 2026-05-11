@@ -338,7 +338,7 @@ export function startWorkspaceTour(navigate: NavigateFunction): void {
           popover: {
             title: 'Contenido de la sección',
             description:
-              'Aquí cambia el contenido según la sección que elijas: en Flujo verás el paso activo y el pipeline; en Presupuesto maestro, la cuadrilla takeoff demo; en Pliego, el documento técnico; en el resto, archivos, revisiones, hallazgos, etc. El ejemplo «Tutorial · Workspace Dupla» sirve para practicar sin tocar obras reales.',
+              'Aquí cambia el contenido según la sección que elijas: en Flujo verás el paso activo y el pipeline; en Presupuesto maestro, la cuadrilla takeoff demo; en Pliego, el checklist GA-FO-01 de documentos; en el resto, archivos, revisiones, hallazgos, etc. El ejemplo «Tutorial · Workspace Dupla» sirve para practicar sin tocar obras reales.',
             side: 'top',
             align: 'start',
           },

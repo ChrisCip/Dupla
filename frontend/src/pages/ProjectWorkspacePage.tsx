@@ -23,7 +23,6 @@ import {
   emptyBusinessPliegoSections,
   isBusinessPliegoReady,
   parseBusinessPliegoFromSpec,
-  type BusinessPliegoSectionKey,
 } from '../constants/businessPliego'
 import { defaultBootstrapCriteria } from '../constants/defaultBootstrapCriteria'
 import { TUTORIAL_PROJECT_UUID } from '../constants/tutorialProject'
@@ -34,7 +33,18 @@ import { projectWorkspaceTabs } from '../constants/projectWorkspaceTabs'
 import { NEXT_WORKFLOW_PHASE, WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
 import { downloadBlob, filenameFromContentDisposition } from '../lib/download'
 import { budgetPipeline } from '../lib/budgetPipeline'
-import { mergePliegoItemStates } from '../lib/pliegoFormState'
+import {
+  emptyConstructionLineValues,
+  isConstructionPliegoFullyComplete,
+  isConstructionPliegoSchemaActive,
+  parseConstructionPliegoFromSpec,
+  synthesizeBusinessSectionsFromConstruction,
+} from '../lib/constructionPliegoState'
+import {
+  isGaFoChecklistFullyTerminal,
+  mergePliegoItemStates,
+  stablePliegoItemStatesSignature,
+} from '../lib/pliegoFormState'
 import { userDisplayInitials } from '../lib/taskboard'
 import { useAuthStore } from '../store/authStore'
 import type { PlanDeliveryRow } from '../types/planDelivery'
@@ -64,11 +74,12 @@ export function ProjectWorkspacePage() {
   )
   const [specSaveBusy, setSpecSaveBusy] = useState(false)
   const [businessPliegoSections, setBusinessPliegoSections] = useState(() => emptyBusinessPliegoSections())
+  const [constructionLines, setConstructionLines] = useState(() => emptyConstructionLineValues())
+  const [constructionDirty, setConstructionDirty] = useState(false)
   const [pliegoMeta, setPliegoMeta] = useState<{ approved: boolean; generatedAt: string | null }>({
     approved: false,
     generatedAt: null,
   })
-  const [pliegoGenerateBusy, setPliegoGenerateBusy] = useState(false)
   const [pliegoApproveBusy, setPliegoApproveBusy] = useState(false)
   const [revisions, setRevisions] = useState<RevisionRow[]>([])
   const [quotes, setQuotes] = useState<SubcontractQuoteRow[]>([])
@@ -150,6 +161,10 @@ export function ProjectWorkspacePage() {
     const bpParsed = parseBusinessPliegoFromSpec(body.specifications_document)
     setBusinessPliegoSections(bpParsed.sections)
     setPliegoMeta({ approved: bpParsed.approved, generatedAt: bpParsed.generatedAt })
+    setConstructionLines(
+      parseConstructionPliegoFromSpec(body.specifications_document as Record<string, unknown>),
+    )
+    setConstructionDirty(false)
     setBpDraft(budgetPipeline(body.workflow_meta ?? {}))
     setClientVersion(
       typeof budgetPipeline(body.workflow_meta ?? {}).client_approved_version_label === 'string'
@@ -355,20 +370,52 @@ export function ProjectWorkspacePage() {
     if (next === 'BUDGETING_PIPELINE') {
       const spec = project.specifications_document
       const specObj = spec && typeof spec === 'object' ? (spec as Record<string, unknown>) : undefined
-      const hasStructured = Boolean(
+      const parsed = parseBusinessPliegoFromSpec(specObj)
+      const cpActive = isConstructionPliegoSchemaActive(specObj)
+      const hasLegacyBusiness = Boolean(
         specObj?.business_pliego && typeof specObj.business_pliego === 'object',
       )
-      const parsed = parseBusinessPliegoFromSpec(specObj)
-      if (hasStructured) {
+      if (constructionDirty && cpActive) {
+        setFlowMsg('Guardá el pliego para registrar las partidas antes de avanzar de fase.')
+        return
+      }
+      if (cpActive) {
+        if (!isConstructionPliegoFullyComplete(constructionLines)) {
+          setFlowMsg(
+            'Completa todas las partidas del pliego (unidad, cantidad y precio unitario en cada ítem) y obtené aprobación de Gerencia o Arquitectura.',
+          )
+          return
+        }
+        if (!parsed.approved) {
+          setFlowMsg('El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto.')
+          return
+        }
+      } else if (hasLegacyBusiness) {
         if (!isBusinessPliegoReady(parsed.sections, parsed.approved)) {
           setFlowMsg(
             'Completa las nueve secciones del pliego (mín. 10 caracteres cada una) y obtén aprobación de Gerencia o Arquitectura.',
           )
           return
         }
-      } else if (specSummary.trim().length < 10) {
-        setFlowMsg('Completa el pliego: resumen mínimo 10 caracteres o genera el pliego estructurado.')
-        return
+      } else {
+        const ga = specObj?.ga_fo_01_arquitectura
+        const gaIsV1 =
+          ga && typeof ga === 'object' && (ga as Record<string, unknown>).schema_version === 1
+        if (gaIsV1) {
+          if (!isGaFoChecklistFullyTerminal(pliegoItemStates)) {
+            setFlowMsg(
+              'Completa el checklist GA-FO-01 (cada documento en Completo o No aplica) y guardá en la pestaña Pliego.',
+            )
+            return
+          }
+          if (!parsed.approved) {
+            setFlowMsg('El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto.')
+            return
+          }
+        } else if (specSummary.trim().length < 10) {
+          setFlowMsg('Completa el pliego: resumen mínimo 10 caracteres o genera el pliego estructurado.')
+          return
+        }
       }
     }
     if (next === 'BUDGET_APPROVED') {
@@ -427,28 +474,62 @@ export function ProjectWorkspacePage() {
     setSpecSaveBusy(true)
     try {
       const prev = project.specifications_document ?? {}
+      const prevRec = prev && typeof prev === 'object' ? (prev as Record<string, unknown>) : undefined
       const prevBp =
         prev && typeof prev === 'object' && 'business_pliego' in prev
           ? (prev as Record<string, unknown>).business_pliego
           : null
       const pbd = prevBp && typeof prevBp === 'object' ? (prevBp as Record<string, unknown>) : null
+      const specHasCp = isConstructionPliegoSchemaActive(prevRec)
+      const useConstruction = constructionDirty || specHasCp
       const hasSectionText = BUSINESS_PLIEGO_SECTION_KEYS.some(
         (k) => (businessPliegoSections[k]?.trim().length ?? 0) > 0,
       )
+      const sectionsForSave = useConstruction
+        ? synthesizeBusinessSectionsFromConstruction(constructionLines)
+        : businessPliegoSections
       const includeBusinessPliego =
-        pbd != null || pliegoMeta.generatedAt != null || hasSectionText
+        pbd != null || pliegoMeta.generatedAt != null || hasSectionText || useConstruction
+      const prevGaRaw = prevRec?.ga_fo_01_arquitectura
+      const prevGa =
+        prevGaRaw && typeof prevGaRaw === 'object' ? (prevGaRaw as Record<string, unknown>) : null
+      const serverMergedStates = mergePliegoItemStates(
+        prevGa?.item_states as Record<string, unknown> | undefined,
+      )
+      const keepGaApproval =
+        stablePliegoItemStatesSignature(pliegoItemStates) === stablePliegoItemStatesSignature(serverMergedStates) &&
+        Boolean(prevGa?.approved)
+
       const doc: Record<string, unknown> = {
         ...prev,
         summary: specSummary,
-        ga_fo_01_arquitectura: {
+        ga_fo_01_arquitectura: keepGaApproval
+          ? {
+              schema_version: 1 as const,
+              item_states: pliegoItemStates,
+              approved: true,
+              approved_at: typeof prevGa?.approved_at === 'string' ? prevGa.approved_at : null,
+              approved_by_user_uuid:
+                typeof prevGa?.approved_by_user_uuid === 'string' ? prevGa.approved_by_user_uuid : null,
+            }
+          : {
+              schema_version: 1 as const,
+              item_states: pliegoItemStates,
+              approved: false,
+              approved_at: null,
+              approved_by_user_uuid: null,
+            },
+      }
+      if (useConstruction) {
+        doc.construction_pliego = {
           schema_version: 1 as const,
-          item_states: pliegoItemStates,
-        },
+          lines: constructionLines,
+        }
       }
       if (includeBusinessPliego) {
         doc.business_pliego = {
           schema_version: 1,
-          sections: businessPliegoSections,
+          sections: sectionsForSave,
           generated_at: typeof pbd?.generated_at === 'string' ? pbd.generated_at : null,
           approved: Boolean(pbd?.approved),
           approved_at: typeof pbd?.approved_at === 'string' ? pbd.approved_at : null,
@@ -471,33 +552,12 @@ export function ProjectWorkspacePage() {
       const parsed = parseBusinessPliegoFromSpec(p.specifications_document)
       setBusinessPliegoSections(parsed.sections)
       setPliegoMeta({ approved: parsed.approved, generatedAt: parsed.generatedAt })
+      setConstructionLines(
+        parseConstructionPliegoFromSpec(p.specifications_document as Record<string, unknown>),
+      )
+      setConstructionDirty(false)
     } finally {
       setSpecSaveBusy(false)
-    }
-  }
-
-  async function generatePliego(force: boolean) {
-    if (!token) return
-    setFlowMsg(null)
-    setPliegoGenerateBusy(true)
-    try {
-      const res = await apiFetch(`/api/projects/${projectUuid}/specifications/generate`, {
-        method: 'POST',
-        token,
-        body: JSON.stringify({ force }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setFlowMsg((j as { detail?: string }).detail ?? 'No se pudo generar el borrador')
-        return
-      }
-      const p = j as Project
-      setProject(p)
-      const parsed = parseBusinessPliegoFromSpec(p.specifications_document)
-      setBusinessPliegoSections(parsed.sections)
-      setPliegoMeta({ approved: parsed.approved, generatedAt: parsed.generatedAt })
-    } finally {
-      setPliegoGenerateBusy(false)
     }
   }
 
@@ -524,10 +584,6 @@ export function ProjectWorkspacePage() {
     } finally {
       setPliegoApproveBusy(false)
     }
-  }
-
-  function onBusinessSectionChange(key: BusinessPliegoSectionKey, value: string) {
-    setBusinessPliegoSections((s) => ({ ...s, [key]: value }))
   }
 
   async function saveBudgetPipeline() {
@@ -736,22 +792,16 @@ export function ProjectWorkspacePage() {
               projectDisplayName={displayTitle}
               token={token}
               role={role}
-              specSummary={specSummary}
-              setSpecSummary={setSpecSummary}
+              pliegoItemStates={pliegoItemStates}
+              setPliegoItemStates={setPliegoItemStates}
               onPersist={async () => {
                 await saveSpecifications()
               }}
               specSaveBusy={specSaveBusy}
               flowMsg={flowMsg}
-              businessSections={businessPliegoSections}
-              onBusinessSectionChange={onBusinessSectionChange}
-              onGeneratePliego={async (f) => {
-                await generatePliego(f)
-              }}
               onApprovePliego={async () => {
                 await approvePliego()
               }}
-              pliegoGenerateBusy={pliegoGenerateBusy}
               pliegoApproveBusy={pliegoApproveBusy}
               pliegoApproved={pliegoMeta.approved}
               pliegoGeneratedAt={pliegoMeta.generatedAt}

@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Tuple
@@ -30,6 +31,7 @@ from app.models.user import User, UserModule, UserRole
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.workflow_template_repository import WorkflowTemplateRepository
 from app.security.password import hash_password
+from app.seed_default_workflow_template import ensure_default_workflow_template_if_missing
 
 
 _MISSING_SCHEMA_HINT = (
@@ -138,12 +140,27 @@ async def _ensure_tutorial_project_and_task(session) -> None:
     if master_id is None:
         return
 
+    inserted = await ensure_default_workflow_template_if_missing(session)
+    if inserted:
+        print(
+            "[seed] workflow_templates estaba vacío: se insertó la plantilla estándar Dupla.",
+            file=sys.stderr,
+        )
+
     wtr = WorkflowTemplateRepository(session)
     tpl = await wtr.get_default_active_template()
     if tpl is None:
+        print(
+            "[seed] Sin plantilla de flujo activa; se omite el proyecto tutorial.",
+            file=sys.stderr,
+        )
         return
     ordered_steps = await wtr.list_steps_ordered(tpl.id)
     if not ordered_steps:
+        print(
+            "[seed] La plantilla por defecto no tiene pasos; se omite el proyecto tutorial.",
+            file=sys.stderr,
+        )
         return
     initial_step = ordered_steps[0]
     initial_phase = effective_workflow_phase_for_step(0)

@@ -1,23 +1,19 @@
 import { useAuthStore } from '../../../store/authStore'
-import { BusinessPliegoForm } from '../../BusinessPliegoForm'
+import { PliegoCondicionesForm } from '../../PliegoCondicionesForm'
 import { PliegoSideRail } from '../PliegoSideRail'
-import type { BusinessPliegoSectionKey } from '../../../constants/businessPliego'
+import type { PliegoItemState } from '../../../types/pliegoForm'
 
 type WorkspaceEspecificacionesTabProps = {
   projectUuid: string
   projectDisplayName: string
   token: string | null
   role: string | null
-  specSummary: string
-  setSpecSummary: React.Dispatch<React.SetStateAction<string>>
+  pliegoItemStates: Record<string, PliegoItemState>
+  setPliegoItemStates: React.Dispatch<React.SetStateAction<Record<string, PliegoItemState>>>
   onPersist: () => Promise<void>
   specSaveBusy: boolean
   flowMsg: string | null
-  businessSections: Record<BusinessPliegoSectionKey, string>
-  onBusinessSectionChange: (key: BusinessPliegoSectionKey, value: string) => void
-  onGeneratePliego: (force: boolean) => Promise<void>
   onApprovePliego: () => Promise<void>
-  pliegoGenerateBusy: boolean
   pliegoApproveBusy: boolean
   pliegoApproved: boolean
   pliegoGeneratedAt: string | null
@@ -30,16 +26,12 @@ export function WorkspaceEspecificacionesTab({
   projectDisplayName,
   token,
   role,
-  specSummary,
-  setSpecSummary,
+  pliegoItemStates,
+  setPliegoItemStates,
   onPersist,
   specSaveBusy,
   flowMsg,
-  businessSections,
-  onBusinessSectionChange,
-  onGeneratePliego,
   onApprovePliego,
-  pliegoGenerateBusy,
   pliegoApproveBusy,
   pliegoApproved,
   pliegoGeneratedAt,
@@ -51,19 +43,15 @@ export function WorkspaceEspecificacionesTab({
 
   return (
     <div className="flex min-h-0 flex-col gap-6 lg:flex-row lg:items-start lg:gap-6">
-      <div className="min-w-0 flex-1 space-y-8">
-        <BusinessPliegoForm
+      <div className="min-w-0 flex-1">
+        <PliegoCondicionesForm
+          projectUuid={projectUuid}
+          token={token}
           documentTitle={`Pliego de condiciones — ${projectDisplayName}`}
-          sections={businessSections}
-          onSectionChange={onBusinessSectionChange}
-          specSummary={specSummary}
-          onSpecSummaryChange={setSpecSummary}
-          onGenerate={onGeneratePliego}
-          generateBusy={pliegoGenerateBusy}
-          saveBusy={specSaveBusy}
-          onSave={onPersist}
-          approved={pliegoApproved}
-          generatedAt={pliegoGeneratedAt}
+          itemStates={pliegoItemStates}
+          onItemStatesChange={setPliegoItemStates}
+          onPersist={onPersist}
+          persistBusy={specSaveBusy}
           flowMsg={flowMsg}
           onExportPdf={onExportPliegoPdf}
           onExportXlsx={onExportPliegoXlsx}
@@ -74,7 +62,7 @@ export function WorkspaceEspecificacionesTab({
         projectUuid={projectUuid}
         token={token}
         userUuid={userUuid}
-        sections={businessSections}
+        itemStates={pliegoItemStates}
         approved={pliegoApproved}
         generatedAt={pliegoGeneratedAt}
         canApprove={canApprove}

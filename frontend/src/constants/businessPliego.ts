@@ -42,9 +42,18 @@ export function parseBusinessPliegoFromSpec(spec: Record<string, unknown> | unde
   if (!spec || typeof spec !== 'object') {
     return { sections: base, approved: false, generatedAt: null }
   }
+  const ga = spec.ga_fo_01_arquitectura
+  let gaApproved = false
+  let gaApprovedAt: string | null = null
+  if (ga && typeof ga === 'object') {
+    const g = ga as Record<string, unknown>
+    gaApproved = Boolean(g.approved)
+    gaApprovedAt = typeof g.approved_at === 'string' ? g.approved_at : null
+  }
+
   const bp = spec.business_pliego
   if (!bp || typeof bp !== 'object') {
-    return { sections: base, approved: false, generatedAt: null }
+    return { sections: base, approved: gaApproved, generatedAt: gaApprovedAt }
   }
   const b = bp as Record<string, unknown>
   const raw = b.sections
@@ -56,10 +65,12 @@ export function parseBusinessPliegoFromSpec(spec: Record<string, unknown> | unde
     }
   }
   const g = b.generated_at
+  const bpApproved = Boolean(b.approved)
+  const genAt = typeof g === 'string' ? g : null
   return {
     sections,
-    approved: Boolean(b.approved),
-    generatedAt: typeof g === 'string' ? g : null,
+    approved: bpApproved || gaApproved,
+    generatedAt: genAt ?? gaApprovedAt,
   }
 }
 

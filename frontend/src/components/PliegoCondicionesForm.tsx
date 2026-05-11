@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 
+import { ChevronDown, ChevronRight, Download, Printer } from 'lucide-react'
+
 import { apiFetch } from '../api/client'
 import { PLIEGO_ITEM_ESTADO_OPTIONS, pliegoEstadoLabel } from '../constants/pliegoItemEstado'
 import { PLIEGO_GA_FO_01_ARQUITECTURA } from '../data/pliegoGaFo01Arquitectura'
@@ -47,39 +49,40 @@ function estadoTone(st: PliegoItemEstado): string {
 type Props = {
   projectUuid: string
   token: string | null
-  specSummary: string
-  onSpecSummaryChange: (v: string) => void
+  documentTitle: string
   itemStates: Record<string, PliegoItemState>
   onItemStatesChange: (next: Record<string, PliegoItemState>) => void
   onPersist: () => Promise<void>
   persistBusy: boolean
   flowMsg: string | null
+  onExportPdf?: () => void
+  onExportXlsx?: () => void
 }
 
 export function PliegoCondicionesForm({
   projectUuid,
   token,
-  specSummary,
-  onSpecSummaryChange,
+  documentTitle,
   itemStates,
   onItemStatesChange,
   onPersist,
   persistBusy,
   flowMsg,
+  onExportPdf,
+  onExportXlsx,
 }: Props) {
-  const [activeSection, setActiveSection] = useState<string>(
-    PLIEGO_GA_FO_01_ARQUITECTURA.secciones[0]?.id ?? 'permisologia',
-  )
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    PLIEGO_GA_FO_01_ARQUITECTURA.secciones.forEach((s, i) => {
+      init[s.id] = i < 2
+    })
+    return init
+  })
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [pendingItemId, setPendingItemId] = useState<string | null>(null)
 
   const progress = useMemo(() => pliegoProgressPercent(itemStates), [itemStates])
-
-  const active = useMemo(
-    () => PLIEGO_GA_FO_01_ARQUITECTURA.secciones.find((s) => s.id === activeSection),
-    [activeSection],
-  )
 
   function patchItem(itemId: string, partial: Partial<PliegoItemState>) {
     const prev = itemStates[itemId] ?? { estado: 'PENDIENTE' as const, notas: '', file_uuid: null, file_name: null }
@@ -117,8 +120,12 @@ export function PliegoCondicionesForm({
     }
   }
 
+  function toggleSection(id: string) {
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+    <div className="min-w-0 flex-1">
       <input
         ref={fileInputRef}
         type="file"
@@ -127,176 +134,185 @@ export function PliegoCondicionesForm({
         onChange={(e) => void onFileSelected(e.target.files)}
       />
 
-      <nav
-        className="lg:w-64 lg:shrink-0 lg:sticky lg:top-4 lg:self-start"
-        aria-label="Secciones del pliego"
-      >
-        <div className="rounded-lg border border-black/10 bg-white p-2 shadow-[var(--shadow-card)]">
-          <p className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted">Secciones</p>
-          <ul className="max-h-[50vh] space-y-0.5 overflow-y-auto lg:max-h-[calc(100vh-8rem)]">
-            {PLIEGO_GA_FO_01_ARQUITECTURA.secciones.map((sec) => (
-              <li key={sec.id}>
-                <button
-                  type="button"
-                  onClick={() => setActiveSection(sec.id)}
-                  className={`w-full rounded-md px-2 py-2 text-left text-sm transition-colors ${
-                    activeSection === sec.id
-                      ? 'bg-primary/10 font-medium text-ink ring-1 ring-primary/25'
-                      : 'text-muted hover:bg-black/[0.03] hover:text-ink'
-                  }`}
-                >
-                  {sec.titulo}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </nav>
-
-      <div className="min-w-0 flex-1 space-y-6">
-        <div className="rounded-lg border border-black/10 bg-white p-4 shadow-[var(--shadow-card)]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Progreso del checklist</p>
-              <p className="mt-1 text-sm text-muted">
-                Completo / No aplica frente al total de partidas (GA-FO-01).
+      <div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-[var(--shadow-card)]">
+        <header className="border-b border-black/8 bg-white px-5 py-5 sm:px-6 sm:py-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">Documento técnico</p>
+              <h2 className="mt-1.5 text-xl font-bold tracking-tight text-ink sm:text-2xl">{documentTitle}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+                GA-FO-01 Arquitectura: checklist de documentos por sección. Marcá cada ítem como Completo o No aplica y
+                adjuntá archivos cuando corresponda.
               </p>
+            </div>
+            {(onExportPdf || onExportXlsx) && (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {onExportPdf ? (
+                  <button
+                    type="button"
+                    className="inline-flex size-10 items-center justify-center rounded-lg border border-black/12 bg-white text-ink shadow-sm transition hover:border-black/20 hover:bg-black/[0.02]"
+                    onClick={onExportPdf}
+                    aria-label="Exportar pliego en PDF"
+                  >
+                    <Printer className="size-[18px] text-primary" strokeWidth={2} aria-hidden />
+                  </button>
+                ) : null}
+                {onExportXlsx ? (
+                  <button
+                    type="button"
+                    className="inline-flex size-10 items-center justify-center rounded-lg border border-black/12 bg-white text-ink shadow-sm transition hover:border-black/20 hover:bg-black/[0.02]"
+                    onClick={onExportXlsx}
+                    aria-label="Exportar pliego en Excel"
+                  >
+                    <Download className="size-[18px] text-primary" strokeWidth={2} aria-hidden />
+                  </button>
+                ) : null}
+              </div>
+            )}
+          </div>
+          {flowMsg ? <p className="mt-3 text-sm font-medium text-primary">{flowMsg}</p> : null}
+          <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-black/6 pt-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Avance del checklist</p>
+              <p className="mt-0.5 text-xs text-muted">Completo / No aplica sobre el total de documentos</p>
             </div>
             <span className="text-2xl font-semibold tabular-nums text-ink">{progress}%</span>
           </div>
-          <div className="mt-3 h-2 rounded-full bg-black/[0.06]">
+          <div className="mt-2.5 h-1.5 rounded-full bg-black/[0.07]">
             <div
-              className="h-2 rounded-full bg-primary/80 transition-[width] duration-300"
+              className="h-1.5 rounded-full bg-primary transition-[width] duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
-        </div>
+        </header>
 
-        <div className="rounded-lg border border-black/10 bg-white p-2 shadow-[var(--shadow-card)]">
-          <p className="px-3 py-2 text-sm text-muted">
-            Este paso va <span className="font-medium text-ink">antes del presupuesto</span>. El resumen debe tener al
-            menos 10 caracteres para avanzar la fase a Presupuesto en <strong className="text-ink">Flujo</strong>.
-          </p>
-          {flowMsg ? <p className="px-3 pb-2 text-sm text-primary">{flowMsg}</p> : null}
-          <label htmlFor="spec-summary-ga" className="du-label px-3">
-            Resumen ejecutivo del pliego
-          </label>
-          <textarea
-            id="spec-summary-ga"
-            className="du-input mx-3 mb-3 min-h-[120px] w-[calc(100%-1.5rem)] text-sm"
-            value={specSummary}
-            onChange={(e) => onSpecSummaryChange(e.target.value)}
-            aria-label="Resumen del pliego de condiciones"
-          />
-        </div>
-
-        {active ? (
-          <section className="rounded-lg border border-black/10 bg-white shadow-[var(--shadow-card)]">
-            <div className="border-b border-black/5 px-4 py-3">
-              <h3 className="text-base font-semibold text-ink">{active.titulo}</h3>
-              <p className="mt-0.5 text-xs text-muted">{active.items.length} partidas</p>
-            </div>
-            <ul className="divide-y divide-black/5">
-              {active.items.map((it) => {
-                const st = itemStates[it.id] ?? {
-                  estado: 'PENDIENTE' as const,
-                  notas: '',
-                  file_uuid: null,
-                  file_name: null,
-                }
-                const busy = uploadingId === it.id
-                return (
-                  <li
-                    key={it.id}
-                    className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-black/[0.015] sm:flex-row sm:items-start sm:justify-between"
+        <div className="divide-y divide-black/8">
+          {PLIEGO_GA_FO_01_ARQUITECTURA.secciones.map((sec, secIdx) => {
+            const isOpen = expanded[sec.id] ?? false
+            const numLabel = String(secIdx + 1).padStart(2, '0')
+            return (
+              <section key={sec.id} className="bg-white">
+                <h3 className="m-0">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(sec.id)}
+                    aria-expanded={isOpen}
+                    className="flex w-full items-center gap-3 bg-black/[0.025] px-4 py-3.5 text-left transition-colors hover:bg-black/[0.04] sm:px-5"
                   >
-                    <div className="min-w-0 flex-1">
-                      <span className="font-mono text-[11px] text-primary">{it.id}</span>
-                      <p className="text-sm font-medium leading-snug text-ink">{it.nombre}</p>
-                      <span
-                        className={`mt-2 inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium ${estadoTone(st.estado)}`}
-                      >
-                        {pliegoEstadoLabel(st.estado)}
-                      </span>
-                      <label className="mt-2 block text-[11px] text-muted">
-                        Notas
-                        <input
-                          className="du-input mt-1 w-full py-1.5 text-sm"
-                          value={st.notas ?? ''}
-                          onChange={(e) => patchItem(it.id, { notas: e.target.value })}
-                          placeholder="Observaciones…"
-                        />
-                      </label>
-                    </div>
-                    <div className="flex shrink-0 flex-col gap-2 sm:w-52">
-                      <label className="block text-[11px] text-muted">
-                        Estado
-                        <select
-                          className="du-input mt-1 w-full py-1.5 text-sm"
-                          value={st.estado}
-                          onChange={(e) => patchItem(it.id, { estado: e.target.value as PliegoItemEstado })}
+                    <span
+                      className="flex size-8 shrink-0 items-center justify-center rounded bg-primary text-[11px] font-bold text-white"
+                      aria-hidden
+                    >
+                      {numLabel}
+                    </span>
+                    <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-ink sm:text-[15px]">
+                      {sec.titulo}
+                    </span>
+                    <span className="shrink-0 text-[11px] tabular-nums text-muted">{sec.items.length} docs</span>
+                    <span className="flex size-8 shrink-0 items-center justify-center text-muted" aria-hidden>
+                      {isOpen ? (
+                        <ChevronDown className="size-5" strokeWidth={2} />
+                      ) : (
+                        <ChevronRight className="size-5" strokeWidth={2} />
+                      )}
+                    </span>
+                  </button>
+                </h3>
+                {isOpen ? (
+                  <ul className="m-0 list-none divide-y divide-black/6 border-t border-black/6 bg-white p-0">
+                    {sec.items.map((it) => {
+                      const st = itemStates[it.id] ?? {
+                        estado: 'PENDIENTE' as const,
+                        notas: '',
+                        file_uuid: null,
+                        file_name: null,
+                      }
+                      const busy = uploadingId === it.id
+                      return (
+                        <li
+                          key={it.id}
+                          className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5"
                         >
-                          {PLIEGO_ITEM_ESTADO_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-2 rounded-md border border-black/10 bg-black/[0.03] px-3 py-2 text-sm font-medium text-ink hover:bg-black/[0.06] disabled:opacity-50"
-                          disabled={busy || !token}
-                          onClick={() => openFilePicker(it.id)}
-                          aria-label={`Adjuntar archivo para ${it.id}`}
-                        >
-                          <UploadIcon className="text-primary" />
-                          {busy ? 'Subiendo…' : 'Adjuntar'}
-                        </button>
-                        {st.file_uuid && st.file_name ? (
-                          <a
-                            className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-                            href={`/api/projects/${projectUuid}/files/${st.file_uuid}/download`}
-                            onClick={async (e) => {
-                              e.preventDefault()
-                              if (!token) return
-                              const res = await apiFetch(
-                                `/api/projects/${projectUuid}/files/${st.file_uuid}/download`,
-                                { token },
-                              )
-                              if (!res.ok) return
-                              const blob = await res.blob()
-                              const url = URL.createObjectURL(blob)
-                              const a = document.createElement('a')
-                              a.href = url
-                              a.download = st.file_name ?? 'archivo'
-                              a.click()
-                              URL.revokeObjectURL(url)
-                            }}
-                          >
-                            {st.file_name}
-                          </a>
-                        ) : (
-                          <span className="text-[11px] text-muted">Sin archivo</span>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        ) : null}
+                          <div className="min-w-0 flex-1">
+                            <span className="font-mono text-[11px] font-medium text-primary">{it.id}</span>
+                            <p className="mt-0.5 text-sm font-medium leading-snug text-ink">{it.nombre}</p>
+                            <span
+                              className={`mt-2 inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium ${estadoTone(st.estado)}`}
+                            >
+                              {pliegoEstadoLabel(st.estado)}
+                            </span>
+                          </div>
+                          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-52">
+                            <label className="block text-[11px] font-medium text-muted">
+                              Estado
+                              <select
+                                className="du-input mt-1 w-full py-2 text-sm"
+                                value={st.estado}
+                                onChange={(e) => patchItem(it.id, { estado: e.target.value as PliegoItemEstado })}
+                              >
+                                {PLIEGO_ITEM_ESTADO_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>
+                                    {o.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-2 rounded-lg border border-black/12 bg-black/[0.03] px-3 py-2 text-sm font-medium text-ink transition hover:bg-black/[0.06] disabled:opacity-50"
+                                disabled={busy || !token}
+                                onClick={() => openFilePicker(it.id)}
+                                aria-label={`Adjuntar archivo para ${it.id}`}
+                              >
+                                <UploadIcon className="text-primary" />
+                                {busy ? 'Subiendo…' : 'Adjuntar'}
+                              </button>
+                              {st.file_uuid && st.file_name ? (
+                                <a
+                                  className="max-w-[10rem] truncate text-xs font-medium text-primary underline-offset-2 hover:underline sm:max-w-[12rem]"
+                                  href={`/api/projects/${projectUuid}/files/${st.file_uuid}/download`}
+                                  title={st.file_name}
+                                  onClick={async (e) => {
+                                    e.preventDefault()
+                                    if (!token) return
+                                    const res = await apiFetch(
+                                      `/api/projects/${projectUuid}/files/${st.file_uuid}/download`,
+                                      { token },
+                                    )
+                                    if (!res.ok) return
+                                    const blob = await res.blob()
+                                    const url = URL.createObjectURL(blob)
+                                    const a = document.createElement('a')
+                                    a.href = url
+                                    a.download = st.file_name ?? 'archivo'
+                                    a.click()
+                                    URL.revokeObjectURL(url)
+                                  }}
+                                >
+                                  {st.file_name}
+                                </a>
+                              ) : (
+                                <span className="text-[11px] text-muted">Sin archivo</span>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : null}
+              </section>
+            )
+          })}
+        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <footer className="flex flex-wrap items-center gap-3 border-t border-black/8 bg-black/[0.02] px-5 py-4 sm:px-6">
           <PrimaryButton type="button" disabled={persistBusy} onClick={() => void onPersist()}>
             {persistBusy ? 'Guardando…' : 'Guardar pliego de condiciones'}
           </PrimaryButton>
-          <span className="text-xs text-muted">
-            Incluye el resumen y el estado de cada partida del GA-FO-01.
-          </span>
-        </div>
+          <span className="text-xs text-muted">Guardá para registrar el checklist en el proyecto.</span>
+        </footer>
       </div>
     </div>
   )

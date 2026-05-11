@@ -10,4 +10,7 @@ export type PliegoItemState = {
 export type PliegoGaFo01Persisted = {
   schema_version: 1
   item_states: Record<string, PliegoItemState>
+  approved?: boolean
+  approved_at?: string | null
+  approved_by_user_uuid?: string | null
 }

@@ -6,6 +6,6 @@ export const PROJECT_WORKSPACE_HUB_DESCRIPTIONS: Record<string, string> = {
   entregaPlanos: 'Solicitudes y seguimiento del control de entregas.',
   revisiones: 'Registro de revisiones por rol (arquitectura, control, presupuesto).',
   hallazgos: 'Observaciones técnicas y seguimiento.',
-  pliego: 'Pliego de condiciones: documento técnico por secciones y revisión.',
+  pliego: 'Pliego GA-FO-01: checklist de documentos por sección, adjuntos y aprobación.',
   eventos: 'Historial de cambios y auditoría del proyecto.',
 }

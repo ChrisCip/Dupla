@@ -1,19 +1,16 @@
 import { useMemo, useState } from 'react'
 import { ChevronRight, Printer, Download } from 'lucide-react'
 
-import {
-  BUSINESS_PLIEGO_SECTION_KEYS,
-  BUSINESS_PLIEGO_SECTION_LABELS,
-  MIN_PLIEGO_SECTION_LEN,
-  type BusinessPliegoSectionKey,
-} from '../constants/businessPliego'
+import { CONSTRUCTION_PLIEGO_CHAPTERS } from '../constants/constructionPliegoStructure'
+import { lineSubtotal } from '../lib/constructionPliegoState'
+import type { ConstructionLineValue } from '../types/constructionPliego'
 
 import { PrimaryButton } from './PrimaryButton'
 
 type BusinessPliegoFormProps = {
   documentTitle: string
-  sections: Record<BusinessPliegoSectionKey, string>
-  onSectionChange: (key: BusinessPliegoSectionKey, value: string) => void
+  lineValues: Record<string, ConstructionLineValue>
+  onLineChange: (idItem: string, patch: Partial<ConstructionLineValue>) => void
   specSummary: string
   onSpecSummaryChange: (value: string) => void
   onGenerate: (force: boolean) => Promise<void>
@@ -27,10 +24,14 @@ type BusinessPliegoFormProps = {
   onExportXlsx?: () => void
 }
 
+function fmtMoney(n: number): string {
+  return new Intl.NumberFormat('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
+}
+
 export function BusinessPliegoForm({
   documentTitle,
-  sections,
-  onSectionChange,
+  lineValues,
+  onLineChange,
   specSummary,
   onSpecSummaryChange,
   onGenerate,
@@ -43,30 +44,34 @@ export function BusinessPliegoForm({
   onExportPdf,
   onExportXlsx,
 }: BusinessPliegoFormProps) {
-  const [open, setOpen] = useState<Record<string, boolean>>(() => {
-    const o: Record<string, boolean> = {}
-    BUSINESS_PLIEGO_SECTION_KEYS.forEach((k, i) => {
-      o[k] = i < 2
+  const [open, setOpen] = useState<Record<number, boolean>>(() => {
+    const o: Record<number, boolean> = {}
+    CONSTRUCTION_PLIEGO_CHAPTERS.forEach((ch, i) => {
+      o[ch.num] = i < 2
     })
     return o
   })
 
-  const materialLines = useMemo(() => {
-    const raw = sections.materials ?? ''
-    return raw
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean)
-  }, [sections.materials])
+  const chapterSubtotals = useMemo(() => {
+    const out: Record<number, number> = {}
+    for (const ch of CONSTRUCTION_PLIEGO_CHAPTERS) {
+      let s = 0
+      for (const it of ch.items) {
+        const sub = lineSubtotal(lineValues[it.id_item] ?? { unidad: '', cantidad: '', unitario: '' })
+        if (sub != null) s += sub
+      }
+      out[ch.num] = Math.round(s * 100) / 100
+    }
+    return out
+  }, [lineValues])
 
-  function toggle(key: BusinessPliegoSectionKey) {
-    setOpen((prev) => ({ ...prev, [key]: !prev[key] }))
-  }
+  const docTotal = useMemo(
+    () => Math.round(Object.values(chapterSubtotals).reduce((a, b) => a + b, 0) * 100) / 100,
+    [chapterSubtotals],
+  )
 
-  function appendMaterialLine() {
-    const cur = sections.materials ?? ''
-    const next = cur.trim().length > 0 ? `${cur.trim()}\n` : ''
-    onSectionChange('materials', `${next}Nuevo material técnico`)
+  function toggleChapter(num: number) {
+    setOpen((prev) => ({ ...prev, [num]: !prev[num] }))
   }
 
   return (
@@ -142,7 +147,7 @@ export function BusinessPliegoForm({
             onClick={() => {
               if (
                 window.confirm(
-                  '¿Regenerar? Se reemplaza el borrador y se anula un pliego aprobado previo al guardar.',
+                  '¿Regenerar? Se reemplaza el borrador de texto auxiliar y se anula un pliego aprobado previo al guardar.',
                 )
               ) {
                 void onGenerate(true)
@@ -165,8 +170,7 @@ export function BusinessPliegoForm({
             Resumen ejecutivo
           </label>
           <p className="mt-1 text-[11px] leading-relaxed text-muted">
-            Texto corto para auditoría y exportaciones. Si el documento estructurado aún no está completo, este resumen
-            puede usarse como respaldo para validar el avance de fase (mín. 10 caracteres).
+            Síntesis para auditoría y exportaciones (mín. 10 caracteres si no usás partidas estructuradas en servidor).
           </p>
           <textarea
             id="bp-spec-summary"
@@ -180,87 +184,111 @@ export function BusinessPliegoForm({
       </div>
 
       <div className="relative z-10 divide-y divide-black/8 px-2 pb-4 pt-2 sm:px-4">
-        {BUSINESS_PLIEGO_SECTION_KEYS.map((key, idx) => {
-          const isOpen = open[key]
-          const len = sections[key]?.trim().length ?? 0
-          const short = len > 0 && len < MIN_PLIEGO_SECTION_LEN
-          const num = String(idx + 1).padStart(2, '0')
-          const label = BUSINESS_PLIEGO_SECTION_LABELS[key]
+        {CONSTRUCTION_PLIEGO_CHAPTERS.map((chapter) => {
+          const isOpen = open[chapter.num]
+          const numLabel = String(chapter.num).padStart(2, '0')
+          const chSub = chapterSubtotals[chapter.num] ?? 0
 
           return (
-            <div key={key} className="bg-white">
+            <div key={chapter.num} className="bg-white">
               <button
                 type="button"
                 className="flex w-full items-center gap-3 px-2 py-3 text-left transition hover:bg-black/[0.02] sm:px-3"
                 aria-expanded={isOpen}
-                onClick={() => toggle(key)}
+                onClick={() => toggleChapter(chapter.num)}
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-white">
-                  {num}
+                  {numLabel}
                 </span>
-                <span className="min-w-0 flex-1 font-semibold text-ink">{label}</span>
-                {short ? (
-                  <span className="hidden text-xs text-amber-700 sm:inline">Texto corto</span>
-                ) : null}
+                <span className="min-w-0 flex-1 font-semibold text-ink">
+                  {chapter.num}. {chapter.titulo}
+                </span>
+                <span className="hidden shrink-0 text-xs tabular-nums text-muted sm:inline">
+                  Subtotal cap. {fmtMoney(chSub)}
+                </span>
                 <ChevronRight
                   className={`size-5 shrink-0 text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}
                   aria-hidden
                 />
               </button>
               {isOpen ? (
-                <div className="border-t border-black/6 px-3 pb-4 pt-2 sm:px-5">
-                  {key === 'materials' ? (
-                    <div className="space-y-3">
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {materialLines.length === 0 ? (
-                          <p className="text-sm text-muted">Añade materiales en el texto o con el botón.</p>
-                        ) : (
-                          materialLines.map((line) => (
-                            <div
-                              key={line}
-                              className="rounded-lg border border-black/10 bg-black/[0.02] px-3 py-2 text-sm text-ink"
-                            >
-                              {line}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        className="w-full rounded-lg border border-dashed border-black/20 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted transition hover:border-primary/35 hover:text-primary"
-                        onClick={appendMaterialLine}
-                      >
-                        + Añadir material técnico
-                      </button>
-                      <label className="sr-only" htmlFor={`bp-${key}-textarea`}>
-                        {label}
-                      </label>
-                      <textarea
-                        id={`bp-${key}-textarea`}
-                        className="min-h-[100px] w-full rounded-lg border border-black/12 p-3 text-sm text-ink outline-none focus:border-primary/35 focus:ring-1 focus:ring-primary/25"
-                        placeholder="Un material por línea…"
-                        value={sections[key] ?? ''}
-                        onChange={(e) => onSectionChange(key, e.target.value)}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted" htmlFor={`bp-${key}`}>
-                        Contenido — mín. {MIN_PLIEGO_SECTION_LEN} caracteres
-                      </label>
-                      <textarea
-                        id={`bp-${key}`}
-                        className="min-h-[120px] w-full rounded-lg border border-black/12 p-3 text-sm leading-relaxed text-ink outline-none focus:border-primary/35 focus:ring-1 focus:ring-primary/25"
-                        value={sections[key] ?? ''}
-                        onChange={(e) => onSectionChange(key, e.target.value)}
-                      />
-                    </div>
-                  )}
+                <div className="border-t border-black/6 px-2 pb-4 pt-3 sm:px-4">
+                  <div className="overflow-x-auto rounded-lg border border-black/10">
+                    <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+                      <thead className="border-b border-black/10 bg-[#f8f9fb] text-[10px] font-bold uppercase tracking-wide text-muted">
+                        <tr>
+                          <th className="whitespace-nowrap px-2 py-2 sm:px-3">Num</th>
+                          <th className="min-w-[180px] px-2 py-2 sm:px-3">Partida</th>
+                          <th className="whitespace-nowrap px-2 py-2 sm:px-3">Unidad</th>
+                          <th className="whitespace-nowrap px-2 py-2 sm:px-3">Cantidad</th>
+                          <th className="whitespace-nowrap px-2 py-2 sm:px-3">P/UD</th>
+                          <th className="whitespace-nowrap px-2 py-2 text-right sm:px-3">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {chapter.items.map((it) => {
+                          const v = lineValues[it.id_item] ?? {
+                            unidad: it.unidad_default,
+                            cantidad: '',
+                            unitario: '',
+                          }
+                          const sub = lineSubtotal(v)
+                          return (
+                            <tr key={it.id_item} className="border-b border-black/[0.06] last:border-0">
+                              <td className="whitespace-nowrap px-2 py-2 font-mono text-xs text-primary sm:px-3">
+                                {it.id_item}
+                              </td>
+                              <td className="px-2 py-2 text-ink sm:px-3">{it.descripcion}</td>
+                              <td className="px-2 py-2 sm:px-3">
+                                <input
+                                  className="du-input w-full min-w-[4.5rem] py-1.5 text-sm"
+                                  value={v.unidad}
+                                  onChange={(e) => onLineChange(it.id_item, { unidad: e.target.value })}
+                                  aria-label={`Unidad ${it.id_item}`}
+                                />
+                              </td>
+                              <td className="px-2 py-2 sm:px-3">
+                                <input
+                                  className="du-input w-full min-w-[5rem] py-1.5 text-sm tabular-nums"
+                                  inputMode="decimal"
+                                  value={v.cantidad}
+                                  onChange={(e) => onLineChange(it.id_item, { cantidad: e.target.value })}
+                                  aria-label={`Cantidad ${it.id_item}`}
+                                />
+                              </td>
+                              <td className="px-2 py-2 sm:px-3">
+                                <input
+                                  className="du-input w-full min-w-[5rem] py-1.5 text-sm tabular-nums"
+                                  inputMode="decimal"
+                                  value={v.unitario}
+                                  onChange={(e) => onLineChange(it.id_item, { unitario: e.target.value })}
+                                  aria-label={`Precio unitario ${it.id_item}`}
+                                />
+                              </td>
+                              <td className="whitespace-nowrap px-2 py-2 text-right text-sm font-semibold tabular-nums text-ink sm:px-3">
+                                {sub != null ? fmtMoney(sub) : '—'}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-2 text-right text-xs font-semibold text-muted">
+                    Subtotal capítulo: <span className="text-primary">{fmtMoney(chSub)}</span>
+                  </p>
                 </div>
               ) : null}
             </div>
           )
         })}
+      </div>
+
+      <div className="relative z-10 border-t border-black/10 bg-white/95 px-4 py-4 sm:px-6">
+        <div className="flex flex-col items-end gap-1">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Total directo (partidas)</p>
+          <p className="text-2xl font-bold tabular-nums text-primary">{fmtMoney(docTotal)}</p>
+        </div>
       </div>
     </div>
   )

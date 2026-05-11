@@ -5,6 +5,12 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
 
+from app.domain.construction_pliego import construction_lines_complete, construction_pliego_is_active
+from app.domain.ga_fo_01_arquitectura import (
+    ga_fo_block_approved,
+    ga_fo_item_states_terminal_complete,
+)
+
 BUSINESS_PLIEGO_KEY = "business_pliego"
 BUSINESS_PLIEGO_SCHEMA_VERSION = 1
 
@@ -60,8 +66,30 @@ def transition_blockers_for_business_pliego(spec: dict[str, Any] | None) -> Opti
     """Return Spanish error message if pliego blocks transition to BUDGETING_PIPELINE, else None."""
     if not isinstance(spec, dict):
         return "Falta el pliego de condiciones; completa o genera el documento."
+    if construction_pliego_is_active(spec):
+        if not construction_lines_complete(spec):
+            return (
+                "Completa todas las partidas del pliego de obra: cada ítem debe tener unidad, "
+                "cantidad mayor a cero y precio unitario (guardá el documento en la pestaña Pliego)."
+            )
+        block = get_business_pliego_block(spec)
+        if not bool(block.get("approved")):
+            return "El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto."
+        return None
     block = get_business_pliego_block(spec)
     if not block:
+        ga = spec.get("ga_fo_01_arquitectura")
+        if isinstance(ga, dict) and ga.get("schema_version") == 1:
+            st = ga.get("item_states")
+            st_dict = st if isinstance(st, dict) else {}
+            if not ga_fo_item_states_terminal_complete(st_dict):
+                return (
+                    "Completa el checklist GA-FO-01 (cada documento en Completo o No aplica) "
+                    "y guardá en la pestaña Pliego."
+                )
+            if not ga_fo_block_approved(spec):
+                return "El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto."
+            return None
         summary = str(spec.get("summary") or "").strip()
         if len(summary) >= MIN_SECTION_LEN:
             return None
@@ -86,8 +114,21 @@ def pliego_sections_incomplete_message(spec: dict[str, Any] | None) -> Optional[
     """Like transition blockers but only checks section lengths (not approval)."""
     if not isinstance(spec, dict):
         return "Falta el pliego de condiciones."
+    if construction_pliego_is_active(spec):
+        if not construction_lines_complete(spec):
+            return (
+                "Faltan partidas por completar (unidad, cantidad y precio unitario en cada ítem del pliego de obra)."
+            )
+        return None
     block = get_business_pliego_block(spec)
     if not block:
+        ga = spec.get("ga_fo_01_arquitectura")
+        if isinstance(ga, dict) and ga.get("schema_version") == 1:
+            st = ga.get("item_states")
+            st_dict = st if isinstance(st, dict) else {}
+            if not ga_fo_item_states_terminal_complete(st_dict):
+                return "Faltan documentos del checklist GA-FO-01 por marcar como Completo o No aplica."
+            return None
         return "Genera o completa el pliego estructurado antes de aprobar."
     sec = sections_dict(block)
     missing = [k for k in BUSINESS_PLIEGO_SECTION_KEYS if len(sec.get(k, "").strip()) < MIN_SECTION_LEN]

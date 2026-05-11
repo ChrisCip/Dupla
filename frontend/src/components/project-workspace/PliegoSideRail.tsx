@@ -2,12 +2,8 @@ import { Check, CheckSquare, GitBranch, Share2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { apiFetch } from '../../api/client'
-import {
-  BUSINESS_PLIEGO_SECTION_KEYS,
-  BUSINESS_PLIEGO_SECTION_LABELS,
-  MIN_PLIEGO_SECTION_LEN,
-  type BusinessPliegoSectionKey,
-} from '../../constants/businessPliego'
+import { gaFoSectionProgressRows } from '../../lib/pliegoFormState'
+import type { PliegoItemState } from '../../types/pliegoForm'
 import { PrimaryButton } from '../PrimaryButton'
 import { PliegoProjectChatSnippet } from './PliegoProjectChatSnippet'
 
@@ -15,7 +11,7 @@ type PliegoSideRailProps = {
   projectUuid: string
   token: string | null
   userUuid: string | null
-  sections: Record<BusinessPliegoSectionKey, string>
+  itemStates: Record<string, PliegoItemState>
   approved: boolean
   generatedAt: string | null
   canApprove: boolean
@@ -27,7 +23,7 @@ export function PliegoSideRail({
   projectUuid,
   token,
   userUuid,
-  sections,
+  itemStates,
   approved,
   generatedAt,
   canApprove,
@@ -35,14 +31,7 @@ export function PliegoSideRail({
   onApprove,
 }: PliegoSideRailProps) {
   const navigate = useNavigate()
-
-  const sectionChecks = BUSINESS_PLIEGO_SECTION_KEYS.map((k) => ({
-    key: k,
-    label: BUSINESS_PLIEGO_SECTION_LABELS[k],
-    ok: (sections[k]?.trim().length ?? 0) >= MIN_PLIEGO_SECTION_LEN,
-  }))
-
-  const doneCount = sectionChecks.filter((s) => s.ok).length
+  const rows = gaFoSectionProgressRows(itemStates)
 
   async function openProjectChatNavigate() {
     if (!token) {
@@ -72,27 +61,34 @@ export function PliegoSideRail({
           <CheckSquare className="size-5 shrink-0" strokeWidth={2} aria-hidden />
           <h3 className="text-sm font-semibold uppercase tracking-wide text-ink">Lista de revisión</h3>
         </div>
-        <p className="mt-1 text-[11px] text-muted">
-          Progreso del documento técnico: cada bloque del acordeón debe superar el mínimo de caracteres antes de
-          aprobar.
+        <p className="mt-1 text-[11px] leading-relaxed text-muted">
+          Cada sección del GA-FO-01 debe tener todos sus documentos en Completo o No aplica antes de aprobar el pliego.
         </p>
-        <p className="mt-2 text-xs font-semibold tabular-nums text-ink">
-          {doneCount}/{sectionChecks.length} secciones listas
-        </p>
-        <ul className="mt-3 max-h-[min(52vh,28rem)] space-y-2 overflow-y-auto pr-1">
-          {sectionChecks.map((s) => (
-            <li key={s.key} className="flex items-start gap-2 text-xs">
-              <span
-                className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border ${
-                  s.ok ? 'border-primary bg-primary text-white' : 'border-black/20 bg-white'
-                }`}
-                aria-hidden
+        <ul className="mt-3 max-h-[min(52vh,28rem)] space-y-2 overflow-y-auto pr-0.5">
+          {rows.map((row) => {
+            const ok = row.done === row.total && row.total > 0
+            return (
+              <li
+                key={row.id}
+                className="flex items-start gap-3 rounded-lg border border-black/8 bg-black/[0.02] px-3 py-2.5 text-xs"
               >
-                {s.ok ? <Check className="size-3 stroke-[3]" aria-hidden /> : null}
-              </span>
-              <span className={`leading-snug ${s.ok ? 'text-muted line-through' : 'text-ink'}`}>{s.label}</span>
-            </li>
-          ))}
+                <span
+                  className={`mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded border ${
+                    ok ? 'border-primary bg-primary text-white' : 'border-black/18 bg-white'
+                  }`}
+                  aria-hidden
+                >
+                  {ok ? <Check className="size-3 stroke-[3]" aria-hidden /> : null}
+                </span>
+                <span className={`min-w-0 leading-snug ${ok ? 'text-muted' : 'text-ink'}`}>
+                  <span className={`block font-semibold ${ok ? 'line-through' : ''}`}>{row.titulo}</span>
+                  <span className="mt-0.5 block text-[10px] tabular-nums text-muted">
+                    {row.done} de {row.total} documentos listos
+                  </span>
+                </span>
+              </li>
+            )
+          })}
         </ul>
       </div>
 
@@ -104,15 +100,15 @@ export function PliegoSideRail({
           <span className="font-semibold text-ink">{approved ? 'Aprobado' : 'Borrador / revisión'}</span>
         </p>
         <p className="mt-1 text-xs text-muted">
-          Versión borrador:{' '}
+          Última marca de aprobación:{' '}
           <span className="font-mono text-ink">
-            {generatedAt ? new Date(generatedAt).toLocaleDateString() : '—'}
+            {generatedAt ? new Date(generatedAt).toLocaleString() : '—'}
           </span>
         </p>
         {canApprove ? (
           <PrimaryButton
             type="button"
-            className="mt-4 w-full gap-2 py-3 text-sm font-semibold normal-case tracking-normal"
+            className="mt-4 w-full gap-2 py-3 text-sm font-semibold tracking-normal"
             disabled={approveBusy || approved}
             onClick={() => void onApprove()}
           >
@@ -131,10 +127,10 @@ export function PliegoSideRail({
         <button
           type="button"
           className="mt-2 flex w-full items-center justify-center gap-2 text-xs font-semibold text-primary underline-offset-2 hover:underline"
-          onClick={() => navigate(`/app/projects/${projectUuid}?tab=flujo`)}
+          onClick={() => navigate(`/app/projects/${projectUuid}?tab=presupuestoMaestro`)}
         >
           <GitBranch className="size-3.5" strokeWidth={2} aria-hidden />
-          Ver flujo del proyecto
+          Ver presupuesto maestro
         </button>
       </div>
     </aside>

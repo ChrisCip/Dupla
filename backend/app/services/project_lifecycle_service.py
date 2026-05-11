@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -30,6 +31,7 @@ from app.domain.business_pliego import (
     sections_dict,
     transition_blockers_for_business_pliego,
 )
+from app.domain.ga_fo_01_arquitectura import GA_FO_SPEC_KEY, apply_ga_fo_approval, clear_ga_fo_approval
 from app.domain.workflow_template_phase import (
     effective_workflow_phase_for_step,
     workflow_phase_from_template_step_index,
@@ -651,6 +653,14 @@ class ProjectLifecycleService:
             if not business_pliego_sections_equal(osec, nsec):
                 clear_approval_in_block(new_block)
             doc[BUSINESS_PLIEGO_KEY] = new_block
+        old_ga = old_spec.get(GA_FO_SPEC_KEY) if isinstance(old_spec, dict) else None
+        new_ga = doc.get(GA_FO_SPEC_KEY)
+        if isinstance(old_ga, dict) and isinstance(new_ga, dict):
+            if json.dumps(old_ga.get("item_states"), sort_keys=True, default=str) != json.dumps(
+                new_ga.get("item_states"), sort_keys=True, default=str
+            ):
+                clear_ga_fo_approval(new_ga)
+                doc[GA_FO_SPEC_KEY] = new_ga
         project.specifications_document = doc
         summary = ""
         if isinstance(doc, dict):
@@ -726,13 +736,18 @@ class ProjectLifecycleService:
                 detail=msg,
             )
         block = get_business_pliego_block(spec)
-        if not block:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Falta el pliego estructurado; genere el borrador o guarde las secciones.",
-            )
-        apply_approval(block, user.id)
-        spec[BUSINESS_PLIEGO_KEY] = block
+        if block:
+            apply_approval(block, user.id)
+            spec[BUSINESS_PLIEGO_KEY] = block
+        else:
+            ga = spec.get(GA_FO_SPEC_KEY)
+            if not isinstance(ga, dict) or ga.get("schema_version") != 1:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Falta el pliego estructurado; genere el borrador o guarde las secciones.",
+                )
+            apply_ga_fo_approval(ga, user.id)
+            spec[GA_FO_SPEC_KEY] = ga
         project.specifications_document = spec
         await self._projects.record_event(
             project_id=project.id,
