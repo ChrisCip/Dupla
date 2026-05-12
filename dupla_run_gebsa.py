@@ -81,6 +81,8 @@ from budget.export_bc3 import export_budget_bc3
 from budget.export_excel import export_budget_workbook
 from core.output_structure import RunOutputDir
 from core.pipeline import build_budget_from_sources
+from core.project_inputs import load_project_inputs
+from core.location_parser import parse_location_from_filename
 from core.quality_engine import write_input_gaps_markdown, write_quality_report_json
 from core.schemas import ProjectContext
 from disciplines import get_engine
@@ -392,9 +394,15 @@ def process_discipline(
         if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
     )
 
+    building_block, level_id = parse_location_from_filename(pdf_path.name)
+    if dwg_path_str and not building_block:
+        building_block, level_id = parse_location_from_filename(Path(dwg_path_str).name)
+
     context = ProjectContext(
         project_id=PROJECT_ID,
         project_name=PROJECT_NAME,
+        building_block=building_block,
+        level_id=level_id,
         source_json_path=str(raw_json_path) if raw_json_path.exists() else None,
         plan_image_paths=page_paths_str,
         bc3_path=shared.get("bc3_path_value"),

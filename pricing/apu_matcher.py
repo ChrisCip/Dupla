@@ -435,11 +435,13 @@ class APUMatcher:
         self,
         pricing_store: PricingStore,
         *,
+        construcosto_snapshot: Any | None = None,
         embedding_model: str = DEFAULT_EMBEDDING_MODEL,
         cache_dir: str | Path | None = _DEFAULT_CACHE_DIR,
         log_path: str | Path | None = _DEFAULT_LOG_PATH,
     ):
         self.store = pricing_store
+        self.construcosto_snapshot = construcosto_snapshot
         self.embedding_model = embedding_model
         self._cache_dir = Path(cache_dir) if cache_dir else None
 
@@ -458,7 +460,7 @@ class APUMatcher:
         # summary blocks. Cumulative counters so multi-discipline runs aggregate.
         self._log_path = Path(log_path) if log_path else None
         self._stats: dict[str, int] = {
-            "total": 0, "keyword": 0, "embedding": 0, "none": 0,
+            "total": 0, "keyword": 0, "embedding": 0, "construcosto": 0, "none": 0,
         }
         if self._log_path is not None:
             try:
@@ -532,6 +534,7 @@ class APUMatcher:
             f"  total takeoffs evaluated: {total}",
             f"  matched by keywords:      {s.get('keyword', 0)}",
             f"  matched by embeddings:    {s.get('embedding', 0)}",
+            f"  matched by ConstruCosto:  {s.get('construcosto', 0)}",
             f"  no match (BC3 fallback):  {s.get('none', 0)}",
             f"  hit rate:                 {(matched / total * 100.0) if total else 0.0:.1f}%",
         ]
@@ -565,6 +568,11 @@ class APUMatcher:
         apu = self._embedding_match(takeoff, rule)
         if apu is not None:
             self._record(takeoff, "embedding", apu)
+            return apu
+
+        apu = self._construcosto_match(takeoff)
+        if apu is not None:
+            self._record(takeoff, "construcosto", apu)
             return apu
 
         self._record(takeoff, "none", None)
@@ -616,8 +624,18 @@ class APUMatcher:
 
         if pending:
             for t, apu in zip(pending, self._embedding_match_many(pending)):
-                results[t.item_key] = apu
-                self._record(t, "embedding" if apu is not None else "none", apu)
+                if apu is not None:
+                    results[t.item_key] = apu
+                    self._record(t, "embedding", apu)
+                else:
+                    # Fallback to ConstruCosto if no embedding match
+                    c_apu = self._construcosto_match(t)
+                    if c_apu is not None:
+                        results[t.item_key] = c_apu
+                        self._record(t, "construcosto", c_apu)
+                    else:
+                        results[t.item_key] = None
+                        self._record(t, "none", None)
 
         self.write_summary(label=f"batch n={len(takeoffs)}")
         return results
@@ -740,6 +758,44 @@ class APUMatcher:
         """Single-takeoff embedding path. Lazy-builds the APU index on first call."""
         result = self._embedding_match_many([takeoff])
         return result[0] if result else None
+
+    # ------------------------------------------------------------------
+    # Step 3: ConstruCosto fallback
+    # ------------------------------------------------------------------
+
+    def _construcosto_match(self, takeoff: QuantityTakeoff) -> APUBreakdown | None:
+        if self.construcosto_snapshot is None:
+            return None
+        
+        from budget.chapter_rules import build_budget_summary
+        from pricing.construcosto_loader import find_best_price
+        
+        summary_s = build_budget_summary(takeoff)
+        unit_s = takeoff.unit
+
+        for sources, label in (
+            (frozenset({"analisis"}), "ConstruCosto APU Punta Cana"),
+            (frozenset({"materiales"}), "ConstruCosto Material Punta Cana"),
+            (frozenset({"equipos"}), "ConstruCosto Equipo Punta Cana"),
+            (frozenset({"mano_obra"}), "ConstruCosto Mano de obra Punta Cana"),
+        ):
+            match = find_best_price(
+                self.construcosto_snapshot,
+                summary_s,
+                unit_s,
+                allowed_sources=sources,
+            )
+            if match is not None and match.unit_price and match.unit_price > 0:
+                return APUBreakdown(
+                    code=match.entry.code,
+                    description=match.entry.description,
+                    unit=match.entry.unit,
+                    unit_price_total=match.unit_price,
+                    category=match.entry.category,
+                    components=[],
+                    source=label,
+                )
+        return None
 
     # ------------------------------------------------------------------
     # Embedding internals

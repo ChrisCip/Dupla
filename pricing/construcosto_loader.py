@@ -20,7 +20,9 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator, Sequence
+
+import openpyxl
 
 logger = logging.getLogger("dupla.pricing")
 
@@ -84,11 +86,30 @@ _RD_RE = re.compile(r"RD\$\s*([\d,]+(?:\.\d+)?)")
 def _parse_rdprice(raw: str) -> float:
     """Parse 'RD$88,983.05' → 88983.05.  Returns 0.0 on failure."""
     if not raw or not isinstance(raw, str):
+        if isinstance(raw, (int, float)):
+            return float(raw)
         return 0.0
     match = _RD_RE.search(raw.strip())
-    if not match:
+    if match:
+        return float(match.group(1).replace(",", ""))
+    # Fallback to direct float parse if no RD$ prefix
+    try:
+        return float(raw.replace(",", ""))
+    except ValueError:
         return 0.0
-    return float(match.group(1).replace(",", ""))
+
+def _read_rows(path: Path) -> Iterator[Sequence[Any]]:
+    """Yield rows from a CSV or XLSX file."""
+    if path.suffix.lower() == ".xlsx":
+        wb = openpyxl.load_workbook(str(path), data_only=True, read_only=True)
+        ws = wb.active
+        for row in ws.iter_rows(values_only=True):
+            yield ["" if v is None else str(v) for v in row]
+    else:
+        with open(path, encoding="latin-1", newline="") as fh:
+            reader = csv.reader(fh)
+            for row in reader:
+                yield row
 
 
 # ---------------------------------------------------------------------------
@@ -100,46 +121,45 @@ def _parse_analisis(path: Path) -> list[ConstrucostoEntry]:
     entries: list[ConstrucostoEntry] = []
     current_category = ""
 
-    with open(path, encoding="latin-1", newline="") as fh:
-        reader = csv.reader(fh)
-        next(reader, None)  # skip header
-        for row in reader:
-            if len(row) < 9:
-                continue
-            code = (row[0] or "").strip()
-            desc = (row[1] or "").strip()
-            unit = (row[3] or "").strip()
-            subtotal_raw = row[6] if len(row) > 6 else ""
-            total_raw = row[8] if len(row) > 8 else ""
+    iterator = _read_rows(path)
+    next(iterator, None)  # skip header
+    for row in iterator:
+        if len(row) < 9:
+            continue
+        code = (row[0] or "").strip()
+        desc = (row[1] or "").strip()
+        unit = (row[3] or "").strip()
+        subtotal_raw = row[6] if len(row) > 6 else ""
+        total_raw = row[8] if len(row) > 8 else ""
 
-            if not desc:
-                continue
+        if not desc:
+            continue
 
-            # Category headers: code like "100.00" with no price
-            if code and code.endswith(".00") and not _parse_rdprice(subtotal_raw):
-                current_category = desc
-                continue
+        # Category headers: code like "100.00" with no price
+        if code and code.endswith(".00") and not _parse_rdprice(subtotal_raw):
+            current_category = desc
+            continue
 
-            # Partida rows: have a code (e.g. "100.01") and a price
-            if not code:
-                continue
+        # Partida rows: have a code (e.g. "100.01") and a price
+        if not code:
+            continue
 
-            price_net = _parse_rdprice(subtotal_raw)
-            price_gross = _parse_rdprice(total_raw)
-            if price_net <= 0 and price_gross <= 0:
-                continue
+        price_net = _parse_rdprice(subtotal_raw)
+        price_gross = _parse_rdprice(total_raw)
+        if price_net <= 0 and price_gross <= 0:
+            continue
 
-            entry = ConstrucostoEntry(
-                code=code,
-                description=desc,
-                unit=unit.upper(),
-                unit_price=price_net,
-                unit_price_with_tax=price_gross,
-                category=current_category,
-                source="analisis",
-                tokens=_tokenize(desc),
-            )
-            entries.append(entry)
+        entry = ConstrucostoEntry(
+            code=code,
+            description=desc,
+            unit=unit.upper(),
+            unit_price=price_net,
+            unit_price_with_tax=price_gross,
+            category=current_category,
+            source="analisis",
+            tokens=_tokenize(desc),
+        )
+        entries.append(entry)
 
     logger.info("Parsed %d APU entries from %s", len(entries), path.name)
     return entries
@@ -150,41 +170,40 @@ def _parse_materiales(path: Path) -> list[ConstrucostoEntry]:
     entries: list[ConstrucostoEntry] = []
     current_category = ""
 
-    with open(path, encoding="latin-1", newline="") as fh:
-        reader = csv.reader(fh)
-        next(reader, None)
-        for row in reader:
-            if len(row) < 5:
-                continue
-            desc = (row[1] or "").strip()
-            unit = (row[2] or "").strip()
-            price_gross_raw = row[3] if len(row) > 3 else ""
-            price_net_raw = row[4] if len(row) > 4 else ""
+    iterator = _read_rows(path)
+    next(iterator, None)
+    for row in iterator:
+        if len(row) < 5:
+            continue
+        desc = (row[1] or "").strip()
+        unit = (row[2] or "").strip()
+        price_gross_raw = row[3] if len(row) > 3 else ""
+        price_net_raw = row[4] if len(row) > 4 else ""
 
-            if not desc:
-                continue
+        if not desc:
+            continue
 
-            # Category headers are all-caps with no price
-            if not unit and desc.isupper():
-                current_category = desc
-                continue
+        # Category headers are all-caps with no price
+        if not unit and desc.isupper():
+            current_category = desc
+            continue
 
-            price_net = _parse_rdprice(price_net_raw)
-            price_gross = _parse_rdprice(price_gross_raw)
-            if price_net <= 0 and price_gross <= 0:
-                continue
+        price_net = _parse_rdprice(price_net_raw)
+        price_gross = _parse_rdprice(price_gross_raw)
+        if price_net <= 0 and price_gross <= 0:
+            continue
 
-            entry = ConstrucostoEntry(
-                code="",
-                description=desc,
-                unit=unit.upper(),
-                unit_price=price_net or price_gross,
-                unit_price_with_tax=price_gross or price_net,
-                category=current_category,
-                source="materiales",
-                tokens=_tokenize(desc),
-            )
-            entries.append(entry)
+        entry = ConstrucostoEntry(
+            code="",
+            description=desc,
+            unit=unit.upper(),
+            unit_price=price_net or price_gross,
+            unit_price_with_tax=price_gross or price_net,
+            category=current_category,
+            source="materiales",
+            tokens=_tokenize(desc),
+        )
+        entries.append(entry)
 
     logger.info("Parsed %d material entries from %s", len(entries), path.name)
     return entries
@@ -195,39 +214,37 @@ def _parse_mano_obra(path: Path) -> list[ConstrucostoEntry]:
     entries: list[ConstrucostoEntry] = []
     current_category = ""
 
-    with open(path, encoding="latin-1", newline="") as fh:
-        reader = csv.reader(fh)
-        for row in reader:
-            if len(row) < 4:
-                continue
+    for row in _read_rows(path):
+        if len(row) < 4:
+            continue
 
-            code = (row[0] or "").strip()
-            desc = (row[1] or "").strip()
-            unit = (row[2] or "").strip()
-            price_raw = row[3] if len(row) > 3 else ""
+        code = (row[0] or "").strip()
+        desc = (row[1] or "").strip()
+        unit = (row[2] or "").strip()
+        price_raw = row[3] if len(row) > 3 else ""
 
-            if not desc:
-                continue
+        if not desc:
+            continue
 
-            if code and code.endswith(".00") and not _parse_rdprice(price_raw):
-                current_category = desc
-                continue
+        if code and code.endswith(".00") and not _parse_rdprice(price_raw):
+            current_category = desc
+            continue
 
-            price = _parse_rdprice(price_raw)
-            if price <= 0:
-                continue
+        price = _parse_rdprice(price_raw)
+        if price <= 0:
+            continue
 
-            entry = ConstrucostoEntry(
-                code=code,
-                description=desc,
-                unit=unit.upper(),
-                unit_price=price,
-                unit_price_with_tax=price,
-                category=current_category,
-                source="mano_obra",
-                tokens=_tokenize(desc),
-            )
-            entries.append(entry)
+        entry = ConstrucostoEntry(
+            code=code,
+            description=desc,
+            unit=unit.upper(),
+            unit_price=price,
+            unit_price_with_tax=price,
+            category=current_category,
+            source="mano_obra",
+            tokens=_tokenize(desc),
+        )
+        entries.append(entry)
 
     logger.info("Parsed %d labor entries from %s", len(entries), path.name)
     return entries
@@ -238,45 +255,44 @@ def _parse_equipos(path: Path) -> list[ConstrucostoEntry]:
     entries: list[ConstrucostoEntry] = []
     current_category = ""
 
-    with open(path, encoding="latin-1", newline="") as fh:
-        reader = csv.reader(fh)
-        next(reader, None)
-        for row in reader:
-            if len(row) < 9:
-                continue
+    iterator = _read_rows(path)
+    next(iterator, None)
+    for row in iterator:
+        if len(row) < 9:
+            continue
 
-            code = (row[0] or "").strip()
-            desc = (row[1] or "").strip()
-            unit = (row[3] or "").strip()
-            subtotal_raw = row[6] if len(row) > 6 else ""
-            total_raw = row[8] if len(row) > 8 else ""
+        code = (row[0] or "").strip()
+        desc = (row[1] or "").strip()
+        unit = (row[3] or "").strip()
+        subtotal_raw = row[6] if len(row) > 6 else ""
+        total_raw = row[8] if len(row) > 8 else ""
 
-            if not desc:
-                continue
+        if not desc:
+            continue
 
-            if code and code.endswith(".00") and not _parse_rdprice(subtotal_raw):
-                current_category = desc
-                continue
+        if code and code.endswith(".00") and not _parse_rdprice(subtotal_raw):
+            current_category = desc
+            continue
 
-            if not code:
-                continue
+        if not code:
+            continue
 
-            price_net = _parse_rdprice(subtotal_raw)
-            price_gross = _parse_rdprice(total_raw)
-            if price_net <= 0 and price_gross <= 0:
-                continue
+        price_net = _parse_rdprice(subtotal_raw)
+        price_gross = _parse_rdprice(total_raw)
+        if price_net <= 0 and price_gross <= 0:
+            continue
 
-            entry = ConstrucostoEntry(
-                code=code,
-                description=desc,
-                unit=unit.upper(),
-                unit_price=price_net,
-                unit_price_with_tax=price_gross,
-                category=current_category,
-                source="equipos",
-                tokens=_tokenize(desc),
-            )
-            entries.append(entry)
+        entry = ConstrucostoEntry(
+            code=code,
+            description=desc,
+            unit=unit.upper(),
+            unit_price=price_net,
+            unit_price_with_tax=price_gross,
+            category=current_category,
+            source="equipos",
+            tokens=_tokenize(desc),
+        )
+        entries.append(entry)
 
     logger.info("Parsed %d equipment entries from %s", len(entries), path.name)
     return entries
@@ -287,10 +303,10 @@ def _parse_equipos(path: Path) -> list[ConstrucostoEntry]:
 # ---------------------------------------------------------------------------
 
 _FILE_MAP: dict[str, Any] = {
-    "analisis": ("Analisis de Costos*ConstruCosto.csv", _parse_analisis),
-    "materiales": ("Materiales e Insumos*ConstruCosto.csv", _parse_materiales),
-    "mano_obra": ("Mano de obra*ConstruCosto.csv", _parse_mano_obra),
-    "equipos": ("Equipos y Movimientos*ConstruCosto.csv", _parse_equipos),
+    "analisis": ("Analisis de Costos*ConstruCosto.*", _parse_analisis),
+    "materiales": ("Materiales e Insumos*ConstruCosto.*", _parse_materiales),
+    "mano_obra": ("Mano de obra*ConstruCosto.*", _parse_mano_obra),
+    "equipos": ("Equipos y Movimientos*ConstruCosto.*", _parse_equipos),
 }
 
 

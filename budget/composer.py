@@ -667,6 +667,27 @@ def compose_budget_rows(
             if alt_path:
                 chapter_path = alt_path
 
+        # --- Prepend Building Block and Level ---
+        prefix_segments = []
+        if context.building_block:
+            block_code = f"BLQ-{context.building_block.replace(' ', '_')}"
+            prefix_segments.append(ChapterSegment(block_code, context.building_block))
+            if context.level_id:
+                level_code = f"{block_code}-LVL-{context.level_id.replace(' ', '_')}"
+                prefix_segments.append(ChapterSegment(level_code, context.level_id))
+        elif context.level_id:
+            level_code = f"LVL-{context.level_id.replace(' ', '_')}"
+            prefix_segments.append(ChapterSegment(level_code, context.level_id))
+
+        if prefix_segments:
+            # Adjust the subsequent chapter codes to avoid collision across blocks/levels
+            base_prefix = prefix_segments[-1].code
+            adjusted_path = []
+            for seg in chapter_path:
+                adjusted_path.append(ChapterSegment(f"{base_prefix}-{seg.code}", seg.title))
+            chapter_path = prefix_segments + adjusted_path
+
+
         prepared_lines.append(
             _PreparedLine(
                 takeoff=takeoff,
@@ -743,8 +764,12 @@ def compose_budget_rows(
             line_code = str(apu_match.code).strip() or line_code
             deterministic_bc3_code = line_code
             resolved_price = float(apu_match.unit_price_total)
-            price_source = f"Constructor APU ({apu_match.code})"
-            source_type = "constructor_apu"
+            if apu_match.source and "ConstruCosto" in apu_match.source:
+                price_source = apu_match.source
+                source_type = "construcosto"
+            else:
+                price_source = f"Constructor APU ({apu_match.code})"
+                source_type = "constructor_apu"
             line_metadata["apu_code"] = apu_match.code
             line_metadata["apu_description"] = apu_match.description
             line_metadata["apu_unit"] = apu_match.unit

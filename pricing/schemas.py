@@ -3,6 +3,43 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+@dataclass
+class MaterialsSheetConfig:
+    sheet_names: tuple[str, ...] = ("lista", "precios")
+    col_code: int = 0
+    col_desc: int = 1
+    col_unit: int = 2
+    col_price: int = 4
+    col_date: int = 6
+
+@dataclass
+class LaborSheetConfig:
+    sheet_names: tuple[str, ...] = ("mo ", " mo", "mano")
+    col_code: int = 0
+    col_desc: int = 1
+    col_qty: int = 7
+    col_unit: int = 9
+    col_price: int = 11
+    col_price_fallback: int = 13
+
+@dataclass
+class ApusSheetConfig:
+    sheet_names: tuple[str, ...] = ("analisis",)
+    col_code: int = 0
+    col_desc: int = 1
+    col_qty: int = 2
+    col_unit: int = 3
+    col_price: int = 4
+    col_subtotal: int = 5
+    col_total: int = 6
+    col_total_unit: int = 7
+
+@dataclass
+class PricingExcelConfig:
+    materials: MaterialsSheetConfig = field(default_factory=MaterialsSheetConfig)
+    labor: LaborSheetConfig = field(default_factory=LaborSheetConfig)
+    apus: ApusSheetConfig = field(default_factory=ApusSheetConfig)
+
 
 @dataclass
 class MaterialPrice:

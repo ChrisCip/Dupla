@@ -27,6 +27,7 @@ from .schemas import (
     LaborRate,
     MaterialPrice,
     PricingStore,
+    PricingExcelConfig,
 )
 
 logger = logging.getLogger("dupla.pricing.excel_loader")
@@ -68,6 +69,7 @@ def load_or_cache_constructor_pricing(
     *,
     cache_dir: str | Path | None = None,
     force_refresh: bool = False,
+    config: PricingExcelConfig | None = None,
 ) -> PricingStore:
     """
     Return a :class:`PricingStore` for ``project_id``, using a JSON cache when
@@ -88,14 +90,14 @@ def load_or_cache_constructor_pricing(
             except Exception:
                 logger.warning("Cache read failed, reparsing Excel", exc_info=True)
 
-    store = load_constructor_pricing(str(excel))
+    store = load_constructor_pricing(str(excel), config=config)
     store.metadata["project_id"] = project_id
     save_pricing_store(store, cache_file)
     logger.info("PricingStore cached at: %s", cache_file)
     return store
 
 
-def load_constructor_pricing(excel_path: str) -> PricingStore:
+def load_constructor_pricing(excel_path: str, config: PricingExcelConfig | None = None) -> PricingStore:
     """Parse the constructor pricing Excel into a :class:`PricingStore`."""
     path = Path(excel_path)
     if not path.exists():
@@ -104,28 +106,31 @@ def load_constructor_pricing(excel_path: str) -> PricingStore:
     wb = openpyxl.load_workbook(str(path), data_only=True, read_only=True)
     source = path.name
 
-    apus_sheet = _find_sheet(wb.sheetnames, ("analisis",))
-    materials_sheet = _find_sheet(wb.sheetnames, ("lista", "precios"))
-    labor_sheet = _find_sheet(wb.sheetnames, ("mo ", " mo", "mano"))
+    if config is None:
+        config = PricingExcelConfig()
+
+    apus_sheet = _find_sheet(wb.sheetnames, config.apus.sheet_names)
+    materials_sheet = _find_sheet(wb.sheetnames, config.materials.sheet_names)
+    labor_sheet = _find_sheet(wb.sheetnames, config.labor.sheet_names)
 
     materials: dict[str, MaterialPrice] = {}
     labor: dict[str, LaborRate] = {}
     apus: dict[str, APUBreakdown] = {}
 
     if materials_sheet:
-        materials = _parse_materials(wb[materials_sheet], source)
+        materials = _parse_materials(wb[materials_sheet], source, config.materials)
         logger.info("Materials parsed: %d (sheet=%s)", len(materials), materials_sheet)
     else:
         logger.warning("Materials sheet not detected in %s", path)
 
     if labor_sheet:
-        labor = _parse_labor(wb[labor_sheet], source)
+        labor = _parse_labor(wb[labor_sheet], source, config.labor)
         logger.info("Labor activities parsed: %d (sheet=%s)", len(labor), labor_sheet)
     else:
         logger.warning("Labor sheet not detected in %s", path)
 
     if apus_sheet:
-        apus = _parse_apus(wb[apus_sheet], source)
+        apus = _parse_apus(wb[apus_sheet], source, config.apus)
         logger.info("APUs parsed: %d (sheet=%s)", len(apus), apus_sheet)
     else:
         logger.warning("APUs sheet not detected in %s", path)
@@ -218,23 +223,26 @@ def _is_blank_row(row: tuple[Any, ...]) -> bool:
 # Materials sheet
 # ---------------------------------------------------------------------------
 
-def _parse_materials(ws: Worksheet, source: str) -> dict[str, MaterialPrice]:
+def _parse_materials(ws: Worksheet, source: str, config: Any) -> dict[str, MaterialPrice]:
     """
-    Columns of interest (0-indexed):
-        0: N°
-        1: MATERIAL O ACTIVIDAD
-        2: UNIDAD
-        4: PRECIO
-        6: fecha (cuando hay datetime)
+    Columns of interest based on config.
     """
     result: dict[str, MaterialPrice] = {}
     current_category = ""
     auto_idx = 0
 
-    for row in _iter_rows(ws, max_col=7):
+    max_col_needed = max(config.col_code, config.col_desc, config.col_unit, config.col_price, config.col_date) + 1
+
+    for row in _iter_rows(ws, max_col=max_col_needed):
         if _is_blank_row(row):
             continue
-        code_raw, desc_raw, unit_raw, _c3, price_raw, _c5, date_raw = (row + (None,) * 7)[:7]
+        
+        row_padded = row + (None,) * max_col_needed
+        code_raw = row_padded[config.col_code]
+        desc_raw = row_padded[config.col_desc]
+        unit_raw = row_padded[config.col_unit]
+        price_raw = row_padded[config.col_price]
+        date_raw = row_padded[config.col_date]
         description = _norm_text(desc_raw)
         if not description:
             continue
@@ -293,16 +301,19 @@ def _parse_materials(ws: Worksheet, source: str) -> dict[str, MaterialPrice]:
 _LABOR_HEADER_RE = re.compile(r"^\d+\.\d+-")    # e.g. "2.0-EXCAVACION A MANO"
 
 
-def _parse_labor(ws: Worksheet, source: str) -> dict[str, LaborRate]:
+def _parse_labor(ws: Worksheet, source: str, config: Any) -> dict[str, LaborRate]:
     result: dict[str, LaborRate] = {}
     current_category = ""
     auto_idx = 0
 
-    for row in _iter_rows(ws, max_col=15):
+    max_col_needed = max(config.col_code, config.col_desc, config.col_qty, config.col_unit, config.col_price, config.col_price_fallback) + 1
+
+    for row in _iter_rows(ws, max_col=max_col_needed):
         if _is_blank_row(row):
             continue
-        code_raw = row[0]
-        description = _norm_text(row[1]) if len(row) > 1 else ""
+        row_padded = row + (None,) * max_col_needed
+        code_raw = row_padded[config.col_code]
+        description = _norm_text(row_padded[config.col_desc]) if row_padded[config.col_desc] is not None else ""
 
         # Category banners: text in col A like "EXCAVACIONES" or "2.0-EXCAVACION A MANO".
         if isinstance(code_raw, str):
@@ -318,11 +329,10 @@ def _parse_labor(ws: Worksheet, source: str) -> dict[str, LaborRate]:
         if not description:
             continue
 
-        unit_text = _norm_unit(row[9] if len(row) > 9 else None)
-        price = _to_float(row[11] if len(row) > 11 else None)
+        unit_text = _norm_unit(row_padded[config.col_unit])
+        price = _to_float(row_padded[config.col_price])
         if price is None:
-            # Fall back to "COSTO / PRESUPUESTO" col when PU($) is blank.
-            price = _to_float(row[13] if len(row) > 13 else None)
+            price = _to_float(row_padded[config.col_price_fallback])
         if price is None or not unit_text:
             continue
 
@@ -376,7 +386,7 @@ def _classify_component(description: str) -> str:
     return "material"
 
 
-def _parse_apus(ws: Worksheet, source: str) -> dict[str, APUBreakdown]:
+def _parse_apus(ws: Worksheet, source: str, config: Any) -> dict[str, APUBreakdown]:
     result: dict[str, APUBreakdown] = {}
     current_category = ""
     auto_idx = 0
@@ -411,10 +421,14 @@ def _parse_apus(ws: Worksheet, source: str) -> dict[str, APUBreakdown]:
         current_apu = None
 
     header_seen = False
-    for row in _iter_rows(ws, max_col=8):
+    
+    max_col_needed = max(config.col_code, config.col_desc, config.col_qty, config.col_unit, config.col_price, config.col_subtotal, config.col_total, config.col_total_unit) + 1
+
+    for row in _iter_rows(ws, max_col=max_col_needed):
         # Skip until we pass the header row "No. | PARTIDA | ...".
         if not header_seen:
-            cell0 = _norm_text(row[0]) if row else ""
+            row_padded = row + (None,) * max_col_needed
+            cell0 = _norm_text(row_padded[config.col_code]) if row else ""
             if cell0.lower().startswith("no"):
                 header_seen = True
             continue
@@ -422,9 +436,15 @@ def _parse_apus(ws: Worksheet, source: str) -> dict[str, APUBreakdown]:
         if _is_blank_row(row):
             continue
 
-        code_raw, desc_raw, qty_raw, unit_raw, punit_raw, valor_raw, total_raw, total_unit_raw = (
-            row + (None,) * 8
-        )[:8]
+        row_padded = row + (None,) * max_col_needed
+        code_raw = row_padded[config.col_code]
+        desc_raw = row_padded[config.col_desc]
+        qty_raw = row_padded[config.col_qty]
+        unit_raw = row_padded[config.col_unit]
+        punit_raw = row_padded[config.col_price]
+        valor_raw = row_padded[config.col_subtotal]
+        total_raw = row_padded[config.col_total]
+        total_unit_raw = row_padded[config.col_total_unit]
         description = _norm_text(desc_raw)
         qty = _to_float(qty_raw)
         unit_text = _norm_unit(unit_raw)

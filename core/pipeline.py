@@ -212,7 +212,7 @@ def build_final_budget(
     if apu_matcher is None and pricing_store is not None:
         try:
             from pricing.apu_matcher import APUMatcher
-            apu_matcher = APUMatcher(pricing_store)
+            apu_matcher = APUMatcher(pricing_store, construcosto_snapshot=construcosto_snapshot)
             logger.info(
                 "Constructor APUMatcher built lazily (materials=%d, labor=%d, apus=%d)",
                 len(pricing_store.materials), len(pricing_store.labor), len(pricing_store.apus),
