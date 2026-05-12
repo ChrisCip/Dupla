@@ -26,7 +26,7 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
   },
   SPECIFICATIONS: {
     title: 'Pliego de condiciones',
-    body: 'Cuadrícula por capítulos de obra (preliminares, cimentación, estructura, instalaciones, acabados, carpintería, aparatos y cierre): unidad, cantidad y precio unitario por partida. Guardá, revisá la lista lateral y pedí aprobación antes de avanzar a Presupuesto.',
+    body: 'Cuadrícula por capítulos de obra (preliminares, cimentación, estructura, instalaciones, acabados, carpintería, aparatos y cierre): unidad, cantidad y precio unitario por partida. Guarda, revisa la lista lateral y pide aprobación antes de avanzar a Presupuesto.',
     tabId: 'pliego',
     cta: 'Ir al Pliego',
   },

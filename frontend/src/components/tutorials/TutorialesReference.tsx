@@ -4,6 +4,10 @@ import { ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { formatAllowedProjectExtensionsHint } from '../../constants/projectAllowedFiles'
+import {
+  type TutorialsGuidesFilter,
+  TUTORIALS_TOC_IDS_BY_FILTER,
+} from '../../constants/tutorialsGuidesFilter'
 import { TUTORIAL_PROJECT_PATH } from '../../constants/tutorialProject'
 import { TUTORIALS_TOC } from '../../constants/tutorialesToc'
 import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
@@ -20,9 +24,10 @@ const sectionClass = 'space-y-3'
 const h3Class = 'text-base font-semibold text-ink'
 const pClass = 'text-sm leading-relaxed text-ink'
 const listClass = 'list-inside list-disc space-y-1.5 text-sm leading-relaxed text-ink'
-const cardClass = 'rounded-xl border border-black/10 bg-white p-5 shadow-[var(--shadow-card)]'
+const cardClass =
+  'rounded-xl border-2 border-primary/20 bg-white p-5 shadow-[0_1px_0_rgba(193,13,18,0.05)] sm:p-6'
 const accordionItemClass =
-  'scroll-mt-6 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[var(--shadow-card)]'
+  'scroll-mt-6 overflow-hidden rounded-xl border-2 border-primary/20 bg-white shadow-[0_1px_0_rgba(193,13,18,0.05)] transition-[border-color,box-shadow] hover:border-primary/35'
 
 function scrollTargetIntoViewSmooth(id: string): void {
   requestAnimationFrame(() => {
@@ -32,10 +37,18 @@ function scrollTargetIntoViewSmooth(id: string): void {
   })
 }
 
+export type TutorialesReferenceProps = {
+  /** Filtra índice y acordeones según la pestaña de «Tutoriales y guías». */
+  activeFilter: TutorialsGuidesFilter
+}
+
 /** Guía escrita completa (ancla del índice); cada sección va en un acordeón. */
-export function TutorialesReference() {
+export function TutorialesReference({ activeFilter }: TutorialesReferenceProps) {
   const extHint = formatAllowedProjectExtensionsHint()
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  const visibleIds = TUTORIALS_TOC_IDS_BY_FILTER[activeFilter]
+  const visibleToc = TUTORIALS_TOC.filter((t) => visibleIds.includes(t.id))
 
   const toggleSection = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
@@ -51,7 +64,7 @@ export function TutorialesReference() {
     const applyHash = (hash: string) => {
       const raw = hash.startsWith('#') ? hash.slice(1) : hash
       const canonical = raw ? TUTORIAL_HASH_ALIASES[raw] ?? raw : ''
-      if (canonical && TUTORIALS_TOC.some((t) => t.id === canonical)) {
+      if (canonical && visibleIds.includes(canonical)) {
         setExpandedId(canonical)
         scrollTargetIntoViewSmooth(canonical)
       } else if (!raw) {
@@ -62,7 +75,13 @@ export function TutorialesReference() {
     const onHashChange = () => applyHash(window.location.hash)
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+  }, [visibleIds])
+
+  useEffect(() => {
+    if (expandedId && !visibleIds.includes(expandedId)) {
+      setExpandedId(null)
+    }
+  }, [activeFilter, expandedId, visibleIds])
 
   const sectionBodies: Record<string, ReactNode> = {
     navegacion: (
@@ -234,7 +253,7 @@ export function TutorialesReference() {
         <p className={pClass}>
           Trabajo con el <strong>pliego de condiciones</strong>: documento técnico por acordeones (alcance,
           especificaciones, materiales, etc.), resumen ejecutivo, lista de revisión en el panel derecho y hilo de
-          comentarios del proyecto. Guardá el borrador con el botón correspondiente y seguí el estado hasta la
+          comentarios del proyecto. Guarda el borrador con el botón correspondiente y sigue el estado hasta la
           aprobación.
         </p>
       </div>
@@ -335,13 +354,16 @@ export function TutorialesReference() {
   return (
     <>
       <nav aria-label="Índice de la guía escrita" className={`${cardClass} mb-8`}>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Guía por secciones</h2>
+        <h2 className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-primary/90">
+          Guía por secciones
+        </h2>
+        <p className="mb-4 text-sm text-muted">Tema actual: filtro de arriba en la página.</p>
         <ol className="columns-1 gap-x-8 gap-y-1 text-sm sm:columns-2">
-          {TUTORIALS_TOC.map((item, i) => (
+          {visibleToc.map((item, i) => (
             <li key={item.id} className="mb-1 break-inside-avoid">
               <a
                 href={`#${item.id}`}
-                className="text-primary underline-offset-2 hover:underline"
+                className="font-medium text-primary underline-offset-2 hover:underline"
                 onClick={(e) => {
                   e.preventDefault()
                   revealAndScroll(item.id)
@@ -355,14 +377,14 @@ export function TutorialesReference() {
       </nav>
 
       <div className="space-y-3">
-        {TUTORIALS_TOC.map((item) => {
+        {visibleToc.map((item) => {
           const isOpen = expandedId === item.id
           return (
             <div key={item.id} id={item.id} className={accordionItemClass}>
               <h2 className="m-0">
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left text-base font-semibold text-ink transition-colors hover:bg-black/3 sm:px-5"
+                  className="flex w-full items-center justify-between gap-3 border-l-[3px] border-transparent px-4 py-3.5 text-left text-base font-semibold text-ink transition-colors hover:border-primary/40 hover:bg-primary/4 sm:px-5"
                   aria-expanded={isOpen}
                   aria-controls={`panel-${item.id}`}
                   id={`heading-${item.id}`}
@@ -387,7 +409,7 @@ export function TutorialesReference() {
                   id={`panel-${item.id}`}
                   role="region"
                   aria-labelledby={`heading-${item.id}`}
-                  className="border-t border-black/10 px-4 pb-4 pt-1 sm:px-5 sm:pb-5"
+                  className="border-t border-primary/10 px-4 pb-4 pt-1 sm:px-5 sm:pb-5"
                 >
                   {sectionBodies[item.id]}
                 </div>

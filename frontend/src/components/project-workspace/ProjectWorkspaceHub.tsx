@@ -38,7 +38,7 @@ export function ProjectWorkspaceHub({ sectionTabs, onOpenSection }: ProjectWorks
           <LayoutGrid className="h-5 w-5 shrink-0 text-primary" aria-hidden />
           <h3 className="text-base font-semibold tracking-tight">Secciones del proyecto</h3>
         </div>
-        <p className="mt-1 text-sm text-muted">Elegí un área para trabajar.</p>
+        <p className="mt-1 text-sm text-muted">Elige un área para trabajar.</p>
       </div>
       <ul className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {sectionTabs.map((t) => {

@@ -170,7 +170,7 @@ export function BusinessPliegoForm({
             Resumen ejecutivo
           </label>
           <p className="mt-1 text-[11px] leading-relaxed text-muted">
-            Síntesis para auditoría y exportaciones (mín. 10 caracteres si no usás partidas estructuradas en servidor).
+            Síntesis para auditoría y exportaciones (mín. 10 caracteres si no usas partidas estructuradas en servidor).
           </p>
           <textarea
             id="bp-spec-summary"

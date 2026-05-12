@@ -141,8 +141,8 @@ export function PliegoCondicionesForm({
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">Documento técnico</p>
               <h2 className="mt-1.5 text-xl font-bold tracking-tight text-ink sm:text-2xl">{documentTitle}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-                GA-FO-01 Arquitectura: checklist de documentos por sección. Marcá cada ítem como Completo o No aplica y
-                adjuntá archivos cuando corresponda.
+                GA-FO-01 Arquitectura: checklist de documentos por sección. Marca cada ítem como Completo o No aplica y
+                adjunta archivos cuando corresponda.
               </p>
             </div>
             {(onExportPdf || onExportXlsx) && (
@@ -311,7 +311,7 @@ export function PliegoCondicionesForm({
           <PrimaryButton type="button" disabled={persistBusy} onClick={() => void onPersist()}>
             {persistBusy ? 'Guardando…' : 'Guardar pliego de condiciones'}
           </PrimaryButton>
-          <span className="text-xs text-muted">Guardá para registrar el checklist en el proyecto.</span>
+          <span className="text-xs text-muted">Guarda para registrar el checklist en el proyecto.</span>
         </footer>
       </div>
     </div>

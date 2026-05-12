@@ -253,11 +253,11 @@ export function ProjectsPage() {
     if (!token) return
     setCreateError(null)
     if (workflowTemplates.length === 0) {
-      setCreateError('No hay plantillas de flujo activas. Creá una en Flujos.')
+      setCreateError('No hay plantillas de flujo activas. Crea una en Flujos.')
       return
     }
     if (!workflowTemplateUuid.trim()) {
-      setCreateError('Elegí una plantilla de flujo.')
+      setCreateError('Elige una plantilla de flujo.')
       return
     }
     if (projectKind === 'TENDER' && createFiles.length === 0) {

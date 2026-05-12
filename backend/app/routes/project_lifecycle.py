@@ -12,6 +12,7 @@ from app.domain.workflow_phase import WorkflowPhase
 from app.models.architecture_revision import ArchitectureRevisionDecision
 from app.models.user import User
 from app.schemas.chat import ChatConversationResponse
+from app.schemas.price_database import PriceDatabaseFileListResponse, PriceDatabaseFileResponse
 from app.schemas.project import ProjectResponse
 from app.schemas.project_lifecycle import (
     ArchitectureRevisionCreateRequest,
@@ -38,6 +39,8 @@ from app.schemas.project_lifecycle import (
     WorkflowMetaPatchRequest,
 )
 from app.services.chat_service import ChatService
+from app.services.price_database_classification_task import run_price_database_classification_task
+from app.services.price_database_service import PriceDatabaseService
 from app.services.project_file_classification_service import run_file_classification_task
 from app.services.project_lifecycle_service import ProjectLifecycleService
 
@@ -573,3 +576,72 @@ async def post_project_chat_conversation(
     res = await chat.get_or_create_project_conversation(current, project_uuid)
     await session.commit()
     return res
+
+
+@router.get(
+    "/{project_uuid}/price-database/files",
+    response_model=PriceDatabaseFileListResponse,
+    summary="Listar archivos de base de precios del proyecto",
+)
+async def list_price_database_files(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> PriceDatabaseFileListResponse:
+    svc = PriceDatabaseService(session)
+    rows = await svc.list_files(current, project_uuid)
+    return PriceDatabaseFileListResponse(items=[PriceDatabaseFileResponse.from_row(r) for r in rows])
+
+
+@router.post(
+    "/{project_uuid}/price-database/files",
+    response_model=PriceDatabaseFileResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Subir archivo de base de precios (PDF / Excel / CSV)",
+)
+async def post_price_database_file(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
+    file: Annotated[UploadFile, File()],
+) -> PriceDatabaseFileResponse:
+    svc = PriceDatabaseService(session)
+    row = await svc.upload_file(current, project_uuid, file)
+    await session.commit()
+    background_tasks.add_task(run_price_database_classification_task, row.id)
+    return PriceDatabaseFileResponse.from_row(row)
+
+
+@router.delete(
+    "/{project_uuid}/price-database/files/{file_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar archivo de base de precios",
+)
+async def delete_price_database_file(
+    project_uuid: UUID,
+    file_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    svc = PriceDatabaseService(session)
+    await svc.delete_file(current, project_uuid, file_uuid)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{project_uuid}/price-database/apply",
+    response_model=ProjectResponse,
+    summary="Confirmar uso de la base de precios activa en presupuestos",
+)
+async def post_price_database_apply(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = PriceDatabaseService(session)
+    project = await svc.confirm_apply(current, project_uuid)
+    await session.commit()
+    await session.refresh(project)
+    return ProjectResponse.from_project(project)

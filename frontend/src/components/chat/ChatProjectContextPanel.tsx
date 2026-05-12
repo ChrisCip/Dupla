@@ -62,7 +62,7 @@ export function ChatProjectContextPanel({ projectUuid, token }: ChatProjectConte
         <div className="p-5">
           <p className="text-sm font-semibold text-ink">Contexto</p>
           <p className="mt-2 text-xs leading-relaxed text-muted">
-            Abrí un chat de <strong className="text-ink">obra</strong> para ver resumen de proyecto y archivos
+            Abre un chat de <strong className="text-ink">obra</strong> para ver resumen de proyecto y archivos
             recientes.
           </p>
         </div>

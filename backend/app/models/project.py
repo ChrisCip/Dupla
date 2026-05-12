@@ -13,6 +13,7 @@ from app.domain.project_kind import ProjectKind
 from app.domain.workflow_phase import WorkflowPhase
 
 if TYPE_CHECKING:
+    from app.models.project_price_database_file import ProjectPriceDatabaseFile
     from app.models.workflow_template import WorkflowTemplate, WorkflowTemplateStep
 
 
@@ -117,6 +118,11 @@ class Project(Base):
     )
     technical_findings: Mapped[list["ProjectTechnicalFinding"]] = relationship(
         "ProjectTechnicalFinding",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    price_database_files: Mapped[list["ProjectPriceDatabaseFile"]] = relationship(
+        "ProjectPriceDatabaseFile",
         back_populates="project",
         cascade="all, delete-orphan",
     )

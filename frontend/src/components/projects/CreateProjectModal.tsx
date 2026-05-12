@@ -21,7 +21,7 @@ const STEP = {
   obra: {
     title: 'Obra y dimensiones',
     description:
-      'Superficie útil aproximada y cantidad de niveles; podés corregirlos más adelante en la ficha del proyecto.',
+      'Superficie útil aproximada y cantidad de niveles; puedes corregirlos más adelante en la ficha del proyecto.',
     footerHint: 'Dimensiones',
   },
   ubicacion: {
@@ -493,7 +493,7 @@ export function CreateProjectModal({
                       </select>
                       {!hasWorkflowTemplates ? (
                         <p className="mt-2 text-xs text-primary">
-                          No hay plantillas activas. Creá una en Flujos para poder guardar el proyecto.
+                          No hay plantillas activas. Crea una en Flujos para poder guardar el proyecto.
                         </p>
                       ) : null}
                     </label>

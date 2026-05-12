@@ -255,6 +255,13 @@ export function ProjectWorkspaceDashboard({
       <button
         type="button"
         className="rounded-full border border-black/12 bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-sm hover:border-primary/25"
+        onClick={() => onOpenTab('basePrecios')}
+      >
+        Base de precios
+      </button>
+      <button
+        type="button"
+        className="rounded-full border border-black/12 bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-sm hover:border-primary/25"
         onClick={() => onOpenTab('flujo')}
       >
         Flujo
@@ -293,7 +300,9 @@ export function ProjectWorkspaceDashboard({
     'rounded-xl border border-black/10 bg-white px-3 py-3 shadow-[var(--shadow-card)] sm:px-4'
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5 pb-28">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="flex flex-col gap-5 pb-4">
       <div className="flex flex-col gap-3">
         {quickLinks}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
@@ -513,8 +522,10 @@ export function ProjectWorkspaceDashboard({
           </Card>
         </div>
       </div>
+        </div>
+      </div>
 
-      <div className="sticky bottom-0 z-20 mt-auto flex flex-col gap-3 border-t border-black/10 bg-surface/95 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="shrink-0 flex flex-col gap-3 border-t border-black/10 bg-surface py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2 text-sm">
           <span className="text-[10px] font-bold uppercase tracking-wide text-muted">Fase actual</span>
           <span className="truncate font-semibold text-ink">{phaseLabel}</span>
@@ -550,3 +561,4 @@ export function ProjectWorkspaceDashboard({
     </div>
   )
 }
+

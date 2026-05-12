@@ -208,7 +208,7 @@ export function FlowsHubPage() {
         <div>
           <h1 className="text-3xl font-semibold text-ink md:text-4xl">Flujos</h1>
           <p className="mt-2 text-lg text-muted">
-            Creá y editá plantillas de proceso; cada una tiene su tablero de proyectos.
+            Crea y edita plantillas de proceso; cada una tiene su tablero de proyectos.
           </p>
         </div>
         <PrimaryButton type="button" className="shrink-0 gap-2" onClick={() => setCreateOpen(true)}>

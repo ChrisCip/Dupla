@@ -20,7 +20,7 @@ const WELCOME_GLOBAL: ChatLine = {
 const WELCOME_IN_PROJECT: ChatLine = {
   role: 'assistant',
   content:
-    'Estás en la vista de un **proyecto**. Podés preguntarme sobre **este** proyecto (en qué etapa está, el checklist, cuántos archivos hay, etc.). Cada vez que envías un mensaje, uso los datos actualizados del proyecto.',
+    'Estás en la vista de un **proyecto**. Puedes preguntarme sobre **este** proyecto (en qué etapa está, el checklist, cuántos archivos hay, etc.). Cada vez que envías un mensaje, uso los datos actualizados del proyecto.',
 }
 
 export function DuplaAssistantChat() {

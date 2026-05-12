@@ -328,7 +328,7 @@ export function startWorkspaceTour(navigate: NavigateFunction): void {
           popover: {
             title: 'Accesos del workspace',
             description:
-              'Desde el inicio elegís la tarjeta de cada área (detalles, flujo, presupuesto maestro, archivos, control de entregas, revisiones, hallazgos, pliego, eventos). El pipeline operativo sigue en Flujo; el presupuesto maestro (takeoff) tiene su propia pestaña. «Volver al inicio» te regresa a las tarjetas.',
+              'Desde el inicio eliges la tarjeta de cada área (detalles, flujo, presupuesto maestro, archivos, control de entregas, revisiones, hallazgos, pliego, eventos). El pipeline operativo sigue en Flujo; el presupuesto maestro (takeoff) tiene su propia pestaña. «Volver al inicio» te regresa a las tarjetas.',
             side: 'right',
             align: 'start',
           },

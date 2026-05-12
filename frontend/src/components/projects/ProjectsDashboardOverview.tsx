@@ -281,7 +281,7 @@ export function ProjectsDashboardOverview({
                   {activeOnMap} {activeOnMap === 1 ? 'proyecto activo' : 'proyectos activos'}
                 </p>
                 <p className="text-xs leading-relaxed text-muted">
-                  Vista geográfica próximamente. Mientras tanto, abrí cada obra para ver ubicación y datos.
+                  Vista geográfica próximamente. Mientras tanto, abre cada obra para ver ubicación y datos.
                 </p>
               </div>
             </div>

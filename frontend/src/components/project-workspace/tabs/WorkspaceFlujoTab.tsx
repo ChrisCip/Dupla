@@ -193,7 +193,7 @@ export function WorkspaceFlujoTab({
                 </p>
                 {awaitingBudgetApproval && (missingControlGate || missingClientVersion) ? (
                   <div className="rounded-md border border-primary/25 bg-primary/[0.06] px-3 py-2 text-sm text-ink">
-                    Para avanzar: marcá la revisión de Control y la etiqueta de versión aprobada por el cliente (guardá
+                    Para avanzar: marca la revisión de Control y la etiqueta de versión aprobada por el cliente (guarda
                     abajo).{' '}
                     {missingControlGate ? <span className="font-medium text-primary">Falta revisión de Control.</span> : null}{' '}
                     {missingClientVersion ? (
@@ -349,7 +349,7 @@ export function WorkspaceFlujoTab({
       <Card className="space-y-4 p-6">
         <h2 className="text-lg font-semibold text-ink">Checklist de documentos requeridos</h2>
         <p className="text-sm text-muted">
-          Marcá los ítems obligatorios antes de seguir desde la etapa «Arranque». La aplicación solo permite avanzar
+          Marca los ítems obligatorios antes de seguir desde la etapa «Arranque». La aplicación solo permite avanzar
           cuando esos requisitos estén cumplidos; el siguiente paso es «Esperando archivos».
         </p>
         <p className="text-sm text-muted">

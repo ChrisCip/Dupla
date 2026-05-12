@@ -202,7 +202,7 @@ class ProjectService:
             if u is None:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Uno o más usuarios no existen",
+                    detail=f"Usuario no encontrado (uuid: {uid}). Actualiza el listado de usuarios en administración.",
                 )
             if not await self._users.has_module(uid, settings.architecture_module_id):
                 raise HTTPException(

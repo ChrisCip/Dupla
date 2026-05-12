@@ -4,7 +4,7 @@ import { apiFetch } from '../api/client'
 import { Card } from './Card'
 import { PrimaryButton } from './PrimaryButton'
 import { ProjectMemberPicker } from './projects/ProjectMemberPicker'
-import type { DirectoryUserRow } from '../lib/directoryUsers'
+import { isValidUuidString, normalizeDirectoryUsers, type DirectoryUserRow } from '../lib/directoryUsers'
 import { formatPersonFullName } from '../lib/personDisplay'
 import type { Project } from '../types/project'
 
@@ -328,21 +328,40 @@ export function ProjectConfigModal({
                       setMembersMsg(null)
                       void (async () => {
                         try {
+                          const chosen = Array.from(memberSelection)
+                          if (chosen.some((id) => !isValidUuidString(id))) {
+                            setMembersMsg(
+                              'La selección tiene identificadores inválidos. Recarga la página o vuelve a abrir el proyecto.',
+                            )
+                            return
+                          }
                           const res = await apiFetch(`/api/projects/${projectUuid}/members`, {
                             method: 'PUT',
                             token,
                             body: JSON.stringify({
-                              member_user_uuids: Array.from(memberSelection),
+                              member_user_uuids: chosen,
                             }),
                           })
                           if (!res.ok) {
-                            setMembersMsg('No se pudo guardar la lista de miembros')
+                            let msg = 'No se pudo guardar la lista de miembros'
+                            try {
+                              const errBody = (await res.json()) as { detail?: unknown }
+                              const d = errBody.detail
+                              if (typeof d === 'string') msg = d
+                              else if (Array.isArray(d) && d.length > 0) {
+                                const first = d[0] as { msg?: string }
+                                if (typeof first?.msg === 'string') msg = first.msg
+                              }
+                            } catch {
+                              /* ignore */
+                            }
+                            setMembersMsg(msg)
                             return
                           }
                           setMembersMsg('Lista de acceso actualizada')
                           const m = await apiFetch(`/api/projects/${projectUuid}/members`, { token })
                           if (m.ok) {
-                            setMemberRows((await m.json()) as MemberRow[])
+                            setMemberRows(normalizeDirectoryUsers(await m.json()))
                           }
                         } finally {
                           setMembersBusy(false)

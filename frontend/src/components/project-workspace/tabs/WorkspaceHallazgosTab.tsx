@@ -1,9 +1,28 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import {
+  AlertTriangle,
+  Box,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  CircleAlert,
+  FileWarning,
+  Sparkles,
+} from 'lucide-react'
 
 import { apiFetch } from '../../../api/client'
+import { MOCK_STRUCTURAL_ANALYSIS_REPORT } from '../../../data/mockStructuralAnalysisReport'
+import type { TechnicalFindingRow } from '../../../types/projectWorkspace'
+import type {
+  StructuralAnalysisReport,
+  StructuralAnalyzedDocument,
+  StructuralClash,
+  StructuralClashPriority,
+  StructuralClashRelationship,
+  StructuralZoningRow,
+} from '../../../types/structuralAnalysisReport'
 import { Card } from '../../Card'
 import { PrimaryButton } from '../../PrimaryButton'
-import type { TechnicalFindingRow } from '../../../types/projectWorkspace'
 
 const SEVERITY_OPTIONS = ['crítico', 'alto', 'medio', 'bajo'] as const
 
@@ -12,6 +31,162 @@ type WorkspaceHallazgosTabProps = {
   token: string | null
   findings: TechnicalFindingRow[]
   onRefresh: () => Promise<void>
+  onContinueToPliego: () => void
+}
+
+function priorityLabel(p: StructuralClashPriority): { text: string; className: string } {
+  switch (p) {
+    case 'critical':
+      return { text: 'Crítico', className: 'bg-primary text-white' }
+    case 'high':
+      return { text: 'Alta prioridad', className: 'border border-primary/40 bg-primary/[0.08] text-primary' }
+    case 'warning':
+      return { text: 'Advertencia', className: 'border border-amber-500/50 bg-amber-500/10 text-amber-900' }
+    default:
+      return { text: 'Informativo', className: 'border border-black/15 bg-black/[0.04] text-muted' }
+  }
+}
+
+function runStatusBadge(status: StructuralAnalysisReport['run_status']): { label: string; className: string } {
+  switch (status) {
+    case 'completed':
+      return { label: 'Análisis completado', className: 'bg-primary/12 text-primary' }
+    case 'running':
+      return { label: 'Análisis en curso', className: 'bg-amber-500/15 text-amber-900' }
+    case 'failed':
+      return { label: 'Análisis con errores', className: 'bg-primary/15 text-primary' }
+    default:
+      return { label: 'Pendiente de análisis', className: 'bg-black/[0.06] text-muted' }
+  }
+}
+
+function ZoningStatusBadge({ status }: { status: StructuralZoningRow['status'] }) {
+  if (status === 'validated') {
+    return (
+      <span className="inline-flex rounded-md bg-emerald-600/12 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+        Validado
+      </span>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <span className="inline-flex rounded-md bg-primary/12 px-2 py-0.5 text-xs font-semibold text-primary">
+        Error
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-900">
+      Aviso
+    </span>
+  )
+}
+
+function ClashCard({
+  clash,
+  expanded,
+  onToggle,
+}: {
+  clash: StructuralClash
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const pill = priorityLabel(clash.priority)
+  return (
+    <Card className="overflow-hidden">
+      <button
+        type="button"
+        className="flex w-full items-start gap-3 p-4 text-left outline-none transition hover:bg-black/[0.02] focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-inset"
+        onClick={onToggle}
+      >
+        <span className="mt-0.5 shrink-0 text-muted" aria-hidden>
+          {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-base font-semibold text-ink">{clash.title}</h3>
+            <span className={`rounded-md px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${pill.className}`}>
+              {pill.text}
+            </span>
+          </div>
+          {!expanded ? <p className="mt-1 line-clamp-2 text-sm text-muted">{clash.description}</p> : null}
+        </div>
+      </button>
+      {expanded ? (
+        <div className="border-t border-black/10 px-4 pb-4 pt-2 pl-12 sm:pl-14">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div
+              className="flex aspect-video w-full shrink-0 items-center justify-center rounded-lg border border-black/10 bg-gradient-to-br from-slate-200/90 to-slate-400/50 sm:h-24 sm:w-36 sm:aspect-auto"
+              aria-hidden
+            >
+              {clash.thumbnail_url ? (
+                <img src={clash.thumbnail_url} alt="" className="h-full w-full rounded-lg object-cover" />
+              ) : (
+                <Box className="h-10 w-10 text-slate-600/70" aria-hidden />
+              )}
+            </div>
+            <div className="min-w-0 flex-1 space-y-2 text-sm">
+              <p className="text-ink">{clash.description}</p>
+              {clash.location_label ? (
+                <p>
+                  <span className="font-medium text-muted">Ubicación</span>
+                  <span className="text-ink"> · {clash.location_label}</span>
+                </p>
+              ) : null}
+              {clash.disciplines.length > 0 ? (
+                <p>
+                  <span className="font-medium text-muted">Disciplinas</span>
+                  <span className="text-ink"> · {clash.disciplines.join(', ')}</span>
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </Card>
+  )
+}
+
+function RelationshipBanner({ rel }: { rel: StructuralClashRelationship }) {
+  return (
+    <div className="rounded-lg border border-primary/25 bg-primary/[0.06] px-4 py-3 text-sm text-ink">
+      <p className="font-semibold text-primary">Conflicto entre hallazgos</p>
+      <p className="mt-1 text-muted">{rel.message}</p>
+      <p className="mt-2 font-mono text-xs text-muted">IDs: {rel.clash_ids.join(' · ')}</p>
+    </div>
+  )
+}
+
+function DocumentRow({
+  doc,
+  onRetry,
+}: {
+  doc: StructuralAnalyzedDocument
+  onRetry: (id: string) => void
+}) {
+  const ok = doc.status === 'ok'
+  return (
+    <li className="flex items-start gap-2 border-b border-black/[0.06] py-2.5 text-sm last:border-0">
+      {ok ? (
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+      ) : (
+        <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-ink">{doc.file_name}</p>
+        <p className="text-xs text-muted">{doc.discipline_label}</p>
+        {!ok && doc.retryable ? (
+          <button
+            type="button"
+            className="du-link mt-1 inline text-xs font-semibold"
+            onClick={() => onRetry(doc.id)}
+          >
+            Reintentar
+          </button>
+        ) : null}
+      </div>
+    </li>
+  )
 }
 
 export function WorkspaceHallazgosTab({
@@ -19,7 +194,12 @@ export function WorkspaceHallazgosTab({
   token,
   findings,
   onRefresh,
+  onContinueToPliego,
 }: WorkspaceHallazgosTabProps) {
+  const [report] = useState<StructuralAnalysisReport>(() => MOCK_STRUCTURAL_ANALYSIS_REPORT)
+  const [expandedClashIds, setExpandedClashIds] = useState<Set<string>>(() => new Set(['clash-1']))
+  const [footerHint, setFooterHint] = useState<string | null>(null)
+
   const [discipline, setDiscipline] = useState('')
   const [severity, setSeverity] = useState<string>('medio')
   const [title, setTitle] = useState('')
@@ -27,6 +207,17 @@ export function WorkspaceHallazgosTab({
   const [evidenceRef, setEvidenceRef] = useState('')
   const [submitBusy, setSubmitBusy] = useState(false)
   const [localErr, setLocalErr] = useState<string | null>(null)
+
+  const statusPill = useMemo(() => runStatusBadge(report.run_status), [report.run_status])
+
+  const toggleClash = useCallback((id: string) => {
+    setExpandedClashIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
   const submit = useCallback(async () => {
     if (!token || !discipline.trim() || !title.trim() || !description.trim()) return
@@ -59,89 +250,240 @@ export function WorkspaceHallazgosTab({
     }
   }, [token, projectUuid, discipline, severity, title, description, evidenceRef, onRefresh])
 
-  return (
-    <div className="space-y-6">
-      <Card className="space-y-4 p-6">
-        <h2 className="text-lg font-semibold text-ink">Hallazgos técnicos</h2>
-        <p className="text-sm text-muted">
-          Registro manual de interferencias u observaciones (compatible con severidades para uso futuro con reglas /
-          OCR).
-        </p>
-        {localErr ? <p className="text-sm text-primary">{localErr}</p> : null}
-        <ul className="divide-y divide-black/10 border-y border-black/10">
-          {findings.length === 0 ? (
-            <li className="py-4 text-sm text-muted">Ningún hallazgo registrado todavía.</li>
-          ) : (
-            findings.map((f) => (
-              <li key={f.uuid} className="py-3">
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <span className="font-medium text-ink">{f.title}</span>
-                  <span className="rounded bg-black/[0.06] px-1.5 py-0.5 text-xs font-medium text-muted">
-                    {f.severity}
-                  </span>
-                  <span className="text-xs text-muted">{f.discipline}</span>
-                </div>
-                <p className="mt-1 text-sm text-ink">{f.description}</p>
-                {f.evidence_ref ? (
-                  <p className="mt-1 text-xs text-muted">Ref.: {f.evidence_ref}</p>
-                ) : null}
-                <p className="mt-1 text-xs text-muted">{new Date(f.created_at).toLocaleString()}</p>
-              </li>
-            ))
-          )}
-        </ul>
-      </Card>
+  const onDocRetry = useCallback((docId: string) => {
+    setFooterHint(`Reintento de documento «${docId}» — conectar con la API de análisis cuando esté disponible.`)
+  }, [])
 
-      <Card className="space-y-4 p-6">
-        <h3 className="text-md font-semibold text-ink">Registrar hallazgo</h3>
-        <label className="block text-sm text-muted">
-          Disciplina
-          <input
-            className="du-input mt-1"
-            value={discipline}
-            onChange={(e) => setDiscipline(e.target.value)}
-            placeholder="ej. arquitectura, instalaciones"
-          />
-        </label>
-        <label className="block text-sm text-muted">
-          Severidad
-          <select
-            className="du-input mt-1"
-            value={severity}
-            onChange={(e) => setSeverity(e.target.value)}
+  return (
+    <div className="space-y-8">
+      <header className="space-y-3">
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusPill.className}`}
           >
-            {SEVERITY_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
+            {statusPill.label}
+          </span>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 space-y-2">
+              <h2 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">{report.title}</h2>
+              <p className="max-w-3xl text-sm text-muted sm:text-base">{report.subtitle}</p>
+            </div>
+            <div className="grid shrink-0 grid-cols-3 gap-2 sm:gap-3">
+              <Card className="flex flex-col items-center justify-center gap-1 border-primary/20 bg-primary/[0.06] p-3 sm:p-4">
+                <span className="text-xs font-semibold uppercase tracking-wide text-primary">Errores</span>
+                <span className="flex items-center gap-1 text-2xl font-bold tabular-nums text-primary sm:text-3xl">
+                  <CircleAlert className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" aria-hidden />
+                  {String(report.summary.errors).padStart(2, '0')}
+                </span>
+              </Card>
+              <Card className="flex flex-col items-center justify-center gap-1 border-amber-500/25 bg-amber-500/8 p-3 sm:p-4">
+                <span className="text-xs font-semibold uppercase tracking-wide text-amber-900">Avisos</span>
+                <span className="flex items-center gap-1 text-2xl font-bold tabular-nums text-amber-950 sm:text-3xl">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-700 sm:h-6 sm:w-6" aria-hidden />
+                  {String(report.summary.warnings).padStart(2, '0')}
+                </span>
+              </Card>
+              <Card className="flex flex-col items-center justify-center gap-1 border-emerald-600/20 bg-emerald-600/8 p-3 sm:p-4">
+                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-900">Correcto</span>
+                <span className="flex items-center gap-1 text-2xl font-bold tabular-nums text-emerald-900 sm:text-3xl">
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-700 sm:h-6 sm:w-6" aria-hidden />
+                  {report.summary.ok}
+                </span>
+              </Card>
+            </div>
+          </div>
+        </header>
+
+        {report.clash_relationships.length > 0 ? (
+          <section className="space-y-3" aria-label="Relaciones entre hallazgos">
+            {report.clash_relationships.map((rel) => (
+              <RelationshipBanner key={rel.id} rel={rel} />
             ))}
-          </select>
-        </label>
-        <label className="block text-sm text-muted">
-          Título
-          <input className="du-input mt-1" value={title} onChange={(e) => setTitle(e.target.value)} />
-        </label>
-        <label className="block text-sm text-muted">
-          Descripción
-          <textarea
-            className="du-input mt-1 min-h-[88px]"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </label>
-        <label className="block text-sm text-muted">
-          Referencia de evidencia (opcional)
-          <input
-            className="du-input mt-1"
-            value={evidenceRef}
-            onChange={(e) => setEvidenceRef(e.target.value)}
-            placeholder="Plan, folio o enlace interno"
-          />
-        </label>
-        <PrimaryButton type="button" disabled={submitBusy || !token} onClick={() => void submit()}>
-          {submitBusy ? 'Guardando…' : 'Guardar hallazgo'}
-        </PrimaryButton>
-      </Card>
+          </section>
+        ) : null}
+
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <section className="min-w-0 flex-1 space-y-4" aria-labelledby="hallazgos-clashes-heading">
+            <h3 id="hallazgos-clashes-heading" className="text-lg font-semibold text-ink">
+              Conflictos detectados
+            </h3>
+            <div className="space-y-3">
+              {report.clashes.map((c) => (
+                <ClashCard
+                  key={c.id}
+                  clash={c}
+                  expanded={expandedClashIds.has(c.id)}
+                  onToggle={() => toggleClash(c.id)}
+                />
+              ))}
+            </div>
+          </section>
+
+          <aside className="w-full shrink-0 space-y-4 lg:w-80" aria-label="Contexto del análisis">
+            <Card className="p-4">
+              <h3 className="text-sm font-semibold text-ink">Documentación analizada</h3>
+              <ul className="mt-2">
+                {report.analyzed_documents.map((d) => (
+                  <DocumentRow key={d.id} doc={d} onRetry={onDocRetry} />
+                ))}
+              </ul>
+            </Card>
+            <Card className="border-primary/20 bg-primary/[0.05] p-4">
+              <div className="flex gap-2">
+                <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+                <div>
+                  <h3 className="text-sm font-semibold text-ink">Resumen Dupla</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink">{report.ai_insight}</p>
+                </div>
+              </div>
+            </Card>
+          </aside>
+        </div>
+
+        <section aria-labelledby="hallazgos-zoning-heading">
+          <h3 id="hallazgos-zoning-heading" className="text-lg font-semibold text-ink">
+            Estado de zonificación
+          </h3>
+          <Card className="mt-3 overflow-x-auto p-0">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-black/10 bg-black/[0.03] text-xs font-semibold uppercase tracking-wide text-muted">
+                  <th className="px-4 py-3">Zona</th>
+                  <th className="px-4 py-3">Área (m²)</th>
+                  <th className="px-4 py-3">Tipo de uso</th>
+                  <th className="px-4 py-3">Observaciones</th>
+                  <th className="px-4 py-3">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.zoning_rows.map((row) => (
+                  <tr key={row.id} className="border-b border-black/[0.06] last:border-0">
+                    <td className="px-4 py-3 font-medium text-ink">{row.zone_name}</td>
+                    <td className="px-4 py-3 tabular-nums text-muted">{row.area_sqm.toLocaleString('es-DO')}</td>
+                    <td className="px-4 py-3 text-ink">{row.use_type}</td>
+                    <td className="max-w-md px-4 py-3 text-muted">{row.ai_remarks}</td>
+                    <td className="px-4 py-3">
+                      <ZoningStatusBadge status={row.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </section>
+
+        <details className="group rounded-xl border border-black/10 bg-white shadow-[var(--shadow-card)]">
+          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-ink marker:content-none [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center justify-between gap-2">
+              Registro manual de hallazgos
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted transition group-open:rotate-180" aria-hidden />
+            </span>
+          </summary>
+          <div className="space-y-4 border-t border-black/10 px-5 py-4">
+            <p className="text-sm text-muted">
+              Los datos del informe superior serán alimentados por la API de análisis. Esto sigue guardando hallazgos
+              técnicos en el proyecto.
+            </p>
+            {localErr ? <p className="text-sm text-primary">{localErr}</p> : null}
+            <ul className="divide-y divide-black/10 border-y border-black/10">
+              {findings.length === 0 ? (
+                <li className="py-4 text-sm text-muted">Ningún hallazgo manual registrado todavía.</li>
+              ) : (
+                findings.map((f) => (
+                  <li key={f.uuid} className="py-3">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="font-medium text-ink">{f.title}</span>
+                      <span className="rounded bg-black/[0.06] px-1.5 py-0.5 text-xs font-medium text-muted">
+                        {f.severity}
+                      </span>
+                      <span className="text-xs text-muted">{f.discipline}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-ink">{f.description}</p>
+                    {f.evidence_ref ? (
+                      <p className="mt-1 text-xs text-muted">Ref.: {f.evidence_ref}</p>
+                    ) : null}
+                    <p className="mt-1 text-xs text-muted">{new Date(f.created_at).toLocaleString()}</p>
+                  </li>
+                ))
+              )}
+            </ul>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm text-muted sm:col-span-2">
+                Disciplina
+                <input
+                  className="du-input mt-1"
+                  value={discipline}
+                  onChange={(e) => setDiscipline(e.target.value)}
+                  placeholder="ej. arquitectura, instalaciones"
+                />
+              </label>
+              <label className="block text-sm text-muted">
+                Severidad
+                <select
+                  className="du-input mt-1"
+                  value={severity}
+                  onChange={(e) => setSeverity(e.target.value)}
+                >
+                  {SEVERITY_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm text-muted">
+                Título
+                <input className="du-input mt-1" value={title} onChange={(e) => setTitle(e.target.value)} />
+              </label>
+              <label className="block text-sm text-muted sm:col-span-2">
+                Descripción
+                <textarea
+                  className="du-input mt-1 min-h-[88px]"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </label>
+              <label className="block text-sm text-muted sm:col-span-2">
+                Referencia de evidencia (opcional)
+                <input
+                  className="du-input mt-1"
+                  value={evidenceRef}
+                  onChange={(e) => setEvidenceRef(e.target.value)}
+                  placeholder="Plan, folio o enlace interno"
+                />
+              </label>
+            </div>
+            <PrimaryButton type="button" disabled={submitBusy || !token} onClick={() => void submit()}>
+              {submitBusy ? 'Guardando…' : 'Guardar hallazgo'}
+            </PrimaryButton>
+          </div>
+        </details>
+
+      <footer className="flex flex-col gap-3 border-t border-black/10 bg-white pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1 text-sm text-muted">
+          <p>{report.footer_status_message}</p>
+          {footerHint ? <p className="mt-1 text-xs text-ink">{footerHint}</p> : null}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="du-pill-action"
+            onClick={() =>
+              setFooterHint('La exportación PDF del informe se conectará cuando la API de análisis esté disponible.')
+            }
+          >
+            <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
+            Descargar reporte PDF
+          </button>
+          <PrimaryButton
+            type="button"
+            className="inline-flex items-center gap-2 normal-case tracking-normal"
+            onClick={() => onContinueToPliego()}
+          >
+            Continuar al pliego
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </PrimaryButton>
+        </div>
+      </footer>
     </div>
   )
 }

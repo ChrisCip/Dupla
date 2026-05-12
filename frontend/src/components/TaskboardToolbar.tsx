@@ -66,7 +66,7 @@ export function TaskboardToolbar({
 
       <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end sm:gap-3">
         <p className="max-w-md text-xs text-muted">
-          Solo ves las tareas asignadas a tu cuenta (o creadas por vos sin asignar).
+          Solo ves las tareas asignadas a tu cuenta (o creadas por ti sin asignar).
         </p>
         <button
           type="button"

@@ -9,6 +9,7 @@ import {
 } from '../components/project-workspace/ProjectWorkspaceConsoleHeader'
 import { ProjectWorkspaceDashboard } from '../components/project-workspace/ProjectWorkspaceDashboard'
 import { WorkspaceArchivosTab } from '../components/project-workspace/tabs/WorkspaceArchivosTab'
+import { WorkspacePriceDatabaseTab } from '../components/project-workspace/tabs/WorkspacePriceDatabaseTab'
 import { WorkspaceDetallesTab } from '../components/project-workspace/tabs/WorkspaceDetallesTab'
 import { WorkspaceEntregaPlanosTab } from '../components/project-workspace/tabs/WorkspaceEntregaPlanosTab'
 import { WorkspaceEspecificacionesTab } from '../components/project-workspace/tabs/WorkspaceEspecificacionesTab'
@@ -27,8 +28,7 @@ import {
 import { defaultBootstrapCriteria } from '../constants/defaultBootstrapCriteria'
 import { TUTORIAL_PROJECT_UUID } from '../constants/tutorialProject'
 import { loadAdminDirectoryUsers } from '../lib/adminUsersDirectoryCache'
-import type { DirectoryUserRow } from '../lib/directoryUsers'
-import { normalizeDirectoryUsers } from '../lib/directoryUsers'
+import { isValidUuidString, normalizeDirectoryUsers, type DirectoryUserRow } from '../lib/directoryUsers'
 import { projectWorkspaceTabs } from '../constants/projectWorkspaceTabs'
 import { NEXT_WORKFLOW_PHASE, WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
 import { downloadBlob, filenameFromContentDisposition } from '../lib/download'
@@ -352,7 +352,11 @@ export function ProjectWorkspacePage() {
   }, [token])
 
   useEffect(() => {
-    if (!token || !projectUuid || !project) return
+    if (!token || !projectUuid) return
+    if (!project || project.uuid !== projectUuid) {
+      setMemberRows([])
+      return
+    }
     let cancelled = false
     void (async () => {
       const m = await apiFetch(`/api/projects/${projectUuid}/members`, { token })
@@ -365,25 +369,31 @@ export function ProjectWorkspacePage() {
   }, [token, projectUuid, project])
 
   useEffect(() => {
-    if (!token || role !== 'GERENCIA') return
+    if (!token || role !== 'GERENCIA' || !projectUuid) return
     let cancelled = false
     void (async () => {
-      const adminRows = await loadAdminDirectoryUsers(token)
+      const adminRows = await loadAdminDirectoryUsers(token, { forceRefresh: true })
       if (!cancelled && adminRows !== null) setAdminUsers(adminRows)
     })()
     return () => {
       cancelled = true
     }
-  }, [token, role])
+  }, [token, role, projectUuid])
 
   useEffect(() => {
-    const creator = project?.created_by_user_uuid
-    if (!creator) return
-    const next = new Set(
-      memberRows.map((r) => r.uuid).filter((id) => id !== creator),
-    )
+    if (!projectUuid) return
+    if (!project || project.uuid !== projectUuid) {
+      setMemberSelection(new Set())
+      return
+    }
+    const creator = project.created_by_user_uuid
+    const ids = memberRows.map((r) => r.uuid).filter(isValidUuidString)
+    const next =
+      creator != null && creator !== ''
+        ? new Set(ids.filter((id) => id !== creator))
+        : new Set(ids)
     setMemberSelection(next)
-  }, [memberRows, project?.created_by_user_uuid])
+  }, [memberRows, project, projectUuid])
 
   async function advancePhase() {
     if (!token || !project) return
@@ -398,7 +408,7 @@ export function ProjectWorkspacePage() {
         specObj?.business_pliego && typeof specObj.business_pliego === 'object',
       )
       if (constructionDirty && cpActive) {
-        setFlowMsg('Guardá el pliego para registrar las partidas antes de avanzar de fase.')
+        setFlowMsg('Guarda el pliego para registrar las partidas antes de avanzar de fase.')
         return
       }
       if (cpActive) {
@@ -426,7 +436,7 @@ export function ProjectWorkspacePage() {
         if (gaIsV1) {
           if (!isGaFoChecklistFullyTerminal(pliegoItemStates)) {
             setFlowMsg(
-              'Completa el checklist GA-FO-01 (cada documento en Completo o No aplica) y guardá en la pestaña Pliego.',
+              'Completa el checklist GA-FO-01 (cada documento en Completo o No aplica) y guarda en la pestaña Pliego.',
             )
             return
           }
@@ -772,6 +782,10 @@ export function ProjectWorkspacePage() {
             <WorkspaceArchivosTab projectUuid={projectUuid} token={token} flowMsg={flowMsg} />
           ) : null}
 
+          {tab === 'basePrecios' ? (
+            <WorkspacePriceDatabaseTab projectUuid={projectUuid} token={token} flowMsg={flowMsg} />
+          ) : null}
+
           {tab === 'entregaPlanos' ? (
             <WorkspaceEntregaPlanosTab
               projectUuid={projectUuid}
@@ -803,6 +817,7 @@ export function ProjectWorkspacePage() {
               token={token}
               findings={findings}
               onRefresh={() => loadFindings()}
+              onContinueToPliego={() => setTab('pliego')}
             />
           ) : null}
 
