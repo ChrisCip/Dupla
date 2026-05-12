@@ -326,9 +326,9 @@ def _build_cad_only_levels(cad_facts: dict[str, Any]) -> list[LevelInventory]:
         return [
             build_level_inventory(cad_facts, None, level_id="level_01", level_name=fallback_name)
         ]
-    json_scale = 1.0 / len(markers)
+    total_levels = len(markers)
     distribution_note = (
-        f"APS/JSON geometry appears project-wide and was divided across {len(markers)} CAD-detected levels."
+        f"APS/JSON geometry appears project-wide and was divided across {total_levels} CAD-detected levels."
     )
     levels: list[LevelInventory] = []
     for idx, name in enumerate(markers, start=1):
@@ -339,7 +339,7 @@ def _build_cad_only_levels(cad_facts: dict[str, Any]) -> list[LevelInventory]:
                 None,
                 level_id=level_id,
                 level_name=name,
-                json_quantity_scale=json_scale,
+                total_levels=total_levels,
                 json_distribution_note=distribution_note,
             )
         )
@@ -383,10 +383,10 @@ def build_hybrid_inventory(
         vision_levels.append(vision_level)
 
     hybrid_levels: list[LevelInventory] = []
-    json_scale = 1.0 / len(vision_levels) if len(vision_levels) > 1 else 1.0
+    total_levels = len(vision_levels)
     distribution_note = (
-        f"APS/JSON geometry appears project-wide and was divided across {len(vision_levels)} Vision levels."
-        if len(vision_levels) > 1
+        f"APS/JSON geometry appears project-wide and was divided across {total_levels} Vision levels."
+        if total_levels > 1
         else None
     )
     for vision_level in vision_levels:
@@ -396,7 +396,7 @@ def build_hybrid_inventory(
                 vision_level,
                 level_id=vision_level.level_id,
                 level_name=vision_level.level_name,
-                json_quantity_scale=json_scale,
+                total_levels=total_levels,
                 json_distribution_note=distribution_note,
             )
         )

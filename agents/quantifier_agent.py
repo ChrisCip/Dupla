@@ -143,41 +143,76 @@ def _window_entity_description(window: Window) -> str:
 
 
 def _clean_wall_entity_description(wall: Wall) -> str:
+    """Construction-style wall description (Sprint S3 Block 3).
+
+    Prefers Vision/CAD classification over raw layer IDs:
+        * masonry + 15cm + interior  -> "Muro de bloques, espesor 15 cm, ubicacion interior"
+        * concrete                   -> "Muro de hormigon armado"
+        * drywall                    -> "Muro sheetrock/drywall"
+        * fully unclassified         -> "Muro (layer: <id>)"
+    Avoids leaking ``json-wall-*`` / ``vis-wall-*`` ids into the budget line.
+    """
     inp = getattr(wall, "inputs", None) or {}
     raw = inp.get("raw") if isinstance(inp.get("raw"), dict) else {}
-    typ = (
+
+    wall_system = (wall.wall_system or inp.get("wall_system") or "").lower()
+    material = (wall.material_hint or inp.get("material_hint") or raw.get("material") or "").lower()
+    thickness = wall.thickness_m if wall.thickness_m is not None else inp.get("thickness_m")
+    if thickness is None:
+        thickness = inp.get("thickness_cm")
+        if thickness is not None:
+            try:
+                thickness = float(thickness) / 100.0
+            except (TypeError, ValueError):
+                thickness = None
+    location = (
+        wall.interior_exterior_hint
+        or inp.get("interior_exterior_hint")
+        or raw.get("ubicacion")
+        or raw.get("location")
+        or ""
+    )
+    location = str(location).strip().lower()
+
+    # User-provided typology (vision label) — keep only if it looks human.
+    typ_raw = (
         inp.get("wall_typology")
         or raw.get("wall_typology")
         or raw.get("tipo")
         or raw.get("type_label")
         or ""
     )
-    typ = str(typ).strip()
-    thick = wall.thickness_m
-    thick_cm = int(round(thick * 100)) if thick is not None else None
-    mat_code = str(raw.get("original_material_code") or wall.material_hint or "")
-    loc = str(raw.get("ubicacion") or "").strip()
-    if not loc:
-        loc = str(wall.interior_exterior_hint or raw.get("location") or "").strip()
+    typ = str(typ_raw).strip()
+    technical_typ = typ.lower().startswith(("json-wall-", "vis-wall-", "muro_"))
 
     parts: list[str] = []
-    technical_typ = typ.lower().startswith(("json-wall-", "vis-wall-"))
-    if typ and not technical_typ:
-        parts.append(f"Muro tipo {typ}")
-    elif wall.wall_system == "masonry_wall" or wall.material_hint == "masonry":
+    if "masonry" in wall_system or material == "masonry":
         parts.append("Muro de bloques")
-    elif wall.wall_system == "concrete_wall" or wall.material_hint == "concrete":
-        parts.append("Muro de hormigon")
+    elif "drywall" in wall_system or material == "drywall":
+        parts.append("Muro sheetrock/drywall")
+    elif "concrete" in wall_system or material == "concrete":
+        parts.append("Muro de hormigon armado")
+    elif typ and not technical_typ:
+        parts.append(f"Muro tipo {typ}")
     else:
         parts.append("Muro")
-    if mat_code.startswith("block_"):
-        parts.append(f"bloque {mat_code.replace('block_', '').replace('in', '')}\"")
-    elif mat_code and mat_code not in {"masonry", "concrete", "drywall"} and not mat_code.startswith("json-wall"):
-        parts.append(mat_code.replace("_", " "))
-    if thick_cm is not None:
-        parts.append(f"espesor {thick_cm} cm")
-    if loc:
-        parts.append(f"ubicacion {loc}")
+
+    if thickness is not None:
+        try:
+            t = float(thickness)
+            th_cm = int(round(t * 100 if t < 1 else t))
+            if th_cm > 0:
+                parts.append(f"espesor {th_cm} cm")
+        except (TypeError, ValueError):
+            pass
+
+    if location:
+        parts.append(f"ubicacion {location}")
+
+    # Fallback to layer ID only when nothing else is known.
+    if len(parts) == 1 and parts[0] == "Muro":
+        parts.append(f"(layer: {wall.id})")
+
     return ", ".join(parts)
 
 
@@ -859,7 +894,21 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                 )
             )
 
-        if wall.length_m is not None and effective_height is not None and effective_thickness is not None:
+        # Sprint S3 Block 3: walls priced by VOLUME only when they're cast in
+        # place (concrete). Block/drywall walls are quantified by net area only
+        # (the bc3/APU catalog prices them per m² — emitting m³ confuses the
+        # composer and inflates the budget).
+        wall_system_lower = (wall.wall_system or "").lower()
+        material_lower = (wall.material_hint or "").lower()
+        emit_volume = (
+            "concrete" in wall_system_lower or material_lower == "concrete"
+        )
+        if (
+            emit_volume
+            and wall.length_m is not None
+            and effective_height is not None
+            and effective_thickness is not None
+        ):
             wall_volume_context_tags = _entity_context_tags(wall, "wall", "volume")
             vol_assumptions = list(wall.assumptions)
             if height_assumed:

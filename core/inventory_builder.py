@@ -588,6 +588,113 @@ def _merge_walls(json_walls: list[Wall], vision_walls: list[Wall]) -> list[Wall]
     return merged
 
 
+def _redistribute_unclassified_walls(walls: list[Wall]) -> list[Wall]:
+    """
+    Sprint S3 Block 2: combine CAD geometry with Vision classification.
+
+    CAD walls carry geometry (length) but no classification (material/thickness).
+    Vision walls carry classification (material, thickness, location) but
+    unreliable geometry. After ``_merge_walls_with_aliases`` runs, walls that
+    didn't crosswalk fall into two groups on the same level:
+
+    * ``unclassified`` — CAD walls without material/wall_system (just geometry).
+    * ``classified``   — Vision/hybrid walls with material_hint, etc.
+
+    When both groups exist on this level, the unclassified CAD length is
+    redistributed *across* the classified types proportionally to each
+    classified wall's own length (or evenly if Vision lengths are missing).
+    The unclassified originals are dropped to prevent double-counting.
+
+    When only one group exists, walls pass through unchanged (with an
+    assumption note on unclassified ones).
+    """
+    if not walls:
+        return walls
+
+    classified: list[Wall] = []
+    unclassified: list[Wall] = []
+    for w in walls:
+        # A wall is "classified" if Vision contributed any material/system info.
+        if (w.material_hint or w.wall_system or w.thickness_m or
+                w.interior_exterior_hint):
+            classified.append(w)
+        else:
+            unclassified.append(w)
+
+    if not unclassified:
+        return walls
+
+    if not classified:
+        # No Vision classification on this level: keep unclassified as-is, flag.
+        result = list(classified)
+        for w in unclassified:
+            w.assumptions = _unique_strings(
+                w.assumptions,
+                ["Muro sin clasificar por Vision; tipo de bloque desconocido."],
+            )
+            result.append(w)
+        return result
+
+    total_unclassified_length = sum(
+        float(w.length_m or 0.0) for w in unclassified
+    )
+    if total_unclassified_length <= 0.0:
+        # Nothing to redistribute; just drop empty unclassified rows.
+        return classified
+
+    # Proportions: each classified wall takes a share equal to its own length
+    # share within the classified set. If Vision lengths are missing or zero,
+    # split evenly across them.
+    classified_lengths = [float(w.length_m or 0.0) for w in classified]
+    total_classified_length = sum(classified_lengths)
+    if total_classified_length <= 0.0:
+        shares = [1.0 / len(classified)] * len(classified)
+    else:
+        shares = [length / total_classified_length for length in classified_lengths]
+
+    redistribution_note = (
+        f"Redistributed {total_unclassified_length:.2f}m of unclassified CAD walls "
+        f"across {len(classified)} Vision-classified type(s) on this level."
+    )
+    redistributed: list[Wall] = []
+    unclassified_layers = _unique_strings(*(w.source_layers for w in unclassified))
+    unclassified_ids = [w.id for w in unclassified]
+
+    for wall, share in zip(classified, shares):
+        added_length = total_unclassified_length * share
+        new_length = float(wall.length_m or 0.0) + added_length
+        wall.length_m = new_length
+        wall.source_layers = _unique_strings(wall.source_layers, unclassified_layers)
+        wall.assumptions = _unique_strings(
+            wall.assumptions,
+            [
+                redistribution_note,
+                f"Vision classification kept; geometry merged from CAD layers {unclassified_layers}.",
+            ],
+        )
+        wall.evidence = _unique_strings(
+            wall.evidence,
+            [
+                f"Redistributed +{added_length:.2f}m of unclassified CAD wall length "
+                f"(share={share:.2%}) onto this Vision-classified wall."
+            ],
+        )
+        wall.inputs = {
+            **(wall.inputs or {}),
+            "redistributed_unclassified_length_m": added_length,
+            "redistributed_share": share,
+            "redistributed_from_ids": unclassified_ids,
+        }
+        redistributed.append(wall)
+
+    logger.info(
+        "Redistributed %d unclassified CAD wall(s) (%.2fm total) across %d Vision-classified "
+        "wall(s) on this level. Unclassified originals dropped to prevent double counting.",
+        len(unclassified), total_unclassified_length, len(classified),
+    )
+    return redistributed
+
+
 def _remap_wall_references(entities: list[EntityT], wall_id_aliases: dict[str, str]) -> list[EntityT]:
     if not wall_id_aliases:
         return entities
@@ -863,8 +970,18 @@ def _build_json_walls(
     gpt_layer_roles: dict[str, str] | None = None,
     quantity_scale: float = 1.0,
     distribution_note: str | None = None,
+    total_levels: int = 1,
 ) -> list[Wall]:
     gpt_layer_roles = gpt_layer_roles or {}
+    # total_levels collapses into quantity_scale: project-wide CAD geometry
+    # should be split evenly across the N levels the pipeline emits.
+    if total_levels and total_levels > 1:
+        quantity_scale = quantity_scale / float(total_levels)
+        if not distribution_note:
+            distribution_note = (
+                f"APS/JSON geometry distributed across {total_levels} levels "
+                f"(scale={quantity_scale:.4g})."
+            )
     geometry_hints = cad_facts.get("cad_facts", {}).get("geometry_hints", [])
     wall_lengths: dict[str, float] = {}
     wall_refs: dict[str, list[str]] = {}
@@ -930,7 +1047,14 @@ def _build_json_walls(
             geometry_fallback_layers.add(layer)
 
     walls: list[Wall] = []
+    dropped_short: list[tuple[str, float, float]] = []
     for layer, length in wall_lengths.items():
+        scaled_length = _scaled_quantity(length, quantity_scale)
+        # After dividing project-wide CAD across all levels, anything shorter
+        # than 0.5 m is DWG noise (annotation arrows, fragments) — drop it.
+        if scaled_length is not None and float(scaled_length) < _MIN_WALL_LINE_LENGTH_M:
+            dropped_short.append((layer, length, float(scaled_length)))
+            continue
         material_hint = _infer_wall_material_hint(layer)
         wall_system = _infer_wall_system_hint(layer)
         interior_exterior_hint = _infer_interior_exterior_hint(layer)
@@ -1026,6 +1150,15 @@ def _build_json_walls(
                 ],
             )
         )
+    if dropped_short:
+        logger.info(
+            "Dropped %d JSON wall layer(s) on %s after distribution: lengths < %.2fm "
+            "(likely DWG noise). Examples: %s",
+            len(dropped_short),
+            level_id,
+            _MIN_WALL_LINE_LENGTH_M,
+            ", ".join(f"{lyr}({raw:.1f}m raw -> {sc:.2f}m)" for lyr, raw, sc in dropped_short[:3]),
+        )
     return walls
 
 
@@ -1036,7 +1169,15 @@ def _build_json_structural_elements(
     gpt_layer_roles: dict[str, str] | None = None,
     quantity_scale: float = 1.0,
     distribution_note: str | None = None,
+    total_levels: int = 1,
 ) -> list[StructuralElement]:
+    if total_levels and total_levels > 1:
+        quantity_scale = quantity_scale / float(total_levels)
+        if not distribution_note:
+            distribution_note = (
+                f"APS/JSON structural geometry distributed across {total_levels} levels "
+                f"(scale={quantity_scale:.4g})."
+            )
     gpt_layer_roles = gpt_layer_roles or {}
     geometry_hints = cad_facts.get("cad_facts", {}).get("geometry_hints", [])
     blocks = cad_facts.get("cad_facts", {}).get("blocks", [])
@@ -1210,7 +1351,15 @@ def _build_json_doors_or_windows(
     item_prefix: str,
     quantity_scale: float = 1.0,
     distribution_note: str | None = None,
+    total_levels: int = 1,
 ) -> list[Door] | list[Window]:
+    if total_levels and total_levels > 1:
+        quantity_scale = quantity_scale / float(total_levels)
+        if not distribution_note:
+            distribution_note = (
+                f"APS/JSON block counts distributed across {total_levels} levels "
+                f"(scale={quantity_scale:.4g})."
+            )
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for block in blocks:
         block_name = str(block.get("block_name", ""))
@@ -1253,7 +1402,21 @@ def build_json_inventory(
     level_name: str,
     quantity_scale: float = 1.0,
     distribution_note: str | None = None,
+    total_levels: int = 1,
 ) -> LevelInventory:
+    """Build a per-level JSON inventory from project-wide CAD facts.
+
+    ``total_levels`` collapses into ``quantity_scale``: project-wide CAD
+    geometry should be divided across the N level inventories the pipeline
+    emits, since APS/Model Derivative returns the whole DWG once.
+    """
+    if total_levels and total_levels > 1:
+        quantity_scale = quantity_scale / float(total_levels)
+        if not distribution_note:
+            distribution_note = (
+                f"APS/JSON geometry distributed across {total_levels} levels "
+                f"(scale={quantity_scale:.4g})."
+            )
     blocks = cad_facts.get("cad_facts", {}).get("blocks", [])
     floor_area_m2, floor_refs = _sum_hatch_area(cad_facts, _FLOOR_TOKENS)
     ceiling_area_m2, ceiling_refs = _sum_hatch_area(cad_facts, _CEILING_TOKENS)
@@ -1374,15 +1537,25 @@ def build_level_inventory(
     level_name: str | None = None,
     json_quantity_scale: float = 1.0,
     json_distribution_note: str | None = None,
+    total_levels: int = 1,
 ) -> LevelInventory:
     """
     Merge normalized CAD facts with vision-derived inventory.
 
     JSON-derived values are preferred when explicit, vision fills gaps, and any
     disagreement is preserved as conflict notes instead of being silently overwritten.
-    When APS/JSON facts represent project-wide geometry, callers can pass
-    json_quantity_scale to distribute those quantities across multiple levels.
+    When APS/JSON facts represent project-wide geometry, pass ``total_levels`` to
+    distribute the per-project CAD quantities evenly across the N levels the
+    pipeline emits (preferred API). ``json_quantity_scale`` is kept for
+    backwards compatibility with callers that pre-compute the fraction.
     """
+    if total_levels and total_levels > 1:
+        json_quantity_scale = json_quantity_scale / float(total_levels)
+        if not json_distribution_note:
+            json_distribution_note = (
+                f"APS/JSON geometry distributed across {total_levels} levels "
+                f"(scale={json_quantity_scale:.4g})."
+            )
     if isinstance(vision_inventory, LevelInventory):
         vision_level = vision_inventory
     elif vision_inventory is not None:
@@ -1421,6 +1594,10 @@ def build_level_inventory(
         conflict_notes,
     )
     merged_walls, wall_id_aliases = _merge_walls_with_aliases(json_level.walls, vision_level.walls)
+    # Sprint S3 Block 2: redistribute leftover unclassified CAD geometry across
+    # Vision-classified types so the budget gets ONE row per real wall type
+    # (with both geometry from CAD and classification from Vision).
+    merged_walls = _redistribute_unclassified_walls(merged_walls)
     vision_openings = _remap_wall_references(vision_level.openings, wall_id_aliases)
     vision_doors = _remap_wall_references(vision_level.doors, wall_id_aliases)
     vision_windows = _remap_wall_references(vision_level.windows, wall_id_aliases)

@@ -267,6 +267,77 @@ def extract_rebar_notation(value: Any) -> set[str]:
     return out
 
 
+# Block thickness equivalences used by the constructor (inches <-> centimetres).
+# Sprint S3 Block 4: when a takeoff says "espesor 15 cm" we need to also try
+# '6"' / '6 in' tokens because the constructor's APUs are written that way.
+_BLOCK_THICKNESS_EQUIV: tuple[tuple[int, int, int], ...] = (
+    # (cm,  inches, inches-tight)
+    (10, 4, 4),
+    (15, 6, 6),
+    (20, 8, 8),
+    (30, 12, 12),
+)
+
+
+def _parse_takeoff_description(description: str) -> tuple[set[str], set[str]]:
+    """Mine the human takeoff_description for dim + qualifier tokens.
+
+    Returns ``(dim_sig, qual_sig)`` — same shape as ``_signature_from_inputs``.
+    """
+    dim_sig: set[str] = set()
+    qual_sig: set[str] = set()
+    if not description:
+        return dim_sig, qual_sig
+    norm = _norm(description)
+
+    # Section pairs (columns/beams) — "0.30×0.20", "0.30x0.20", "30x40".
+    dim_sig |= normalize_section(norm)
+
+    # "espesor 15 cm" -> 15, 0.15, plus inch equivalences for blocks.
+    m = re.search(r"espesor\s*(\d+(?:\.\d+)?)\s*cm", norm)
+    if m:
+        try:
+            cm_val = float(m.group(1))
+            dim_sig.add(str(int(cm_val)))
+            dim_sig.add(f"{cm_val/100:.2f}")
+            for cm, inches, _ in _BLOCK_THICKNESS_EQUIV:
+                if abs(cm - cm_val) < 0.5:
+                    dim_sig.add(str(inches))
+                    dim_sig.add(f'{inches}"')
+        except ValueError:
+            pass
+
+    # "bloques 15cm" / "bloque 8" / "bloque 8\""
+    for m in re.finditer(r"bloque[s]?\s*(\d+)\s*(cm|in|\")?", norm):
+        n = int(m.group(1))
+        suf = (m.group(2) or "").lower()
+        dim_sig.add(str(n))
+        if suf in ("in", '"'):
+            dim_sig.add(f'{n}"')
+            for cm, inches, _ in _BLOCK_THICKNESS_EQUIV:
+                if inches == n:
+                    dim_sig.add(str(cm))
+        else:  # cm or bare
+            for cm, inches, _ in _BLOCK_THICKNESS_EQUIV:
+                if cm == n:
+                    dim_sig.add(str(inches))
+                    dim_sig.add(f'{inches}"')
+
+    # Qualifier keywords that map onto APU vocabulary.
+    QUAL_KEYWORDS = (
+        "interior", "exterior", "techo", "viga", "caseta",
+        "amarre", "enrase", "dintel",
+        "plana", "inclinada", "aligerada",
+        "porcelanato", "ceramica", "coralina",
+        "masonry", "bloque", "bloques",
+        "hormigon", "concreto",
+    )
+    for kw in QUAL_KEYWORDS:
+        if kw in norm:
+            qual_sig.add(kw)
+    return dim_sig, qual_sig
+
+
 def _signature_from_inputs(
     inputs: Mapping[str, Any] | None,
     dim_fields: tuple[str, ...],
@@ -287,6 +358,25 @@ def _signature_from_inputs(
             qual_sig |= extract_rebar_notation(v)
         else:
             qual_sig |= {tok for tok in _norm(str(v)).split() if tok}
+
+    # Sprint S3 Block 4: always mine takeoff_description, context_tags, and
+    # material_hint so pipeline-emitted takeoffs (which lack the structured
+    # column/beam fields) still produce a useful signature.
+    desc = str(inputs.get("takeoff_description") or "")
+    if desc:
+        d_dim, d_qual = _parse_takeoff_description(desc)
+        dim_sig |= d_dim
+        qual_sig |= d_qual
+
+    for tag in (inputs.get("context_tags") or []):
+        t = _norm(str(tag))
+        if t:
+            qual_sig.add(t)
+
+    mat = inputs.get("material_hint")
+    if mat:
+        qual_sig.add(_norm(str(mat)))
+
     return dim_sig, qual_sig
 
 
@@ -479,6 +569,27 @@ class APUMatcher:
 
         self._record(takeoff, "none", None)
         return None
+
+    def match_from_inputs(
+        self,
+        inputs: Mapping[str, Any],
+        item_type: str,
+        *,
+        unit: str = "",
+        item_key: str = "_probe_",
+    ) -> APUBreakdown | None:
+        """Match without a full ``QuantityTakeoff`` object — used by replay scripts
+        that work directly off ``budget_output.json`` lines.
+        """
+        probe = QuantityTakeoff(
+            item_key=item_key,
+            item_type=item_type,
+            unit=unit,
+            quantity=0.0,
+            formula="",
+            inputs=dict(inputs or {}),
+        )
+        return self.match(probe)
 
     def match_batch(
         self,
