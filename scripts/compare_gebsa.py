@@ -16,12 +16,15 @@ because output and real use different coding schemes.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import unicodedata
+from collections import Counter
 from collections.abc import Iterable
 from difflib import SequenceMatcher
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
@@ -92,7 +95,10 @@ def _canonical_unit(unit: str) -> str:
 
 
 class Item:
-    __slots__ = ("source", "code", "summary", "unit", "price", "quantity", "amount", "norm", "tokens", "canon_unit")
+    __slots__ = (
+        "source", "code", "summary", "unit", "price", "quantity", "amount",
+        "norm", "tokens", "canon_unit", "price_source",
+    )
 
     def __init__(
         self,
@@ -102,6 +108,7 @@ class Item:
         unit: str,
         price: float,
         quantity: float,
+        price_source: str = "",
     ) -> None:
         self.source = source
         self.code = code
@@ -113,6 +120,8 @@ class Item:
         self.norm = _normalize_text(summary)
         self.tokens = _tokenize(summary)
         self.canon_unit = _canonical_unit(unit)
+        # "constructor_apu" | "bc3_catalog" | "" (unknown)
+        self.price_source = price_source
 
 
 def _quantities_by_item(catalog: dict) -> dict[str, float]:
@@ -141,9 +150,48 @@ def _quantities_by_item(catalog: dict) -> dict[str, float]:
     return qty_by_code
 
 
-def _load_items(path: Path, source_label: str) -> list[Item]:
+def _price_source_index(budget_json_path: Path | None) -> dict[str, str]:
+    """Map ``BC3 code -> source_type`` from a discipline budget JSON, if available.
+
+    The pipeline writes ``budget_output.json`` per discipline. Each line carries
+    ``metadata.source_type`` ("constructor_apu" / "bc3_catalog") when the run
+    used ``--pricing-excel``; older runs leave it absent and we infer from the
+    ``price_source`` string instead.
+    """
+    if budget_json_path is None or not budget_json_path.exists():
+        return {}
+    try:
+        payload = json.loads(budget_json_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+    out: dict[str, str] = {}
+    for line in payload.get("lines", []):
+        code = str(line.get("code", "") or "").strip()
+        if not code:
+            continue
+        meta = line.get("metadata") or {}
+        src = str(meta.get("source_type") or "").strip()
+        if not src:
+            ps = str(meta.get("price_source") or "")
+            if "Constructor APU" in ps:
+                src = "constructor_apu"
+            elif ps:
+                src = "bc3_catalog"
+        if src:
+            out[code] = src
+    return out
+
+
+def _load_items(
+    path: Path,
+    source_label: str,
+    *,
+    budget_json: Path | None = None,
+) -> list[Item]:
     catalog = parse_bc3(str(path))
     qty_map = _quantities_by_item(catalog)
+    price_src_by_code = _price_source_index(budget_json)
     items: list[Item] = []
     for raw in catalog.get("items", []):
         code = raw.get("code", "")
@@ -153,7 +201,10 @@ def _load_items(path: Path, source_label: str) -> list[Item]:
         if not summary or price <= 0:
             continue
         qty = qty_map.get(code, 1.0)
-        items.append(Item(source_label, code, summary, unit, price, qty))
+        items.append(Item(
+            source_label, code, summary, unit, price, qty,
+            price_source=price_src_by_code.get(code, ""),
+        ))
     return items
 
 
@@ -350,6 +401,31 @@ def main() -> int:
         default=0.35,
         help="Minimum similarity to consider a match (default: 0.35)",
     )
+    parser.add_argument(
+        "--budget-json",
+        nargs="+",
+        default=None,
+        help="Optional budget_output.json per discipline (parallel order to --output). "
+             "Used to extract pricing source_type for the 'Pricing source' section.",
+    )
+    parser.add_argument(
+        "--baseline-v1",
+        type=str,
+        default=None,
+        help="Path to a previous BASELINE_GEBSA_V1.md for delta comparison",
+    )
+    parser.add_argument(
+        "--out-md",
+        type=str,
+        default=None,
+        help="Write the rendered markdown to this path (in addition to stdout)",
+    )
+    parser.add_argument(
+        "--title",
+        type=str,
+        default="BASELINE GEBSA IV - V1",
+        help="Markdown H1 title",
+    )
     args = parser.parse_args()
 
     real_path = Path(args.real)
@@ -357,15 +433,21 @@ def main() -> int:
         print(f"ERROR: real BC3 not found: {real_path}", file=sys.stderr)
         return 2
 
+    budget_jsons: list[Path | None] = []
+    if args.budget_json:
+        budget_jsons = [Path(p) if p else None for p in args.budget_json]
+
     output_items: list[Item] = []
-    for p in args.output:
+    for idx, p in enumerate(args.output):
         path = Path(p)
         if not path.exists():
             print(f"WARN: output BC3 not found, skipping: {path}", file=sys.stderr)
             continue
         label = path.stem.replace("presupuesto_", "")
-        items = _load_items(path, label)
-        print(f"Loaded output {path.name}: {len(items)} priced items", file=sys.stderr)
+        bj = budget_jsons[idx] if idx < len(budget_jsons) else None
+        items = _load_items(path, label, budget_json=bj)
+        bj_note = f" + {bj.name}" if bj and bj.exists() else ""
+        print(f"Loaded output {path.name}{bj_note}: {len(items)} priced items", file=sys.stderr)
         output_items.extend(items)
 
     if not output_items:
@@ -380,7 +462,68 @@ def main() -> int:
         output_items, real_items, threshold=args.threshold
     )
     _print_report(output_items, real_items, matches, used_real)
+
+    if args.out_md:
+        baseline = _parse_v1_headline(Path(args.baseline_v1)) if args.baseline_v1 else {}
+        md = render_markdown(
+            output_items, real_items, matches, used_real,
+            real_path=str(real_path), output_paths=args.output,
+            threshold=args.threshold,
+            baseline_v1=baseline,
+            title=args.title,
+        )
+        out_md = Path(args.out_md)
+        out_md.parent.mkdir(parents=True, exist_ok=True)
+        out_md.write_text(md, encoding="utf-8")
+        print(f"Wrote {out_md}", file=sys.stderr)
     return 0
+
+
+def _pricing_breakdown(items: list[Item]) -> tuple[dict[str, int], dict[str, dict[str, int]]]:
+    """Return (overall_counts, per_discipline_counts) keyed by source_type label.
+
+    Output labels: ``"APU Constructor"``, ``"Catálogo BC3"``, ``"(desconocido)"``.
+    """
+    label_map = {
+        "constructor_apu": "APU Constructor",
+        "bc3_catalog": "Catálogo BC3",
+        "": "(desconocido)",
+    }
+    overall: Counter[str] = Counter()
+    per_disc: dict[str, Counter[str]] = {}
+    for it in items:
+        label = label_map.get(it.price_source, "(desconocido)")
+        overall[label] += 1
+        per_disc.setdefault(it.source, Counter())[label] += 1
+    return dict(overall), {k: dict(v) for k, v in per_disc.items()}
+
+
+def _parse_v1_headline(baseline_md: Path | None) -> dict[str, Any]:
+    """Extract a few headline numbers from a previous BASELINE_GEBSA_V1.md.
+
+    Best-effort parse — pulls 'Matcheadas', 'Partidas output/real', and the
+    bands from the precision tables. Missing values just stay absent.
+    """
+    out: dict[str, Any] = {}
+    if not baseline_md or not baseline_md.exists():
+        return out
+    text = baseline_md.read_text(encoding="utf-8")
+    m = re.search(r"\|\s*Matcheadas\s*\|\s*(\d+)\s*\(([\d.]+)%", text)
+    if m:
+        out["matched_n"] = int(m.group(1))
+        out["matched_pct"] = float(m.group(2))
+    m = re.search(r"\|\s*Partidas output\s*\|\s*(\d+)", text)
+    if m:
+        out["output_n"] = int(m.group(1))
+    m = re.search(r"\|\s*Partidas real\s*\|\s*(\d+)", text)
+    if m:
+        out["real_n"] = int(m.group(1))
+    for pct in (10, 25, 50):
+        m = re.search(rf"\|\s*Dentro de \+/-{pct}%\s*\|\s*(\d+)\s*\|\s*([\d.]+)%", text)
+        if m:
+            out[f"price_within_{pct}_n"] = int(m.group(1))
+            out[f"price_within_{pct}_pct"] = float(m.group(2))
+    return out
 
 
 def render_markdown(
@@ -392,13 +535,15 @@ def render_markdown(
     real_path: str,
     output_paths: list[str],
     threshold: float,
+    baseline_v1: dict[str, Any] | None = None,
+    title: str = "BASELINE GEBSA IV - V1",
 ) -> str:
     n_out = len(output_items)
     n_real = len(real_items)
     n_match = len(matches)
     pct_match = (n_match / n_real * 100.0) if n_real else 0.0
     lines: list[str] = []
-    lines.append("# BASELINE GEBSA IV - V1")
+    lines.append(f"# {title}")
     lines.append("")
     lines.append("Comparacion automatica del output del pipeline Dupla contra el BC3 real de GEBSA IV.")
     lines.append("Matching por similitud de descripcion + unidad compatible (no por codigo).")
@@ -474,12 +619,82 @@ def render_markdown(
             )
         lines.append("")
 
+    # --- Pricing source breakdown (Sprint S2 Day 6-8) ---
+    overall_src, per_disc_src = _pricing_breakdown(output_items)
+    labels_order = ["APU Constructor", "Catálogo BC3", "(desconocido)"]
+
+    apu_count = overall_src.get("APU Constructor", 0)
+    if apu_count == 0:
+        lines.append("> **Nota:** ninguna partida del output usa precios del constructor.")
+        lines.append("> Indica que la corrida es anterior al wiring del APUMatcher,")
+        lines.append("> o que se ejecutó sin `--pricing-excel`.")
+        lines.append("> Para una V2 real: re-correr `dupla_run_gebsa.py --pricing-excel data\\Lista de precios-analisis-MO.xlsx`.")
+        lines.append("")
+
+    lines.append("## Pricing source (origen del precio)")
+    lines.append("")
+    lines.append("| Fuente | Partidas | % |")
+    lines.append("|---|---:|---:|")
+    total_src = sum(overall_src.values()) or 1
+    for lbl in labels_order:
+        n = overall_src.get(lbl, 0)
+        if n == 0 and lbl == "(desconocido)":
+            continue
+        lines.append(f"| {lbl} | {n} | {n/total_src*100:.1f}% |")
+    lines.append("")
+
+    if per_disc_src:
+        lines.append("### APU match rate por disciplina")
+        lines.append("")
+        lines.append("| Disciplina | Total | APU Constructor | Catálogo BC3 | Desconocido | Hit APU % |")
+        lines.append("|---|---:|---:|---:|---:|---:|")
+        for disc in sorted(per_disc_src):
+            cnts = per_disc_src[disc]
+            tot = sum(cnts.values())
+            apu = cnts.get("APU Constructor", 0)
+            bc3 = cnts.get("Catálogo BC3", 0)
+            unk = cnts.get("(desconocido)", 0)
+            hit = (apu / tot * 100.0) if tot else 0.0
+            lines.append(f"| {disc} | {tot} | {apu} | {bc3} | {unk} | {hit:.1f}% |")
+        lines.append("")
+
+    # --- Delta vs baseline V1 ---
+    if baseline_v1:
+        lines.append("## Delta vs BASELINE V1")
+        lines.append("")
+        lines.append("| Metrica | V1 | V2 actual | Delta |")
+        lines.append("|---|---:|---:|---:|")
+
+        def _row(label: str, v1_key: str, v2_val: float, fmt: str = "{:.1f}") -> None:
+            v1 = baseline_v1.get(v1_key)
+            if v1 is None:
+                return
+            delta = v2_val - float(v1)
+            lines.append(
+                f"| {label} | {fmt.format(float(v1))} | {fmt.format(v2_val)} | "
+                f"{'+' if delta >= 0 else ''}{fmt.format(delta)} |"
+            )
+
+        n_match = len(matches)
+        pct_match = (n_match / max(len(real_items), 1)) * 100.0
+        _row("Output items", "output_n", float(len(output_items)), "{:.0f}")
+        _row("Real items",   "real_n",   float(len(real_items)),   "{:.0f}")
+        _row("Matcheadas (n)", "matched_n", float(n_match), "{:.0f}")
+        _row("Matcheadas (%)", "matched_pct", pct_match, "{:.1f}")
+        if matches:
+            buckets = _bucket_counts(matches, (0.10, 0.25, 0.50))
+            for pct, (_, c) in zip((10, 25, 50), buckets):
+                cur_pct = (c / n_match * 100.0) if n_match else 0.0
+                _row(f"Precios +/-{pct}% (%)", f"price_within_{pct}_pct", cur_pct, "{:.1f}")
+        lines.append("")
+
     lines.append("## Solo en output (primeras 20)")
     lines.append("")
     matched_outs = {id(m[0]) for m in matches}
     unmatched = [it for it in output_items if id(it) not in matched_outs]
     for it in unmatched[:20]:
-        lines.append(f"- [{it.source}] {it.summary} (`{it.unit}` @ {it.price:,.2f})")
+        ps = f" [{it.price_source}]" if it.price_source else ""
+        lines.append(f"- [{it.source}]{ps} {it.summary} (`{it.unit}` @ {it.price:,.2f})")
     lines.append("")
 
     return "\n".join(lines) + "\n"

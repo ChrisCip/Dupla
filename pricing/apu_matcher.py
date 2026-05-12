@@ -39,6 +39,7 @@ logger = logging.getLogger("dupla.pricing.apu_matcher")
 _EMBEDDING_THRESHOLD = 0.85
 _EMBED_CHUNK_SIZE = 128
 _DEFAULT_CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "pricing_cache"
+_DEFAULT_LOG_PATH = Path(__file__).resolve().parent.parent / "output" / "apu_matching_log.txt"
 
 
 # ---------------------------------------------------------------------------
@@ -346,6 +347,7 @@ class APUMatcher:
         *,
         embedding_model: str = DEFAULT_EMBEDDING_MODEL,
         cache_dir: str | Path | None = _DEFAULT_CACHE_DIR,
+        log_path: str | Path | None = _DEFAULT_LOG_PATH,
     ):
         self.store = pricing_store
         self.embedding_model = embedding_model
@@ -362,6 +364,26 @@ class APUMatcher:
             tokens = {t for t in desc_norm.split() if len(t) > 1}
             self._apu_index.append((apu, desc_norm, tokens))
 
+        # Diagnostics: append-only file log of every match attempt + per-batch
+        # summary blocks. Cumulative counters so multi-discipline runs aggregate.
+        self._log_path = Path(log_path) if log_path else None
+        self._stats: dict[str, int] = {
+            "total": 0, "keyword": 0, "embedding": 0, "none": 0,
+        }
+        if self._log_path is not None:
+            try:
+                self._log_path.parent.mkdir(parents=True, exist_ok=True)
+                from datetime import datetime
+                with self._log_path.open("a", encoding="utf-8") as fh:
+                    fh.write(
+                        f"\n===== APUMatcher session opened "
+                        f"{datetime.now().isoformat(timespec='seconds')} | "
+                        f"apus={len(self._apu_index)} =====\n"
+                    )
+            except Exception:
+                logger.warning("Cannot open APU match log %s", self._log_path, exc_info=True)
+                self._log_path = None
+
     # Back-compat property kept for callers that probed truthiness of the old
     # `self.embeddings` slot.
     @property
@@ -373,6 +395,71 @@ class APUMatcher:
         self._apu_vectors = value
 
     # ------------------------------------------------------------------
+    # Diagnostic logging
+    # ------------------------------------------------------------------
+
+    def _takeoff_label(self, takeoff: QuantityTakeoff) -> str:
+        """One-line, audit-friendly description of a takeoff."""
+        inputs_blob = ", ".join(
+            f"{k}={v}" for k, v in (takeoff.inputs or {}).items() if v is not None
+        )
+        return (
+            f"{takeoff.item_key} | {takeoff.item_type} | "
+            f"{takeoff.quantity} {takeoff.unit} | {{{inputs_blob}}}"
+        )
+
+    def _record(self, takeoff: QuantityTakeoff, strategy: str, apu: APUBreakdown | None) -> None:
+        """Update counters and append a line to the match log."""
+        self._stats["total"] += 1
+        if apu is not None:
+            self._stats[strategy] = self._stats.get(strategy, 0) + 1
+        else:
+            self._stats["none"] += 1
+
+        line = (
+            f"[{strategy:9}] {self._takeoff_label(takeoff)} -> "
+            + (f"{apu.code} {apu.description[:80]}" if apu else "NO MATCH")
+        )
+        logger.debug(line)
+        if self._log_path is not None:
+            try:
+                with self._log_path.open("a", encoding="utf-8") as fh:
+                    fh.write(line + "\n")
+            except Exception:
+                logger.warning("APU match log write failed", exc_info=True)
+
+    def write_summary(self, *, label: str = "") -> dict[str, int]:
+        """Flush a summary block of cumulative counters to the log.
+
+        Returns the stats snapshot so callers can also surface it elsewhere
+        (Excel report, run summary, etc.).
+        """
+        s = dict(self._stats)
+        total = s.get("total", 0)
+        matched = s.get("keyword", 0) + s.get("embedding", 0)
+        block = [
+            "----- APUMatcher summary" + (f" [{label}]" if label else "") + " -----",
+            f"  total takeoffs evaluated: {total}",
+            f"  matched by keywords:      {s.get('keyword', 0)}",
+            f"  matched by embeddings:    {s.get('embedding', 0)}",
+            f"  no match (BC3 fallback):  {s.get('none', 0)}",
+            f"  hit rate:                 {(matched / total * 100.0) if total else 0.0:.1f}%",
+        ]
+        text = "\n".join(block) + "\n"
+        logger.info("APUMatcher %s", " | ".join(block[1:]))
+        if self._log_path is not None:
+            try:
+                with self._log_path.open("a", encoding="utf-8") as fh:
+                    fh.write(text)
+            except Exception:
+                logger.warning("APU match summary write failed", exc_info=True)
+        return s
+
+    @property
+    def stats(self) -> dict[str, int]:
+        return dict(self._stats)
+
+    # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
@@ -382,24 +469,27 @@ class APUMatcher:
 
         apu = self._keyword_match(takeoff, rule)
         if apu is not None:
+            self._record(takeoff, "keyword", apu)
             return apu
 
         apu = self._embedding_match(takeoff, rule)
         if apu is not None:
+            self._record(takeoff, "embedding", apu)
             return apu
 
+        self._record(takeoff, "none", None)
         return None
 
     def match_batch(
         self,
         takeoffs: list[QuantityTakeoff],
     ) -> dict[str, APUBreakdown | None]:
-        """
-        Match many takeoffs at once.
+        """Match many takeoffs at once with one shared embedding call.
 
         Step 1 (keyword) runs synchronously. Takeoffs that fall through are
         embedded together in a single OpenAI call (chunked at 128), keeping
-        API cost ~O(1) for the batch.
+        API cost ~O(1) for the batch. After the batch a summary block with
+        cumulative counters is appended to the match log.
         """
         results: dict[str, APUBreakdown | None] = {}
         pending: list[QuantityTakeoff] = []
@@ -408,6 +498,7 @@ class APUMatcher:
             rule = self._select_rule(t)
             apu = self._keyword_match(t, rule)
             if apu is not None:
+                self._record(t, "keyword", apu)
                 results[t.item_key] = apu
             else:
                 pending.append(t)
@@ -415,7 +506,9 @@ class APUMatcher:
         if pending:
             for t, apu in zip(pending, self._embedding_match_many(pending)):
                 results[t.item_key] = apu
+                self._record(t, "embedding" if apu is not None else "none", apu)
 
+        self.write_summary(label=f"batch n={len(takeoffs)}")
         return results
 
     # ------------------------------------------------------------------
