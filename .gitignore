@@ -10,7 +10,7 @@ demo_files/
 *.json
 *.zip
 *.bundle/
-.output/outputs_gebsa
+output/outputs_gebsa/
 !requirements.txt
 !requirements-legacy.txt
 !README.md
