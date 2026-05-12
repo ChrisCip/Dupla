@@ -92,7 +92,7 @@ export function Sidebar() {
           />
           {!collapsed ? (
             <div className="pt-0.5">
-              <p className="text-lg font-semibold leading-none tracking-tight text-ink">dupla</p>
+              <p className="text-lg font-semibold leading-none tracking-tight text-ink">Dupla</p>
               <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-muted">Gestión de obras</p>
             </div>
           ) : null}
