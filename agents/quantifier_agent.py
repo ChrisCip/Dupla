@@ -66,7 +66,7 @@ def _merge_inputs_with_description(base: dict[str, Any], description: str) -> di
     return merged
 
 
-def _wall_entity_description(wall: Wall) -> str:
+def _legacy_wall_entity_description(wall: Wall) -> str:
     inp = getattr(wall, "inputs", None) or {}
     raw = inp.get("raw") if isinstance(inp.get("raw"), dict) else {}
     typ = (
@@ -142,7 +142,7 @@ def _window_entity_description(window: Window) -> str:
     return " — ".join(parts) if len(parts) > 1 else (parts[0] if parts else "Ventana")
 
 
-def _legacy_wall_entity_description(wall: Wall) -> str:
+def _clean_wall_entity_description(wall: Wall) -> str:
     inp = getattr(wall, "inputs", None) or {}
     raw = inp.get("raw") if isinstance(inp.get("raw"), dict) else {}
     typ = (
@@ -203,6 +203,9 @@ def _wall_block_inputs(wall: Wall) -> tuple[dict[str, Any], list[str]]:
             f"Wall {wall.id} block APU matching uses {spec} and 3/8@{spacing} as default constructability hints pending explicit reinforcement notes."
         )
     return inputs, assumptions
+
+
+_wall_entity_description = _clean_wall_entity_description
 
 
 def _structural_entity_description(element: StructuralElement) -> str:
