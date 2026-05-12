@@ -8,7 +8,8 @@ import {
   PROJECT_FILE_ACCEPT_ATTR,
 } from '../../constants/projectAllowedFiles'
 import { PROJECT_KIND_OPTIONS, type ProjectKindValue } from '../../constants/projectKind'
-import { formatPersonFullName } from '../../lib/personDisplay'
+import { ProjectMemberPicker } from './ProjectMemberPicker'
+import type { DirectoryUserRow } from '../../lib/directoryUsers'
 
 const STEP = {
   datos: {
@@ -32,7 +33,7 @@ const STEP = {
   participantes: {
     title: 'Equipo del proyecto',
     description:
-      'El creador siempre tiene acceso. Marca quién más debe ver el workspace; puedes cambiarlo después en Configuración.',
+      'Tu cuenta sigue teniendo acceso. Busca por nombre o correo para sumar a más personas; puedes ajustar la lista después en Configuración.',
     footerHint: 'Participantes',
   },
 } as const
@@ -107,7 +108,7 @@ type CreateProjectModalProps = {
   setCreateFiles: React.Dispatch<React.SetStateAction<File[]>>
   createMembers: Set<string>
   setCreateMembers: React.Dispatch<React.SetStateAction<Set<string>>>
-  adminUsersCreate: { uuid: string; email: string; first_name: string; last_name: string }[]
+  adminUsersCreate: DirectoryUserRow[]
   userUuid: string | null
   error: string | null
   submitting: boolean
@@ -224,7 +225,7 @@ export function CreateProjectModal({
             }}
           >
             <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-6 py-5 md:px-8 md:py-6">
-              <div className="w-full max-w-md">
+              <div className="w-full max-w-lg">
                 {step === 1 ? (
                   <div className="space-y-4">
                     <div>
@@ -328,40 +329,14 @@ export function CreateProjectModal({
 
                 {((step === 3 && projectKind === 'RESIDENTIAL') || step === 4) ? (
                   <div>
-                    <div className="du-label">Participantes (opcional)</div>
-                    <p className="mt-1 text-xs text-muted">
-                      El creador ({userUuid ? 'tú' : 'admin'}) tiene acceso siempre. Marca quién más entra al equipo.
-                    </p>
-                    <ul className="mt-2 max-h-36 space-y-2 overflow-y-auto rounded-md border border-black/10 p-2 text-sm">
-                      {adminUsersCreate.map((u) => {
-                        const isSelf = userUuid !== null && u.uuid === userUuid
-                        const checked = isSelf || createMembers.has(u.uuid)
-                        return (
-                          <li key={u.uuid} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              id={`cm-${u.uuid}`}
-                              className="mt-0.5"
-                              checked={checked}
-                              disabled={isSelf || submitting}
-                              onChange={() => {
-                                if (isSelf) return
-                                setCreateMembers((prev) => {
-                                  const next = new Set(prev)
-                                  if (next.has(u.uuid)) next.delete(u.uuid)
-                                  else next.add(u.uuid)
-                                  return next
-                                })
-                              }}
-                            />
-                            <label htmlFor={`cm-${u.uuid}`} className={isSelf ? 'text-muted' : 'text-ink'}>
-                              {formatPersonFullName(u.first_name, u.last_name, u.email)}
-                              {isSelf ? <span className="du-meta"> (creador)</span> : null}
-                            </label>
-                          </li>
-                        )
-                      })}
-                    </ul>
+                    <ProjectMemberPicker
+                      users={adminUsersCreate}
+                      lockedUuids={userUuid ? new Set([userUuid]) : new Set()}
+                      extraSelected={createMembers}
+                      onExtraChange={setCreateMembers}
+                      disabled={submitting}
+                      hint="Puedes sumar un rol entero o personas sueltas. Solo cuentan usuarios con módulo Arquitectura (como en Usuarios)."
+                    />
                   </div>
                 ) : null}
 

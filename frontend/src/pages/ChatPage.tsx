@@ -238,7 +238,7 @@ export function ChatPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-5 shrink-0 md:mb-7">
+      <div className="mb-5 shrink-0 md:mb-7" data-tour="chat-header">
         <h1 className="text-2xl font-semibold text-ink md:text-3xl">Chat interno</h1>
         <p className="mt-3 text-base text-muted">
           Canal general para avisos del equipo, chats uno a uno y grupos. El menú avisa si hay actividad nueva
@@ -248,7 +248,10 @@ export function ChatPage() {
 
       <div className="relative flex min-h-0 flex-1 flex-col">
         <Card className="relative flex w-full flex-1 flex-col overflow-hidden p-0 min-h-[min(40dvh,320px)]">
-          <div className="relative z-40 flex flex-wrap items-start gap-2 border-b border-black/10 bg-black/2 px-4 py-3 sm:px-5 sm:py-3.5">
+          <div
+            data-tour="chat-toolbar"
+            className="relative z-40 flex flex-wrap items-start gap-2 border-b border-black/10 bg-black/2 px-4 py-3 sm:px-5 sm:py-3.5"
+          >
             <button
               type="button"
               className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-black/12 bg-white px-3 py-2 text-base font-medium text-ink shadow-sm outline-none transition hover:bg-black/3 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
@@ -330,14 +333,16 @@ export function ChatPage() {
                   ) : (
                     <ChatMessageList messages={messages} userUuid={userUuid} bottomRef={bottomRef} />
                   )}
-                  <ChatComposer
-                    value={draft}
-                    onChange={setDraft}
-                    onSend={send}
-                    disabled={!activeConversationUuid}
-                    sending={sending}
-                    error={error}
-                  />
+                  <div data-tour="chat-composer">
+                    <ChatComposer
+                      value={draft}
+                      onChange={setDraft}
+                      onSend={send}
+                      disabled={!activeConversationUuid}
+                      sending={sending}
+                      error={error}
+                    />
+                  </div>
                 </div>
               )}
             </div>

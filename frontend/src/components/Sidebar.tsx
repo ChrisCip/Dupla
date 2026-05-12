@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   FolderKanban,
@@ -69,7 +70,8 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`flex shrink-0 flex-col border-r border-black/10 bg-white transition-[width] duration-200 ease-out ${
+      data-tour="sidebar-root"
+      className={`flex h-full min-h-0 max-h-full shrink-0 flex-col overflow-hidden border-r border-black/10 bg-white transition-[width] duration-200 ease-out ${
         collapsed ? 'w-[4.5rem]' : 'w-56 md:w-60'
       }`}
     >
@@ -86,8 +88,9 @@ export function Sidebar() {
           }
         />
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-2.5" aria-label="Principal">
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden p-2.5" aria-label="Principal">
         <NavLink
+          data-tour="sidebar-projects"
           to="/app/projects"
           title="Proyectos"
           end
@@ -99,6 +102,7 @@ export function Sidebar() {
           <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Proyectos</span>
         </NavLink>
         <NavLink
+          data-tour="sidebar-chat"
           to="/app/chat"
           title="Chat interno"
           className={({ isActive }) =>
@@ -120,6 +124,7 @@ export function Sidebar() {
           ) : null}
         </NavLink>
         <NavLink
+          data-tour="sidebar-tasks"
           to="/app/tasks"
           title="Tablero"
           className={({ isActive }) =>
@@ -129,8 +134,20 @@ export function Sidebar() {
           <LayoutDashboard className="h-5 w-5 shrink-0" aria-hidden />
           <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Tablero</span>
         </NavLink>
+        <NavLink
+          data-tour="sidebar-tutoriales"
+          to="/app/tutoriales"
+          title="Tutoriales"
+          className={({ isActive }) =>
+            `${linkBase} ${collapsed ? linkCollapsed : linkExpanded} ${isActive ? activeClass : ''}`
+          }
+        >
+          <BookOpen className="h-5 w-5 shrink-0" aria-hidden />
+          <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Tutoriales</span>
+        </NavLink>
         {role === 'GERENCIA' ? (
           <NavLink
+            data-tour="sidebar-admin"
             to="/app/admin"
             title="Usuarios"
             className={({ isActive }) =>
@@ -185,7 +202,7 @@ export function Sidebar() {
         )}
       </div>
 
-      <div className="border-t border-black/10 p-2.5">
+      <div className="border-t border-black/10 p-2.5" data-tour="sidebar-collapse">
         <button
           type="button"
           className="flex w-full items-center justify-center gap-2 rounded-md border border-black/10 bg-white px-2.5 py-2.5 text-muted outline-none transition hover:bg-black/[0.04] hover:text-ink focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2"

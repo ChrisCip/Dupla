@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
 from app.domain.file_discipline import FileIngestStatus, parse_discipline
+from app.domain.project_kind import ProjectKind
 from app.domain.project_updated import touch_project_updated_at
 from app.domain.project_uploads import sanitize_project_original_filename, validate_project_file_extension
 from app.domain.task_board_constants import TASK_LIST_DONE_UUID
@@ -197,6 +198,20 @@ class ProjectLifecycleService:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=detail,
+            )
+
+        if (
+            is_backward
+            and project.project_kind == ProjectKind.TENDER.value
+            and target_phase
+            in (WorkflowPhase.BOOTSTRAPPING, WorkflowPhase.AWAITING_FILES)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Los proyectos de licitación no pueden retroceder por debajo de la fase "
+                    "«Revisión de arquitectura»."
+                ),
             )
 
         if is_forward:

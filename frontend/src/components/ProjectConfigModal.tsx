@@ -3,10 +3,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '../api/client'
 import { Card } from './Card'
 import { PrimaryButton } from './PrimaryButton'
+import { ProjectMemberPicker } from './projects/ProjectMemberPicker'
+import type { DirectoryUserRow } from '../lib/directoryUsers'
 import { formatPersonFullName } from '../lib/personDisplay'
 import type { Project } from '../types/project'
 
-type MemberRow = { uuid: string; email: string; first_name: string; last_name: string }
+type MemberRow = DirectoryUserRow
 
 type ProjectConfigModalProps = {
   open: boolean
@@ -161,40 +163,21 @@ export function ProjectConfigModal({
               {role === 'GERENCIA' ? (
                 <Card className="p-4">
                   <h3 className="text-sm font-semibold text-ink">Equipo con acceso</h3>
-                  <p className="mt-1 text-xs text-muted">
-                    Además del creador. Todos deben tener módulo Arquitectura.
-                  </p>
                   {membersMsg ? <p className="mt-2 text-sm text-primary">{membersMsg}</p> : null}
-                  <ul className="mt-3 max-h-48 space-y-2 overflow-y-auto rounded-md border border-black/10 p-3 text-sm">
-                    {adminUsers.map((u) => {
-                      const isCreator = u.uuid === project.created_by_user_uuid
-                      const checked = isCreator || memberSelection.has(u.uuid)
-                      return (
-                        <li key={u.uuid} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id={`cfg-pm-${u.uuid}`}
-                            className="mt-0.5"
-                            checked={checked}
-                            disabled={isCreator || membersBusy}
-                            onChange={() => {
-                              if (isCreator) return
-                              setMemberSelection((prev) => {
-                                const next = new Set(prev)
-                                if (next.has(u.uuid)) next.delete(u.uuid)
-                                else next.add(u.uuid)
-                                return next
-                              })
-                            }}
-                          />
-                          <label htmlFor={`cfg-pm-${u.uuid}`} className={isCreator ? 'text-muted' : 'text-ink'}>
-                            {formatPersonFullName(u.first_name, u.last_name, u.email)}
-                            {isCreator ? <span className="du-meta"> (creador)</span> : null}
-                          </label>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                  <div className="mt-3">
+                    <ProjectMemberPicker
+                      users={adminUsers}
+                      lockedUuids={
+                        project.created_by_user_uuid
+                          ? new Set([project.created_by_user_uuid])
+                          : new Set()
+                      }
+                      extraSelected={memberSelection}
+                      onExtraChange={setMemberSelection}
+                      disabled={membersBusy}
+                      hint="Añade por rol o una a una. El creador no se puede quitar. Requiere módulo Arquitectura."
+                    />
+                  </div>
                   <PrimaryButton
                     type="button"
                     className="mt-4"

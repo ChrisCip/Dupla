@@ -45,3 +45,33 @@ export const PREV_WORKFLOW_PHASE: Record<string, string | undefined> = {
   BUDGET_APPROVED: 'MANAGEMENT_APPROVAL',
   COMPLETE: 'BUDGET_APPROVED',
 }
+
+/** Licitación (TENDER): no se permite retroceder por debajo de esta fase. */
+export const TENDER_MIN_BACKWARD_PHASE = 'ARCHITECTURE_REVIEW' as const
+
+/** Fase inmediatamente anterior permitida según tipo de proyecto (TENDER acotado). */
+export function effectivePrevWorkflowPhase(
+  projectKind: string | undefined | null,
+  currentPhase: string,
+): string | undefined {
+  const prev = PREV_WORKFLOW_PHASE[currentPhase]
+  if (!prev) return undefined
+  if (projectKind === 'TENDER') {
+    const order = WORKFLOW_PHASE_ORDER as readonly string[]
+    const floorIdx = order.indexOf(TENDER_MIN_BACKWARD_PHASE)
+    const prevIdx = order.indexOf(prev)
+    if (prevIdx < floorIdx) return undefined
+  }
+  return prev
+}
+
+/** Transición de un paso (adelante o atrás) permitida para la tarjeta del tablero. */
+export function isAdjacentWorkflowTransitionAllowed(
+  projectKind: string | undefined | null,
+  currentPhase: string,
+  targetPhase: string,
+): boolean {
+  const next = NEXT_WORKFLOW_PHASE[currentPhase]
+  const prev = effectivePrevWorkflowPhase(projectKind, currentPhase)
+  return next === targetPhase || prev === targetPhase
+}

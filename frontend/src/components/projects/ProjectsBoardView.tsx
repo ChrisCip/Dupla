@@ -1,7 +1,7 @@
 import { Card } from '../Card'
 import {
+  effectivePrevWorkflowPhase,
   NEXT_WORKFLOW_PHASE,
-  PREV_WORKFLOW_PHASE,
   WORKFLOW_PHASE_LABELS,
   WORKFLOW_PHASE_ORDER,
 } from '../../constants/workflowPhases'
@@ -35,7 +35,10 @@ export function ProjectsBoardView({
   onOpenCard,
 }: ProjectsBoardViewProps) {
   return (
-    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+    <Card
+      data-tour="projects-board"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden p-0"
+    >
       {boardMsg ? (
         <div className="flex shrink-0 border-b border-black/10 bg-white px-4 py-3">
           <p className="text-sm text-primary">{boardMsg}</p>
@@ -75,7 +78,8 @@ export function ProjectsBoardView({
                     <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1">
                       {inColumn.map((p) => {
                         const hasNext = NEXT_WORKFLOW_PHASE[p.workflow_phase] !== undefined
-                        const hasPrev = PREV_WORKFLOW_PHASE[p.workflow_phase] !== undefined
+                        const hasPrev =
+                          effectivePrevWorkflowPhase(p.project_kind, p.workflow_phase) !== undefined
                         const canMovePhase = hasNext || hasPrev
                         return (
                           <div

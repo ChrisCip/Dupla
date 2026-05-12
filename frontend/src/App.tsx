@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { ProjectWorkspacePage } from './pages/ProjectWorkspacePage'
 import { TaskboardPage } from './pages/TaskboardPage'
+import { TutorialesPage } from './pages/TutorialesPage'
 import { useAuthStore } from './store/authStore'
 
 function RequireAuth() {
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/app/projects/:projectUuid" element={<ProjectWorkspacePage />} />
           <Route path="/app/chat" element={<ChatPage />} />
           <Route path="/app/tasks" element={<TaskboardPage />} />
+          <Route path="/app/tutoriales" element={<TutorialesPage />} />
           <Route element={<RequireGerencia />}>
             <Route path="/app/admin" element={<AdminUsersPage />} />
           </Route>

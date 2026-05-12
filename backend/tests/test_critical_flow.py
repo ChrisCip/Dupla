@@ -131,6 +131,15 @@ async def test_tender_project_starts_in_architecture_review_with_file(
     assert created["project_kind"] == "TENDER"
     assert created["workflow_phase"] == "ARCHITECTURE_REVIEW"
 
+    pid = created["uuid"]
+    rewind = await client.post(
+        f"/api/projects/{pid}/transitions",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"target_phase": "AWAITING_FILES"},
+    )
+    assert rewind.status_code == 409, rewind.text
+    assert "licitación" in rewind.json()["detail"].lower()
+
 
 @pytest.mark.asyncio
 async def test_exports_return_bytes(client, master_auth_headers_async: dict[str, str]):
