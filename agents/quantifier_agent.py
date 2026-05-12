@@ -77,10 +77,6 @@ def _wall_entity_description(wall: Wall) -> str:
         or ""
     )
     typ = str(typ).strip()
-    if not typ:
-        wid = str(getattr(wall, "id", "") or "").strip()
-        if wid and not wid.lower().startswith("vis-wall-"):
-            typ = wid
     thick = wall.thickness_m
     thick_cm = int(round(thick * 100)) if thick is not None else None
     mat_code = str(raw.get("original_material_code") or wall.material_hint or "")
@@ -144,6 +140,69 @@ def _window_entity_description(window: Window) -> str:
     if dim:
         parts.append(dim)
     return " — ".join(parts) if len(parts) > 1 else (parts[0] if parts else "Ventana")
+
+
+def _legacy_wall_entity_description(wall: Wall) -> str:
+    inp = getattr(wall, "inputs", None) or {}
+    raw = inp.get("raw") if isinstance(inp.get("raw"), dict) else {}
+    typ = (
+        inp.get("wall_typology")
+        or raw.get("wall_typology")
+        or raw.get("tipo")
+        or raw.get("type_label")
+        or ""
+    )
+    typ = str(typ).strip()
+    thick = wall.thickness_m
+    thick_cm = int(round(thick * 100)) if thick is not None else None
+    mat_code = str(raw.get("original_material_code") or wall.material_hint or "")
+    loc = str(raw.get("ubicacion") or "").strip()
+    if not loc:
+        loc = str(wall.interior_exterior_hint or raw.get("location") or "").strip()
+
+    parts: list[str] = []
+    technical_typ = typ.lower().startswith(("json-wall-", "vis-wall-"))
+    if typ and not technical_typ:
+        parts.append(f"Muro tipo {typ}")
+    elif wall.wall_system == "masonry_wall" or wall.material_hint == "masonry":
+        parts.append("Muro de bloques")
+    elif wall.wall_system == "concrete_wall" or wall.material_hint == "concrete":
+        parts.append("Muro de hormigon")
+    else:
+        parts.append("Muro")
+    if mat_code.startswith("block_"):
+        parts.append(f"bloque {mat_code.replace('block_', '').replace('in', '')}\"")
+    elif mat_code and mat_code not in {"masonry", "concrete", "drywall"} and not mat_code.startswith("json-wall"):
+        parts.append(mat_code.replace("_", " "))
+    if thick_cm is not None:
+        parts.append(f"espesor {thick_cm} cm")
+    if loc:
+        parts.append(f"ubicacion {loc}")
+    return ", ".join(parts)
+
+
+def _wall_block_inputs(wall: Wall) -> tuple[dict[str, Any], list[str]]:
+    inputs: dict[str, Any] = {
+        "wall_system": wall.wall_system,
+        "interior_exterior_hint": wall.interior_exterior_hint,
+    }
+    assumptions: list[str] = []
+    if wall.thickness_m is not None:
+        inputs["thickness_m"] = wall.thickness_m
+        thickness_in = round(wall.thickness_m / 0.0254)
+        if thickness_in in {4, 6, 8, 12}:
+            inputs["thickness_in"] = f'{thickness_in}"'
+            inputs["block_size"] = f'{thickness_in}"'
+            inputs["block_nominal_cm"] = int(round(wall.thickness_m * 100))
+    if wall.material_hint == "masonry" or wall.wall_system == "masonry_wall":
+        spec = "BNP" if wall.structural or wall.interior_exterior_hint == "exterior" else "SNP"
+        spacing = "0.80" if inputs.get("thickness_in") == '4"' else "0.40"
+        inputs["block_spec"] = spec
+        inputs["reinforcement_main_bars"] = f"3/8@{spacing}"
+        assumptions.append(
+            f"Wall {wall.id} block APU matching uses {spec} and 3/8@{spacing} as default constructability hints pending explicit reinforcement notes."
+        )
+    return inputs, assumptions
 
 
 def _structural_entity_description(element: StructuralElement) -> str:
@@ -283,6 +342,14 @@ def _int_input(inputs: dict[str, Any], key: str) -> int | None:
         return None
 
 
+def _positive_count(value: Any, *, default: float = 1.0) -> float:
+    try:
+        count = float(value)
+    except (TypeError, ValueError):
+        return default
+    return count if count > 0 else default
+
+
 def _coerce_tags(value: Any) -> list[str]:
     if value is None:
         return []
@@ -333,8 +400,9 @@ def _structural_length_payload(
         )
 
     if element.element_type == "beam" and element.span_m is not None:
+        count = _positive_count(element.count)
         return (
-            element.span_m * max(element.count, 1),
+            element.span_m * count,
             "structural_element.span_m * structural_element.count",
             {"span_m": element.span_m, "count": element.count},
             [
@@ -473,11 +541,12 @@ def _has_aggregated_json_count(opening: Opening) -> bool:
 
 def _resolve_opening_area_deduction(opening: Opening) -> dict[str, Any]:
     assumptions = list(opening.assumptions)
+    opening_count = _positive_count(opening.count)
     metadata: dict[str, Any] = {
         "opening_id": opening.id,
         "opening_type": opening.opening_type,
         "opening_source": opening.source,
-        "aggregated_count": max(opening.count, 1),
+        "aggregated_count": opening_count,
         "count_source": "json_aggregated"
         if _has_aggregated_json_count(opening) and opening.source in {"json", "hybrid"}
         else opening.source,
@@ -508,7 +577,7 @@ def _resolve_opening_area_deduction(opening: Opening) -> dict[str, Any]:
         }
 
     per_instance_area = opening.width_m * opening.height_m
-    aggregated_count = max(opening.count, 1)
+    aggregated_count = opening_count
     explicit_homogeneous = _bool_input(opening.inputs, "homogeneous_instances")
     observed_instance_count = _int_input(opening.inputs, "observed_instance_count")
     hybrid_aggregated_dimensions = (
@@ -613,6 +682,7 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
 
     for wall in level.walls:
         wall_desc = _wall_entity_description(wall)
+        block_inputs, block_assumptions = _wall_block_inputs(wall)
         if wall.length_m is not None:
             finish_h = wall.height_m
             finish_h_eff = finish_h if finish_h is not None else _DEFAULT_WALL_HEIGHT_M
@@ -630,10 +700,11 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                             "length_m": wall.length_m,
                             "finish_height_m": finish_h_eff,
                             "finish_height_source": finish_src,
+                            **block_inputs,
                         },
                         wall_desc,
                     ),
-                    assumptions=list(wall.assumptions),
+                    assumptions=list(dict.fromkeys([*wall.assumptions, *block_assumptions])),
                     source_refs=list(wall.source_refs),
                     trace=_trace_from_entities(
                         entities=[wall],
@@ -688,11 +759,12 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                             **gross_inputs,
                             "material_hint": wall.material_hint,
                             "structural": wall.structural,
+                            **block_inputs,
                             "context_tags": gross_context_tags,
                         },
                         wall_desc,
                     ),
-                    assumptions=gross_assumptions,
+                    assumptions=list(dict.fromkeys([*gross_assumptions, *block_assumptions])),
                     source_refs=list(wall.source_refs),
                     trace=_trace_from_entities(
                         entities=[wall],
@@ -761,11 +833,12 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                             "structural": wall.structural,
                             "openings_area_m2": known_openings_area,
                             "opening_formulas": opening_formula_parts,
+                            **block_inputs,
                             "context_tags": net_context_tags,
                         },
                         wall_desc,
                     ),
-                    assumptions=net_assumptions,
+                    assumptions=list(dict.fromkeys([*net_assumptions, *block_assumptions])),
                     source_refs=list(dict.fromkeys(net_source_refs)),
                     trace=_trace_from_entities(
                         entities=[wall, *linked_openings],
@@ -810,13 +883,14 @@ def _wall_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
                             "thickness_m": effective_thickness,
                             "material_hint": wall.material_hint,
                             "structural": wall.structural,
+                            **block_inputs,
                             "context_tags": wall_volume_context_tags,
                             "height_assumed": height_assumed,
                             "thickness_assumed": thickness_assumed,
                         },
                         wall_desc,
                     ),
-                    assumptions=vol_assumptions,
+                    assumptions=list(dict.fromkeys([*vol_assumptions, *block_assumptions])),
                     source_refs=list(wall.source_refs),
                     trace=_trace_from_entities(
                         entities=[wall],
@@ -979,13 +1053,14 @@ def _window_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
 
         if window.width_m is not None and window.height_m is not None:
             window_area_context_tags = _entity_context_tags(window, "window", "area")
+            window_count = _positive_count(window.count)
             takeoffs.append(
                 _make_takeoff(
                     item_key=f"{window.id}:area",
                     item_type="window_area",
                     level_id=level.level_id,
                     unit="m2",
-                    quantity=window.width_m * window.height_m * max(window.count, 1),
+                    quantity=window.width_m * window.height_m * window_count,
                     formula="window.width_m * window.height_m * window.count",
                     inputs=_merge_inputs_with_description(
                         {
@@ -1301,10 +1376,11 @@ def _apply_structural_defaults(element: StructuralElement) -> tuple[StructuralEl
                 f"Column {element.id} section height assumed at {_DEFAULT_COLUMN_HEIGHT_M}m."
             )
         if element.length_m is None and element.span_m is None:
-            updates["length_m"] = _DEFAULT_COLUMN_FLOOR_HEIGHT_M * max(element.count, 1)
+            count = _positive_count(element.count)
+            updates["length_m"] = _DEFAULT_COLUMN_FLOOR_HEIGHT_M * count
             assumptions.append(
                 f"Column {element.id} total length inferred from floor height "
-                f"{_DEFAULT_COLUMN_FLOOR_HEIGHT_M}m x {max(element.count, 1)} units."
+                f"{_DEFAULT_COLUMN_FLOOR_HEIGHT_M}m x {count} units."
             )
 
     elif etype == "slab":
@@ -1434,7 +1510,7 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             ),
         }
         if element.element_type == "column" and element.count and element.length_m is not None:
-            count_in["length_m_per_column"] = float(element.length_m) / max(int(element.count), 1)
+            count_in["length_m_per_column"] = float(element.length_m) / _positive_count(element.count)
         takeoffs.append(
             _make_takeoff(
                 item_key=f"{element.id}:count",

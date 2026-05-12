@@ -75,3 +75,40 @@ def test_hybrid_pipeline_merges_inventory_and_quantifies_end_to_end() -> None:
         "Deducted one observed instance only" in note
         for note in takeoff_map["json-wall-a-wall:net_area"].assumptions
     )
+
+
+def test_hybrid_pipeline_distributes_project_wide_json_geometry_across_levels() -> None:
+    cad_facts = {
+        "project": "sample.json",
+        "cad_facts": {
+            "hatches": [],
+            "blocks": [],
+            "geometry_hints": [
+                {"layer": "A-WALL", "length": 30.0, "handle": "wall_g1"},
+                {"layer": "A-WALL", "length": 30.0, "handle": "wall_g2"},
+                {"layer": "A-WALL", "length": 30.0, "handle": "wall_g3"},
+            ],
+        },
+    }
+    vision_payloads = [
+        {"level_id": "level_01", "level_name": "Level 01", "source": "vision"},
+        {"level_id": "level_02", "level_name": "Level 02", "source": "vision"},
+        {"level_id": "level_03", "level_name": "Level 03", "source": "vision"},
+    ]
+
+    hybrid_inventory, takeoffs = build_takeoffs_from_sources(cad_facts, vision_payloads)
+
+    assert [level.walls[0].length_m for level in hybrid_inventory] == [30.0, 30.0, 30.0]
+    assert sum(level.walls[0].length_m for level in hybrid_inventory) == 90.0
+    assert all(
+        level.walls[0].inputs["json_geometry_scope"] == "project_total_distributed"
+        for level in hybrid_inventory
+    )
+
+    wall_lengths = [
+        takeoff.quantity
+        for takeoff in takeoffs
+        if takeoff.item_key == "json-wall-a-wall:length"
+    ]
+    assert wall_lengths == [30.0, 30.0, 30.0]
+    assert sum(wall_lengths) == 90.0

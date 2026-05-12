@@ -113,6 +113,47 @@ def test_load_or_cache_uses_cache_on_second_call(tmp_path):
     assert s1.to_dict() == s2.to_dict()
 
 
+def test_wall_budget_uses_constructor_apu_from_pricing_excel(store):
+    from agents.quantifier_agent import quantify_inventory
+    from budget.composer import compose_budget_rows
+    from core.schemas import LevelInventory, ProjectContext, Wall
+    from pricing.apu_matcher import APUMatcher
+
+    level = LevelInventory(
+        level_id="level_01",
+        level_name="Level 01",
+        walls=[
+            Wall(
+                id="json-wall-mb",
+                source="hybrid",
+                length_m=10.0,
+                height_m=2.8,
+                thickness_m=0.15,
+                material_hint="masonry",
+                wall_system="masonry_wall",
+                interior_exterior_hint="interior",
+            )
+        ],
+    )
+    takeoffs = quantify_inventory([level])
+    matcher = APUMatcher(store, log_path=None)
+
+    _, lines, _ = compose_budget_rows(
+        ProjectContext(project_id="pricing_wall_test", project_name="Pricing Wall Test"),
+        takeoffs,
+        {},
+        apu_matcher=matcher,
+    )
+    by_type = {line.metadata["item_type"]: line for line in lines}
+    wall_line = by_type["wall_net_area"]
+
+    assert wall_line.summary == "Muro de bloques, espesor 15 cm, ubicacion interior"
+    assert "json-wall" not in wall_line.summary
+    assert wall_line.code == "10.08"
+    assert wall_line.unit_price == pytest.approx(2167.5386)
+    assert wall_line.metadata["source_type"] == "constructor_apu"
+
+
 # ---------------------------------------------------------------------------
 # Robustness against quirky inputs in the spec
 # ---------------------------------------------------------------------------

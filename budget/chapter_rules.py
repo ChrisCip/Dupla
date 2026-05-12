@@ -226,15 +226,12 @@ def default_bc3_code_for_takeoff(takeoff: QuantityTakeoff) -> str | None:
     tags = _takeoff_tags(takeoff)
 
     # --- Walls ---
-    if item_type in ("wall_volume", "wall_length", "wall_gross_area"):
+    if item_type in ("wall_volume", "wall_length", "wall_gross_area", "wall_net_area"):
         return _wall_bc3_code(takeoff)
     if item_type == "wall_finish_plaster":
         return _PLASTER_EXT if "exterior" in tags else _PLASTER_INT
     if item_type == "wall_finish_paint":
         return _PAINT_EXT if "exterior" in tags else _PAINT_INT
-    if item_type == "wall_net_area":
-        return _PLASTER_INT
-
     # --- Structural finish (plaster on columns / beams) ---
     if item_type.startswith("column_") and "finish" in item_type:
         return _PLASTER_COL
@@ -545,32 +542,28 @@ def _wall_summary(takeoff: QuantityTakeoff) -> str:
         return "Panete liso en muros interiores e=1.75cm"
     if item_type == "wall_finish_tile":
         return "Revestimiento ceramica en muros"
-    if item_type == "wall_net_area":
-        return "Panete liso en muros interiores e=1.75cm"
-
     # Wall volume/length/area: differentiate by thickness and layer
-    if item_type in ("wall_volume", "wall_length", "wall_gross_area", "wall_area"):
+    if item_type in ("wall_volume", "wall_length", "wall_gross_area", "wall_area", "wall_net_area"):
         if material_hint == "concrete":
             return "Muro de hormigon armado e=0.15m"
 
         size_label = "15x20x40"
-        kind = "SNP"
+        kind = str(takeoff.inputs.get("block_spec") or "SNP").upper()
         if thickness is not None:
             if thickness <= 0.11:
                 size_label = "10x20x40"
-                kind = "SNP"
             elif thickness <= 0.16:
                 size_label = "15x20x40"
-                kind = "SNP"
             else:
                 size_label = "20x20x40"
-                kind = "BNP"
 
-        layer_tag = ""
-        if layer and layer not in ("a-wall", "muros", "muro", "muross"):
-            layer_tag = f" (capa {layer.upper()})"
+        location = ""
+        if "exterior" in tags or takeoff.inputs.get("interior_exterior_hint") == "exterior":
+            location = " exterior"
+        elif "interior" in tags or takeoff.inputs.get("interior_exterior_hint") == "interior":
+            location = " interior"
 
-        return f"Muro bloques {size_label} {kind}{layer_tag}"
+        return f"Muro bloques {size_label} {kind}{location}"
 
     return "Muro de bloques 15x20x40 SNP"
 
@@ -712,7 +705,7 @@ def build_budget_summary(
         return summary or takeoff.item_key
 
     specific = str(takeoff.inputs.get("takeoff_description") or "").strip()
-    if specific:
+    if specific and "json-wall" not in specific.lower():
         return specific
 
     if candidate is not None:

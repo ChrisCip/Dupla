@@ -56,6 +56,34 @@ def test_quantify_inventory_generates_wall_net_floor_and_ceiling_takeoffs() -> N
     assert "opening_01" in takeoff_map["wall_01:net_area"].trace.source_entity_ids
 
 
+def test_quantifier_describes_json_masonry_wall_for_apu_matching() -> None:
+    level = LevelInventory(
+        level_id="level_wall_apu",
+        level_name="Level Wall APU",
+        walls=[
+            Wall(
+                id="json-wall-mb",
+                source="hybrid",
+                length_m=10.0,
+                height_m=2.8,
+                thickness_m=0.15,
+                material_hint="masonry",
+                wall_system="masonry_wall",
+                interior_exterior_hint="interior",
+            )
+        ],
+    )
+
+    takeoff_map = {takeoff.item_key: takeoff for takeoff in quantify_inventory([level])}
+    wall_net = takeoff_map["json-wall-mb:net_area"]
+
+    assert wall_net.inputs["takeoff_description"] == "Muro de bloques, espesor 15 cm, ubicacion interior"
+    assert "json-wall" not in wall_net.inputs["takeoff_description"]
+    assert wall_net.inputs["thickness_in"] == '6"'
+    assert wall_net.inputs["block_spec"] == "SNP"
+    assert wall_net.inputs["reinforcement_main_bars"] == "3/8@0.40"
+
+
 def test_quantify_inventory_records_assumption_when_opening_data_is_incomplete() -> None:
     level = LevelInventory(
         level_id="level_02",

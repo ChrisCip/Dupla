@@ -92,6 +92,86 @@ def test_inventory_builder_uses_vision_when_json_is_incomplete() -> None:
     assert "vision:wall_02" in merged.walls[0].source_refs
 
 
+def test_json_wall_defaults_infer_height_material_and_thickness_from_layer() -> None:
+    cad_facts = {
+        "project": "sample.json",
+        "cad_facts": {
+            "hatches": [],
+            "blocks": [],
+            "geometry_hints": [
+                {"layer": "MB", "length": 20.0, "handle": "wall_g1"},
+                {"layer": "MB", "length": 15.0, "handle": "wall_g2"},
+            ],
+        },
+    }
+
+    merged = build_level_inventory(cad_facts, None, level_id="level_01", level_name="Level 01")
+    wall = merged.walls[0]
+
+    assert wall.id == "json-wall-mb"
+    assert wall.length_m == 35.0
+    assert wall.height_m == 2.8
+    assert wall.material_hint == "masonry"
+    assert wall.thickness_m == 0.15
+
+
+def test_inventory_builder_crosswalks_vision_wall_classification_onto_json_geometry() -> None:
+    cad_facts = {
+        "project": "sample.json",
+        "cad_facts": {
+            "hatches": [],
+            "blocks": [],
+            "geometry_hints": [
+                {"layer": "MB", "length": 30.0, "handle": "wall_g1"},
+                {"layer": "MB", "length": 25.0, "handle": "wall_g2"},
+            ],
+        },
+    }
+
+    vision_inventory = {
+        "level_id": "level_01",
+        "level_name": "Level 01",
+        "source": "vision",
+        "walls": [
+            {
+                "id": "muro_int_bloque6",
+                "source": "vision",
+                "material_hint": "masonry",
+                "wall_system": "masonry_wall",
+                "interior_exterior_hint": "interior",
+                "thickness_m": 0.15,
+                "source_refs": ["vision:wall_bloque6"],
+            }
+        ],
+        "openings": [
+            {
+                "id": "vision-door-opening",
+                "source": "vision",
+                "wall_id": "muro_int_bloque6",
+                "opening_type": "door",
+                "count": 1,
+                "width_m": 1.0,
+                "height_m": 2.1,
+                "source_refs": ["vision:door_01"],
+            }
+        ],
+    }
+
+    merged = build_level_inventory(cad_facts, vision_inventory)
+    assert len(merged.walls) == 1
+    wall = merged.walls[0]
+
+    assert wall.id == "json-wall-mb"
+    assert wall.source == "hybrid"
+    assert wall.length_m == 55.0
+    assert wall.material_hint == "masonry"
+    assert wall.wall_system == "masonry_wall"
+    assert wall.interior_exterior_hint == "interior"
+    assert wall.thickness_m == 0.15
+    assert "vision:wall_bloque6" in wall.source_refs
+    assert merged.openings[0].wall_id == "json-wall-mb"
+
+
 def test_inventory_builder_merges_structural_and_material_hints() -> None:
     cad_facts = {
         "project": "structural.json",

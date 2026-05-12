@@ -29,6 +29,7 @@ from knowledge.pres_expansion import synthetic_takeoffs_from_pres
 from knowledge.training_data import extract_training_pairs
 from pricing.construcosto_loader import load_construcosto_snapshot
 from pricing.schemas import PricingStore
+from pricing.excel_price_loader import load_or_cache_constructor_pricing
 from processors.bc3_parser import parse_bc3
 from processors.json_processor import process_autodesk_json
 from rules_engine import RulesEngine, default_rules_engine
@@ -156,6 +157,33 @@ def _load_construcosto_if_available() -> Any:
     return None
 
 
+def _load_default_pricing_store(context: ProjectContext | None) -> PricingStore | None:
+    metadata = context.metadata if context is not None else {}
+    if metadata.get("pricing_excel_disabled"):
+        return None
+
+    explicit_path = str(metadata.get("pricing_excel") or "").strip()
+    default_path = Path(__file__).resolve().parent.parent / "data" / "Lista de precios-analisis-MO.xlsx"
+    pricing_path = Path(explicit_path) if explicit_path else default_path
+    if not pricing_path.exists():
+        return None
+
+    project_id = (context.project_id if context and context.project_id else "default_project")
+    try:
+        store = load_or_cache_constructor_pricing(pricing_path, project_id=project_id)
+        logger.info(
+            "Default constructor PricingStore loaded from %s (materials=%d, labor=%d, apus=%d)",
+            pricing_path,
+            len(store.materials),
+            len(store.labor),
+            len(store.apus),
+        )
+        return store
+    except Exception:
+        logger.warning("Failed to load default constructor pricing from %s", pricing_path, exc_info=True)
+        return None
+
+
 def build_final_budget(
     context: ProjectContext,
     takeoffs: Iterable[QuantityTakeoff],
@@ -168,6 +196,9 @@ def build_final_budget(
 ) -> dict[str, Any]:
     takeoff_list = list(takeoffs)
     lines = []
+
+    if pricing_store is None:
+        pricing_store = _load_default_pricing_store(context)
 
     for takeoff in takeoff_list:
         candidates = candidates_by_takeoff.get(takeoff.item_key, [])
@@ -295,10 +326,23 @@ def _build_cad_only_levels(cad_facts: dict[str, Any]) -> list[LevelInventory]:
         return [
             build_level_inventory(cad_facts, None, level_id="level_01", level_name=fallback_name)
         ]
+    json_scale = 1.0 / len(markers)
+    distribution_note = (
+        f"APS/JSON geometry appears project-wide and was divided across {len(markers)} CAD-detected levels."
+    )
     levels: list[LevelInventory] = []
     for idx, name in enumerate(markers, start=1):
         level_id = f"level_{idx:02d}"
-        levels.append(build_level_inventory(cad_facts, None, level_id=level_id, level_name=name))
+        levels.append(
+            build_level_inventory(
+                cad_facts,
+                None,
+                level_id=level_id,
+                level_name=name,
+                json_quantity_scale=json_scale,
+                json_distribution_note=distribution_note,
+            )
+        )
     return levels
 
 
@@ -319,7 +363,7 @@ def build_hybrid_inventory(
         return _build_cad_only_levels(cad_facts)
 
     error_count = 0
-    hybrid_levels: list[LevelInventory] = []
+    vision_levels: list[LevelInventory] = []
     for index, payload in enumerate(coerced_payloads, start=1):
         if isinstance(payload, LevelInventory):
             vision_level = payload
@@ -336,12 +380,24 @@ def build_hybrid_inventory(
             payload_dict.setdefault("level_name", payload_dict["level_id"])
             vision_level = level_inventory_from_dict(payload_dict, default_source="vision")
 
+        vision_levels.append(vision_level)
+
+    hybrid_levels: list[LevelInventory] = []
+    json_scale = 1.0 / len(vision_levels) if len(vision_levels) > 1 else 1.0
+    distribution_note = (
+        f"APS/JSON geometry appears project-wide and was divided across {len(vision_levels)} Vision levels."
+        if len(vision_levels) > 1
+        else None
+    )
+    for vision_level in vision_levels:
         hybrid_levels.append(
             build_level_inventory(
                 cad_facts,
                 vision_level,
                 level_id=vision_level.level_id,
                 level_name=vision_level.level_name,
+                json_quantity_scale=json_scale,
+                json_distribution_note=distribution_note,
             )
         )
 

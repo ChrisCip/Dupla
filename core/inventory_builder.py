@@ -51,6 +51,8 @@ _STEEL_TOKENS = ("steel", "acero", "metal", "stl")
 _MASONRY_TOKENS = ("masonry", "block", "brick", "cmu", "ladr", "mamp")
 _DRYWALL_TOKENS = ("drywall", "gypsum", "tablaroca", "yeso")
 _WOOD_TOKENS = ("wood", "madera", "timber")
+_DEFAULT_JSON_WALL_HEIGHT_M = 2.80
+_DEFAULT_MASONRY_WALL_THICKNESS_M = 0.15
 
 _SPACE_TYPE_TOKENS: dict[str, tuple[str, ...]] = {
     "bathroom": ("bath", "bano", "baño", "wc", "toilet"),
@@ -81,13 +83,88 @@ def _infer_material_hint(*values: Any) -> str | None:
         return "concrete"
     if _contains_token(hint_text, _STEEL_TOKENS):
         return "steel"
-    if _contains_token(hint_text, _MASONRY_TOKENS):
+    if _contains_token(hint_text, _MASONRY_TOKENS) or "bloq" in hint_text:
         return "masonry"
     if _contains_token(hint_text, _DRYWALL_TOKENS):
         return "drywall"
     if _contains_token(hint_text, _WOOD_TOKENS):
         return "wood"
     return None
+
+
+def _infer_wall_material_hint(*values: Any) -> str | None:
+    material = _infer_material_hint(*values)
+    if material:
+        return material
+    hint_text = _joined_hint_text(*values)
+    if not hint_text:
+        return None
+    # Common Dominican/LatAm layer abbreviations: MB = muro bloque.
+    if "bloq" in hint_text or _matches_token(hint_text, "mb"):
+        return "masonry"
+    return None
+
+
+def _matches_token(value: str, token: str) -> bool:
+    import re
+
+    return re.search(rf"(?<![a-z0-9]){re.escape(token.lower())}(?![a-z0-9])", value.lower()) is not None
+
+
+def _infer_wall_thickness_m(*values: Any) -> float | None:
+    import re
+
+    hint_text = _joined_hint_text(*values).replace(",", ".")
+    if not hint_text:
+        return None
+
+    cm_match = re.search(r"(?<!\d)(10|12|15|20)\s*cm\b", hint_text)
+    if cm_match:
+        return int(cm_match.group(1)) / 100.0
+
+    meter_match = re.search(r"(?<!\d)0\.(10|12|15|20)(?!\d)", hint_text)
+    if meter_match:
+        return float(f"0.{meter_match.group(1)}")
+
+    block_match = re.search(
+        r"(?<![a-z0-9])(?:block|bloque|bloq|b)[\s_-]?(4|6|8)(?:\s*(?:in|pulg|\"))?(?![a-z0-9])",
+        hint_text,
+    )
+    if block_match:
+        return {"4": 0.10, "6": 0.15, "8": 0.20}[block_match.group(1)]
+
+    if _matches_token(hint_text, "mb") or "masonry" in hint_text or "mamp" in hint_text:
+        return _DEFAULT_MASONRY_WALL_THICKNESS_M
+
+    return None
+
+
+def _scaled_quantity(value: float | int | None, scale: float) -> float | int | None:
+    if value is None:
+        return None
+    if scale == 1.0:
+        return value
+    return float(value) * scale
+
+
+def _json_distribution_payload(quantity_scale: float, note: str | None) -> dict[str, Any]:
+    if quantity_scale == 1.0 and not note:
+        return {}
+    return {
+        "json_quantity_scale": quantity_scale,
+        "json_geometry_scope": "project_total_distributed",
+        **({"json_distribution_note": note} if note else {}),
+    }
+
+
+def _json_distribution_assumptions(quantity_scale: float, note: str | None) -> list[str]:
+    if quantity_scale == 1.0 and not note:
+        return []
+    if note:
+        return [note]
+    return [
+        f"Project-wide JSON geometry was distributed with scale {quantity_scale:.6g} for this level."
+    ]
 
 
 def _infer_wall_system_hint(*values: Any) -> str | None:
@@ -335,6 +412,201 @@ def _merge_entities(
 
     merged.extend(unmatched_vision)
     return merged
+
+
+_WALL_VISION_PREFERRED_FIELDS = frozenset(
+    {
+        "area_m2",
+        "height_m",
+        "thickness_m",
+        "material_hint",
+        "wall_system",
+        "interior_exterior_hint",
+        "finish_required",
+        "structural",
+    }
+)
+
+
+def _wall_match_text(wall: Wall) -> str:
+    inputs = wall.inputs or {}
+    raw = inputs.get("raw") if isinstance(inputs.get("raw"), Mapping) else {}
+    return _joined_hint_text(
+        wall.id,
+        *wall.source_layers,
+        wall.material_hint,
+        wall.wall_system,
+        wall.interior_exterior_hint,
+        inputs.get("wall_typology"),
+        inputs.get("original_material_code"),
+        raw.get("material") if isinstance(raw, Mapping) else None,
+        raw.get("location") if isinstance(raw, Mapping) else None,
+    )
+
+
+def _wall_has_vision_classification(wall: Wall) -> bool:
+    return any(
+        value is not None
+        for value in (
+            wall.material_hint,
+            wall.wall_system,
+            wall.thickness_m,
+            wall.interior_exterior_hint,
+            wall.finish_required,
+            wall.structural,
+        )
+    )
+
+
+def _json_wall_needs_vision_classification(wall: Wall) -> bool:
+    return (
+        wall.material_hint is None
+        or wall.wall_system is None
+        or wall.thickness_m is None
+        or wall.interior_exterior_hint is None
+    )
+
+
+def _wall_crosswalk_score(json_wall: Wall, vision_wall: Wall) -> int:
+    if not _wall_has_vision_classification(vision_wall):
+        return 0
+
+    score = 0
+    json_layers = set(json_wall.source_layers or [])
+    vision_layers = set(vision_wall.source_layers or [])
+    if json_layers and vision_layers and json_layers & vision_layers:
+        score += 100
+
+    json_text = _wall_match_text(json_wall)
+    vision_text = _wall_match_text(vision_wall)
+    if _json_wall_needs_vision_classification(json_wall):
+        score += 10
+    if "masonry" in vision_text or "block_" in vision_text or "bloque" in vision_text:
+        if "masonry" in json_text or "block" in json_text or "bloq" in json_text or _matches_token(json_text, "mb"):
+            score += 20
+    if "interior" in vision_text or _matches_token(vision_text, "int"):
+        if "interior" in json_text or _matches_token(json_text, "int"):
+            score += 8
+    if "exterior" in vision_text or _matches_token(vision_text, "ext"):
+        if "exterior" in json_text or "facade" in json_text or "fachada" in json_text or _matches_token(json_text, "ext"):
+            score += 8
+    if json_wall.length_m is not None:
+        score += 2
+    return score
+
+
+def _best_wall_crosswalk_match(json_wall: Wall, vision_walls: list[Wall]) -> Wall | None:
+    scored = [
+        (_wall_crosswalk_score(json_wall, candidate), index, candidate)
+        for index, candidate in enumerate(vision_walls)
+    ]
+    scored = [item for item in scored if item[0] > 0]
+    if not scored:
+        return None
+    scored.sort(key=lambda item: (item[0], -item[1]), reverse=True)
+    return scored[0][2]
+
+
+def _merge_walls_with_aliases(
+    json_walls: list[Wall],
+    vision_walls: list[Wall],
+) -> tuple[list[Wall], dict[str, str]]:
+    merged: list[Wall] = []
+    aliases: dict[str, str] = {}
+    unmatched_json: list[Wall] = []
+    unmatched_vision = vision_walls.copy()
+
+    for json_wall in json_walls:
+        match = next(
+            (
+                candidate
+                for candidate in unmatched_vision
+                if candidate.id == json_wall.id or _entity_signature(candidate) == _entity_signature(json_wall)
+            ),
+            None,
+        )
+        if match is None:
+            unmatched_json.append(json_wall)
+            continue
+
+        unmatched_vision.remove(match)
+        if match.id != json_wall.id:
+            aliases[match.id] = json_wall.id
+        merged.append(
+            _merge_entity(
+                json_wall,
+                match,
+                vision_preferred_fields=_WALL_VISION_PREFERRED_FIELDS,
+            )
+        )
+
+    for json_wall in unmatched_json:
+        match = _best_wall_crosswalk_match(json_wall, unmatched_vision)
+        if match is None:
+            merged.append(json_wall)
+            continue
+
+        unmatched_vision.remove(match)
+        aliases[match.id] = json_wall.id
+        enriched = _merge_entity(
+            json_wall,
+            match,
+            vision_preferred_fields=_WALL_VISION_PREFERRED_FIELDS,
+        )
+        enriched.assumptions = _unique_strings(
+            enriched.assumptions,
+            [
+                "Vision wall classification was crosswalked onto JSON wall geometry for the same page to avoid double counting."
+            ],
+        )
+        enriched.evidence = _unique_strings(
+            enriched.evidence,
+            [
+                f"Crosswalked Vision wall '{match.id}' onto JSON wall '{json_wall.id}'."
+            ],
+        )
+        merged.append(enriched)
+
+    if json_walls:
+        for vision_wall in unmatched_vision:
+            if _wall_has_vision_classification(vision_wall):
+                logger.info(
+                    "Skipping unmatched Vision wall %s because JSON wall geometry exists on the same level; "
+                    "treating Vision row as classification-only to avoid duplicate wall quantities.",
+                    vision_wall.id,
+                )
+                continue
+            merged.append(vision_wall)
+    else:
+        merged.extend(unmatched_vision)
+
+    return merged, aliases
+
+
+def _merge_walls(json_walls: list[Wall], vision_walls: list[Wall]) -> list[Wall]:
+    merged, _ = _merge_walls_with_aliases(json_walls, vision_walls)
+    return merged
+
+
+def _remap_wall_references(entities: list[EntityT], wall_id_aliases: dict[str, str]) -> list[EntityT]:
+    if not wall_id_aliases:
+        return entities
+
+    remapped: list[EntityT] = []
+    for entity in entities:
+        wall_id = getattr(entity, "wall_id", None)
+        if wall_id not in wall_id_aliases:
+            remapped.append(entity)
+            continue
+
+        payload = {field_def.name: getattr(entity, field_def.name) for field_def in fields(entity)}
+        payload["wall_id"] = wall_id_aliases[wall_id]
+        payload["assumptions"] = _unique_strings(
+            payload.get("assumptions", []),
+            [f"Wall reference remapped from Vision wall '{wall_id}' to JSON wall '{wall_id_aliases[wall_id]}' after CAD/Vision crosswalk."],
+        )
+        remapped.append(type(entity)(**payload))
+    return remapped
 
 
 # Layers that look like floor layers but are actually annotation/marker layers
@@ -589,6 +861,8 @@ def _build_json_walls(
     cad_facts: dict[str, Any],
     *,
     gpt_layer_roles: dict[str, str] | None = None,
+    quantity_scale: float = 1.0,
+    distribution_note: str | None = None,
 ) -> list[Wall]:
     gpt_layer_roles = gpt_layer_roles or {}
     geometry_hints = cad_facts.get("cad_facts", {}).get("geometry_hints", [])
@@ -657,11 +931,12 @@ def _build_json_walls(
 
     walls: list[Wall] = []
     for layer, length in wall_lengths.items():
-        material_hint = _infer_material_hint(layer)
+        material_hint = _infer_wall_material_hint(layer)
         wall_system = _infer_wall_system_hint(layer)
         interior_exterior_hint = _infer_interior_exterior_hint(layer)
         finish_required = _infer_finish_required(layer)
         structural_hint = _infer_load_bearing_hint(layer)
+        thickness_m = _infer_wall_thickness_m(layer, material_hint, wall_system)
         gpt_role = gpt_layer_roles.get(layer)
         if layer in token_wall_layers:
             detection = "layer_name_token"
@@ -683,7 +958,9 @@ def _build_json_walls(
                 level_id=level_id,
                 source="json",
                 source_layers=[layer],
-                length_m=length,
+                length_m=_scaled_quantity(length, quantity_scale),
+                height_m=_DEFAULT_JSON_WALL_HEIGHT_M,
+                thickness_m=thickness_m,
                 material_hint=material_hint,
                 wall_system=wall_system,
                 interior_exterior_hint=interior_exterior_hint,
@@ -692,15 +969,24 @@ def _build_json_walls(
                 source_refs=_unique_strings(wall_refs.get(layer, [])),
                 inputs={
                     "json_layer": layer,
-                    "json_length_m": length,
+                    "json_total_length_m": length,
+                    "json_length_m": _scaled_quantity(length, quantity_scale),
                     "detected_by_geometry": is_fallback,
                     "wall_detection": detection,
+                    **_json_distribution_payload(quantity_scale, distribution_note),
                     **({"gpt_layer_role": gpt_role} if gpt_role else {}),
                 },
                 assumptions=[
+                    f"JSON wall height defaulted to {_DEFAULT_JSON_WALL_HEIGHT_M}m standard floor-to-ceiling height.",
+                    *_json_distribution_assumptions(quantity_scale, distribution_note),
                     *(
                         [f"Layer '{layer}' classified as wall by geometry heuristic (total linework >= 3m)."]
                         if is_fallback
+                        else []
+                    ),
+                    *(
+                        [f"Wall thickness inferred as {thickness_m}m from layer/material hints."]
+                        if thickness_m is not None
                         else []
                     ),
                     *(
@@ -711,6 +997,7 @@ def _build_json_walls(
                 ],
                 evidence=[
                     f"Aggregated linework length from layer {layer}.",
+                    f"Assigned default wall height {_DEFAULT_JSON_WALL_HEIGHT_M}m.",
                     *(
                         [f"Detected wall system hint '{wall_system}' from layer {layer}."]
                         if wall_system
@@ -719,6 +1006,11 @@ def _build_json_walls(
                     *(
                         [f"Detected wall material hint '{material_hint}' from layer {layer}."]
                         if material_hint
+                        else []
+                    ),
+                    *(
+                        [f"Detected wall thickness hint {thickness_m}m from layer {layer}."]
+                        if thickness_m is not None
                         else []
                     ),
                     *(
@@ -742,6 +1034,8 @@ def _build_json_structural_elements(
     cad_facts: dict[str, Any],
     *,
     gpt_layer_roles: dict[str, str] | None = None,
+    quantity_scale: float = 1.0,
+    distribution_note: str | None = None,
 ) -> list[StructuralElement]:
     gpt_layer_roles = gpt_layer_roles or {}
     geometry_hints = cad_facts.get("cad_facts", {}).get("geometry_hints", [])
@@ -773,8 +1067,12 @@ def _build_json_structural_elements(
                 "host_level": level_id,
                 "adjacent_elements": [],
                 "source_refs": [],
-                "assumptions": [],
-                "inputs": {"json_layer": layer, "json_name_hints": []},
+                "assumptions": _json_distribution_assumptions(quantity_scale, distribution_note),
+                "inputs": {
+                    "json_layer": layer,
+                    "json_name_hints": [],
+                    **_json_distribution_payload(quantity_scale, distribution_note),
+                },
                 "conflict_notes": [],
                 "evidence": [],
             }
@@ -862,7 +1160,10 @@ def _build_json_structural_elements(
 
     structural_elements: list[StructuralElement] = []
     for _, payload in sorted(grouped.items(), key=lambda item: item[0]):
-        payload["count"] = max(int(payload["count"]), 1)
+        raw_count = max(float(payload["count"]), 1.0)
+        payload["count"] = _scaled_quantity(raw_count, quantity_scale)
+        for field_name in ("length_m", "area_m2", "volume_m3"):
+            payload[field_name] = _scaled_quantity(payload.get(field_name), quantity_scale)
         payload["source_refs"] = _unique_strings(payload["source_refs"])
         payload["evidence"] = _unique_strings(payload["evidence"])
         structural_elements.append(StructuralElement(**payload))
@@ -907,6 +1208,8 @@ def _build_json_doors_or_windows(
     token_set: tuple[str, ...],
     cls: type[Door] | type[Window],
     item_prefix: str,
+    quantity_scale: float = 1.0,
+    distribution_note: str | None = None,
 ) -> list[Door] | list[Window]:
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for block in blocks:
@@ -918,14 +1221,22 @@ def _build_json_doors_or_windows(
 
     entities: list[Door] | list[Window] = []
     for index, ((layer, block_name), items) in enumerate(grouped.items(), start=1):
+        count = _scaled_quantity(len(items), quantity_scale)
         payload = dict(
             id=f"{item_prefix}-{index}",
             level_id=level_id,
             source="json",
             source_layers=[layer],
-            count=len(items),
+            count=count,
             source_refs=[f"block:{item.get('handle') or block_name}" for item in items],
-            inputs={"json_layer": layer, "block_name": block_name, "json_count": len(items)},
+            assumptions=_json_distribution_assumptions(quantity_scale, distribution_note),
+            inputs={
+                "json_layer": layer,
+                "block_name": block_name,
+                "json_total_count": len(items),
+                "json_count": count,
+                **_json_distribution_payload(quantity_scale, distribution_note),
+            },
             evidence=[f"Counted block references matching '{block_name or layer}'."],
         )
         if cls is Door:
@@ -940,16 +1251,22 @@ def build_json_inventory(
     *,
     level_id: str,
     level_name: str,
+    quantity_scale: float = 1.0,
+    distribution_note: str | None = None,
 ) -> LevelInventory:
     blocks = cad_facts.get("cad_facts", {}).get("blocks", [])
     floor_area_m2, floor_refs = _sum_hatch_area(cad_facts, _FLOOR_TOKENS)
     ceiling_area_m2, ceiling_refs = _sum_hatch_area(cad_facts, _CEILING_TOKENS)
+    floor_area_m2 = _scaled_quantity(floor_area_m2, quantity_scale)
+    ceiling_area_m2 = _scaled_quantity(ceiling_area_m2, quantity_scale)
     doors = _build_json_doors_or_windows(
         level_id=level_id,
         blocks=blocks,
         token_set=_DOOR_TOKENS,
         cls=Door,
         item_prefix="json-door",
+        quantity_scale=quantity_scale,
+        distribution_note=distribution_note,
     )
     windows = _build_json_doors_or_windows(
         level_id=level_id,
@@ -957,11 +1274,23 @@ def build_json_inventory(
         token_set=_WINDOW_TOKENS,
         cls=Window,
         item_prefix="json-window",
+        quantity_scale=quantity_scale,
+        distribution_note=distribution_note,
     )
     gpt_layer_roles = _gpt_classify_cad_layers(cad_facts)
-    walls = _build_json_walls(level_id, cad_facts, gpt_layer_roles=gpt_layer_roles)
+    walls = _build_json_walls(
+        level_id,
+        cad_facts,
+        gpt_layer_roles=gpt_layer_roles,
+        quantity_scale=quantity_scale,
+        distribution_note=distribution_note,
+    )
     structural_elements = _build_json_structural_elements(
-        level_id, cad_facts, gpt_layer_roles=gpt_layer_roles
+        level_id,
+        cad_facts,
+        gpt_layer_roles=gpt_layer_roles,
+        quantity_scale=quantity_scale,
+        distribution_note=distribution_note,
     )
     space_types = _extract_space_types(cad_facts)
     structural_types = _unique_strings(
@@ -980,6 +1309,7 @@ def build_json_inventory(
             "material_hints": material_hints,
             "structural_types": structural_types,
             "space_types": space_types,
+            **_json_distribution_payload(quantity_scale, distribution_note),
             **({"gpt_layer_roles": gpt_layer_roles} if gpt_layer_roles else {}),
         },
         source_refs=_unique_strings(
@@ -987,6 +1317,7 @@ def build_json_inventory(
             ceiling_refs,
             *(element.source_refs for element in structural_elements),
         ),
+        assumptions=_json_distribution_assumptions(quantity_scale, distribution_note),
         space_types=space_types,
         system_notes=[
             *(
@@ -1010,7 +1341,10 @@ def build_json_inventory(
                 else []
             )
         ],
-        inputs={"cad_summary": cad_facts.get("project")},
+        inputs={
+            "cad_summary": cad_facts.get("project"),
+            **_json_distribution_payload(quantity_scale, distribution_note),
+        },
         floor_area_m2=floor_area_m2,
         ceiling_area_m2=ceiling_area_m2,
         walls=walls,
@@ -1038,12 +1372,16 @@ def build_level_inventory(
     *,
     level_id: str | None = None,
     level_name: str | None = None,
+    json_quantity_scale: float = 1.0,
+    json_distribution_note: str | None = None,
 ) -> LevelInventory:
     """
     Merge normalized CAD facts with vision-derived inventory.
 
     JSON-derived values are preferred when explicit, vision fills gaps, and any
     disagreement is preserved as conflict notes instead of being silently overwritten.
+    When APS/JSON facts represent project-wide geometry, callers can pass
+    json_quantity_scale to distribute those quantities across multiple levels.
     """
     if isinstance(vision_inventory, LevelInventory):
         vision_level = vision_inventory
@@ -1054,7 +1392,13 @@ def build_level_inventory(
 
     resolved_level_id = level_id or (vision_level.level_id if vision_level else "level")
     resolved_level_name = level_name or (vision_level.level_name if vision_level else resolved_level_id)
-    json_level = build_json_inventory(cad_facts, level_id=resolved_level_id, level_name=resolved_level_name)
+    json_level = build_json_inventory(
+        cad_facts,
+        level_id=resolved_level_id,
+        level_name=resolved_level_name,
+        quantity_scale=json_quantity_scale,
+        distribution_note=json_distribution_note,
+    )
 
     if vision_level is None:
         return json_level
@@ -1076,6 +1420,10 @@ def build_level_inventory(
         vision_level.ceiling_area_m2,
         conflict_notes,
     )
+    merged_walls, wall_id_aliases = _merge_walls_with_aliases(json_level.walls, vision_level.walls)
+    vision_openings = _remap_wall_references(vision_level.openings, wall_id_aliases)
+    vision_doors = _remap_wall_references(vision_level.doors, wall_id_aliases)
+    vision_windows = _remap_wall_references(vision_level.windows, wall_id_aliases)
 
     return LevelInventory(
         level_id=resolved_level_id,
@@ -1093,16 +1441,10 @@ def build_level_inventory(
         assumptions=_unique_strings(json_level.assumptions, vision_level.assumptions),
         inputs=_merge_inputs(json_level.inputs, vision_level.inputs),
         conflict_notes=conflict_notes,
-        # Walls: prefer Vision for area_m2 — JSON walls have only length_m from linework,
-        # never area_m2; Vision can estimate area from visible plan polygons.
-        walls=_merge_entities(
-            json_level.walls,
-            vision_level.walls,
-            vision_preferred_fields=frozenset({"area_m2"}),
-        ),
-        openings=_merge_entities(json_level.openings, vision_level.openings),
-        doors=_merge_entities(json_level.doors, vision_level.doors),
-        windows=_merge_entities(json_level.windows, vision_level.windows),
+        walls=merged_walls,
+        openings=_merge_entities(json_level.openings, vision_openings),
+        doors=_merge_entities(json_level.doors, vision_doors),
+        windows=_merge_entities(json_level.windows, vision_windows),
         wet_areas=_merge_entities(json_level.wet_areas, vision_level.wet_areas),
         kitchens=_merge_entities(json_level.kitchens, vision_level.kitchens),
         stairs=_merge_entities(json_level.stairs, vision_level.stairs),

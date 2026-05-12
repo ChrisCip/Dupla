@@ -319,7 +319,7 @@ def takeoff_budget_eligibility(
     if item_type in always_skip:
         return False, "type_excluded"
 
-    if takeoff.item_key in derived_from_keys:
+    if takeoff.item_key in derived_from_keys and item_type != "wall_net_area":
         return False, "derived_child"
 
     if item_type.endswith("_volume") and not item_type.endswith("_concrete_volume"):
@@ -355,6 +355,9 @@ def takeoff_budget_eligibility(
         return True, ""
 
     if item_type.startswith("wall_"):
+        material_hint = str(takeoff.inputs.get("material_hint") or "").lower()
+        if material_hint == "masonry" and item_type in {"wall_volume", "wall_length"}:
+            return False, "masonry_wall_budgeted_by_area"
         allowed = {
             "wall_net_area",
             "wall_volume",
@@ -737,6 +740,8 @@ def compose_budget_rows(
         source_type: str
 
         if apu_match is not None:
+            line_code = str(apu_match.code).strip() or line_code
+            deterministic_bc3_code = line_code
             resolved_price = float(apu_match.unit_price_total)
             price_source = f"Constructor APU ({apu_match.code})"
             source_type = "constructor_apu"
@@ -786,7 +791,11 @@ def compose_budget_rows(
             summary=prepared.summary,
             quantity=prepared.takeoff.quantity,
             unit_price=resolved_price,
-            candidate_code=prepared.candidate.bc3_code if prepared.candidate else deterministic_bc3_code,
+            candidate_code=(
+                apu_match.code
+                if apu_match is not None
+                else (prepared.candidate.bc3_code if prepared.candidate else deterministic_bc3_code)
+            ),
             candidate_score=prepared.candidate.score if prepared.candidate else None,
             source_refs=list(prepared.takeoff.source_refs),
             assumptions=list(prepared.takeoff.assumptions),
