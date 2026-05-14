@@ -53,7 +53,7 @@ export function LoginPage() {
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-0 bg-linear-to-b from-primary/78 via-primary/62 to-primary/88"
+          className="pointer-events-none absolute inset-0 bg-primary/85"
           aria-hidden
         />
         <div
