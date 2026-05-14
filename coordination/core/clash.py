@@ -11,8 +11,8 @@ from shapely.geometry import Polygon
 from shapely.strtree import STRtree
 from shapely.validation import explain_validity
 
-from core.coordination.models_25d import Discipline, Element25D
-from core.coordination.registry import ProjectLevelRegistry
+from coordination.core.models_25d import Discipline, Element25D
+from coordination.core.registry import ProjectLevelRegistry
 
 
 class ClashConflict(BaseModel):

@@ -6,7 +6,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from core.coordination.models_25d import Discipline
+from coordination.core.models_25d import Discipline
 
 # Metadato común para filtrar interferencias entre entregas distintas (fecha/rev).
 COORDINATION_ISSUE_METADATA_KEY = "coordination_issue_key"

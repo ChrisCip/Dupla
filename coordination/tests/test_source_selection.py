@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.coordination.registry import SourceExcludePattern
-from core.coordination.source_selection import collect_coordination_media, should_include_source
+from coordination.core.registry import SourceExcludePattern
+from coordination.selection.source_selection import collect_coordination_media, should_include_source
 
 
 def test_should_exclude_pdf_images(tmp_path: Path) -> None:

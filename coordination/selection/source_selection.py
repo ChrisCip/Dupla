@@ -6,7 +6,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from core.coordination.registry import SourceExcludePattern
+from coordination.core.registry import SourceExcludePattern
 
 MEDIA_SUFFIXES = {".dwg", ".dxf", ".pdf", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp"}
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.coordination.clash_element_mapper import map_primary_incidents_to_elements
+from coordination.core.clash_element_mapper import map_primary_incidents_to_elements
 
 
 def _elements_payload(

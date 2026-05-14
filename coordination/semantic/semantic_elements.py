@@ -9,6 +9,7 @@ Rules:
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from disciplines.domain_rules import DomainRules, load_domain_rules_for_discipline
-from core.coordination.models_25d import Discipline, Element25D
+from coordination.core.models_25d import Discipline, Element25D
 
 _ANNOTATION_HINT_TOKENS = (
     "TITULOS",
@@ -125,6 +126,7 @@ def build_semantic_elements_from_accore_payload(
         element_name, name_confidence = _resolve_publishable_name(
             block_name=str(metadata.get("block_name") or payload_block_name or "") or None,
             semantic_type_confidence=type_confidence,
+            nearby_texts=list(metadata.get("nearby_texts") or []),
         )
 
         semantic_elements.append(
@@ -155,6 +157,7 @@ def build_semantic_elements_from_accore_payload(
                 metadata={
                     "category": element.category,
                     "source_ref": element.source_ref,
+                    "nearby_texts": list(metadata.get("nearby_texts") or []),
                     "suppression_reason": metadata.get("suppression_reason"),
                     "sheet_or_view_name": metadata.get("sheet_or_view_name"),
                 },
@@ -319,15 +322,36 @@ def _resolve_publishable_name(
     *,
     block_name: str | None,
     semantic_type_confidence: str,
+    nearby_texts: list[dict[str, Any]] | None = None,
 ) -> tuple[str | None, str]:
-    if semantic_type_confidence != "high":
-        return (None, "low")
-    if not block_name:
-        return (None, "low")
-    normalized = block_name.strip()
-    if not normalized or normalized.startswith("A$") or normalized.upper().startswith("*U"):
-        return (None, "low")
-    return (normalized, "medium")
+    if semantic_type_confidence == "high" and block_name:
+        normalized = block_name.strip()
+        if normalized and not normalized.startswith("A$") and not normalized.upper().startswith("*U"):
+            return (normalized, "medium")
+    nearby_name = _publishable_name_from_nearby_texts(nearby_texts or [])
+    if nearby_name:
+        return (nearby_name, "medium")
+    return (None, "low")
+
+
+def _publishable_name_from_nearby_texts(nearby_texts: list[dict[str, Any]]) -> str | None:
+    patterns = (
+        re.compile(r"\b(?:P|V|VT|E|C|B)-?\d+[A-Z]?\b", flags=re.IGNORECASE),
+        re.compile(
+            r"\b(?:BAÑO|BANO|COCINA|DORMITORIO|HABITACION|HAB\.?|SALA|COMEDOR|TERRAZA|"
+            r"LAVANDERIA|CLOSET|VESTIDOR|PATIO|BALCON|BALCÓN|ESTAR|ESTUDIO)\b",
+            flags=re.IGNORECASE,
+        ),
+    )
+    for item in sorted(nearby_texts, key=lambda row: float(row.get("distance_mm") or 0.0)):
+        content = str(item.get("content") or "").strip()
+        if not content:
+            continue
+        for pattern in patterns:
+            match = pattern.search(content)
+            if match:
+                return match.group(0).strip()
+    return None
 
 
 def _bbox_from_element(element: Element25D) -> tuple[float, float, float, float] | None:

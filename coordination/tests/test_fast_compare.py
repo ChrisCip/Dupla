@@ -4,9 +4,9 @@ import json
 from argparse import Namespace
 from pathlib import Path
 
-import scripts.run_nasas09_project_coordination as runner
-from core.coordination.clash import ClashConflict, group_conflicts_into_incidents
-from core.coordination.fast_compare import (
+import coordination.scripts.run_nasas09_project_coordination as runner
+from coordination.core.clash import ClashConflict, group_conflicts_into_incidents
+from coordination.selection.fast_compare import (
     AlignmentOverride,
     PreMatchCandidate,
     SourceCandidate,
@@ -16,9 +16,9 @@ from core.coordination.fast_compare import (
     normalize_fast_compare_element,
     select_preferred_candidates,
 )
-from core.coordination.models_25d import Discipline, Element25D, ProjectLevel, ZInterval
-from core.coordination.registry import ProjectLevelRegistryDocument
-from scripts.run_nasas09_project_coordination import _build_fast_compare_primary_conflicts
+from coordination.core.models_25d import Discipline, Element25D, ProjectLevel, ZInterval
+from coordination.core.registry import ProjectLevelRegistryDocument
+from coordination.scripts.run_nasas09_project_coordination import _build_fast_compare_primary_conflicts
 
 
 def _registry():

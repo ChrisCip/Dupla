@@ -7,13 +7,13 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from core.coordination.aps_cache import file_cache_key, load_cached_json, save_cached_json
-from core.coordination.from_aps_viewer_dump import elements_from_viewer_dump
-from core.coordination.from_autodesk_properties import bulk_elements_from_autodesk_raw
-from core.coordination.level_inference import infer_level_from_view_name
-from core.coordination.models_25d import Discipline, Element25D
-from core.coordination.nasas_paths import translate_footprint
-from core.coordination.registry import ProjectLevelRegistryDocument
+from coordination.extraction.aps_cache import file_cache_key, load_cached_json, save_cached_json
+from coordination.extraction.from_aps_viewer_dump import elements_from_viewer_dump
+from coordination.extraction.from_autodesk_properties import bulk_elements_from_autodesk_raw
+from coordination.selection.level_inference import infer_level_from_view_name
+from coordination.core.models_25d import Discipline, Element25D
+from coordination.core.nasas_paths import translate_footprint
+from coordination.core.registry import ProjectLevelRegistryDocument
 
 logger = logging.getLogger("dupla.coordination.dwg_aps")
 

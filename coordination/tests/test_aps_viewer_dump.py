@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from core.coordination.from_aps_viewer_dump import elements_from_viewer_dump
-from core.coordination.models_25d import Discipline, ProjectLevel
-from core.coordination.registry import ProjectLevelRegistryDocument, ViewLevelPattern
+from coordination.extraction.from_aps_viewer_dump import elements_from_viewer_dump
+from coordination.core.models_25d import Discipline, ProjectLevel
+from coordination.core.registry import ProjectLevelRegistryDocument, ViewLevelPattern
 
 
 def test_elements_from_viewer_dump_rect_primitive() -> None:

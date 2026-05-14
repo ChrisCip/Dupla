@@ -4,9 +4,9 @@ from pathlib import Path
 
 import fitz
 
-from core.coordination.from_pdf_vector import extract_elements_from_pdf
-from core.coordination.models_25d import Discipline, ProjectLevel
-from core.coordination.registry import ProjectLevelRegistryDocument, ViewLevelPattern
+from coordination.extraction.from_pdf_vector import extract_elements_from_pdf
+from coordination.core.models_25d import Discipline, ProjectLevel
+from coordination.core.registry import ProjectLevelRegistryDocument, ViewLevelPattern
 
 
 def _registry_doc() -> ProjectLevelRegistryDocument:

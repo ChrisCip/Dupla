@@ -11,8 +11,8 @@ import ezdxf
 from ezdxf import units
 from shapely.geometry import Polygon
 
-from core.coordination.models_25d import Discipline, Element25D, ZInterval
-from core.coordination.nasas_paths import translate_footprint
+from coordination.core.models_25d import Discipline, Element25D, ZInterval
+from coordination.core.nasas_paths import translate_footprint
 
 logger = logging.getLogger("dupla.coordination.dwg")
 

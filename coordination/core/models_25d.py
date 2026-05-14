@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.coordination.units import to_mm
+from coordination.core.units import to_mm
 
 
 class Discipline(str, Enum):

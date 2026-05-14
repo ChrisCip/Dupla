@@ -8,13 +8,13 @@ import json
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from core.coordination.clash import ClashIncident
-from core.coordination.coordinate_audit import SourceAudit, render_coordinate_audit_markdown, render_hotspot_markdown
-from core.coordination.reporting import (
+from coordination.core.clash import ClashIncident
+from coordination.selection.coordinate_audit import SourceAudit, render_coordinate_audit_markdown, render_hotspot_markdown
+from coordination.reporting.reporting import (
     build_coordination_report_context,
     render_coordination_report_markdown,
     render_primary_incidents_markdown,

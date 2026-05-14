@@ -19,17 +19,17 @@ import json
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from core.coordination import clash_pairs, conflicts_to_conflict_notes
-from core.coordination.from_autodesk_properties import (
+from coordination import clash_pairs, conflicts_to_conflict_notes
+from coordination.extraction.from_autodesk_properties import (
     load_autodesk_raw,
     pick_best_entities,
     picks_to_elements,
 )
-from core.coordination.registry import ProjectLevelRegistryDocument
+from coordination.core.registry import ProjectLevelRegistryDocument
 
 DEFAULT_RAW = (
     REPO_ROOT

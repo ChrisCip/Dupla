@@ -13,9 +13,9 @@ from typing import Any
 
 from shapely.geometry import LineString, Polygon
 
-from core.coordination.from_dwg_com import NON_GEOMETRIC_LAYER_TOKENS
-from core.coordination.models_25d import Discipline, Element25D, ZInterval
-from core.coordination.nasas_paths import translate_footprint
+from coordination.extraction.from_dwg_com import NON_GEOMETRIC_LAYER_TOKENS
+from coordination.core.models_25d import Discipline, Element25D, ZInterval
+from coordination.core.nasas_paths import translate_footprint
 
 logger = logging.getLogger("dupla.coordination.dwg_accore")
 

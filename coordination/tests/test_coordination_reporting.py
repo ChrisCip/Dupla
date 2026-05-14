@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.coordination.reporting import (
+from coordination.reporting.reporting import (
     build_analysis_bot_context,
     build_coordination_report_context,
     render_coordination_human_report_markdown,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.coordination.from_autodesk_properties import (
+from coordination.extraction.from_autodesk_properties import (
     pick_best_entities,
     square_footprint_mm,
 )

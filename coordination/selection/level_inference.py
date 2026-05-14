@@ -5,8 +5,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from core.coordination.registry import ProjectLevelRegistryDocument, ViewLevelPattern
-from core.coordination.source_selection import normalize_source_text
+from coordination.core.registry import ProjectLevelRegistryDocument, ViewLevelPattern
+from coordination.selection.source_selection import normalize_source_text
 
 
 @dataclass(frozen=True)

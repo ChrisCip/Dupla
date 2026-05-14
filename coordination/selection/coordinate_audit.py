@@ -9,8 +9,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.coordination.fast_compare import PreMatchCandidate, primary_geometry_role
-from core.coordination.models_25d import Element25D
+from coordination.selection.fast_compare import PreMatchCandidate, primary_geometry_role
+from coordination.core.models_25d import Element25D
 
 AuditStatus = Literal["eligible", "needs_alignment", "annotation_noise", "bbox_only", "extract_failed"]
 

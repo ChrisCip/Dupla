@@ -8,10 +8,10 @@ from pathlib import Path
 
 import fitz
 
-from core.coordination.level_inference import extract_sheet_name, infer_level_from_text
-from core.coordination.models_25d import Discipline, Element25D, ZInterval
-from core.coordination.nasas_paths import translate_footprint
-from core.coordination.registry import ProjectLevelRegistryDocument
+from coordination.selection.level_inference import extract_sheet_name, infer_level_from_text
+from coordination.core.models_25d import Discipline, Element25D, ZInterval
+from coordination.core.nasas_paths import translate_footprint
+from coordination.core.registry import ProjectLevelRegistryDocument
 
 logger = logging.getLogger("dupla.coordination.image")
 

@@ -7,7 +7,7 @@ from typing import Any, Iterable
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 
-from core.coordination.models_25d import Discipline, ProjectLevel
+from coordination.core.models_25d import Discipline, ProjectLevel
 
 logger = logging.getLogger("dupla.coordination.registry")
 

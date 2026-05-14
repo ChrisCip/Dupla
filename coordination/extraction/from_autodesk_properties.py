@@ -16,8 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from core.coordination.models_25d import Discipline, Element25D, ZInterval
-from core.coordination.units import to_mm
+from coordination.core.models_25d import Discipline, Element25D, ZInterval
+from coordination.core.units import to_mm
 
 
 @dataclass(frozen=True)

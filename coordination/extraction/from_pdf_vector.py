@@ -8,13 +8,13 @@ from typing import Any
 
 import fitz  # PyMuPDF
 
-from core.coordination.level_inference import (
+from coordination.selection.level_inference import (
     extract_sheet_name,
     infer_level_from_pdf_page,
 )
-from core.coordination.models_25d import Discipline, Element25D, ZInterval
-from core.coordination.nasas_paths import translate_footprint
-from core.coordination.registry import ProjectLevelRegistryDocument
+from coordination.core.models_25d import Discipline, Element25D, ZInterval
+from coordination.core.nasas_paths import translate_footprint
+from coordination.core.registry import ProjectLevelRegistryDocument
 
 logger = logging.getLogger("dupla.coordination.pdf")
 

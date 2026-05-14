@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from core.coordination.coordinate_audit import (
+from coordination.selection.coordinate_audit import (
     PairScheduleItem,
     SourceAudit,
     apply_coordinate_band_gating,
     build_pair_schedule,
     build_source_audit,
 )
-from core.coordination.fast_compare import PreMatchCandidate
-from core.coordination.models_25d import Discipline, Element25D, ZInterval
+from coordination.selection.fast_compare import PreMatchCandidate
+from coordination.core.models_25d import Discipline, Element25D, ZInterval
 
 
 def _candidate(rel_path: str, discipline: Discipline, level_id: str = "NPT_P1"):

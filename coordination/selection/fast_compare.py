@@ -8,11 +8,11 @@ from datetime import date
 from pathlib import Path
 from typing import Iterable
 
-from core.coordination.level_inference import LevelResolution, infer_level_from_view_name
-from core.coordination.models_25d import Discipline, Element25D
-from core.coordination.nasas_paths import coordination_issue_key, discipline_from_nasas_relative_path
-from core.coordination.registry import ProjectLevelRegistryDocument
-from core.coordination.source_selection import normalize_source_text, relative_posix
+from coordination.selection.level_inference import LevelResolution, infer_level_from_view_name
+from coordination.core.models_25d import Discipline, Element25D
+from coordination.core.nasas_paths import coordination_issue_key, discipline_from_nasas_relative_path
+from coordination.core.registry import ProjectLevelRegistryDocument
+from coordination.selection.source_selection import normalize_source_text, relative_posix
 
 FAST_COMPARE_ANALYSIS_PROFILE = "fast_compare"
 FAST_COMPARE_DISCIPLINES = (Discipline.ARCH, Discipline.STRUC)

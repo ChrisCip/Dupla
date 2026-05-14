@@ -1,4 +1,4 @@
-from core.coordination.from_dwg_com import _bbox_footprint_mm, _skip_entity
+from coordination.extraction.from_dwg_com import _bbox_footprint_mm, _skip_entity
 
 
 def test_bbox_footprint_mm_builds_rectangle_and_applies_translation():

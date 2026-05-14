@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from core.coordination.level_inference import infer_level_from_pdf_page, infer_level_from_view_name
-from core.coordination.models_25d import ProjectLevel
-from core.coordination.registry import ProjectLevelRegistryDocument, ViewLevelPattern
+from coordination.selection.level_inference import infer_level_from_pdf_page, infer_level_from_view_name
+from coordination.core.models_25d import ProjectLevel
+from coordination.core.registry import ProjectLevelRegistryDocument, ViewLevelPattern
 
 
 def _doc() -> ProjectLevelRegistryDocument:

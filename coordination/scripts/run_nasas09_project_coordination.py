@@ -18,21 +18,49 @@ from typing import Iterable
 
 from dotenv import load_dotenv
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from core.coordination import clash_pairs, conflicts_to_conflict_notes
-from core.coordination.clash import ClashConflict, group_conflicts_into_incidents
-from core.coordination.clash_element_mapper import map_primary_incidents_to_elements
-from core.coordination.coordinate_audit import (
+from coordination.core.clash import ClashConflict, group_conflicts_into_incidents
+from coordination.core.clash_element_mapper import map_primary_incidents_to_elements
+from coordination.core.models_25d import Element25D
+from coordination.core.nasas_paths import (
+    COORDINATION_ISSUE_METADATA_KEY,
+    coordination_issue_key,
+    discipline_from_nasas_relative_path,
+    file_translation_mm,
+)
+from coordination.core.registry import ProjectLevelRegistryDocument
+from coordination.extraction.from_autodesk_properties import bulk_elements_from_autodesk_raw, load_autodesk_raw
+from coordination.extraction.from_dwg_accore import (
+    extract_elements_from_accore_payload,
+    extract_elements_from_dwg_via_accore,
+    load_accore_payload_via_accore,
+    profile_accore_payload,
+)
+from coordination.extraction.from_dwg_aps import extract_elements_from_dwg_via_aps
+from coordination.extraction.from_dwg_com import extract_elements_from_dwg_via_com
+from coordination.extraction.from_dwg_ezdxf import extract_elements_from_dwg
+from coordination.extraction.from_pdf_vector import extract_elements_from_pdf
+from coordination.extraction.from_raster_image import extract_elements_from_image
+from coordination.reporting.reporting import (
+    build_analysis_bot_context,
+    build_coordination_report_context,
+    render_coordination_human_report_html,
+    render_coordination_human_report_markdown,
+    render_coordination_report_markdown,
+    render_primary_incidents_markdown,
+)
+from coordination.reporting.tile_renderer import render_all_annotated_tiles, render_all_incident_tiles
+from coordination.selection.coordinate_audit import (
     apply_coordinate_band_gating,
     build_pair_schedule,
     build_source_audit,
     render_coordinate_audit_markdown,
     render_hotspot_markdown,
 )
-from core.coordination.fast_compare import (
+from coordination.selection.fast_compare import (
     CAD_SUFFIXES,
     FAST_COMPARE_ANALYSIS_PROFILE,
     apply_manifest_selection,
@@ -50,40 +78,22 @@ from core.coordination.fast_compare import (
     select_comparable_candidates,
     suppress_visual_backups,
 )
-from core.coordination.reporting import (
-    build_analysis_bot_context,
-    build_coordination_report_context,
-    render_coordination_human_report_html,
-    render_coordination_human_report_markdown,
-    render_coordination_report_markdown,
-    render_primary_incidents_markdown,
-)
-from core.coordination.from_autodesk_properties import bulk_elements_from_autodesk_raw, load_autodesk_raw
-from core.coordination.from_dwg_accore import (
-    extract_elements_from_accore_payload,
-    extract_elements_from_dwg_via_accore,
-    load_accore_payload_via_accore,
-    profile_accore_payload,
-)
-from core.coordination.from_dwg_aps import extract_elements_from_dwg_via_aps
-from core.coordination.from_dwg_com import extract_elements_from_dwg_via_com
-from core.coordination.from_dwg_ezdxf import extract_elements_from_dwg
-from core.coordination.from_pdf_vector import extract_elements_from_pdf
-from core.coordination.from_raster_image import extract_elements_from_image
-from core.coordination.level_inference import infer_level_from_view_name
-from core.coordination.models_25d import Element25D
-from core.coordination.nasas_paths import (
-    COORDINATION_ISSUE_METADATA_KEY,
-    coordination_issue_key,
-    discipline_from_nasas_relative_path,
-    file_translation_mm,
-)
-from core.coordination.registry import ProjectLevelRegistryDocument
-from core.coordination.semantic_elements import (
+from coordination.selection.level_inference import infer_level_from_view_name
+from coordination.selection.source_selection import collect_coordination_media, normalize_source_text, relative_posix
+from coordination.semantic.semantic_elements import (
     build_semantic_elements_from_accore_payload,
     export_elements_by_dwg_json,
 )
-from core.coordination.source_selection import collect_coordination_media, normalize_source_text, relative_posix
+from coordination.semantic.nearby_text import (
+    enrich_elements_with_nearby_text,
+    extract_texts_from_accore_payload,
+)
+from coordination.semantic.vision_validator import (
+    apply_vision_results,
+    validate_incident_tiles,
+    vision_tile_result_to_dict,
+)
+from coordination import clash_pairs, conflicts_to_conflict_notes
 
 logger = logging.getLogger("dupla.nasas09.coordination")
 
@@ -118,6 +128,23 @@ def main() -> int:
         "--enable-semantic-mapping",
         action="store_true",
         help="Genera elements_by_dwg.json y clash_element_links.json como capa MVP posterior a primary_incidents.",
+    )
+    parser.add_argument(
+        "--enable-vision-validation",
+        action="store_true",
+        help="Validate clashes with vision model.",
+    )
+    parser.add_argument(
+        "--max-vision-tiles",
+        type=int,
+        default=50,
+        help="Max tiles to validate with vision.",
+    )
+    parser.add_argument(
+        "--vision-model",
+        type=str,
+        default=None,
+        help="Override vision model (default: gpt-5.1).",
     )
     parser.add_argument("--nasas-root", type=Path, default=DEFAULT_NASAS)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
@@ -963,7 +990,82 @@ def _extract_fast_compare_scheduled_elements(
             candidate.discipline.value,
             candidate.level_id,
         )
+    _enrich_fast_compare_elements_with_nearby_text(
+        all_elements=all_elements,
+        scheduled_candidates=scheduled_candidates,
+        profiled_payloads=profiled_payloads,
+        args=args,
+        alignment_overrides=alignment_overrides,
+    )
     return (all_elements, suppressed_elements, skipped_runtime)
+
+
+def _enrich_fast_compare_elements_with_nearby_text(
+    *,
+    all_elements: list[Element25D],
+    scheduled_candidates: list,
+    profiled_payloads: dict[str, dict[str, object]],
+    args: argparse.Namespace,
+    alignment_overrides: dict[str, object] | None,
+) -> None:
+    files_processed = 0
+    total_texts = 0
+    elements_enriched = 0
+    elements_with_text = 0
+    elements_without_text = 0
+    elements_by_rel: dict[str, list[Element25D]] = defaultdict(list)
+    for element in all_elements:
+        rel_path = str(element.metadata.get("source_rel_path") or "")
+        if rel_path:
+            elements_by_rel[rel_path].append(element)
+
+    for candidate in scheduled_candidates:
+        payload_entry = profiled_payloads.get(candidate.rel_path, {})
+        payload = payload_entry.get("payload")
+        file_elements = elements_by_rel.get(candidate.rel_path, [])
+        if not isinstance(payload, dict):
+            if file_elements:
+                enrich_elements_with_nearby_text(file_elements, [])
+                elements_enriched += len(file_elements)
+                elements_without_text += len(file_elements)
+            continue
+        files_processed += 1
+        translation = _resolve_candidate_translation(
+            candidate=candidate,
+            args=args,
+            alignment_overrides=alignment_overrides,
+        )
+        texts = extract_texts_from_accore_payload(
+            payload,
+            float(payload.get("UnitsToMmFactor") or 1.0),
+            candidate.rel_path,
+            translation_mm=translation,
+        )
+        total_texts += len(texts)
+        enrich_elements_with_nearby_text(file_elements, texts)
+        enriched_with_text = sum(1 for element in file_elements if element.metadata.get("nearby_texts"))
+        elements_enriched += len(file_elements)
+        elements_with_text += enriched_with_text
+        elements_without_text += len(file_elements) - enriched_with_text
+        if texts:
+            logger.info(
+                "nearby_text: %d texts found, enriched %d elements for %s",
+                len(texts),
+                len(file_elements),
+                candidate.rel_path,
+            )
+        else:
+            logger.info("nearby_text: no text entities found in %s", candidate.rel_path)
+
+    logger.info(
+        "nearby_text enrichment summary: files=%d total_texts=%d elements_enriched=%d "
+        "with_nearby_text=%d without_nearby_text=%d",
+        files_processed,
+        total_texts,
+        elements_enriched,
+        elements_with_text,
+        elements_without_text,
+    )
 
 
 def _build_semantic_mapping_payloads(
@@ -1354,6 +1456,40 @@ def _run_fast_compare(
         ),
         encoding="utf-8",
     )
+    rendered_tiles = []
+    if primary_incidents:
+        try:
+            rendered_tiles = render_all_incident_tiles(
+                incidents=primary_incidents,
+                all_elements=all_elements,
+                output_dir=args.output.parent,
+                width_px=800,
+            )
+            logger.info("Rendered %d incident tiles", len(rendered_tiles))
+        except Exception as exc:
+            logger.warning("Tile rendering failed: %s", exc)
+    vision_overrides = {}
+    if args.enable_vision_validation and rendered_tiles:
+        try:
+            vision_results = validate_incident_tiles(
+                tiles=rendered_tiles,
+                all_elements=all_elements,
+                max_tiles=args.max_vision_tiles,
+                model=args.vision_model,
+            )
+            vision_overrides = apply_vision_results(vision_results)
+            vision_output = [vision_tile_result_to_dict(result) for result in vision_results]
+            (args.output.parent / "vision_validation.json").write_text(
+                json.dumps(vision_output, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            logger.info(
+                "Vision validation: %d/%d tiles validated",
+                sum(1 for result in vision_results if result.success),
+                len(vision_results),
+            )
+        except Exception as exc:
+            logger.warning("Vision validation failed: %s", exc)
     debug_payload = {
         "generated_at": generated_at,
         "project_name": doc.project_name,
@@ -1444,6 +1580,25 @@ def _run_fast_compare(
         coordinate_audit_payload=coordinate_audit_payload,
         pair_schedule_payload=pair_schedule_payload,
     )
+    annotated_tiles = []
+    if rendered_tiles:
+        try:
+            incident_severities = {
+                str(card.get("incident_id")): {
+                    "severity": str(card.get("severity") or "noise"),
+                    "action_owner": str(card.get("action_owner") or ""),
+                }
+                for card in technical_report_context.get("all_incidents") or []
+            }
+            annotated_tiles = render_all_annotated_tiles(
+                base_tiles=rendered_tiles,
+                vision_overrides=vision_overrides,
+                incident_severities=incident_severities,
+                output_dir=args.output.parent,
+            )
+            logger.info("Generated %d annotated tiles", len(annotated_tiles))
+        except Exception as exc:
+            logger.warning("Annotated tile rendering failed: %s", exc)
     _write_json(technical_report_context_json, technical_report_context)
     technical_report_md.write_text(
         render_coordination_report_markdown(

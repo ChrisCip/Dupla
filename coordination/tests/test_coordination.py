@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from core.coordination import (
+from coordination import (
     Discipline,
     Element25D,
     ElevationMode,
@@ -18,8 +18,8 @@ from core.coordination import (
     element_from_inventory_meters,
     to_mm,
 )
-from core.coordination.models_25d import ProjectLevel
-from core.coordination.nasas_paths import COORDINATION_ISSUE_METADATA_KEY, coordination_issue_key
+from coordination.core.models_25d import ProjectLevel
+from coordination.core.nasas_paths import COORDINATION_ISSUE_METADATA_KEY, coordination_issue_key
 
 
 def test_to_mm() -> None:

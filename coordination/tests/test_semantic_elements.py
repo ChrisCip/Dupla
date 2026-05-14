@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.coordination.models_25d import Discipline, Element25D, ZInterval
-from core.coordination.semantic_elements import (
+from coordination.core.models_25d import Discipline, Element25D, ZInterval
+from coordination.semantic.semantic_elements import (
     build_semantic_elements_from_accore_payload,
     export_elements_by_dwg_json,
 )

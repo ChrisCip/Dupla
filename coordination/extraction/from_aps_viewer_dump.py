@@ -8,10 +8,10 @@ from typing import Any
 from shapely.geometry import GeometryCollection, LineString, MultiPolygon, Polygon
 from shapely.ops import unary_union
 
-from core.coordination.level_inference import infer_level_from_view_name
-from core.coordination.models_25d import Discipline, Element25D, ZInterval
-from core.coordination.nasas_paths import translate_footprint
-from core.coordination.registry import ProjectLevelRegistryDocument
+from coordination.selection.level_inference import infer_level_from_view_name
+from coordination.core.models_25d import Discipline, Element25D, ZInterval
+from coordination.core.nasas_paths import translate_footprint
+from coordination.core.registry import ProjectLevelRegistryDocument
 
 
 def elements_from_viewer_dump(

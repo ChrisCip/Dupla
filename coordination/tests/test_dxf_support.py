@@ -4,8 +4,8 @@ from pathlib import Path
 
 import ezdxf
 
-from core.coordination.from_dwg_ezdxf import extract_elements_from_dwg
-from core.coordination.models_25d import Discipline
+from coordination.extraction.from_dwg_ezdxf import extract_elements_from_dwg
+from coordination.core.models_25d import Discipline
 
 
 def test_extract_elements_from_dxf_closed_polyline(tmp_path: Path) -> None:

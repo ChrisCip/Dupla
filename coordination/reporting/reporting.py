@@ -619,6 +619,7 @@ def render_coordination_human_report_markdown(
         if exact_entity_text:
             line = line.replace(f"\n  accion: {card['recommended_action']}", f"\n  entidades CAD: {exact_entity_text}\n  accion: {card['recommended_action']}")
         lines.append(line)
+        lines.append(f"![Visualización del clash](tiles/{card['incident_id']}_annotated.svg)")
     if not defendable:
         lines.append("- No hubo hallazgos defendibles en esta corrida.")
 
@@ -641,6 +642,7 @@ def render_coordination_human_report_markdown(
         if exact_entity_text:
             line = line.replace(f"\n  accion: {card['recommended_action']}", f"\n  entidades CAD: {exact_entity_text}\n  accion: {card['recommended_action']}")
         lines.append(line)
+        lines.append(f"![Visualización del clash](tiles/{card['incident_id']}_annotated.svg)")
     if not validation:
         lines.append("- No quedaron incidencias abiertas para validación manual.")
 
@@ -675,26 +677,58 @@ def render_coordination_human_report_html(
     markdown: str,
 ) -> str:
     body = []
+    table_rows: list[str] = []
+    traffic_light = _traffic_light_html(markdown)
+
+    def flush_table() -> None:
+        if table_rows:
+            body.append(_markdown_table_to_html(table_rows))
+            table_rows.clear()
+
     for line in markdown.splitlines():
         stripped = line.strip()
         if not stripped:
+            flush_table()
             continue
+        if stripped.startswith("|"):
+            table_rows.append(stripped)
+            continue
+        flush_table()
         if stripped.startswith("# "):
             body.append(f"<h1>{escape(stripped[2:])}</h1>")
+            if traffic_light:
+                body.append(traffic_light)
         elif stripped.startswith("## "):
             body.append(f"<h2>{escape(stripped[3:])}</h2>")
+        elif stripped.startswith("![") and "](" in stripped and stripped.endswith(")"):
+            alt = stripped[2 : stripped.index("]")]
+            src = stripped[stripped.index("](") + 2 : -1]
+            fallback_src = src.replace("_annotated.svg", ".svg")
+            body.append(
+                '<div class="tile-container">'
+                f'<img src="{escape(src)}" onerror="this.onerror=null;this.src=\'{escape(fallback_src)}\';" '
+                f'alt="{escape(alt)}" class="tile-img" />'
+                "</div>"
+            )
         elif stripped.startswith("- "):
-            body.append(f"<p>{escape(stripped[2:])}</p>")
-        elif stripped.startswith("|"):
-            body.append(f"<pre>{escape(stripped)}</pre>")
+            body.append(f"<p>{_inline_markdown_to_html(stripped[2:])}</p>")
         else:
-            body.append(f"<p>{escape(stripped)}</p>")
+            body.append(f"<p>{_inline_markdown_to_html(stripped)}</p>")
+    flush_table()
     return (
         "<!DOCTYPE html><html><head><meta charset='utf-8'>"
         f"<title>{escape(project_name)} - {escape(run_label)}</title>"
-        "<style>body{font-family:Segoe UI,Arial,sans-serif;max-width:980px;margin:32px auto;padding:0 20px;line-height:1.45;color:#1f2937}"
-        "h1,h2{color:#111827} pre{background:#f3f4f6;padding:10px;border-radius:6px;overflow:auto;white-space:pre-wrap}"
-        "p{margin:10px 0}</style></head><body>"
+        "<style>"
+        "body{font-family:Segoe UI,Arial,sans-serif;max-width:900px;margin:32px auto;padding:0 20px;line-height:1.45;color:#1f2937;background:#fff}"
+        "h1,h2{color:#111827} h1{font-size:28px} h2{font-size:20px;margin-top:28px;border-bottom:1px solid #e5e7eb;padding-bottom:6px}"
+        "p{margin:10px 0} code{background:#f3f4f6;border-radius:4px;padding:1px 4px}"
+        "table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px}th,td{border:1px solid #d1d5db;padding:7px;text-align:left;vertical-align:top}th{background:#f9fafb}"
+        ".tile-container{margin:12px 0 22px;border:1px solid #d1d5db;border-radius:6px;overflow:hidden;background:#fff}"
+        ".tile-img{display:block;max-width:100%;width:100%;height:auto}"
+        ".traffic-light{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 20px}"
+        ".badge{display:inline-block;padding:5px 9px;border-radius:999px;color:#fff;font-size:12px;font-weight:700}"
+        ".severity-critical{background:#DC2626}.severity-major{background:#D97706}.severity-minor{background:#2563EB}.severity-noise{background:#6B7280}"
+        "</style></head><body>"
         + "".join(body)
         + "</body></html>"
     )
@@ -706,6 +740,51 @@ def _link_has_publishable_types(link: dict[str, Any]) -> bool:
     left = link.get("file_a") or {}
     right = link.get("file_b") or {}
     return _publishable_type_from_side(left) is not None and _publishable_type_from_side(right) is not None
+
+
+def _traffic_light_html(markdown: str) -> str:
+    counts = Counter()
+    for line in markdown.splitlines():
+        match = re.match(r"- `[^`]+` \| `[^`]+` \| `([^`]+)` \|", line.strip())
+        if match:
+            counts[match.group(1)] += 1
+    if not counts:
+        return ""
+    return (
+        '<div class="traffic-light">'
+        f'<span class="badge severity-critical">🔴 {counts.get("critical", 0)} críticos</span>'
+        f'<span class="badge severity-major">🟡 {counts.get("major", 0)} mayores</span>'
+        f'<span class="badge severity-minor">🔵 {counts.get("minor", 0)} menores</span>'
+        f'<span class="badge severity-noise">⚪ {counts.get("noise", 0) + counts.get("low", 0)} ruido</span>'
+        "</div>"
+    )
+
+
+def _markdown_table_to_html(rows: list[str]) -> str:
+    if len(rows) < 2:
+        return "<pre>" + escape("\n".join(rows)) + "</pre>"
+    header = _split_markdown_table_row(rows[0])
+    body_rows = [_split_markdown_table_row(row) for row in rows[2:]]
+    html_rows = [
+        "<table><thead><tr>"
+        + "".join(f"<th>{_inline_markdown_to_html(cell)}</th>" for cell in header)
+        + "</tr></thead><tbody>"
+    ]
+    for row in body_rows:
+        html_rows.append(
+            "<tr>" + "".join(f"<td>{_inline_markdown_to_html(cell)}</td>" for cell in row) + "</tr>"
+        )
+    html_rows.append("</tbody></table>")
+    return "".join(html_rows)
+
+
+def _split_markdown_table_row(row: str) -> list[str]:
+    return [cell.strip() for cell in row.strip().strip("|").split("|")]
+
+
+def _inline_markdown_to_html(text: str) -> str:
+    escaped = escape(text)
+    return re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
 
 
 def _publishable_type_from_side(side: dict[str, Any]) -> str | None:

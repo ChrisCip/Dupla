@@ -7,7 +7,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from core.coordination.semantic_elements import SemanticElement25D
+from coordination.semantic.semantic_elements import SemanticElement25D
 
 ANNOTATION_LAYER_TOKENS = ("TITULOS", "ESCALA_HUMANA", "TEXT", "ANNO", "DIM", "LABEL")
 LOW_TRUST_LAYER_TOKENS = ("MARCO", "EST_PROYECCION")

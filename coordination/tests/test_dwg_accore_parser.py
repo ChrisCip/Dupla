@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from core.coordination.from_dwg_accore import extract_elements_from_accore_payload, profile_accore_payload
-from core.coordination.models_25d import Discipline
+from coordination.extraction.from_dwg_accore import extract_elements_from_accore_payload, profile_accore_payload
+from coordination.core.models_25d import Discipline
 
 
 def test_accore_payload_generates_polyline_and_bbox_elements() -> None:
