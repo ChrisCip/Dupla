@@ -104,13 +104,14 @@ def run_dupla_pipeline(dwg_content: bytes, dwg_filename: str, pdf_content: bytes
             metadata={}
         )
 
-        budget = build_budget_from_sources(
+        import asyncio
+        budget = asyncio.run(build_budget_from_sources(
             context=context,
             cad_facts=normalized,
             vision_payloads=vision_results,
             bc3_catalog=bc3_catalog,
             embedding_index=embedding_index,
             training_pairs=[]
-        )
+        ))
 
         return budget

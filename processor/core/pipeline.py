@@ -97,7 +97,7 @@ def merge_pres_template_takeoffs(
     return merged
 
 
-def _match_or_generate(
+async def _match_or_generate(
     expanded_takeoffs: list[QuantityTakeoff],
     bc3_catalog: dict[str, Any],
     *,
@@ -122,7 +122,7 @@ def _match_or_generate(
             from agents.partida_adapter import adapt_generated_to_legacy_format
 
             generator = PartidaGenerator()
-            generated = generator.generate(
+            generated = await generator.generate(
                 expanded_takeoffs,
                 training_pairs=training_pairs,
                 bc3_catalog=bc3_catalog,
@@ -143,7 +143,7 @@ def _match_or_generate(
     else:
         logger.info("No OPENAI_API_KEY — skipping PartidaGenerator, using BC3 matching")
 
-    candidates = match_takeoffs_to_bc3(
+    candidates = await match_takeoffs_to_bc3(
         expanded_takeoffs,
         bc3_catalog,
         embedding_index=embedding_index,
@@ -198,7 +198,7 @@ def build_final_budget(
     return composed
 
 
-def build_budget_from_inventory(
+async def build_budget_from_inventory(
     context: ProjectContext,
     levels: list[LevelInventory],
     bc3_catalog: dict[str, Any],
@@ -220,7 +220,7 @@ def build_budget_from_inventory(
         fallback_unmatched=bool(context.metadata.get("pres_fallback_unmatched", True)),
     )
     _stamp_takeoffs_source_discipline(expanded_takeoffs, project_discipline)
-    candidates, bc3_catalog_for_budget = _match_or_generate(
+    candidates, bc3_catalog_for_budget = await _match_or_generate(
         expanded_takeoffs,
         bc3_catalog,
         embedding_index=embedding_index,
@@ -373,7 +373,7 @@ def build_expanded_takeoffs_from_sources(
     return hybrid_inventory, base_takeoffs, expanded_takeoffs
 
 
-def build_budget_from_sources(
+async def build_budget_from_sources(
     context: ProjectContext,
     cad_facts: dict[str, Any],
     vision_payloads: Iterable[LevelInventory | Mapping[str, Any]] | LevelInventory | Mapping[str, Any] | None,
@@ -448,7 +448,7 @@ def build_budget_from_sources(
     _stamp_takeoffs_source_discipline(expanded_takeoffs, project_discipline)
 
     logger.info("Resolving candidates for %d takeoffs", len(expanded_takeoffs))
-    candidates, bc3_catalog_for_budget = _match_or_generate(
+    candidates, bc3_catalog_for_budget = await _match_or_generate(
         expanded_takeoffs,
         bc3_catalog,
         embedding_index=embedding_index,

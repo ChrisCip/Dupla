@@ -25,7 +25,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 logger = logging.getLogger("dupla.partida_generator")
 
 try:
-    from openai import OpenAI
+    from openai import AsyncOpenAI
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
@@ -170,8 +170,8 @@ _PREFIX_TABLE: list[tuple[str, str]] = [
     ("wet_area_", "19"),
 ]
 
-BATCH_SIZE = 45  # takeoffs per GPT-4o call
-_MODEL = "gpt-4o"
+BATCH_SIZE = 80  # takeoffs per GPT-4o-mini call
+_MODEL = "gpt-4o-mini"
 _TEMPERATURE = 0.2
 
 _SYSTEM_PROMPT = """\
@@ -333,9 +333,9 @@ class PartidaGenerator:
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY environment variable is not set")
-        self._client = OpenAI(api_key=api_key)
+        self._client = AsyncOpenAI(api_key=api_key)
 
-    def generate(
+    async def generate(
         self,
         takeoffs: list[QuantityTakeoff],
         training_pairs: list[TrainingPair] | None = None,
@@ -362,6 +362,9 @@ class PartidaGenerator:
         results: list[dict[str, Any]] = []
         chapter_offsets: dict[str, int] = {}
 
+        import asyncio
+
+        tasks = []
         for chapter_code in sorted(groups.keys()):
             chapter_takeoffs = groups[chapter_code]
             chapter_name, discipline = CHAPTER_CATALOG.get(
@@ -372,16 +375,22 @@ class PartidaGenerator:
             for batch_start in range(0, len(chapter_takeoffs), BATCH_SIZE):
                 batch = chapter_takeoffs[batch_start : batch_start + BATCH_SIZE]
                 offset = chapter_offsets.get(chapter_code, 0)
-
-                partidas = self._generate_batch(
-                    batch,
-                    chapter_code=chapter_code,
-                    chapter_name=chapter_name,
-                    discipline=discipline,
-                    few_shot_block=few_shot,
-                    partida_offset=offset,
+                
+                tasks.append(
+                    self._generate_batch(
+                        batch,
+                        chapter_code=chapter_code,
+                        chapter_name=chapter_name,
+                        discipline=discipline,
+                        few_shot_block=few_shot,
+                        partida_offset=offset,
+                    )
                 )
-                chapter_offsets[chapter_code] = offset + len(partidas)
+                chapter_offsets[chapter_code] = offset + len(batch)
+        
+        if tasks:
+            batch_results = await asyncio.gather(*tasks)
+            for partidas in batch_results:
                 results.extend(partidas)
 
         logger.info(
@@ -391,7 +400,7 @@ class PartidaGenerator:
         )
         return results
 
-    def _generate_batch(
+    async def _generate_batch(
         self,
         takeoffs: list[QuantityTakeoff],
         *,
@@ -444,7 +453,7 @@ class PartidaGenerator:
         )
 
         try:
-            resp = self._client.chat.completions.create(
+            resp = await self._client.chat.completions.create(
                 model=_MODEL,
                 max_tokens=4000,
                 temperature=_TEMPERATURE,

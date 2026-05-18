@@ -204,7 +204,7 @@ def load_or_build_embeddings(
 def batch_search_bc3(
     queries: list[str],
     index: EmbeddingIndex,
-    top_k: int = 10,
+    top_k: int = 5,
     *,
     embed_batch_fn: Callable[[list[str]], np.ndarray] | None = None,
     embed_chunk_size: int = 128,
@@ -253,7 +253,7 @@ def batch_search_bc3(
 def search_bc3(
     query_text: str,
     index: EmbeddingIndex,
-    top_k: int = 10,
+    top_k: int = 5,
     *,
     embed_batch_fn: Callable[[list[str]], np.ndarray] | None = None,
 ) -> list[dict[str, Any]]:

@@ -34,7 +34,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 logger = logging.getLogger("dupla.classifier")
 
 try:
-    from openai import OpenAI
+    from openai import AsyncOpenAI
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
@@ -284,7 +284,7 @@ def _filter_bc3_for_chapter(
         items_by_code = {str(item.get("code", "")): item for item in items}
         scored_by_code: dict[str, float] = {}
         query_texts = [build_query_from_takeoff(t) for t in takeoffs]
-        batch_matches = batch_search_bc3(query_texts, embedding_index, top_k=15)
+        batch_matches = batch_search_bc3(query_texts, embedding_index, top_k=5)
         for takeoff, matches in zip(takeoffs, batch_matches):
             for match in matches:
                 code = str(match.get("code", ""))
@@ -351,12 +351,12 @@ def _extract_json_list(text: str) -> list[dict[str, Any]]:
     return []
 
 
-def _gpt4o_classify_chapter(
+async def _gpt4o_classify_chapter(
     takeoffs: list[QuantityTakeoff],
     bc3_items: list[dict[str, Any]],
     chapter_code: str,
     chapter_desc: str,
-    client: "OpenAI",
+    client: "AsyncOpenAI",
     few_shot_examples: str = "",
     *,
     project_discipline_id: str | None = None,
@@ -427,7 +427,7 @@ def _gpt4o_classify_chapter(
     )
 
     try:
-        resp = client.chat.completions.create(
+        resp = await client.chat.completions.create(
             model="gpt-4o",
             max_tokens=2048,
             temperature=0.1,
@@ -526,10 +526,10 @@ def _gpt4o_classify_chapter(
     return result
 
 
-def _match_with_gpt4o(
+async def _match_with_gpt4o(
     takeoffs: list[QuantityTakeoff],
     bc3_catalog: dict[str, Any],
-    client: "OpenAI",
+    client: "AsyncOpenAI",
     *,
     embedding_index: EmbeddingIndex | None = None,
     training_pairs: list[TrainingPair] | None = None,
@@ -543,6 +543,11 @@ def _match_with_gpt4o(
         chapter_groups.setdefault(ch, []).append(takeoff)
 
     result: dict[str, list[BudgetCandidate]] = {}
+
+    import asyncio
+    
+    tasks = []
+    task_keys = []
 
     for chapter_code, chapter_takeoffs in sorted(chapter_groups.items()):
         chapter_info = _CHAPTERS[chapter_code]
@@ -563,7 +568,8 @@ def _match_with_gpt4o(
             category_hint,
             chapter_code=chapter_code,
         )
-        matches = _gpt4o_classify_chapter(
+        
+        task = _gpt4o_classify_chapter(
             chapter_takeoffs,
             bc3_subset,
             chapter_code,
@@ -572,9 +578,14 @@ def _match_with_gpt4o(
             few_shot_examples=few_shot,
             project_discipline_id=project_discipline_id,
         )
+        tasks.append(task)
+        task_keys.append(chapter_code)
 
-        for key, candidate in matches.items():
-            result[key] = [candidate]
+    if tasks:
+        batch_results = await asyncio.gather(*tasks)
+        for matches in batch_results:
+            for key, candidate in matches.items():
+                result[key] = [candidate]
 
     return result
 
@@ -647,7 +658,7 @@ def rank_budget_candidates(
 # Public API
 # ---------------------------------------------------------------------------
 
-def match_takeoffs_to_bc3(
+async def match_takeoffs_to_bc3(
     takeoffs: Iterable[QuantityTakeoff],
     bc3_catalog: dict[str, Any],
     top_k: int = 3,
@@ -670,8 +681,8 @@ def match_takeoffs_to_bc3(
         api_key = os.getenv("OPENAI_API_KEY")
         if api_key and non_pres:
             try:
-                client = OpenAI(api_key=api_key)
-                result = _match_with_gpt4o(
+                client = AsyncOpenAI(api_key=api_key)
+                result = await _match_with_gpt4o(
                     non_pres,
                     bc3_catalog,
                     client,
