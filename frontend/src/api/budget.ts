@@ -3,16 +3,13 @@ import type { BudgetJob, BudgetResult } from '../types/budget'
 
 export async function enqueueBudgetJob(
   projectUuid: string,
-  dwgFileUuid: string,
   token: string | null,
-  opts?: { pdfFileUuid?: string; discipline?: string },
+  opts?: { discipline?: string },
 ): Promise<BudgetJob> {
   const res = await apiFetch(`/api/projects/${projectUuid}/budget/jobs`, {
     method: 'POST',
     token,
     body: JSON.stringify({
-      dwg_file_uuid: dwgFileUuid,
-      pdf_file_uuid: opts?.pdfFileUuid ?? null,
       discipline: opts?.discipline ?? null,
     }),
   })

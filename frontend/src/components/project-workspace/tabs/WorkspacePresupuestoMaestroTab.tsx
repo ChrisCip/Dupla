@@ -1,7 +1,6 @@
 import { AlertCircle, Cpu, Loader2, Play, RefreshCw } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useEffect, useRef, useState } from 'react'
 
-import { apiFetch } from '../../../api/client'
 import { useBudgetJob } from '../../../hooks/useBudgetJob'
 import type { BudgetRow } from '../../../types/budget'
 import type { Project } from '../../../types/project'
@@ -50,18 +49,9 @@ function computeLiquidacion(direct: number) {
   return { seguro, gastosAdmin, transporte, direccion, subAntesItbis, itbis, total: subAntesItbis + itbis }
 }
 
-// ─── File picker modal ────────────────────────────────────────────────────────
-interface ProjectFileOption {
-  uuid: string
-  original_name: string
-  mime: string | null
-}
-
 
 interface EnqueueModalProps {
-  projectUuid: string
-  token: string | null
-  onSubmit: (dwgUuid: string, opts: { pdfFileUuid?: string; discipline?: string }) => void
+  onSubmit: (opts: { discipline?: string }) => void
   onClose: () => void
 }
 
@@ -73,83 +63,32 @@ const DISCIPLINES = [
   { value: 'sanitaria', label: 'Sanitaria' },
 ]
 
-function EnqueueModal({ projectUuid, token, onSubmit, onClose }: EnqueueModalProps) {
-  const [files, setFiles] = useState<ProjectFileOption[]>([])
-  const [dwgUuid, setDwgUuid] = useState('')
-  const [pdfUuid, setPdfUuid] = useState('')
+function EnqueueModal({ onSubmit, onClose }: EnqueueModalProps) {
   const [discipline, setDiscipline] = useState('')
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    void (async () => {
-      const res = await apiFetch(`/api/projects/${projectUuid}/files`, { token })
-      if (!res.ok) { setLoading(false); return }
-      const data = (await res.json()) as { items: ProjectFileOption[] }
-      setFiles(Array.isArray(data) ? data : (data.items ?? []))
-      setLoading(false)
-    })()
-  }, [projectUuid, token])
-
-  const dwgFiles = files.filter((f) => f.original_name.toLowerCase().endsWith('.dwg'))
-  const pdfFiles = files.filter((f) => f.original_name.toLowerCase().endsWith('.pdf'))
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-6 shadow-2xl">
+      <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-white p-6 shadow-2xl">
         <h2 className="text-base font-bold text-ink">Iniciar presupuesto con IA</h2>
-        <p className="mt-1 text-sm text-muted">Selecciona los archivos del proyecto para procesar.</p>
+        <p className="mt-1 text-sm text-muted">
+          Se procesarán todos los archivos del proyecto automáticamente.
+        </p>
 
-        {loading ? (
-          <div className="mt-6 flex justify-center"><Loader2 className="size-6 animate-spin text-primary" /></div>
-        ) : (
-          <div className="mt-5 space-y-4">
-            <label className="block space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wide text-muted">Archivo DWG *</span>
-              <select
-                id="enqueue-dwg-select"
-                className="du-input w-full py-2 text-sm"
-                value={dwgUuid}
-                onChange={(e) => setDwgUuid(e.target.value)}
-              >
-                <option value="">Seleccionar…</option>
-                {dwgFiles.map((f) => (
-                  <option key={f.uuid} value={f.uuid}>{f.original_name}</option>
-                ))}
-
-              </select>
-            </label>
-
-            <label className="block space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wide text-muted">Archivo PDF (opcional)</span>
-              <select
-                id="enqueue-pdf-select"
-                className="du-input w-full py-2 text-sm"
-                value={pdfUuid}
-                onChange={(e) => setPdfUuid(e.target.value)}
-              >
-                <option value="">Sin PDF</option>
-                {pdfFiles.map((f) => (
-                  <option key={f.uuid} value={f.uuid}>{f.original_name}</option>
-                ))}
-
-              </select>
-            </label>
-
-            <label className="block space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wide text-muted">Disciplina</span>
-              <select
-                id="enqueue-discipline-select"
-                className="du-input w-full py-2 text-sm"
-                value={discipline}
-                onChange={(e) => setDiscipline(e.target.value)}
-              >
-                {DISCIPLINES.map((d) => (
-                  <option key={d.value} value={d.value}>{d.label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
+        <div className="mt-5 space-y-4">
+          <label className="block space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wide text-muted">Disciplina</span>
+            <select
+              id="enqueue-discipline-select"
+              className="du-input w-full py-2 text-sm"
+              value={discipline}
+              onChange={(e) => setDiscipline(e.target.value)}
+            >
+              {DISCIPLINES.map((d) => (
+                <option key={d.value} value={d.value}>{d.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <div className="mt-6 flex justify-end gap-3">
           <button
@@ -163,8 +102,7 @@ function EnqueueModal({ projectUuid, token, onSubmit, onClose }: EnqueueModalPro
           <PrimaryButton
             type="button"
             id="enqueue-modal-submit"
-            disabled={!dwgUuid}
-            onClick={() => onSubmit(dwgUuid, { pdfFileUuid: pdfUuid || undefined, discipline: discipline || undefined })}
+            onClick={() => onSubmit({ discipline: discipline || undefined })}
           >
             Procesar
           </PrimaryButton>
@@ -221,9 +159,9 @@ export function WorkspacePresupuestoMaestroTab({ project, projectUuid, token }: 
 
   const location = project?.location_text?.trim() || 'República Dominicana'
 
-  function handleEnqueueSubmit(dwgUuid: string, opts: { pdfFileUuid?: string; discipline?: string }) {
+  function handleEnqueueSubmit(opts: { discipline?: string }) {
     setModalOpen(false)
-    void enqueue(dwgUuid, opts)
+    void enqueue(opts)
   }
 
   // ── No job yet (idle) ──
@@ -232,8 +170,6 @@ export function WorkspacePresupuestoMaestroTab({ project, projectUuid, token }: 
       <div className="flex flex-1 flex-col items-center justify-center gap-6 py-20 text-center">
         {modalOpen && (
           <EnqueueModal
-            projectUuid={projectUuid}
-            token={token}
             onSubmit={handleEnqueueSubmit}
             onClose={() => setModalOpen(false)}
           />
@@ -298,8 +234,6 @@ export function WorkspacePresupuestoMaestroTab({ project, projectUuid, token }: 
       <div className="flex flex-1 flex-col items-center justify-center gap-6 py-20 text-center">
         {modalOpen && (
           <EnqueueModal
-            projectUuid={projectUuid}
-            token={token}
             onSubmit={handleEnqueueSubmit}
             onClose={() => setModalOpen(false)}
           />
@@ -329,8 +263,6 @@ export function WorkspacePresupuestoMaestroTab({ project, projectUuid, token }: 
     <div className="flex min-h-0 flex-1 flex-col gap-6 pb-10">
       {modalOpen && (
         <EnqueueModal
-          projectUuid={projectUuid}
-          token={token}
           onSubmit={handleEnqueueSubmit}
           onClose={() => setModalOpen(false)}
         />

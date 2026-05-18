@@ -10,7 +10,7 @@ interface UseBudgetJobReturn {
   result: BudgetResult | null
   isPolling: boolean
   error: string | null
-  enqueue: (dwgFileUuid: string, opts?: { pdfFileUuid?: string; discipline?: string }) => Promise<void>
+  enqueue: (opts?: { discipline?: string }) => Promise<void>
   refresh: () => void
 }
 
@@ -80,10 +80,10 @@ export function useBudgetJob(projectUuid: string, token: string | null): UseBudg
   }, [projectUuid, token, startPolling, stopPolling, fetchResult])
 
   const enqueue = useCallback(
-    async (dwgFileUuid: string, opts?: { pdfFileUuid?: string; discipline?: string }) => {
+    async (opts?: { discipline?: string }) => {
       setError(null)
       try {
-        const newJob = await enqueueBudgetJob(projectUuid, dwgFileUuid, token, opts)
+        const newJob = await enqueueBudgetJob(projectUuid, token, opts)
         if (!mountedRef.current) return
         setJob(newJob)
         setResult(null)

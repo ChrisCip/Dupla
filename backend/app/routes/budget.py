@@ -11,12 +11,11 @@ from app.dependencies import get_current_user
 from app.models.user import User
 from app.services.budget_service import BudgetService
 
-router = APIRouter(prefix="/api/projects/{project_uuid}/budget", tags=["budget"])
+router = APIRouter(prefix="/api/projects", tags=["budget"])
+
 
 
 class EnqueueBudgetJobRequest(BaseModel):
-    dwg_file_uuid: UUID
-    pdf_file_uuid: Optional[UUID] = None
     discipline: Optional[str] = None
 
 
@@ -32,7 +31,7 @@ class BudgetJobResponse(BaseModel):
 
 
 @router.post(
-    "/jobs",
+    "/{project_uuid}/budget/jobs",
     response_model=BudgetJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
     summary="Enqueue budget processing job",
@@ -47,8 +46,6 @@ async def enqueue_budget_job(
     job = await svc.enqueue_budget_job(
         current,
         project_uuid,
-        dwg_file_uuid=body.dwg_file_uuid,
-        pdf_file_uuid=body.pdf_file_uuid,
         discipline=body.discipline,
     )
     await session.commit()
@@ -65,7 +62,7 @@ async def enqueue_budget_job(
 
 
 @router.get(
-    "/jobs/latest",
+    "/{project_uuid}/budget/jobs/latest",
     response_model=BudgetJobResponse,
     summary="Get latest budget job status (syncs from processor)",
 )
@@ -93,7 +90,7 @@ async def get_latest_budget_job(
 
 
 @router.get(
-    "/result",
+    "/{project_uuid}/budget/result",
     summary="Get completed budget JSON",
     response_model=dict[str, Any],
 )

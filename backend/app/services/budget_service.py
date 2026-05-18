@@ -46,43 +46,37 @@ class BudgetService:
         self,
         user: User,
         project_uuid: UUID,
-        dwg_file_uuid: UUID,
-        pdf_file_uuid: Optional[UUID] = None,
         discipline: Optional[str] = None,
     ) -> ProjectBudgetJob:
         project = await self._project_svc.get_project(user, project_uuid)
 
-        dwg_file = await self._get_project_file(project.id, dwg_file_uuid)
-        if dwg_file is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="DWG file not found in project")
+        result = await self._session.execute(
+            select(ProjectFile)
+            .where(ProjectFile.project_id == project.id)
+            .order_by(ProjectFile.created_at.asc())
+        )
+        all_files = list(result.scalars().all())
+
+        if not all_files:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="El proyecto no tiene archivos adjuntos")
 
         upload_root = Path(settings.upload_root)
-        dwg_path = upload_root / dwg_file.storage_key
-        if not dwg_path.exists():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="DWG file not found on disk")
+        multipart_files: list[tuple[str, tuple[str, bytes, str]]] = []
+        for pf in all_files:
+            disk_path = Path(pf.storage_key)
+            if not disk_path.exists():
+                continue
 
-        dwg_bytes = dwg_path.read_bytes()
+            mime_type = pf.mime or "application/octet-stream"
+            multipart_files.append(("files", (pf.original_name, disk_path.read_bytes(), mime_type)))
 
-        pdf_bytes: Optional[bytes] = None
-        pdf_filename: Optional[str] = None
-        if pdf_file_uuid is not None:
-            pdf_file = await self._get_project_file(project.id, pdf_file_uuid)
-            if pdf_file is not None:
-                pdf_path = upload_root / pdf_file.storage_key
-                if pdf_path.exists():
-                    pdf_bytes = pdf_path.read_bytes()
-                    pdf_filename = pdf_file.original_name
+        if not multipart_files:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No se encontraron archivos en disco")
 
         processor_url = settings.processor_url
-        files: dict[str, Any] = {
-            "dwg_file": (dwg_file.original_name, dwg_bytes, "application/octet-stream"),
-        }
-        if pdf_bytes is not None and pdf_filename is not None:
-            files["pdf_file"] = (pdf_filename, pdf_bytes, "application/pdf")
-
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                resp = await client.post(f"{processor_url}/jobs/process", files=files)
+                resp = await client.post(f"{processor_url}/jobs/process", files=multipart_files)
         except Exception as exc:
             logger.error("Failed to reach processor service: %s", exc)
             raise HTTPException(

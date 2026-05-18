@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from redis import Redis
 from rq import Queue
 from rq.job import Job
-from typing import Optional
+from typing import List, Optional
 from dotenv import load_dotenv
 import os
 
@@ -20,23 +20,44 @@ def health_check():
 
 @app.post("/jobs/process")
 async def process_project(
-    dwg_file: UploadFile = File(...),
-    pdf_file: Optional[UploadFile] = File(None)
+    files: List[UploadFile] = File(...),
 ):
+    """
+    Accept one or more uploaded files (DWG / PDF).
+    The first .dwg file found is used as the primary CAD input;
+    the first .pdf file found is used for vision analysis.
+    """
     try:
-        dwg_content = await dwg_file.read()
-        pdf_content = await pdf_file.read() if pdf_file else None
-        
+        dwg_content: Optional[bytes] = None
+        dwg_filename: Optional[str] = None
+        pdf_content: Optional[bytes] = None
+        pdf_filename: Optional[str] = None
+
+        for uf in files:
+            name_lower = (uf.filename or "").lower()
+            content = await uf.read()
+            if dwg_content is None and name_lower.endswith(".dwg"):
+                dwg_content = content
+                dwg_filename = uf.filename
+            elif pdf_content is None and name_lower.endswith(".pdf"):
+                pdf_content = content
+                pdf_filename = uf.filename
+
+        if not dwg_content:
+            raise HTTPException(status_code=422, detail="No .dwg file found in uploaded files")
+
         from tasks import run_dupla_pipeline
         job = q.enqueue(
             run_dupla_pipeline,
             dwg_content=dwg_content,
-            dwg_filename=dwg_file.filename,
+            dwg_filename=dwg_filename,
             pdf_content=pdf_content,
-            pdf_filename=pdf_file.filename if pdf_file else None,
-            job_timeout=3600 # 1 hour timeout for APS processing
+            pdf_filename=pdf_filename,
+            job_timeout=3600,
         )
         return {"job_id": job.id, "status": "queued"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

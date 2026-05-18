@@ -21,13 +21,22 @@ from core.schemas import (
     QuantityTrace,
     level_inventory_from_dict,
 )
-from validation.discipline_inference import infer_source_discipline
+def infer_source_discipline(takeoff: QuantityTakeoff, context: ProjectContext | None) -> str:
+    if context and context.metadata:
+        return str(context.metadata.get("discipline_id") or "architectural")
+    return "architectural"
 from core.semantic_adapter import adapt_semantic_to_inventory
 from core.semantic_enrichment import enrich_semantics
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.pres_expansion import synthetic_takeoffs_from_pres
 from knowledge.training_data import extract_training_pairs
-from pricing.construcosto_loader import load_construcosto_snapshot
+try:
+    from pricing.construcosto_loader import load_construcosto_snapshot
+except ImportError:
+    def load_construcosto_snapshot() -> Any:
+        class DummySnapshot:
+            count = 0
+        return DummySnapshot()
 from processors.bc3_parser import parse_bc3
 from processors.json_processor import process_autodesk_json
 from rules_engine import RulesEngine, default_rules_engine

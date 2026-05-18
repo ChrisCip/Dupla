@@ -41,6 +41,8 @@ services:
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://frontend:80
     ports:
       - "8000:8000"
+    volumes:
+      - dupla_uploads:/app/var/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,3 +88,4 @@ services:
 
 volumes:
   dupla_pg:
+  dupla_uploads:

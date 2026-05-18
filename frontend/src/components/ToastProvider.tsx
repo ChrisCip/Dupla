@@ -110,7 +110,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-label="Notificaciones"
-        className="fixed bottom-5 right-5 z-[9999] flex flex-col items-end gap-2"
+        className="fixed top-5 right-5 z-[9999] flex flex-col items-end gap-2"
       >
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onDismiss={dismiss} />

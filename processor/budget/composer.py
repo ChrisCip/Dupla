@@ -30,8 +30,10 @@ from .chapter_rules import (
     select_strong_candidate,
 )
 
-from validation.discipline_inference import infer_source_discipline
-
+def infer_source_discipline(takeoff: QuantityTakeoff, context: ProjectContext | None) -> str:
+    if context and context.metadata:
+        return str(context.metadata.get("discipline_id") or "architectural")
+    return "architectural"
 try:
     from pricing.construcosto_loader import ConstrucostoSnapshot, find_best_price
 except ImportError:

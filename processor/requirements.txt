@@ -9,3 +9,4 @@ uvicorn>=0.23
 python-multipart>=0.0.6
 rq>=1.15
 redis>=5.0
+numpy>=1.24.0
