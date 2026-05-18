@@ -33,8 +33,9 @@ def render_pdf_to_images(pdf_path: Path, output_dir: Path, dpi: int = 200) -> li
         image_paths.append(image_path)
     return image_paths
 
-def run_dupla_pipeline(dwg_content: bytes, dwg_filename: str, pdf_content: bytes = None, pdf_filename: str = None) -> dict:
+def run_dupla_pipeline(dwg_content: bytes, dwg_filename: str, pdf_content: bytes = None, pdf_filename: str = None, correlation_id: str = "unknown") -> dict:
     """Runs the core budget processing pipeline."""
+    logger.info(f"Starting pipeline with correlation ID: {correlation_id}")
     with tempfile.TemporaryDirectory() as tmpdir:
         base_dir = Path(tmpdir)
         outputs_dir = base_dir / "outputs"
@@ -80,7 +81,7 @@ def run_dupla_pipeline(dwg_content: bytes, dwg_filename: str, pdf_content: bytes
             page_paths = []
 
         # 3. Knowledge
-        bc3_path = Path("/app/data/TGIU.bc3")
+        bc3_path = Path("/app/data/GIV00001.bc3")
         bc3_catalog = parse_bc3(str(bc3_path)) if bc3_path.exists() else {}
         embedding_index = load_or_build_embeddings(bc3_catalog) if bc3_catalog.get("items") else None
         

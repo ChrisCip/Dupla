@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 from uuid import UUID
+import uuid
 
 import httpx
 from fastapi import HTTPException, status
@@ -74,9 +75,15 @@ class BudgetService:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No se encontraron archivos en disco")
 
         processor_url = settings.processor_url
+        correlation_id = str(uuid.uuid4())
+        logger.info(f"Enqueuing budget job for project {project_uuid} with correlation ID: {correlation_id}")
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                resp = await client.post(f"{processor_url}/jobs/process", files=multipart_files)
+                resp = await client.post(
+                    f"{processor_url}/jobs/process",
+                    files=multipart_files,
+                    headers={"X-Correlation-ID": correlation_id}
+                )
         except Exception as exc:
             logger.error("Failed to reach processor service: %s", exc)
             raise HTTPException(
@@ -119,9 +126,14 @@ class BudgetService:
             return job
 
         processor_url = settings.processor_url
+        correlation_id = str(uuid.uuid4())
+        logger.info(f"Polling job status for {job.job_id} with correlation ID: {correlation_id}")
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.get(f"{processor_url}/jobs/{job.job_id}")
+                resp = await client.get(
+                    f"{processor_url}/jobs/{job.job_id}",
+                    headers={"X-Correlation-ID": correlation_id}
+                )
         except Exception as exc:
             logger.warning("Processor status poll failed: %s", exc)
             return job

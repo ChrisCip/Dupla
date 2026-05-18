@@ -2,32 +2,36 @@ import { AlertCircle, Cpu, Loader2, Play, RefreshCw } from 'lucide-react'
 import { useMemo, useEffect, useRef, useState } from 'react'
 
 import { useBudgetJob } from '../../../hooks/useBudgetJob'
-import type { BudgetRow } from '../../../types/budget'
 import type { Project } from '../../../types/project'
 import { PrimaryButton } from '../../PrimaryButton'
 
 // ─── formatters ───────────────────────────────────────────────────────────────
-function fmtDop(n: number): string {
+function fmtDop(n: any): string {
+  const num = Number(n) || 0
   return new Intl.NumberFormat('es-DO', {
     style: 'currency',
     currency: 'DOP',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(n)
+  }).format(num)
 }
 
-function fmtUsd(n: number, tcRate = 58.5): string {
+function fmtUsd(n: any, tcRate = 58.5): string {
+  const num = Number(n) || 0
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(n / tcRate)
+  }).format(num / tcRate)
 }
 
-function fmtQty(q: number | null): string {
-  if (q == null) return ''
-  return new Intl.NumberFormat('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(q)
+function fmtQty(q: any): string {
+  if (q == null || q === '') return ''
+  if (typeof q === 'string' && q.startsWith('=')) return ''
+  const num = Number(q) || 0
+  if (num === 0 && !q) return ''
+  return new Intl.NumberFormat('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num)
 }
 
 const LIQUIDACION_RATES = {
@@ -141,11 +145,43 @@ export function WorkspacePresupuestoMaestroTab({ project, projectUuid, token }: 
     job?.status === 'queued' || job?.status === 'processing' ? job.created_at : undefined,
   )
 
-  const rows: BudgetRow[] = result?.rows ?? []
+  const processedRows = useMemo(() => {
+    if (!result?.rows) return []
+    const newRows = result.rows.map(r => ({ ...r })) as any[]
+    
+    for (const r of newRows) {
+      if (r.row_type === 'line') {
+        const qty = Number(r.quantity) || 0
+        const price = Number(r.unit_price) || 0
+        r.computed_amount = qty * price
+      }
+    }
+    for (const r of newRows) {
+      if (r.row_type === 'subtotal') {
+        const indices = r.metadata?.source_row_indices || []
+        r.computed_amount = indices.reduce((sum: number, idx: number) => sum + (newRows[idx]?.computed_amount || 0), 0)
+        r.computed_unit_price = r.computed_amount
+        r.computed_quantity = 1
+      }
+    }
+    for (const r of newRows) {
+      if (r.row_type === 'chapter') {
+        const subIdx = r.metadata?.subtotal_row_index
+        if (typeof subIdx === 'number' && newRows[subIdx]) {
+          r.computed_amount = newRows[subIdx].computed_amount
+          r.computed_unit_price = newRows[subIdx].computed_unit_price
+          r.computed_quantity = newRows[subIdx].computed_quantity
+        } else {
+          r.computed_amount = 0
+        }
+      }
+    }
+    return newRows
+  }, [result?.rows])
 
   const direct = useMemo(
-    () => rows.reduce((sum, r) => sum + (typeof r.amount === 'number' ? r.amount : 0), 0),
-    [rows],
+    () => processedRows.reduce((sum, r) => sum + (r.row_type === 'line' ? (r.computed_amount || 0) : 0), 0),
+    [processedRows],
   )
 
   const liq = useMemo(() => computeLiquidacion(direct), [direct])
@@ -317,27 +353,29 @@ export function WorkspacePresupuestoMaestroTab({ project, projectUuid, token }: 
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {processedRows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-8 text-center text-sm text-muted">
                     El presupuesto no contiene partidas.
                   </td>
                 </tr>
               ) : (
-                rows.map((r, i) => (
+                processedRows.map((r, i) => (
                   <tr key={`${r.code}-${i}`} className="border-b border-black/[0.06] hover:bg-black/[0.015]">
                     <td className="whitespace-nowrap px-3 py-2.5 font-mono text-xs text-muted">{r.code}</td>
                     <td className="px-3 py-2.5 font-medium text-ink">{r.summary}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-muted">
-                      {fmtQty(r.quantity)}{' '}
+                      {fmtQty(r.row_type === 'chapter' || r.row_type === 'subtotal' ? r.computed_quantity : r.quantity)}{' '}
                       {r.unit ? <span className="text-ink">{r.unit}</span> : null}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">{fmtDop(r.unit_price)}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">
+                      {fmtDop(r.row_type === 'line' ? r.unit_price : r.computed_unit_price)}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums font-semibold text-ink">
-                      {fmtDop(r.amount)}
+                      {fmtDop(r.computed_amount)}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-muted">
-                      {fmtUsd(r.amount)}
+                      {fmtUsd(r.computed_amount)}
                     </td>
                   </tr>
                 ))

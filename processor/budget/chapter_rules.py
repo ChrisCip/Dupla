@@ -65,8 +65,12 @@ def select_strong_candidate(
 
     top = ranked[0]
     second_score = ranked[1].score if len(ranked) > 1 else 0.0
-    unit_matches = top.unit.lower() == takeoff.unit.lower()
-    if unit_matches and top.score >= min_score and (top.score - second_score) >= min_margin:
+    
+    def _normalize_unit(u: str) -> str:
+        return u.lower().strip().replace(" ", "").replace("²", "2").replace("³", "3")
+
+    unit_matches = _normalize_unit(top.unit) == _normalize_unit(takeoff.unit)
+    if (unit_matches or top.score > 0.8) and top.score >= min_score and (top.score - second_score) >= min_margin:
         return top
     return None
 

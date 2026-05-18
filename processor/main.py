@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.responses import JSONResponse
 from redis import Redis
 from rq import Queue
@@ -6,8 +6,11 @@ from rq.job import Job
 from typing import List, Optional
 from dotenv import load_dotenv
 import os
+import logging
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Dupla Processor Service")
 redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
@@ -21,6 +24,7 @@ def health_check():
 @app.post("/jobs/process")
 async def process_project(
     files: List[UploadFile] = File(...),
+    x_correlation_id: Optional[str] = Header(None)
 ):
     """
     Accept one or more uploaded files (DWG / PDF).
@@ -28,6 +32,8 @@ async def process_project(
     the first .pdf file found is used for vision analysis.
     """
     try:
+        correlation_id = x_correlation_id or "unknown"
+        logger.info(f"Received job processing request with correlation ID: {correlation_id}")
         dwg_content: Optional[bytes] = None
         dwg_filename: Optional[str] = None
         pdf_content: Optional[bytes] = None
@@ -53,6 +59,7 @@ async def process_project(
             dwg_filename=dwg_filename,
             pdf_content=pdf_content,
             pdf_filename=pdf_filename,
+            correlation_id=correlation_id,
             job_timeout=3600,
         )
         return {"job_id": job.id, "status": "queued"}
@@ -62,7 +69,9 @@ async def process_project(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/jobs/{job_id}")
-def get_job_status(job_id: str):
+def get_job_status(job_id: str, x_correlation_id: Optional[str] = Header(None)):
+    correlation_id = x_correlation_id or "unknown"
+    logger.info(f"Received job status request for {job_id} with correlation ID: {correlation_id}")
     try:
         job = Job.fetch(job_id, connection=redis_conn)
     except Exception:

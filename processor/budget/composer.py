@@ -573,10 +573,13 @@ def _finalize_formulas(
 
     for row in rows:
         if row.row_type == "line":
-            row.amount = f"=ROUND(E{row.excel_row}*F{row.excel_row},2)"
+            qty = float(row.quantity) if row.quantity is not None else 0.0
+            price = float(row.unit_price) if row.unit_price is not None else 0.0
+            row.amount = round(qty * price, 2)
+            row.metadata["excel_amount_formula"] = f"=ROUND(E{row.excel_row}*F{row.excel_row},2)"
             line_id = str(row.metadata.get("line_id", ""))
             if line_id in line_map:
-                line_map[line_id].amount_formula = str(row.amount)
+                line_map[line_id].amount_formula = row.metadata["excel_amount_formula"]
                 line_map[line_id].metadata["excel_row"] = row.excel_row
             continue
 
@@ -587,18 +590,36 @@ def _finalize_formulas(
                 for source_index in source_row_indices
                 if 0 <= source_index < len(rows) and rows[source_index].excel_row is not None
             ]
+            sum_val = 0.0
+            for source_index in source_row_indices:
+                if 0 <= source_index < len(rows):
+                    amt = rows[source_index].amount
+                    if amt is not None:
+                        try:
+                            sum_val += float(amt)
+                        except (ValueError, TypeError):
+                            pass
+
             row.quantity = 1
-            row.unit_price = _sum_formula(source_excel_rows)
-            row.amount = f"=ROUND(E{row.excel_row}*F{row.excel_row},2)"
+            row.unit_price = round(sum_val, 2)
+            row.amount = round(row.quantity * row.unit_price, 2)
+            
+            row.metadata["excel_unit_price_formula"] = _sum_formula(source_excel_rows)
+            row.metadata["excel_amount_formula"] = f"=ROUND(E{row.excel_row}*F{row.excel_row},2)"
             row.metadata["source_excel_rows"] = source_excel_rows
             continue
 
         subtotal_row_index = row.metadata.get("subtotal_row_index")
-        if row.row_type == "chapter" and isinstance(subtotal_row_index, int):
-            subtotal_excel_row = rows[subtotal_row_index].excel_row
-            row.quantity = f"=E{subtotal_excel_row}"
-            row.unit_price = f"=F{subtotal_excel_row}"
-            row.amount = f"=G{subtotal_excel_row}"
+        if row.row_type == "chapter" and isinstance(subtotal_row_index, int) and 0 <= subtotal_row_index < len(rows):
+            sub_row = rows[subtotal_row_index]
+            row.quantity = sub_row.quantity
+            row.unit_price = sub_row.unit_price
+            row.amount = sub_row.amount
+            
+            subtotal_excel_row = sub_row.excel_row
+            row.metadata["excel_quantity_formula"] = f"=E{subtotal_excel_row}"
+            row.metadata["excel_unit_price_formula"] = f"=F{subtotal_excel_row}"
+            row.metadata["excel_amount_formula"] = f"=G{subtotal_excel_row}"
 
     for chapter in chapters:
         chapter.line_keys = sorted(set(chapter.line_keys))

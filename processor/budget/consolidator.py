@@ -86,7 +86,15 @@ def _write_discipline_sheet(
 
     for row in coerced:
         target_row = row.excel_row or 4
-        values = (row.code, row.nat, row.unit, row.summary, row.quantity, row.unit_price, row.amount)
+        values = (
+            row.code, 
+            row.nat, 
+            row.unit, 
+            row.summary, 
+            row.metadata.get("excel_quantity_formula", row.quantity), 
+            row.metadata.get("excel_unit_price_formula", row.unit_price), 
+            row.metadata.get("excel_amount_formula", row.amount)
+        )
         for col_idx, value in enumerate(values, start=1):
             cell = ws.cell(row=target_row, column=col_idx)
             cell.value = value
