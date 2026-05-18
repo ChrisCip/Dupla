@@ -705,7 +705,9 @@ def compose_budget_rows(
     lines: list[BudgetLine] = []
     internal_code_counter = 1
 
-    for line_index, prepared in enumerate(prepared_lines, start=1):
+    grouped_prepared: dict[tuple[str, str, str, str], list[_PreparedLine]] = {}
+
+    for prepared in prepared_lines:
         leaf_chapter_id = _ensure_chapter_path(chapter_nodes, chapters, prepared.chapter_path)
         chapter_nodes[leaf_chapter_id].chapter.line_keys.append(prepared.takeoff.item_key)
 
@@ -717,52 +719,76 @@ def compose_budget_rows(
             if deterministic_bc3_code:
                 line_code = deterministic_bc3_code
             else:
-                line_code = f"DUP-{internal_code_counter:04d}"
-                internal_code_counter += 1
+                line_code = "DUP-TEMP"
+
+        group_key = (leaf_chapter_id, line_code, prepared.summary, prepared.takeoff.unit)
+        grouped_prepared.setdefault(group_key, []).append(prepared)
+
+    for line_index, (group_key, group_items) in enumerate(grouped_prepared.items(), start=1):
+        leaf_chapter_id, line_code, summary, unit = group_key
+        
+        if line_code == "DUP-TEMP":
+            line_code = f"DUP-{internal_code_counter:04d}"
+            internal_code_counter += 1
+            
+        first = group_items[0]
+        deterministic_bc3_code = default_bc3_code_for_takeoff(first.takeoff) if first.candidate is None else None
+        
+        total_quantity = sum((p.takeoff.quantity or 0.0) for p in group_items)
+        
+        source_refs = []
+        assumptions = []
+        for p in group_items:
+            source_refs.extend(p.takeoff.source_refs)
+            assumptions.extend(p.takeoff.assumptions)
+            
+        source_refs = list(dict.fromkeys(source_refs))
+        assumptions = list(dict.fromkeys(assumptions))
 
         line_metadata: dict[str, Any] = {
-            "item_type": prepared.takeoff.item_type,
-            "level_id": prepared.takeoff.level_id,
+            "item_type": first.takeoff.item_type,
+            "level_id": first.takeoff.level_id,
             "line_id": f"BLINE-{line_index:04d}",
-            "chapter_path": [segment.title for segment in prepared.chapter_path],
-            "chapter_codes": [segment.code for segment in prepared.chapter_path],
-            "source_discipline": infer_source_discipline(prepared.takeoff, context),
-            "candidate_summary": prepared.candidate.summary if prepared.candidate else None,
-            "candidate_rationale": prepared.candidate.rationale if prepared.candidate else None,
-            "candidate_source": prepared.candidate.source if prepared.candidate else None,
-            "trace_metadata": dict(prepared.takeoff.trace.metadata),
+            "chapter_path": [segment.title for segment in first.chapter_path],
+            "chapter_codes": [segment.code for segment in first.chapter_path],
+            "source_discipline": infer_source_discipline(first.takeoff, context),
+            "candidate_summary": first.candidate.summary if first.candidate else None,
+            "candidate_rationale": first.candidate.rationale if first.candidate else None,
+            "candidate_source": first.candidate.source if first.candidate else None,
+            "trace_metadata": dict(first.takeoff.trace.metadata),
+            "aggregated_count": len(group_items),
         }
-        if prepared.bc3_guard_drop_reason:
-            line_metadata["bc3_guard_drop_reason"] = prepared.bc3_guard_drop_reason
+        if first.bc3_guard_drop_reason:
+            line_metadata["bc3_guard_drop_reason"] = first.bc3_guard_drop_reason
 
         resolved_price, price_source = _extract_unit_price(
-            prepared.candidate,
+            first.candidate,
             bc3_catalog,
             fallback_bc3_code=deterministic_bc3_code,
             construcosto_snapshot=construcosto_snapshot,
-            summary=prepared.summary,
-            unit=prepared.takeoff.unit,
+            summary=summary,
+            unit=unit,
         )
         line_metadata["price_source"] = price_source
-        line_metadata["quantity_source_display"] = _quantity_source_display(prepared.takeoff)
+        line_metadata["quantity_source_display"] = _quantity_source_display(first.takeoff)
         line_metadata["bc3_origin"] = _line_bc3_origin(
-            prepared.candidate, bc3_catalog or {}, line_code
+            first.candidate, bc3_catalog or {}, line_code
         )
 
         budget_line = BudgetLine(
             line_id=f"BLINE-{line_index:04d}",
-            takeoff_key=prepared.takeoff.item_key,
+            takeoff_key=first.takeoff.item_key,
             chapter_id=leaf_chapter_id,
             code=line_code,
             nat="Partida",
-            unit=prepared.takeoff.unit,
-            summary=prepared.summary,
-            quantity=prepared.takeoff.quantity,
+            unit=unit,
+            summary=summary,
+            quantity=total_quantity,
             unit_price=resolved_price,
-            candidate_code=prepared.candidate.bc3_code if prepared.candidate else deterministic_bc3_code,
-            candidate_score=prepared.candidate.score if prepared.candidate else None,
-            source_refs=list(prepared.takeoff.source_refs),
-            assumptions=list(prepared.takeoff.assumptions),
+            candidate_code=first.candidate.bc3_code if first.candidate else deterministic_bc3_code,
+            candidate_score=first.candidate.score if first.candidate else None,
+            source_refs=source_refs,
+            assumptions=assumptions,
             metadata=line_metadata,
         )
         lines.append(budget_line)
