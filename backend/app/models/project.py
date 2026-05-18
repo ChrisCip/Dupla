@@ -13,6 +13,7 @@ from app.domain.project_kind import ProjectKind
 from app.domain.workflow_phase import WorkflowPhase
 
 if TYPE_CHECKING:
+    from app.models.project_budget_job import ProjectBudgetJob
     from app.models.project_price_database_file import ProjectPriceDatabaseFile
     from app.models.workflow_template import WorkflowTemplate, WorkflowTemplateStep
 
@@ -134,6 +135,12 @@ class Project(Base):
     current_workflow_step: Mapped["WorkflowTemplateStep"] = relationship(
         "WorkflowTemplateStep",
         foreign_keys=[current_workflow_step_id],
+    )
+    budget_jobs: Mapped[list["ProjectBudgetJob"]] = relationship(
+        "ProjectBudgetJob",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        order_by="ProjectBudgetJob.created_at.desc()",
     )
 
 

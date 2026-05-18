@@ -3,6 +3,7 @@ from app.models.chat_conversation import ChatConversation, ChatConversationMembe
 from app.models.chat_message import ChatMessage
 from app.models.module import Module
 from app.models.plan_delivery_request import PlanDeliveryRequest
+from app.models.project_budget_job import ProjectBudgetJob
 from app.models.project_technical_finding import ProjectTechnicalFinding
 from app.models.project import Project, ProjectArchitectureData
 from app.models.project_member import ProjectMember
@@ -23,6 +24,7 @@ __all__ = [
     "ChatMessage",
     "Module",
     "PlanDeliveryRequest",
+    "ProjectBudgetJob",
     "ProjectTechnicalFinding",
     "Project",
     "ProjectArchitectureData",

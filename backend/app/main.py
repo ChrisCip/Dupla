@@ -8,6 +8,7 @@ from app.routes import (
     admin,
     ai_assistant,
     auth,
+    budget,
     chat,
     dashboard,
     modules,
@@ -17,6 +18,7 @@ from app.routes import (
     users,
     workflow_templates,
 )
+
 
 settings = get_settings()
 
@@ -51,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(ai_assistant.router)
     app.include_router(modules.router)
     app.include_router(projects.router)
+    app.include_router(budget.router)
     app.include_router(workflow_templates.router)
     app.include_router(project_lifecycle.router)
     app.include_router(admin.router)

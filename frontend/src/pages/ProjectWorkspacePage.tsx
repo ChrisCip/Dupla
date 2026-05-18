@@ -821,7 +821,13 @@ export function ProjectWorkspacePage() {
             />
           ) : null}
 
-          {tab === 'presupuestoMaestro' ? <WorkspacePresupuestoMaestroTab project={project} /> : null}
+          {tab === 'presupuestoMaestro' ? (
+            <WorkspacePresupuestoMaestroTab
+              project={project}
+              projectUuid={projectUuid}
+              token={token}
+            />
+          ) : null}
 
           {tab === 'pliego' ? (
             <WorkspaceEspecificacionesTab

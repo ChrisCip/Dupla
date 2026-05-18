@@ -35,7 +35,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://dupla:dupla@postgres:5432/dupla
       REDIS_URL: redis://redis:6379/0
+      PROCESSOR_URL: http://processor:8000
       JWT_SECRET: demo-secret-change-in-production-min-32-chars!!
+
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://frontend:80
     ports:
       - "8000:8000"
@@ -44,6 +46,34 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  processor:
+    build:
+      context: ./processor
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8001:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  processor-worker:
+    build:
+      context: ./processor
+      dockerfile: Dockerfile
+    command: ["python", "worker.py"]
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
 
   frontend:
     build:

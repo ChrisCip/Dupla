@@ -29,6 +29,13 @@ class Settings(BaseSettings):
             description="Redis URL. Docker Compose sets REDIS_URL to host `redis`.",
         ),
     ]
+    processor_url: Annotated[
+        str,
+        Field(
+            default="http://processor:8000",
+            description="Base URL of the dupla_chris processor microservice.",
+        ),
+    ] = "http://processor:8000"
     jwt_secret: Annotated[str, Field(default="demo-secret-change-in-production-min-32-chars!!")]
     jwt_algorithm: Annotated[str, Field(default="HS256")]
     access_token_expire_minutes: Annotated[int, Field(default=60, ge=1, le=60 * 24 * 7)]
