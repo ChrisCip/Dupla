@@ -38,5 +38,19 @@ analysis_output/**/dump/
 analysis_output/**/*.dwg
 analysis_output/**/*.dxf
 
+# Corridas locales regenerables (manifests JSON ya cubiertos por *.json)
+analysis_output/Analysis_Clashes_*/
+analysis_output/serena18_accore_smoke/
+analysis_output/serena18_accore_smoke_py/
+analysis_output/serena18_analysis_01_core_mixed/
+analysis_output/serena18_analysis_01_latest_mixed/
+analysis_output/serena18_analysis_03_speed_probe/
+analysis_output/serena18_analysis_03_speed_probe_isolated/
+analysis_output/analysis_new_pipline/
+analysis_output/new_analysis_2/
+analysis_output/new_analysis_3/
+analysis_output/duplaextractor_runtime/
+
 # Repositorios de proyecto (archivos grandes, gestión externa)
 repositorios/
+ARQUITECTURA/
