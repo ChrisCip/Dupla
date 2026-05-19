@@ -8,6 +8,51 @@ from pathlib import Path
 import re
 from typing import Any
 
+from coordination.learning.pattern_learner import override_confidence
+
+_LAYER_ELEMENT_LABELS: dict[str, str] = {
+    "PLAFONES": "plafón",
+    "PLAFON": "plafón",
+    "PUERTAS": "puerta",
+    "PUERTA": "puerta",
+    "VENTANAS": "ventana",
+    "VENTANA": "ventana",
+    "ESCALERAS": "escalera",
+    "ESCALERA": "escalera",
+    "COLUMNA": "columna",
+    "COLUMNAS": "columna",
+    "CIMIENTO": "cimiento",
+    "TUBERIAS": "tubería",
+    "TUBERIA": "tubería",
+    "DUCTOS": "ducto",
+    "DUCTO": "ducto",
+    "DRENAJE": "drenaje",
+    "SANIT": "instalación sanitaria",
+    "SOLAR": "losa solar",
+    "LOSAS": "losa",
+    "LOSA": "losa",
+    "VIGAS": "viga",
+    "VIGA": "viga",
+    "MUROS": "muro",
+    "MURO": "muro",
+    "ZAPATA": "zapata",
+    "PANEL": "tablero eléctrico",
+    "LUMIN": "luminaria",
+    "TUB": "tubería",
+}
+
+_SPECIFIC_HUMAN_CLASH_PHRASES: list[tuple[frozenset[str], str]] = [
+    (frozenset({"puerta", "viga"}), "posible choque de puerta con viga"),
+    (frozenset({"puerta", "columna"}), "posible choque de puerta con columna"),
+    (frozenset({"plafón", "losa solar"}), "posible interferencia de plafón con losa solar"),
+    (frozenset({"plafón", "viga"}), "posible interferencia de plafón con viga"),
+    (frozenset({"plafón", "losa"}), "posible interferencia de plafón con losa"),
+    (frozenset({"tubería", "losa"}), "posible paso de tubería a través de losa"),
+    (frozenset({"tubería", "viga"}), "posible cruce de tubería con viga"),
+    (frozenset({"muro", "viga"}), "posible traslape de muro con viga"),
+    (frozenset({"escalera", "losa"}), "posible traslape de escalera con losa"),
+]
+
 
 def build_coordination_report_context(
     *,
@@ -17,8 +62,17 @@ def build_coordination_report_context(
     hotspot_payload: dict[str, Any] | None = None,
     coordinate_audit_payload: dict[str, Any] | None = None,
     pair_schedule_payload: dict[str, Any] | None = None,
+    patterns: dict[str, Any] | None = None,
+    project_type: str | None = None,
 ) -> dict[str, Any]:
-    incident_cards = [_incident_card(incident) for incident in primary_payload.get("incidents") or []]
+    incident_cards = [
+        _incident_card(
+            incident,
+            patterns=patterns,
+            project_type=project_type,
+        )
+        for incident in primary_payload.get("incidents") or []
+    ]
     incident_cards.sort(
         key=lambda item: (
             _priority_rank(item["priority"]),
@@ -85,8 +139,15 @@ def render_primary_incidents_markdown(
     project_name: str,
     root: Path,
     primary_payload: dict[str, Any],
+    patterns: dict[str, Any] | None = None,
+    project_type: str | None = None,
 ) -> str:
-    context = build_coordination_report_context(summary_payload={}, primary_payload=primary_payload)
+    context = build_coordination_report_context(
+        summary_payload={},
+        primary_payload=primary_payload,
+        patterns=patterns,
+        project_type=project_type,
+    )
     lines = [
         f"# Primary Incidents - {project_name}",
         "",
@@ -176,6 +237,8 @@ def render_coordination_report_markdown(
     hotspot_payload: dict[str, Any] | None = None,
     coordinate_audit_payload: dict[str, Any] | None = None,
     pair_schedule_payload: dict[str, Any] | None = None,
+    patterns: dict[str, Any] | None = None,
+    project_type: str | None = None,
 ) -> str:
     context = build_coordination_report_context(
         summary_payload=summary_payload,
@@ -184,6 +247,8 @@ def render_coordination_report_markdown(
         hotspot_payload=hotspot_payload,
         coordinate_audit_payload=coordinate_audit_payload,
         pair_schedule_payload=pair_schedule_payload,
+        patterns=patterns,
+        project_type=project_type,
     )
     counts = context["counts"]
     lines = [
@@ -616,6 +681,16 @@ def render_coordination_human_report_markdown(
             f"\n  evidencia: {evidence_text}"
             f"\n  accion: {card['recommended_action']}"
         )
+        if card.get("human_description"):
+            line = line.replace(
+                f"\n  nivel: `{card['level_id']}`",
+                f"\n  **descripcion probable:** {card['human_description']}\n  nivel: `{card['level_id']}`",
+            )
+        if card.get("known_pattern_label"):
+            line = line.replace(
+                f"\n  nivel: `{card['level_id']}`",
+                f"\n  **patron conocido:** {card['known_pattern_label']}\n  nivel: `{card['level_id']}`",
+            )
         if exact_entity_text:
             line = line.replace(f"\n  accion: {card['recommended_action']}", f"\n  entidades CAD: {exact_entity_text}\n  accion: {card['recommended_action']}")
         lines.append(line)
@@ -638,6 +713,16 @@ def render_coordination_human_report_markdown(
             f"\n  layers: `{card['layer_pair']}`"
             f"\n  accion: {card['recommended_action']}"
         )
+        if card.get("human_description"):
+            line = line.replace(
+                f"\n  nivel: `{card['level_id']}`",
+                f"\n  **descripcion probable:** {card['human_description']}\n  nivel: `{card['level_id']}`",
+            )
+        if card.get("known_pattern_label"):
+            line = line.replace(
+                f"\n  nivel: `{card['level_id']}`",
+                f"\n  **patron conocido:** {card['known_pattern_label']}\n  nivel: `{card['level_id']}`",
+            )
         exact_entity_text = _exact_entity_text(mapped) if mapped else None
         if exact_entity_text:
             line = line.replace(f"\n  accion: {card['recommended_action']}", f"\n  entidades CAD: {exact_entity_text}\n  accion: {card['recommended_action']}")
@@ -841,7 +926,12 @@ def _exact_entity_side_label(side: dict[str, Any]) -> str:
     return f"{handle}/{entity_type}/{layer}/{source_id}"
 
 
-def _incident_card(incident: dict[str, Any]) -> dict[str, Any]:
+def _incident_card(
+    incident: dict[str, Any],
+    *,
+    patterns: dict[str, Any] | None = None,
+    project_type: str | None = None,
+) -> dict[str, Any]:
     representative = incident.get("representative_conflict") or {}
     file_names = tuple(Path(path).name for path in incident.get("file_pair") or ("", ""))
     source_refs = representative.get("source_refs") or ("", "")
@@ -884,7 +974,7 @@ def _incident_card(incident: dict[str, Any]) -> dict[str, Any]:
     bounds = tuple(float(value) for value in incident.get("plan_bounds_mm") or representative.get("plan_intersection_bounds_mm") or (0, 0, 0, 0))
     centroid = tuple(float(value) for value in incident.get("plan_centroid_mm") or representative.get("plan_intersection_centroid_mm") or (0, 0))
 
-    return {
+    card = {
         "incident_id": str(incident.get("incident_id") or "unknown"),
         "pair_label": pair_label,
         "file_names": file_names,
@@ -904,13 +994,30 @@ def _incident_card(incident: dict[str, Any]) -> dict[str, Any]:
         "level_assignment_sources": level_assignment_sources,
         "layer_pair": " / ".join(layer for layer in layers if layer),
         "entity_pair": " / ".join(entity for entity in entities if entity),
+        "project_type": project_type,
+        "known_pattern_label": None,
+        "human_description": _human_clash_description(
+            layers[0] if layers else "",
+            layers[1] if len(layers) > 1 else "",
+        ),
         "location_short": _location_short(level_id=str(incident.get("level_id") or "mixed"), centroid=centroid),
         "bounds_short": _bounds_short(bounds),
-        "recommended_action": _recommended_action(disciplines=disciplines, severity=severity),
+        "recommended_action": _recommended_action(
+            disciplines=disciplines,
+            severity=severity,
+            layers=(
+                layers[0] if layers else "",
+                layers[1] if len(layers) > 1 else "",
+            ),
+        ),
         "action_owner": _action_owner(disciplines),
         "reader_profiles": reader_profiles,
         "reader_reason": _reader_reason(disciplines=disciplines, severity=severity),
     }
+    if patterns:
+        card = override_confidence(card, patterns, project_type=project_type)
+        card["defensible"] = card["report_confidence"] != "low" and card["severity"] != "low"
+    return card
 
 
 def _coverage_for_bot(audits: list[dict[str, Any]], discipline: str) -> str:
@@ -1098,13 +1205,28 @@ def _validation_reason(
     return "manual confirmation recommended"
 
 
-def _recommended_action(*, disciplines: tuple[str, str], severity: str) -> str:
+def _recommended_action(
+    *,
+    disciplines: tuple[str, str],
+    severity: str,
+    layers: tuple[str, str] = ("", ""),
+) -> str:
     discipline_set = set(disciplines)
     urgency = (
         "escalar en la siguiente ronda de coordinacion"
         if severity in {"critical", "high"}
         else "revisar con validacion acotada"
     )
+    layer_a = layers[0] if len(layers) > 0 else ""
+    layer_b = layers[1] if len(layers) > 1 else ""
+    label_a = _layer_to_element_label(layer_a) if layer_a else ""
+    label_b = _layer_to_element_label(layer_b) if layer_b else ""
+    has_named_layers = bool(layer_a and layer_b and label_a != layer_a and label_b != layer_b)
+    if has_named_layers:
+        return (
+            f"Verificar si {label_a} ({layer_a}) interfiere con {label_b} ({layer_b}) en este nivel, "
+            f"y luego {urgency}."
+        )
     if {"ARQUITECTURA", "ESTRUCTURA"}.issubset(discipline_set):
         return f"Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego {urgency}."
     if {"ARQUITECTURA", "ELECTRICO"}.issubset(discipline_set):
@@ -1161,6 +1283,28 @@ def _reader_reason(*, disciplines: tuple[str, str], severity: str) -> dict[str, 
     if "ESTRUCTURA" in disciplines and severity in {"critical", "high"}:
         base["arquitectura"] = "una decision arquitectonica puede crear o resolver un conflicto estructural"
     return base
+
+
+def _layer_to_element_label(layer: str) -> str:
+    if not layer:
+        return layer
+    normalized = layer.upper()
+    best_key = max((key for key in _LAYER_ELEMENT_LABELS if key in normalized), key=len, default=None)
+    return _LAYER_ELEMENT_LABELS[best_key] if best_key else layer
+
+
+def _human_clash_description(layer_a: str, layer_b: str) -> str | None:
+    if not layer_a and not layer_b:
+        return None
+    label_a = _layer_to_element_label(layer_a)
+    label_b = _layer_to_element_label(layer_b)
+    if label_a == layer_a and label_b == layer_b:
+        return None
+    labels = frozenset({label_a, label_b})
+    for pair, phrase in _SPECIFIC_HUMAN_CLASH_PHRASES:
+        if pair.issubset(labels):
+            return phrase
+    return f"posible interferencia de {label_a} con {label_b}"
 
 
 def _layer_name(source_ref: str) -> str:
