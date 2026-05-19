@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import logging
 import os
@@ -44,6 +45,7 @@ from coordination.extraction.from_dwg_com import extract_elements_from_dwg_via_c
 from coordination.extraction.from_dwg_ezdxf import extract_elements_from_dwg
 from coordination.extraction.from_pdf_vector import extract_elements_from_pdf
 from coordination.extraction.from_raster_image import extract_elements_from_image
+from coordination.learning.pattern_learner import load_patterns
 from coordination.reporting.reporting import (
     build_analysis_bot_context,
     build_coordination_report_context,
@@ -107,6 +109,7 @@ DEFAULT_AUTODESK = (
     / "_cad_merge"
     / "27.11.2025 LAS NASAS 09, DUPLA.autodesk_raw.json"
 )
+DEFAULT_CLASH_FEEDBACK_LOG = REPO_ROOT / "knowledge" / "clash_memory" / "feedback_log.jsonl"
 
 
 def main() -> int:
@@ -1447,12 +1450,14 @@ def _run_fast_compare(
         "incident_conflict_count": len(primary_conflicts),
         "incidents": [incident.model_dump() for incident in primary_incidents],
     }
+    learned_patterns = load_patterns(DEFAULT_CLASH_FEEDBACK_LOG)
     _write_json(primary_json, primary_payload)
     primary_md.write_text(
         render_primary_incidents_markdown(
             project_name=doc.project_name or "Proyecto",
             root=nasas_root,
             primary_payload=primary_payload,
+            patterns=learned_patterns,
         ),
         encoding="utf-8",
     )
@@ -1579,6 +1584,7 @@ def _run_fast_compare(
         hotspot_payload=hotspot_payload,
         coordinate_audit_payload=coordinate_audit_payload,
         pair_schedule_payload=pair_schedule_payload,
+        patterns=learned_patterns,
     )
     annotated_tiles = []
     if rendered_tiles:
@@ -1620,6 +1626,7 @@ def _run_fast_compare(
             hotspot_payload=hotspot_payload,
             coordinate_audit_payload=coordinate_audit_payload,
             pair_schedule_payload=pair_schedule_payload,
+            patterns=learned_patterns,
         ),
         encoding="utf-8",
     )
@@ -1666,6 +1673,10 @@ def _run_fast_compare(
             markdown=human_report_md,
         ),
         encoding="utf-8",
+    )
+    _write_validation_template_csv(
+        args.output.parent / "validation_template.csv",
+        technical_report_context,
     )
 
     return _write_fast_compare_summary(
@@ -1904,6 +1915,45 @@ def _render_primary_incident_lines(incidents: list) -> list[str]:
 def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _write_validation_template_csv(path: Path, report_context: dict[str, object]) -> None:
+    headers = [
+        "incident_id",
+        "layer_pair",
+        "discipline_pair",
+        "level_id",
+        "area_m2",
+        "member_count",
+        "descripcion_probable",
+        "known_pattern_label",
+        "human_label",
+        "human_reason",
+        "reviewer",
+    ]
+    incidents = (report_context.get("all_incidents") if isinstance(report_context, dict) else []) or []
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=headers)
+        writer.writeheader()
+        for incident in incidents:
+            if not isinstance(incident, dict):
+                continue
+            writer.writerow(
+                {
+                    "incident_id": str(incident.get("incident_id") or ""),
+                    "layer_pair": str(incident.get("layer_pair") or ""),
+                    "discipline_pair": str(incident.get("discipline_pair") or ""),
+                    "level_id": str(incident.get("level_id") or ""),
+                    "area_m2": incident.get("area_m2") or 0,
+                    "member_count": incident.get("member_count") or 0,
+                    "descripcion_probable": str(incident.get("human_description") or ""),
+                    "known_pattern_label": str(incident.get("known_pattern_label") or ""),
+                    "human_label": "",
+                    "human_reason": "",
+                    "reviewer": "",
+                }
+            )
 
 
 if __name__ == "__main__":
