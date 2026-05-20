@@ -11,6 +11,7 @@ demo_files/
 *.zip
 *.bundle/
 output/outputs_gebsa/
+output/outputs_nasas/
 !requirements.txt
 !requirements-legacy.txt
 !README.md
