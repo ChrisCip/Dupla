@@ -4,12 +4,20 @@ import { Link } from 'react-router-dom'
 import { PrimaryButton } from '../PrimaryButton'
 import { ProjectWorkspaceExportMenu } from './ProjectWorkspaceExportMenu'
 
-export type WorkspaceConsoleTabId = 'hub' | 'pliego' | 'presupuestoMaestro' | 'eventos'
+export type WorkspaceConsoleTabId =
+  | 'hub'
+  | 'pliego'
+  | 'presupuestoMaestro'
+  | 'revisiones'
+  | 'entregaPlanos'
+  | 'eventos'
 
 const CONSOLE_TABS: { id: WorkspaceConsoleTabId; label: string }[] = [
   { id: 'hub', label: 'Resumen' },
   { id: 'pliego', label: 'Pliego' },
   { id: 'presupuestoMaestro', label: 'Presupuesto' },
+  { id: 'revisiones', label: 'Revisiones' },
+  { id: 'entregaPlanos', label: 'Control de entregas' },
   { id: 'eventos', label: 'Cronología' },
 ]
 

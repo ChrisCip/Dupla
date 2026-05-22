@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom'
 
 import { apiFetch } from '../../api/client'
 import { WORKFLOW_PHASE_LABELS, WORKFLOW_PHASE_ORDER } from '../../constants/workflowPhases'
+import { PHASE_WORKSPACE_HINTS } from '../../constants/projectWorkspaceHints'
 import type { DirectoryUserRow } from '../../lib/directoryUsers'
 import { formatPersonFullName } from '../../lib/personDisplay'
 import { userDisplayInitials } from '../../lib/taskboard'
@@ -106,6 +107,8 @@ export function ProjectWorkspaceDashboard({
   const [projectNotifs, setProjectNotifs] = useState<UserNotificationRow[]>([])
   const [findings, setFindings] = useState<TechnicalFindingRow[]>([])
   const [teamMenu, setTeamMenu] = useState<string | null>(null)
+
+  const hint = PHASE_WORKSPACE_HINTS[project.workflow_phase]
 
   const avancePct = useMemo(() => {
     if (templateStepProgress && templateStepProgress.total > 0) {
@@ -268,6 +271,20 @@ export function ProjectWorkspaceDashboard({
       </button>
       <button
         type="button"
+        className="rounded-full border border-black/12 bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-sm hover:border-primary/25"
+        onClick={() => onOpenTab('revisiones')}
+      >
+        Revisiones
+      </button>
+      <button
+        type="button"
+        className="rounded-full border border-black/12 bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-sm hover:border-primary/25"
+        onClick={() => onOpenTab('entregaPlanos')}
+      >
+        Control de entregas
+      </button>
+      <button
+        type="button"
         className="rounded-full border border-primary/25 bg-primary/[0.06] px-3 py-1.5 text-xs font-semibold text-primary shadow-sm hover:border-primary/40"
         onClick={() => onOpenTab('presupuestoMaestro')}
       >
@@ -396,6 +413,30 @@ export function ProjectWorkspaceDashboard({
                             style={{ width: `${currentStepPct}%` }}
                           />
                         </div>
+                        {hint ? (
+                          <div className="mt-3 border-t border-black/5 pt-2.5">
+                            <p className="text-xs font-semibold text-ink">{hint.title}</p>
+                            <p className="mt-1 text-xs leading-relaxed text-muted">{hint.body}</p>
+                            <button
+                              type="button"
+                              className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                              onClick={() => {
+                                const targetTab =
+                                  hint.tabId === 'documentos'
+                                    ? 'archivos'
+                                    : hint.tabId === 'resumen' || hint.tabId === 'hub'
+                                      ? 'hub'
+                                      : hint.tabId === 'historial'
+                                        ? 'eventos'
+                                        : hint.tabId
+                                onOpenTab(targetTab)
+                              }}
+                            >
+                              {hint.cta}
+                              <ArrowRight className="size-3" aria-hidden />
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
