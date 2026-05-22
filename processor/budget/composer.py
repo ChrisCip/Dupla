@@ -632,6 +632,7 @@ def compose_budget_rows(
     *,
     bc3_catalog: dict[str, Any] | None = None,
     construcosto_snapshot: Any | None = None,
+    apu_matcher: Any | None = None,
 ) -> tuple[list[BudgetChapter], list[BudgetLine], list[BudgetRow]]:
     takeoff_list = list(takeoffs)
     derived_from_keys, concrete_volume_prefixes = budget_filter_sets(takeoff_list)
@@ -761,15 +762,58 @@ def compose_budget_rows(
         if first.bc3_guard_drop_reason:
             line_metadata["bc3_guard_drop_reason"] = first.bc3_guard_drop_reason
 
-        resolved_price, price_source = _extract_unit_price(
-            first.candidate,
-            bc3_catalog,
-            fallback_bc3_code=deterministic_bc3_code,
-            construcosto_snapshot=construcosto_snapshot,
-            summary=summary,
-            unit=unit,
-        )
+        # --- Constructor APU layer ----------------------------------------
+        # When a constructor APUMatcher is available, price the line against a
+        # matched APU (its code + component decomposition); fall back to
+        # _extract_unit_price (BC3 / ConstruCosto) when there is no hit.
+        apu_match: Any | None = None
+        if apu_matcher is not None:
+            try:
+                apu_match = apu_matcher.match(first.takeoff)
+            except Exception:
+                logger.warning(
+                    "APUMatcher.match failed for %s", first.takeoff.item_key, exc_info=True
+                )
+                apu_match = None
+
+        if apu_match is not None:
+            line_code = str(apu_match.code).strip() or line_code
+            deterministic_bc3_code = line_code
+            resolved_price = float(apu_match.unit_price_total)
+            if apu_match.source and "ConstruCosto" in apu_match.source:
+                price_source = apu_match.source
+                source_type = "construcosto"
+            else:
+                price_source = f"Constructor APU ({apu_match.code})"
+                source_type = "constructor_apu"
+            line_metadata["apu_code"] = apu_match.code
+            line_metadata["apu_description"] = apu_match.description
+            line_metadata["apu_unit"] = apu_match.unit
+            line_metadata["apu_components"] = [
+                {
+                    "description": c.description,
+                    "quantity": c.quantity,
+                    "unit": c.unit,
+                    "unit_price": c.unit_price,
+                    "subtotal": c.subtotal,
+                    "component_type": c.component_type,
+                }
+                for c in apu_match.components
+            ]
+        else:
+            resolved_price, price_source = _extract_unit_price(
+                first.candidate,
+                bc3_catalog,
+                fallback_bc3_code=deterministic_bc3_code,
+                construcosto_snapshot=construcosto_snapshot,
+                summary=summary,
+                unit=unit,
+            )
+            source_type = "bc3_catalog"
+
         line_metadata["price_source"] = price_source
+        line_metadata["source_type"] = source_type
+        first.takeoff.trace.metadata["source_type"] = source_type
         line_metadata["quantity_source_display"] = _quantity_source_display(first.takeoff)
         line_metadata["bc3_origin"] = _line_bc3_origin(
             first.candidate, bc3_catalog or {}, line_code
@@ -785,7 +829,11 @@ def compose_budget_rows(
             summary=summary,
             quantity=total_quantity,
             unit_price=resolved_price,
-            candidate_code=first.candidate.bc3_code if first.candidate else deterministic_bc3_code,
+            candidate_code=(
+                apu_match.code
+                if apu_match is not None
+                else (first.candidate.bc3_code if first.candidate else deterministic_bc3_code)
+            ),
             candidate_score=first.candidate.score if first.candidate else None,
             source_refs=source_refs,
             assumptions=assumptions,
@@ -815,6 +863,7 @@ def compose_budget(
     *,
     bc3_catalog: dict[str, Any] | None = None,
     construcosto_snapshot: Any | None = None,
+    apu_matcher: Any | None = None,
 ) -> dict[str, Any]:
     takeoff_list = list(takeoffs)
     derived_from_keys, concrete_volume_prefixes = budget_filter_sets(takeoff_list)
@@ -837,8 +886,13 @@ def compose_budget(
         context, takeoff_list, candidates_by_takeoff,
         bc3_catalog=bc3_catalog,
         construcosto_snapshot=construcosto_snapshot,
+        apu_matcher=apu_matcher,
     )
-    logger.info("Budget composed: %d chapters, %d lines, %d rows", len(chapters), len(lines), len(rows))
+    apu_lines = sum(1 for line in lines if line.metadata.get("source_type") == "constructor_apu")
+    logger.info(
+        "Budget composed: %d chapters, %d lines (%d via constructor APU), %d rows",
+        len(chapters), len(lines), apu_lines, len(rows),
+    )
     payload: dict[str, Any] = {
         "project_context": context.to_dict(),
         "chapters": [chapter.to_dict() for chapter in chapters],

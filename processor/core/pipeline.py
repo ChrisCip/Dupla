@@ -30,6 +30,8 @@ from core.semantic_enrichment import enrich_semantics
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.pres_expansion import synthetic_takeoffs_from_pres
 from knowledge.training_data import extract_training_pairs
+from pricing.schemas import PricingStore
+from pricing.excel_price_loader import load_or_cache_constructor_pricing
 try:
     from pricing.construcosto_loader import load_construcosto_snapshot
 except ImportError:
@@ -164,6 +166,37 @@ def _load_construcosto_if_available() -> Any:
     return None
 
 
+def _load_default_pricing_store(context: ProjectContext | None) -> PricingStore | None:
+    """Load the constructor PricingStore for APU-based budget pricing.
+
+    Looks for an explicit ``metadata['pricing_excel']`` path, else the bundled
+    ``data/Lista de precios-analisis-MO.xlsx``. Returns None when unavailable so
+    the budget falls back to BC3 / ConstruCosto pricing.
+    """
+    metadata = context.metadata if context is not None else {}
+    if metadata.get("pricing_excel_disabled"):
+        return None
+
+    explicit_path = str(metadata.get("pricing_excel") or "").strip()
+    default_path = Path(__file__).resolve().parent.parent / "data" / "Lista de precios-analisis-MO.xlsx"
+    pricing_path = Path(explicit_path) if explicit_path else default_path
+    if not pricing_path.exists():
+        logger.info("No constructor pricing Excel at %s — APU pricing disabled", pricing_path)
+        return None
+
+    project_id = context.project_id if context and context.project_id else "default_project"
+    try:
+        store = load_or_cache_constructor_pricing(pricing_path, project_id=project_id)
+        logger.info(
+            "Constructor PricingStore loaded from %s (materials=%d, labor=%d, apus=%d)",
+            pricing_path, len(store.materials), len(store.labor), len(store.apus),
+        )
+        return store
+    except Exception:
+        logger.warning("Failed to load constructor pricing from %s", pricing_path, exc_info=True)
+        return None
+
+
 def build_final_budget(
     context: ProjectContext,
     takeoffs: Iterable[QuantityTakeoff],
@@ -171,9 +204,16 @@ def build_final_budget(
     *,
     bc3_catalog: dict[str, Any] | None = None,
     construcosto_snapshot: Any | None = None,
+    pricing_store: PricingStore | None = None,
+    apu_matcher: Any | None = None,
 ) -> dict[str, Any]:
     takeoff_list = list(takeoffs)
     lines = []
+
+    # Constructor pricing: load the default PricingStore when the caller did
+    # not supply one (looks for data/Lista de precios-analisis-MO.xlsx).
+    if pricing_store is None:
+        pricing_store = _load_default_pricing_store(context)
 
     for takeoff in takeoff_list:
         candidates = candidates_by_takeoff.get(takeoff.item_key, [])
@@ -184,10 +224,26 @@ def build_final_budget(
             }
         )
 
+    # Lazy-build the APUMatcher from the PricingStore so compose_budget can
+    # price lines against constructor APUs before falling back to BC3.
+    if apu_matcher is None and pricing_store is not None:
+        try:
+            from pricing.apu_matcher import APUMatcher
+
+            apu_matcher = APUMatcher(pricing_store, construcosto_snapshot=construcosto_snapshot)
+            logger.info(
+                "Constructor APUMatcher built (materials=%d, labor=%d, apus=%d)",
+                len(pricing_store.materials), len(pricing_store.labor), len(pricing_store.apus),
+            )
+        except Exception:
+            logger.warning("Failed to build APUMatcher; continuing without it", exc_info=True)
+            apu_matcher = None
+
     composed = compose_budget(
         context, takeoff_list, candidates_by_takeoff,
         bc3_catalog=bc3_catalog,
         construcosto_snapshot=construcosto_snapshot,
+        apu_matcher=apu_matcher,
     )
     composed["budget_lines"] = lines
     composed["takeoffs"] = [takeoff.to_dict() for takeoff in takeoff_list]
@@ -206,6 +262,8 @@ async def build_budget_from_inventory(
     *,
     embedding_index: Any | None = None,
     training_pairs: list[Any] | None = None,
+    pricing_store: PricingStore | None = None,
+    apu_matcher: Any | None = None,
 ) -> dict[str, Any]:
     engine = rules_engine or default_rules_engine()
     project_discipline = _runner_discipline_canonical(context)
@@ -232,6 +290,8 @@ async def build_budget_from_inventory(
         context, expanded_takeoffs, candidates,
         bc3_catalog=bc3_catalog_for_budget,
         construcosto_snapshot=snapshot,
+        pricing_store=pricing_store,
+        apu_matcher=apu_matcher,
     )
 
 
@@ -382,6 +442,8 @@ async def build_budget_from_sources(
     *,
     embedding_index: Any | None = None,
     training_pairs: list[Any] | None = None,
+    pricing_store: PricingStore | None = None,
+    apu_matcher: Any | None = None,
 ) -> dict[str, Any]:
     logger.info("build_budget_from_sources: starting hybrid inventory + takeoffs")
     hybrid_inventory = build_hybrid_inventory(cad_facts, vision_payloads)
@@ -462,6 +524,8 @@ async def build_budget_from_sources(
         context, expanded_takeoffs, candidates,
         bc3_catalog=bc3_catalog_for_budget,
         construcosto_snapshot=snapshot,
+        pricing_store=pricing_store,
+        apu_matcher=apu_matcher,
     )
     budget["hybrid_inventory"] = [level.to_dict() for level in hybrid_inventory]
     budget["base_takeoffs"] = [takeoff.to_dict() for takeoff in base_takeoffs]
