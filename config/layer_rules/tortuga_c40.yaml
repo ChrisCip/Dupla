@@ -1,0 +1,35 @@
+rules:
+  - discipline: ARQUITECTURA
+    pattern: "\\b(MUROS?|WALL|A[-_ ]?WALL)\\b"
+    role: WALL
+    priority: 250
+    confidence: high
+    reason: tortuga_arq_walls
+
+  - discipline: ESTRUCTURA
+    pattern: "\\b(EST[ ._-]*MUROS?|MUROS? H A|WALL)\\b"
+    role: WALL
+    priority: 250
+    confidence: high
+    reason: tortuga_est_walls
+
+  - discipline: ESTRUCTURA
+    pattern: "\\b(COLUMNA|COLUMNAS|COLUMN)\\b"
+    role: COLUMN
+    priority: 240
+    confidence: high
+    reason: tortuga_est_columns
+
+  - discipline: ESTRUCTURA
+    pattern: "\\b(VIGA|VIGAS|BEAM|LOSA|SLAB)\\b"
+    role: BEAM
+    priority: 230
+    confidence: medium
+    reason: tortuga_est_beam_like
+
+  - discipline: "*"
+    pattern: "\\b(DETALLE|DETAIL|SIMBOLO|SIMBOLOS)\\b"
+    role: DETAIL
+    priority: 280
+    confidence: medium
+    reason: tortuga_detail

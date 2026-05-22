@@ -1,0 +1,4 @@
+role_pairs:
+  - left: DETAIL
+    right: COLUMN
+    enabled: false

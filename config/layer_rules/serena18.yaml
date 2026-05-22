@@ -1,0 +1,35 @@
+rules:
+  - discipline: ARQUITECTURA
+    pattern: "\\b(MUROS?)( BAJO TECHO| SHEET ROCK| SSHEETROCK)?\\b"
+    role: WALL
+    priority: 260
+    confidence: high
+    reason: serena_arq_walls
+
+  - discipline: ESTRUCTURA
+    pattern: "\\b(EST[ ._-]*MUROS?|MUROS? H A|MUROS? DE [0-9.]+M)\\b"
+    role: WALL
+    priority: 260
+    confidence: high
+    reason: serena_est_walls
+
+  - discipline: ESTRUCTURA
+    pattern: "\\b(EST[ ._-]*COLUMNAS?)\\b"
+    role: COLUMN
+    priority: 250
+    confidence: high
+    reason: serena_est_columns
+
+  - discipline: ESTRUCTURA
+    pattern: "\\b(EJE DE VIGA|VIGA|VIGAS|EST[ ._-]*ACERO)\\b"
+    role: BEAM
+    priority: 245
+    confidence: medium
+    reason: serena_est_beams
+
+  - discipline: "*"
+    pattern: "\\b(EST[ ._-]*TEXTOS?|TEXT75|LET\\d+|TIT\\d+|TARJETA[-_ ]TEXTOS?)\\b"
+    role: ANNOTATION
+    priority: 300
+    confidence: high
+    reason: serena_annotation

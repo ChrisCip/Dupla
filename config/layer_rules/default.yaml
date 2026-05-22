@@ -1,0 +1,77 @@
+rules:
+  - discipline: "*"
+    pattern: "\\b(MURO|MUROS|WALL|A[-_ ]?WALL)\\b"
+    role: WALL
+    priority: 120
+    confidence: high
+    reason: wall_layer
+
+  - discipline: "*"
+    pattern: "\\b(VIGA|VIGAS|BEAM)\\b"
+    role: BEAM
+    priority: 115
+    confidence: high
+    reason: beam_layer
+
+  - discipline: "*"
+    pattern: "\\b(COLUMNA|COLUMNAS|COLUMN)\\b"
+    role: COLUMN
+    priority: 115
+    confidence: high
+    reason: column_layer
+
+  - discipline: "*"
+    pattern: "\\b(LOSA|LOSAS|SLAB)\\b"
+    role: SLAB
+    priority: 110
+    confidence: high
+    reason: slab_layer
+
+  - discipline: "*"
+    pattern: "\\b(PUERTA|PUERTAS|OPENING|VENTANA|VENTANAS)\\b"
+    role: OPENING
+    priority: 108
+    confidence: medium
+    reason: opening_layer
+
+  - discipline: "*"
+    pattern: "\\b(ESCALERA|ESCALERAS|STAIR)\\b"
+    role: STAIR
+    priority: 106
+    confidence: medium
+    reason: stair_layer
+
+  - discipline: "*"
+    pattern: "\\b(EJE|EJES|GRID|ALIGNMENT|ALINEAMIENTO)\\b"
+    role: AXIS
+    priority: 200
+    confidence: high
+    reason: axis_layer
+
+  - discipline: "*"
+    pattern: "\\b(TEXT|TEXTO|TEXTOS|MTEXT|DBTEXT|DIM|DIMENSION|NOTA|NOTAS|LEYENDA|TARJETA|TITLE|INDICA)\\b"
+    role: ANNOTATION
+    priority: 210
+    confidence: high
+    reason: annotation_layer
+
+  - discipline: "*"
+    pattern: "\\b(MOBILIARIO|MUEBLES|FURNITURE|EQUIPAMIENTO|APARATOS)\\b"
+    role: FURNITURE
+    priority: 190
+    confidence: medium
+    reason: furniture_layer
+
+  - discipline: "*"
+    pattern: "\\b(DETALLE|DETAIL|SIMBOLOS|SIMBOLO|PROYECC|PROYECCION|PERFILES)\\b"
+    role: DETAIL
+    priority: 175
+    confidence: medium
+    reason: detail_layer
+
+  - discipline: "*"
+    pattern: "\\b(TERR|TOPO|PARCEL|CALLE|GRAMA|ARBOL|ARBOLES|VEGETACION)\\b"
+    role: TERRAIN
+    priority: 100
+    confidence: medium
+    reason: terrain_layer
