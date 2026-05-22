@@ -33,6 +33,7 @@ from coordination.core.nasas_paths import (
     file_translation_mm,
 )
 from coordination.core.registry import ProjectLevelRegistryDocument
+from coordination.core.tolerances import ClashTolerances, load_project_tolerances
 from coordination.extraction.from_autodesk_properties import bulk_elements_from_autodesk_raw, load_autodesk_raw
 from coordination.extraction.from_dwg_accore import (
     extract_elements_from_accore_payload,
@@ -79,6 +80,11 @@ from coordination.selection.fast_compare import (
     select_preferred_candidates,
     select_comparable_candidates,
     suppress_visual_backups,
+)
+from coordination.selection.layer_rules import (
+    CanonicalRole,
+    load_project_layer_rules,
+    load_role_matrix,
 )
 from coordination.selection.level_inference import infer_level_from_view_name
 from coordination.selection.source_selection import collect_coordination_media, normalize_source_text, relative_posix
@@ -287,6 +293,9 @@ def main() -> int:
     )
     registry = doc.to_registry()
     default_level_id = "NPT_P1" if "NPT_P1" in registry.root else "NASAS_ARQ_P1_NPT"
+    tolerances = load_project_tolerances(project_name=doc.project_name or "")
+    layer_rules = load_project_layer_rules(project_name=doc.project_name or "")
+    role_matrix, suppress_roles = load_role_matrix(project_name=doc.project_name or "")
 
     nasas_root = args.nasas_root.resolve()
     media, scan_skips = collect_coordination_media(
@@ -306,6 +315,10 @@ def main() -> int:
             scan_skips=scan_skips,
             nasas_root=nasas_root,
             cache_root=cache_root,
+            tolerances=tolerances,
+            layer_rules=layer_rules,
+            role_matrix=role_matrix,
+            suppress_roles=suppress_roles,
         )
 
     summary: dict[str, object] = {
@@ -360,6 +373,8 @@ def main() -> int:
                 aps_token=aps_token,
                 aps_bucket=aps_bucket,
                 cache_root=cache_root,
+                layer_rules=layer_rules,
+                tolerances=tolerances,
             )
         except Exception:
             logger.exception("Fallo procesando %s", path)
@@ -467,6 +482,8 @@ def _extract_path_elements(
     cache_root: Path,
     file_level_id: str | None = None,
     file_level_source: str | None = None,
+    layer_rules: list | None = None,
+    tolerances: ClashTolerances | None = None,
 ) -> list[Element25D]:
     if file_level_id is None or file_level_source is None:
         view_text = "\n".join(
@@ -512,6 +529,8 @@ def _extract_path_elements(
                 min_area_mm2=args.min_dwg_area_mm2,
                 cache_root=cache_root / "accore",
                 timeout_seconds=args.accore_timeout_seconds,
+                layer_rules=layer_rules,
+                tolerances=tolerances,
             )
             if accore_elements:
                 return _tag_elements(
@@ -547,6 +566,9 @@ def _extract_path_elements(
                 translation_mm=translation_mm,
                 max_entities=args.max_dwg_entities,
                 min_area_mm2=args.min_dwg_area_mm2,
+                layer_rules=layer_rules,
+                tolerances=tolerances,
+                cache_root=cache_root / "odafc",
             ),
             issue_key=issue_key,
             file_name=path.name,
@@ -597,6 +619,10 @@ def _tag_elements(
         metadata = dict(element.metadata)
         metadata[COORDINATION_ISSUE_METADATA_KEY] = issue_key
         metadata.setdefault("file", file_name)
+        metadata.setdefault("raw_layer", str(metadata.get("layer") or "0"))
+        metadata.setdefault("canonical_role", CanonicalRole.UNKNOWN.value)
+        metadata.setdefault("layer_rule_confidence", "low")
+        metadata.setdefault("layer_rule_reason", "not_resolved")
         if geometry_source is not None:
             metadata["geometry_source"] = geometry_source
         if geometry_quality is not None:
@@ -786,6 +812,7 @@ def _profile_fast_compare_candidates(
     cache_root: Path,
     timeout_seconds: int,
     max_workers: int,
+    layer_rules: list,
 ) -> tuple[dict[str, dict[str, object]], dict[str, int]]:
     dwg_candidates = [candidate for candidate in selected_candidates if candidate.suffix == ".dwg"]
     if not dwg_candidates:
@@ -799,7 +826,15 @@ def _profile_fast_compare_candidates(
             extractor_dll=None,
             timeout_seconds=timeout_seconds,
         )
-        profile = profile_accore_payload(payload_result.payload) if payload_result.payload else None
+        profile = (
+            profile_accore_payload(
+                payload_result.payload,
+                discipline=candidate.discipline,
+                layer_rules=layer_rules,
+            )
+            if payload_result.payload
+            else None
+        )
         return (
             candidate.rel_path,
             {
@@ -839,6 +874,8 @@ def _extract_fast_compare_accore_elements(
     payload: dict[str, object],
     args: argparse.Namespace,
     translation_mm: tuple[float, float],
+    layer_rules: list,
+    tolerances: ClashTolerances,
 ) -> list[Element25D]:
     accore_elements = extract_elements_from_accore_payload(
         payload,
@@ -850,6 +887,8 @@ def _extract_fast_compare_accore_elements(
         min_area_mm2=args.min_dwg_area_mm2,
         z_thickness_mm=250.0,
         z_ref_mm=None,
+        layer_rules=layer_rules,
+        tolerances=tolerances,
     )
     if not accore_elements:
         return []
@@ -872,6 +911,8 @@ def _extract_fast_compare_scheduled_elements(
     cache_root: Path,
     profiled_payloads: dict[str, dict[str, object]],
     alignment_overrides: dict[str, object] | None,
+    layer_rules: list,
+    tolerances: ClashTolerances,
 ) -> tuple[list[Element25D], list[Element25D], int]:
     scheduled_candidates = [candidate for candidate in selected_candidates if candidate.rel_path in scheduled_file_set]
     if not scheduled_candidates:
@@ -896,6 +937,8 @@ def _extract_fast_compare_scheduled_elements(
                 payload=payload,
                 args=args,
                 translation_mm=translation,
+                layer_rules=layer_rules,
+                tolerances=tolerances,
             )
             return (candidate.rel_path, elements, not bool(elements))
         elements = _extract_path_elements(
@@ -912,6 +955,8 @@ def _extract_fast_compare_scheduled_elements(
             cache_root=cache_root,
             file_level_id=candidate.level_id,
             file_level_source=candidate.level_source,
+            layer_rules=layer_rules,
+            tolerances=tolerances,
         )
         return (candidate.rel_path, elements, False)
 
@@ -1136,7 +1181,15 @@ def _run_fast_compare(
     scan_skips: dict[str, int],
     nasas_root: Path,
     cache_root: Path,
+    tolerances: ClashTolerances | None = None,
+    layer_rules: list | None = None,
+    role_matrix: dict[tuple[str, str], bool] | None = None,
+    suppress_roles: set[str] | None = None,
 ) -> int:
+    active_tolerances = tolerances or ClashTolerances()
+    active_layer_rules = layer_rules or load_project_layer_rules(project_name=doc.project_name or "")
+    active_role_matrix = role_matrix or {}
+    active_suppress_roles = suppress_roles or set()
     overall_metrics: dict[str, object] = {
         "audit_seconds": 0.0,
         "schedule_seconds": 0.0,
@@ -1189,6 +1242,7 @@ def _run_fast_compare(
             "path": str(args.alignment_manifest),
             "entry_count": len(alignment_overrides),
         }
+    overall_metrics["alignment_overrides_count"] = len(alignment_overrides)
 
     if args.cohort_manifest is not None:
         manifest = load_cohort_manifest(args.cohort_manifest, root=nasas_root)
@@ -1260,6 +1314,7 @@ def _run_fast_compare(
         cache_root=cache_root,
         timeout_seconds=args.accore_timeout_seconds,
         max_workers=args.max_workers,
+        layer_rules=active_layer_rules,
     )
     overall_metrics.update(profile_metrics)
     candidate_audits = [
@@ -1293,6 +1348,8 @@ def _run_fast_compare(
     coordinate_audit_json = args.output.parent / "coordinate_audit.json"
     coordinate_audit_md = args.output.parent / "coordinate_audit.md"
     pair_schedule_json = args.output.parent / "pair_schedule.json"
+    pair_schedule_diag_csv = args.output.parent / "pair_schedule_diagnostics.csv"
+    accore_diag_json = args.output.parent / "accore_extraction_diagnostics.json"
 
     schedule_start = perf_counter()
     pair_schedule = build_pair_schedule(
@@ -1342,6 +1399,15 @@ def _run_fast_compare(
         "pairs": [item.model_dump() for item in pair_schedule],
     }
     _write_json(pair_schedule_json, pair_schedule_payload)
+    _write_pair_schedule_diagnostics_csv(pair_schedule_diag_csv, pair_schedule)
+    _write_accore_extraction_diagnostics_json(
+        accore_diag_json,
+        audits=candidate_audits,
+        selected_candidates=selected_candidates,
+        profiled_payloads=profiled_payloads,
+        scheduled_file_set=scheduled_file_set,
+        alignment_overrides=alignment_overrides,
+    )
     logger.info(
         "Fast compare schedule: %d/%d pares programados en %.2fs",
         len(scheduled_pairs),
@@ -1397,6 +1463,8 @@ def _run_fast_compare(
         cache_root=cache_root,
         profiled_payloads=profiled_payloads,
         alignment_overrides=alignment_overrides,
+        layer_rules=active_layer_rules,
+        tolerances=active_tolerances,
     )
     overall_metrics["skipped_runtime"] = skipped_runtime
     overall_metrics["extract_seconds"] = round(perf_counter() - extract_start, 3)
@@ -1405,6 +1473,10 @@ def _run_fast_compare(
         len(scheduled_file_set),
         len(all_elements),
         float(overall_metrics["extract_seconds"]),
+    )
+    _write_layer_role_coverage_csv(
+        args.output.parent / "layer_role_coverage.csv",
+        all_elements=all_elements,
     )
 
     clash_start = perf_counter()
@@ -1415,6 +1487,9 @@ def _run_fast_compare(
         strict_levels=args.strict_levels,
         required_disciplines=include_disciplines,
         min_plan_area_mm2=args.primary_min_plan_area_mm2,
+        tolerances=active_tolerances,
+        role_matrix=active_role_matrix,
+        suppress_roles=active_suppress_roles,
     )
     primary_incidents = group_conflicts_into_incidents(primary_conflicts)
 
@@ -1425,6 +1500,9 @@ def _run_fast_compare(
         required_disciplines=include_disciplines,
         primary_conflicts=primary_conflicts,
         element_lookup=element_lookup,
+        tolerances=active_tolerances,
+        role_matrix=active_role_matrix,
+        suppress_roles=active_suppress_roles,
     )
     overall_metrics["clash_seconds"] = round(perf_counter() - clash_start, 3)
     logger.info(
@@ -1577,6 +1655,7 @@ def _run_fast_compare(
             "element_count": len(all_elements),
             "scheduled_pair_count": len(scheduled_pairs),
             "scheduled_file_count": len(scheduled_file_set),
+            "tolerances": active_tolerances.model_dump(),
         }
         | overall_metrics,
         primary_payload=primary_payload,
@@ -1619,6 +1698,7 @@ def _run_fast_compare(
                 "element_count": len(all_elements),
                 "scheduled_pair_count": len(scheduled_pairs),
                 "scheduled_file_count": len(scheduled_file_set),
+                "tolerances": active_tolerances.model_dump(),
             }
             | overall_metrics,
             primary_payload=primary_payload,
@@ -1639,6 +1719,7 @@ def _run_fast_compare(
             "project_name": doc.project_name,
             "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
             "status": "completed",
+            "tolerances": active_tolerances.model_dump(),
         }
         | overall_metrics,
         readiness_payload=readiness_payload,
@@ -1717,6 +1798,9 @@ def _build_fast_compare_primary_conflicts(
     strict_levels: bool,
     required_disciplines: tuple,
     min_plan_area_mm2: float = 0.5,
+    tolerances: ClashTolerances | None = None,
+    role_matrix: dict[tuple[str, str], bool] | None = None,
+    suppress_roles: set[str] | None = None,
 ) -> list[ClashConflict]:
     grouped: dict[tuple[str, str], list[Element25D]] = defaultdict(list)
     for element in all_elements:
@@ -1739,8 +1823,13 @@ def _build_fast_compare_primary_conflicts(
             clash_pairs(
                 group,
                 registry,
+                tolerances=tolerances,
                 strict_levels=strict_levels,
                 min_plan_area_mm2=min_plan_area_mm2,
+                role_matrix=role_matrix,
+                suppress_roles=suppress_roles,
+                require_cross_discipline=True,
+                allow_same_role=True,
             )
         )
     conflicts.sort(key=lambda item: (-item.overlap_depth_z_mm, -item.plan_intersection_area_mm2))
@@ -1755,6 +1844,9 @@ def _build_fast_compare_debug_conflicts(
     required_disciplines: tuple,
     primary_conflicts: list[ClashConflict],
     element_lookup: dict[str, Element25D],
+    tolerances: ClashTolerances | None = None,
+    role_matrix: dict[tuple[str, str], bool] | None = None,
+    suppress_roles: set[str] | None = None,
 ) -> list[ClashConflict]:
     primary_keys = {(conflict.element_id_a, conflict.element_id_b) for conflict in primary_conflicts}
     grouped: dict[str, list[Element25D]] = defaultdict(list)
@@ -1770,8 +1862,12 @@ def _build_fast_compare_debug_conflicts(
         for conflict in clash_pairs(
             group,
             registry,
+            tolerances=tolerances,
             strict_levels=strict_levels,
             min_plan_area_mm2=0.5,
+            role_matrix=role_matrix,
+            suppress_roles=suppress_roles,
+            include_debug_roles=True,
         ):
             if (conflict.element_id_a, conflict.element_id_b) in primary_keys:
                 continue
@@ -1915,6 +2011,188 @@ def _render_primary_incident_lines(incidents: list) -> list[str]:
 def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _write_pair_schedule_diagnostics_csv(path: Path, pairs: list) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    headers = [
+        "cohort_id",
+        "file_a",
+        "file_b",
+        "scheduled",
+        "readiness",
+        "coordinate_compatible",
+        "alignment_status",
+        "selection_reason",
+        "schedule_reason",
+        "rejection_reason",
+        "block_reason",
+        "arq_roles_present",
+        "est_roles_present",
+        "expected_role_intersection",
+        "reason_codes",
+    ]
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=headers)
+        writer.writeheader()
+        for item in pairs:
+            payload = item.model_dump() if hasattr(item, "model_dump") else dict(item)
+            writer.writerow(
+                {
+                    "cohort_id": payload.get("cohort_id"),
+                    "file_a": payload.get("file_a"),
+                    "file_b": payload.get("file_b"),
+                    "scheduled": payload.get("scheduled"),
+                    "readiness": payload.get("readiness"),
+                    "coordinate_compatible": payload.get("coordinate_compatible"),
+                    "alignment_status": payload.get("alignment_status"),
+                    "selection_reason": payload.get("selection_reason"),
+                    "schedule_reason": payload.get("schedule_reason"),
+                    "rejection_reason": payload.get("rejection_reason"),
+                    "block_reason": payload.get("block_reason"),
+                    "arq_roles_present": "|".join(payload.get("arq_roles_present") or []),
+                    "est_roles_present": "|".join(payload.get("est_roles_present") or []),
+                    "expected_role_intersection": "|".join(payload.get("expected_role_intersection") or []),
+                    "reason_codes": "|".join(payload.get("reason_codes") or []),
+                }
+            )
+
+
+def _write_accore_extraction_diagnostics_json(
+    path: Path,
+    *,
+    audits: list,
+    selected_candidates: list,
+    profiled_payloads: dict[str, dict[str, object]],
+    scheduled_file_set: set[str],
+    alignment_overrides: dict[str, object] | None,
+) -> None:
+    candidate_by_rel = {candidate.rel_path: candidate for candidate in selected_candidates}
+    diagnostics = []
+    for audit in audits:
+        payload_entry = profiled_payloads.get(audit.rel_path, {})
+        profile = payload_entry.get("profile") or {}
+        rel_path = audit.rel_path
+        candidate = candidate_by_rel.get(rel_path)
+        roles_detected = list(audit.roles_detected or [])
+        if not roles_detected and isinstance(profile, dict):
+            roles_detected = [str(role) for role in profile.get("roles_detected") or []]
+        quality = "HIGH"
+        warnings: list[str] = []
+        if audit.audit_status == "extract_failed":
+            quality = "FAILED"
+            warnings.append("extract_failed")
+        elif int(audit.raw_entity_count or 0) == 0:
+            quality = "EMPTY"
+            warnings.append("empty_payload")
+        elif int(audit.raw_primary_candidate_count or 0) == 0:
+            quality = "LOW"
+            warnings.append("no_primary_geometry")
+        elif "DETAIL" in roles_detected and len(roles_detected) <= 2:
+            quality = "LOW"
+            warnings.append("detail_only_signal")
+        elif int(audit.raw_annotation_count or 0) > int(audit.raw_primary_candidate_count or 0):
+            quality = "MEDIUM"
+            warnings.append("annotation_dominant")
+        bounds = audit.bounds_mm
+        if bounds:
+            span_x = abs(float(bounds[2]) - float(bounds[0]))
+            span_y = abs(float(bounds[3]) - float(bounds[1]))
+            if span_x < 100.0 or span_y < 100.0:
+                warnings.append("suspiciously_small_extent")
+            if span_x > 50_000_000.0 or span_y > 50_000_000.0:
+                warnings.append("suspiciously_large_extent")
+        coordinate_band = audit.coordinate_band
+        needs_alignment = audit.audit_status == "needs_alignment"
+        alignment_applied = bool(
+            candidate is not None
+            and alignment_overrides
+            and normalize_source_text(candidate.rel_path) in alignment_overrides
+        )
+        diagnostics.append(
+            {
+                "file": rel_path,
+                "discipline": audit.discipline,
+                "entity_count_total": int(audit.raw_entity_count or 0),
+                "entity_count_primary": int(audit.raw_primary_candidate_count or 0),
+                "entity_count_suppressed": max(
+                    int(audit.selected_total_count or 0) - int(audit.selected_primary_count or 0),
+                    0,
+                ),
+                "roles_detected": roles_detected,
+                "raw_layers_detected": list(audit.raw_layers_detected or []),
+                "bbox_world": list(bounds) if bounds else None,
+                "coordinate_band": coordinate_band,
+                "needs_alignment": needs_alignment,
+                "alignment_applied": alignment_applied,
+                "accore_cache_hit": bool(payload_entry.get("cache_hit")),
+                "scheduled_for_clash": rel_path in scheduled_file_set,
+                "extraction_quality": quality,
+                "warnings": warnings + list(audit.notes or []),
+            }
+        )
+    payload = {
+        "file_count": len(diagnostics),
+        "files": diagnostics,
+    }
+    _write_json(path, payload)
+
+
+def _write_layer_role_coverage_csv(path: Path, *, all_elements: list[Element25D]) -> None:
+    groups: dict[tuple[str, str, str, str, str, str], dict[str, int]] = {}
+    for element in all_elements:
+        metadata = element.metadata
+        file_name = str(metadata.get("file") or "")
+        discipline = str(element.discipline.value)
+        raw_layer = str(element.layer_raw or metadata.get("raw_layer") or metadata.get("layer") or "0")
+        normalized_layer = str(metadata.get("normalized_layer") or raw_layer)
+        canonical_role = str(metadata.get("canonical_role") or CanonicalRole.UNKNOWN.value)
+        rule_confidence = str(metadata.get("layer_rule_confidence") or "low")
+        key = (file_name, discipline, raw_layer, normalized_layer, canonical_role, rule_confidence)
+        entry = groups.setdefault(key, {"entity_count": 0, "primary_count": 0, "suppressed_count": 0})
+        entry["entity_count"] += 1
+        if str(metadata.get("geometry_role") or "primary") == "primary":
+            entry["primary_count"] += 1
+        else:
+            entry["suppressed_count"] += 1
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "file",
+                "discipline",
+                "raw_layer",
+                "normalized_layer",
+                "canonical_role",
+                "rule_confidence",
+                "entity_count",
+                "primary_count",
+                "suppressed_count",
+                "dropped_reason",
+            ],
+        )
+        writer.writeheader()
+        for key in sorted(groups):
+            stats = groups[key]
+            writer.writerow(
+                {
+                    "file": key[0],
+                    "discipline": key[1],
+                    "raw_layer": key[2],
+                    "normalized_layer": key[3],
+                    "canonical_role": key[4],
+                    "rule_confidence": key[5],
+                    "entity_count": stats["entity_count"],
+                    "primary_count": stats["primary_count"],
+                    "suppressed_count": stats["suppressed_count"],
+                    "dropped_reason": (
+                        "role_suppressed"
+                        if stats["suppressed_count"] >= stats["entity_count"] and stats["entity_count"] > 0
+                        else ""
+                    ),
+                }
+            )
 
 
 def _write_validation_template_csv(path: Path, report_context: dict[str, object]) -> None:

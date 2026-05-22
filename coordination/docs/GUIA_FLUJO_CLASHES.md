@@ -154,6 +154,7 @@ Orden real para DWG:
 - si no, `accore`
 - si falla, COM
 - si es DXF o formato legible, `ezdxf`
+- para DWG binario en fallback, `ezdxf` puede apoyarse en ODA File Converter cuando está instalado
 
 En `fast_compare`, la meta no es volumen; la meta es comparabilidad con bajo ruido.
 
@@ -565,6 +566,7 @@ Notas:
 
 - `--dwg-via-aps` solo si la cuenta APS realmente tiene capacidad
 - si no, el camino mas util hoy es `accore`, con COM como fallback
+- para estaciones sin APS y con DXF fallback, instalar ODA File Converter habilita apertura de DWG binario en el extractor `ezdxf`
 
 ## Caso B: corrida `fast_compare`
 

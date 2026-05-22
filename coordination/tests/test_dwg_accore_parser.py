@@ -10,7 +10,7 @@ def test_accore_payload_generates_polyline_and_bbox_elements() -> None:
         "Entities": [
             {
                 "Handle": "10",
-                "Layer": "S-COLS",
+                    "Layer": "MUROS",
                 "Type": "Polyline",
                 "Closed": True,
                 "Vertices": [

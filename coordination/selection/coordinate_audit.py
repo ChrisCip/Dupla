@@ -13,6 +13,16 @@ from coordination.selection.fast_compare import PreMatchCandidate, primary_geome
 from coordination.core.models_25d import Element25D
 
 AuditStatus = Literal["eligible", "needs_alignment", "annotation_noise", "bbox_only", "extract_failed"]
+PairReadiness = Literal[
+    "READY_HIGH",
+    "READY_MEDIUM",
+    "READY_LOW",
+    "BLOCKED_ALIGNMENT",
+    "BLOCKED_NO_PRIMARY_GEOMETRY",
+    "BLOCKED_ROLE_MISSING",
+    "BLOCKED_COORDINATE_MISMATCH",
+    "BLOCKED_DETAIL_ONLY",
+]
 
 
 class SourceAudit(BaseModel):
@@ -36,6 +46,8 @@ class SourceAudit(BaseModel):
     raw_primary_candidate_count: int = 0
     raw_annotation_count: int = 0
     raw_bbox_only_count: int = 0
+    raw_layers_detected: list[str] = Field(default_factory=list)
+    roles_detected: list[str] = Field(default_factory=list)
     selected_total_count: int = 0
     selected_primary_count: int = 0
     dominant_entity_types: list[str] = Field(default_factory=list)
@@ -59,6 +71,14 @@ class PairScheduleItem(BaseModel):
     documentary_cohort_relation: str = "same_cohort"
     scheduled: bool
     block_reason: str | None = None
+    readiness: PairReadiness = "READY_LOW"
+    coordinate_compatible: bool = False
+    alignment_status: str = "not_required"
+    arq_roles_present: list[str] = Field(default_factory=list)
+    est_roles_present: list[str] = Field(default_factory=list)
+    expected_role_intersection: list[str] = Field(default_factory=list)
+    schedule_reason: str | None = None
+    rejection_reason: str | None = None
 
 
 def build_source_audit(
@@ -85,6 +105,16 @@ def build_source_audit(
     )
     raw_annotation_count = int(accore_profile.get("raw_annotation_count") or 0) if accore_profile else 0
     raw_bbox_only_count = int(accore_profile.get("raw_bbox_only_count") or 0) if accore_profile else bbox_like
+    raw_layers_detected = [str(item) for item in (accore_profile or {}).get("raw_layers_detected") or []]
+    roles_detected = [str(item).upper() for item in (accore_profile or {}).get("roles_detected") or []]
+    if not roles_detected and elements:
+        roles_detected = sorted(
+            {
+                str(element.metadata.get("canonical_role") or "UNKNOWN").upper()
+                for element in elements
+                if str(element.metadata.get("canonical_role") or "").strip()
+            }
+        )
     units_to_mm_factor = (
         float(accore_profile.get("units_to_mm_factor"))
         if accore_profile and accore_profile.get("units_to_mm_factor") is not None
@@ -169,6 +199,8 @@ def build_source_audit(
         raw_primary_candidate_count=raw_primary_candidate_count,
         raw_annotation_count=raw_annotation_count,
         raw_bbox_only_count=raw_bbox_only_count,
+        raw_layers_detected=raw_layers_detected,
+        roles_detected=roles_detected,
         selected_total_count=selected_total,
         selected_primary_count=selected_primary,
         dominant_entity_types=dominant_entity_types,
@@ -277,6 +309,25 @@ def build_pair_schedule(
                 else:
                     scheduled = False
                     block_reason = "manual_pairing_needed"
+            arq_roles, est_roles = _roles_by_discipline(left, right)
+            roles_available = bool(left.roles_detected) or bool(right.roles_detected)
+            if scheduled and roles_available and (not arq_roles or not est_roles):
+                scheduled = False
+                block_reason = "role_missing"
+            coord_compatible = left.coordinate_band_key == right.coordinate_band_key
+            readiness = _pair_readiness(
+                scheduled=scheduled,
+                block_reason=block_reason,
+                score=updated_score,
+                left=left,
+                right=right,
+                arq_roles=arq_roles,
+                est_roles=est_roles,
+            )
+            expected_roles = sorted(
+                (set(arq_roles) & {"WALL", "OPENING", "STAIR"})
+                | (set(est_roles) & {"WALL", "COLUMN", "BEAM", "SLAB"})
+            )
 
             schedule.append(
                 PairScheduleItem(
@@ -295,6 +346,22 @@ def build_pair_schedule(
                     ),
                     scheduled=scheduled,
                     block_reason=block_reason,
+                    readiness=readiness,
+                    coordinate_compatible=coord_compatible,
+                    alignment_status=(
+                        "required"
+                        if left.audit_status == "needs_alignment" or right.audit_status == "needs_alignment"
+                        else "not_required"
+                    ),
+                    arq_roles_present=sorted(arq_roles),
+                    est_roles_present=sorted(est_roles),
+                    expected_role_intersection=expected_roles,
+                    schedule_reason=(
+                        "eligible + same_level + compatible_band + role_coverage"
+                        if scheduled
+                        else None
+                    ),
+                    rejection_reason=block_reason if not scheduled else None,
                 )
             )
     else:
@@ -321,6 +388,12 @@ def build_pair_schedule(
                 elif left.level_id != right.level_id:
                     scheduled = False
                     block_reason = "level_mismatch"
+                arq_roles, est_roles = _roles_by_discipline(left, right)
+                roles_available = bool(left.roles_detected) or bool(right.roles_detected)
+                if scheduled and roles_available and (not arq_roles or not est_roles):
+                    scheduled = False
+                    block_reason = "role_missing"
+                score = 1.0 if scheduled else 0.0
 
                 schedule.append(
                     PairScheduleItem(
@@ -330,12 +403,36 @@ def build_pair_schedule(
                         coordinate_band=left.coordinate_band if left.coordinate_band == right.coordinate_band else None,
                         level_ids=(left.level_id, right.level_id),
                         decision="auto_comparable" if scheduled else "not_comparable",
-                        score=1.0 if scheduled else 0.0,
+                        score=score,
                         reason_codes=[] if scheduled else [block_reason or "unknown"],
                         selection_reason="same_cohort_schedule",
                         documentary_cohort_relation="same_cohort",
                         scheduled=scheduled,
                         block_reason=block_reason,
+                        readiness=_pair_readiness(
+                            scheduled=scheduled,
+                            block_reason=block_reason,
+                            score=score,
+                            left=left,
+                            right=right,
+                            arq_roles=arq_roles,
+                            est_roles=est_roles,
+                        ),
+                        coordinate_compatible=left.coordinate_band_key == right.coordinate_band_key,
+                        alignment_status=(
+                            "required"
+                            if left.audit_status == "needs_alignment" or right.audit_status == "needs_alignment"
+                            else "not_required"
+                        ),
+                        arq_roles_present=sorted(arq_roles),
+                        est_roles_present=sorted(est_roles),
+                        expected_role_intersection=sorted(set(arq_roles) | set(est_roles)),
+                        schedule_reason=(
+                            "same_cohort + same_level + compatible_band + role_coverage"
+                            if scheduled
+                            else None
+                        ),
+                        rejection_reason=block_reason if not scheduled else None,
                     )
                 )
     return schedule
@@ -420,6 +517,46 @@ def _counter_label(counter: Counter[str]) -> str:
     if not counter:
         return "none"
     return ", ".join(f"{label}={count}" for label, count in counter.most_common())
+
+
+def _roles_by_discipline(left: SourceAudit, right: SourceAudit) -> tuple[set[str], set[str]]:
+    audits = [left, right]
+    arq = next((item for item in audits if item.discipline == "ARQUITECTURA"), None)
+    est = next((item for item in audits if item.discipline == "ESTRUCTURA"), None)
+    arq_roles = set(arq.roles_detected) if arq else set()
+    est_roles = set(est.roles_detected) if est else set()
+    return arq_roles, est_roles
+
+
+def _pair_readiness(
+    *,
+    scheduled: bool,
+    block_reason: str | None,
+    score: float,
+    left: SourceAudit,
+    right: SourceAudit,
+    arq_roles: set[str],
+    est_roles: set[str],
+) -> PairReadiness:
+    if not scheduled:
+        if block_reason == "coordinate_band_mismatch":
+            return "BLOCKED_COORDINATE_MISMATCH"
+        if block_reason == "role_missing":
+            return "BLOCKED_ROLE_MISSING"
+        if block_reason and "needs_alignment" in block_reason:
+            return "BLOCKED_ALIGNMENT"
+        if block_reason and "bbox_only" in block_reason:
+            return "BLOCKED_NO_PRIMARY_GEOMETRY"
+        if "DETAIL" in arq_roles or "DETAIL" in est_roles:
+            return "BLOCKED_DETAIL_ONLY"
+        return "READY_LOW"
+    if left.audit_status != "eligible" or right.audit_status != "eligible":
+        return "READY_LOW"
+    if score >= 0.9:
+        return "READY_HIGH"
+    if score >= 0.75:
+        return "READY_MEDIUM"
+    return "READY_LOW"
 
 
 def _coordinate_band(

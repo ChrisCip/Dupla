@@ -110,6 +110,7 @@ def build_coordination_report_context(
         "suppressed_elements": int((debug_payload or {}).get("suppressed_element_count") or 0),
         "hotspot_incidents": int((hotspot_payload or {}).get("incident_count") or 0),
         "audited_files": int((coordinate_audit_payload or {}).get("audit_count") or 0),
+        "alignment_overrides": int(summary_payload.get("alignment_overrides_count") or 0),
         "eligible_files": sum(
             1
             for item in (coordinate_audit_payload or {}).get("audits") or []
@@ -130,6 +131,7 @@ def build_coordination_report_context(
         "validation_incidents": validation_incidents,
         "reader_sections": reader_sections,
         "noise_summary": noise_summary,
+        "tolerances": summary_payload.get("tolerances") or {},
         "all_incidents": incident_cards,
     }
 
@@ -373,6 +375,7 @@ def render_coordination_report_markdown(
         )
 
     noise = context["noise_summary"]
+    tolerances = context.get("tolerances") or {}
     lines.extend(
         [
             "",
@@ -391,6 +394,26 @@ def render_coordination_report_markdown(
             "- `debug_candidates.json`: suppressed geometry and debug-only clashes.",
         ]
     )
+    if tolerances:
+        lines.extend(
+            [
+                "",
+                "## Coverage and Exclusions",
+                f"- Audited files: `{counts.get('audited_files', 0)}`; eligible files: `{counts.get('eligible_files', 0)}`.",
+                f"- Scheduled pairs: `{counts.get('scheduled_pairs', 0)}`; blocked pairs: `{noise.get('blocked_pair_count', 0)}`.",
+                f"- Extracted elements: `{counts.get('elements', 0)}`; suppressed elements: `{counts.get('suppressed_elements', 0)}`.",
+                f"- Alignment overrides used: `{counts.get('alignment_overrides', 0)}`.",
+                f"- Suppression reasons: {noise.get('suppression_reasons_label', 'none')}.",
+                "",
+                "## Tolerances Used",
+                f"- `grid_size_mm`: `{tolerances.get('grid_size_mm')}`",
+                f"- `linear_buffer_mm`: `{tolerances.get('linear_buffer_mm')}`",
+                f"- `tesselation_chord_error_mm`: `{tolerances.get('tesselation_chord_error_mm')}`",
+                f"- `min_plan_area_mm2`: `{tolerances.get('min_plan_area_mm2')}`",
+                f"- `z_overlap_tolerance_mm`: `{tolerances.get('z_overlap_tolerance_mm')}`",
+                f"- `clearance_mm`: `{tolerances.get('clearance_mm')}`",
+            ]
+        )
     lines.append("")
     return "\n".join(lines)
 
@@ -594,6 +617,7 @@ def render_coordination_human_report_markdown(
     validation = report_context.get("validation_incidents") or []
     reader_sections = report_context.get("reader_sections") or {}
     noise = report_context.get("noise_summary") or {}
+    tolerances = report_context.get("tolerances") or {}
     scheduled_pairs = [item for item in pair_schedule_payload.get("pairs") or [] if bool(item.get("scheduled"))]
     promoted_pairs = readiness_payload.get("promoted_pair_candidates") or []
     eligible_files = (readiness_payload.get("audit_promotion_summary") or {}).get("eligible_files") or []
@@ -744,6 +768,16 @@ def render_coordination_human_report_markdown(
             f"- Hotspots agrupados: `{noise.get('hotspot_incident_count', 0)}`",
             f"- Blocked pairs: `{noise.get('blocked_pair_count', 0)}`",
             "- Este reporte no eleva nombres de elementos constructivos reales si no existe mapeo semántico confiable.",
+            "",
+            "## Cobertura y confiabilidad del run",
+            f"- Archivos auditados: `{counts.get('audited_files', 0)}`; elegibles: `{counts.get('eligible_files', 0)}`.",
+            f"- Pares programados: `{counts.get('scheduled_pairs', 0)}`; pares bloqueados: `{noise.get('blocked_pair_count', 0)}`.",
+            f"- Elementos suprimidos: `{counts.get('suppressed_elements', 0)}` ({noise.get('suppression_reasons_label', 'none')}).",
+            f"- Overlays/alineaciones manuales aplicadas: `{counts.get('alignment_overrides', 0)}`.",
+            "",
+            "## Tolerancias declaradas",
+            f"- grid `{tolerances.get('grid_size_mm')}` mm | buffer lineal `{tolerances.get('linear_buffer_mm')}` mm | teselado `{tolerances.get('tesselation_chord_error_mm')}` mm",
+            f"- area minima `{tolerances.get('min_plan_area_mm2')}` mm2 | z tolerance `{tolerances.get('z_overlap_tolerance_mm')}` mm | clearance `{tolerances.get('clearance_mm')}` mm",
             "",
             "## Proximos pasos",
             "- Mantener el coordinate audit como criterio superior cuando la cohorte documental no capture comparabilidad real.",
