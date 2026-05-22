@@ -7,12 +7,15 @@ from itertools import combinations
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+from shapely import set_precision
 from shapely.geometry import Polygon
 from shapely.strtree import STRtree
 from shapely.validation import explain_validity
 
 from coordination.core.models_25d import Discipline, Element25D
 from coordination.core.registry import ProjectLevelRegistry
+from coordination.core.tolerances import ClashTolerances
+from coordination.selection.layer_rules import role_pair_allowed
 
 
 class ClashConflict(BaseModel):
@@ -34,6 +37,10 @@ class ClashConflict(BaseModel):
     confidence: Literal["low", "medium", "high"] = "medium"
     geometry_sources: tuple[str, str] = ("unknown", "unknown")
     level_assignment_sources: tuple[str, str] = ("unknown", "unknown")
+    raw_layers: tuple[str, str] = ("0", "0")
+    canonical_roles: tuple[str, str] = ("UNKNOWN", "UNKNOWN")
+    role_confidences: tuple[str, str] = ("low", "low")
+    suppression_reasons: tuple[str | None, str | None] = (None, None)
     source_refs: tuple[str, str]
     notes: list[str] = Field(default_factory=list)
 
@@ -81,29 +88,54 @@ def _footprint_polygon(el: Element25D, *, planar_tolerance_mm: float) -> Polygon
 
 
 def _z_overlap(
-    a0: float, a1: float, b0: float, b1: float
-) -> tuple[float, tuple[float, float] | None]:
+    a0: float,
+    a1: float,
+    b0: float,
+    b1: float,
+    *,
+    z_overlap_tolerance_mm: float,
+) -> tuple[float, float, tuple[float, float] | None]:
     left = max(a0, b0)
     right = min(a1, b1)
     depth = right - left
-    if depth <= 0:
-        return 0.0, None
-    return depth, (left, right)
+    if depth > z_overlap_tolerance_mm:
+        return depth, 0.0, (left, right)
+    if a1 < b0:
+        return 0.0, (b0 - a1), None
+    if b1 < a0:
+        return 0.0, (a0 - b1), None
+    return 0.0, 0.0, None
 
 
 def clash_pairs(
     elements: list[Element25D],
     registry: ProjectLevelRegistry,
     *,
+    tolerances: ClashTolerances | None = None,
     planar_tolerance_mm: float = 0.0,
     min_plan_area_mm2: float = 1.0,
     strict_levels: bool = False,
     require_same_metadata_key: str | None = None,
+    role_matrix: dict[tuple[str, str], bool] | None = None,
+    suppress_roles: set[str] | None = None,
+    require_cross_discipline: bool = True,
+    allow_same_role: bool = True,
+    include_debug_roles: bool = False,
 ) -> list[ClashConflict]:
+    active_tolerances = tolerances or ClashTolerances(
+        min_plan_area_mm2=max(min_plan_area_mm2, 0.0),
+    )
+    effective_planar_tolerance = max(planar_tolerance_mm, 0.0)
+    effective_min_area = max(min_plan_area_mm2, active_tolerances.min_plan_area_mm2)
     level_map = registry.offsets_map()
     polys: dict[str, Polygon] = {
-        el.id: _footprint_polygon(el, planar_tolerance_mm=planar_tolerance_mm) for el in elements
+        el.id: _footprint_polygon(el, planar_tolerance_mm=effective_planar_tolerance) for el in elements
     }
+    if active_tolerances.grid_size_mm > 0:
+        polys = {
+            key: set_precision(value, active_tolerances.grid_size_mm)
+            for key, value in polys.items()
+        }
     intervals: dict[str, tuple[float, float]] = {
         el.id: el.get_absolute_interval_mm(level_map, strict_levels=strict_levels) for el in elements
     }
@@ -113,28 +145,72 @@ def clash_pairs(
     tree = STRtree(geom_list) if len(elements) > 80 else None
 
     def maybe_add_conflict(ea: Element25D, eb: Element25D) -> None:
+        role_a = str(ea.metadata.get("canonical_role") or "UNKNOWN").upper()
+        role_b = str(eb.metadata.get("canonical_role") or "UNKNOWN").upper()
+        if suppress_roles and not include_debug_roles:
+            if role_a in suppress_roles or role_b in suppress_roles:
+                return
+        if not role_pair_allowed(
+            role_a,
+            role_b,
+            role_matrix=role_matrix,
+            allow_same_role=allow_same_role,
+        ):
+            return
         if require_same_metadata_key:
             ka = ea.metadata.get(require_same_metadata_key)
             kb = eb.metadata.get(require_same_metadata_key)
             if ka is None or kb is None or ka != kb:
                 return
-        if ea.discipline == eb.discipline:
+        if require_cross_discipline and ea.discipline == eb.discipline:
             return
         poly_a = polys[ea.id]
         poly_b = polys[eb.id]
         if not poly_a.intersects(poly_b):
-            return
-        intersection = poly_a.intersection(poly_b)
+            if (
+                active_tolerances.grid_size_mm <= 0
+                or poly_a.distance(poly_b) > active_tolerances.grid_size_mm
+            ):
+                return
+            intersection = poly_a.buffer(active_tolerances.grid_size_mm / 2.0).intersection(
+                poly_b.buffer(active_tolerances.grid_size_mm / 2.0)
+            )
+        else:
+            intersection = poly_a.intersection(poly_b)
         area = float(intersection.area)
-        if area < min_plan_area_mm2 or math.isnan(area):
+        if area < effective_min_area and active_tolerances.grid_size_mm > 0:
+            if poly_a.distance(poly_b) <= active_tolerances.grid_size_mm:
+                intersection = poly_a.buffer(active_tolerances.grid_size_mm / 2.0).intersection(
+                    poly_b.buffer(active_tolerances.grid_size_mm / 2.0)
+                )
+                area = float(intersection.area)
+        if area < effective_min_area or math.isnan(area):
             return
+        if active_tolerances.min_overlap_width_mm:
+            bounds = intersection.bounds
+            overlap_width = min(abs(bounds[2] - bounds[0]), abs(bounds[3] - bounds[1]))
+            if overlap_width < active_tolerances.min_overlap_width_mm:
+                return
         centroid = intersection.centroid
         bounds = intersection.bounds
 
         za = intervals[ea.id]
         zb = intervals[eb.id]
-        depth, z_range = _z_overlap(za[0], za[1], zb[0], zb[1])
-        if z_range is None or depth <= 0:
+        depth, gap, z_range = _z_overlap(
+            za[0],
+            za[1],
+            zb[0],
+            zb[1],
+            z_overlap_tolerance_mm=active_tolerances.z_overlap_tolerance_mm,
+        )
+        clash_type: Literal["HARD", "SOFT"]
+        if z_range is not None and depth > 0:
+            clash_type = "HARD"
+        elif active_tolerances.clearance_mm > 0 and gap <= active_tolerances.clearance_mm:
+            clash_type = "SOFT"
+            z_range = (max(za[0], zb[0]), min(za[1], zb[1]))
+            depth = 0.0
+        else:
             return
 
         notes: list[str] = []
@@ -149,7 +225,7 @@ def clash_pairs(
                 element_id_b=eb.id,
                 discipline_a=ea.discipline,
                 discipline_b=eb.discipline,
-                clash_type="HARD",
+                clash_type=clash_type,
                 overlap_depth_z_mm=depth,
                 z_overlap_range_project_mm=z_range,
                 plan_intersection_area_mm2=area,
@@ -169,6 +245,19 @@ def clash_pairs(
                 level_assignment_sources=(
                     str(ea.metadata.get("level_assignment_source") or "unknown"),
                     str(eb.metadata.get("level_assignment_source") or "unknown"),
+                ),
+                raw_layers=(
+                    str(ea.layer_raw or ea.metadata.get("raw_layer") or ea.metadata.get("layer") or "0"),
+                    str(eb.layer_raw or eb.metadata.get("raw_layer") or eb.metadata.get("layer") or "0"),
+                ),
+                canonical_roles=(role_a, role_b),
+                role_confidences=(
+                    str(ea.metadata.get("layer_rule_confidence") or "low"),
+                    str(eb.metadata.get("layer_rule_confidence") or "low"),
+                ),
+                suppression_reasons=(
+                    ea.metadata.get("suppression_reason"),
+                    eb.metadata.get("suppression_reason"),
                 ),
                 source_refs=(ea.source_ref, eb.source_ref),
                 notes=notes,

@@ -93,6 +93,7 @@ class Element25D(BaseModel):
     source_ref: str
     discipline: Discipline
     category: str = "generic"
+    layer_raw: str | None = None
     footprint_coords_mm: list[tuple[float, float]] = Field(
         ...,
         description="Polígono cerrado en mm (plano); el motor cierra implícitamente si el LLM omitió el cierre",

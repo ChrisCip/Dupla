@@ -8,14 +8,24 @@ import math
 import subprocess
 from ctypes import create_unicode_buffer, windll
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import Polygon
 
 from coordination.extraction.from_dwg_com import NON_GEOMETRIC_LAYER_TOKENS
+from coordination.extraction._geometry_builders import buffered_arc, buffered_linestring
 from coordination.core.models_25d import Discipline, Element25D, ZInterval
 from coordination.core.nasas_paths import translate_footprint
+from coordination.core.tolerances import ClashTolerances
+from coordination.selection.layer_rules import (
+    CanonicalRole,
+    LayerRule,
+    is_suppressed_role,
+    load_project_layer_rules,
+    resolve_layer_role,
+)
 
 logger = logging.getLogger("dupla.coordination.dwg_accore")
 
@@ -28,15 +38,21 @@ DEFAULT_EXTRACTOR_DLL = (
 ANNOTATION_TYPES = {
     "DBTEXT",
     "MTEXT",
-    "MText",
-    "Dimension",
-    "Leader",
-    "MLeader",
-    "Point",
+    "DIMENSION",
+    "LEADER",
+    "MLEADER",
+    "POINT",
 }
-LINEAR_BUFFER_MM = 25.0
 PROFILE_CLUSTER_CELL_MM = 500_000.0
 PROFILE_CLUSTER_MAX_SPAN_MM = 10_000_000.0
+
+
+class ExtractionQuality(str, Enum):
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+    EMPTY = "EMPTY"
+    FAILED = "FAILED"
 
 
 @dataclass(frozen=True)
@@ -69,6 +85,8 @@ def extract_elements_from_dwg_via_accore(
     accoreconsole_path: Path | None = None,
     extractor_dll: Path | None = None,
     timeout_seconds: int = 240,
+    layer_rules: list[LayerRule] | None = None,
+    tolerances: ClashTolerances | None = None,
 ) -> list[Element25D]:
     payload_result = load_accore_payload_via_accore(
         path,
@@ -90,6 +108,8 @@ def extract_elements_from_dwg_via_accore(
         max_entities=max_entities,
         z_thickness_mm=z_thickness_mm,
         z_ref_mm=z_ref_mm,
+        layer_rules=layer_rules,
+        tolerances=tolerances,
     )
 
 
@@ -205,7 +225,13 @@ def load_accore_payload_via_accore(
         return AccorePayloadResult(payload=None, cache_hit=False)
 
 
-def profile_accore_payload(payload: dict[str, Any]) -> dict[str, Any]:
+def profile_accore_payload(
+    payload: dict[str, Any],
+    *,
+    discipline: Discipline | None = None,
+    layer_rules: list[LayerRule] | None = None,
+) -> dict[str, Any]:
+    active_rules = layer_rules if layer_rules is not None else load_project_layer_rules(project_name="default")
     factor_mm = float(payload.get("UnitsToMmFactor") or 1.0)
     entities = payload.get("Entities") or []
     raw_entity_count = 0
@@ -213,6 +239,8 @@ def profile_accore_payload(payload: dict[str, Any]) -> dict[str, Any]:
     raw_primary_candidate_count = 0
     raw_bbox_only_count = 0
     type_counts: dict[str, int] = {}
+    layer_counts: dict[str, int] = {}
+    role_counts: dict[str, int] = {}
     min_x = min_y = min_z = float("inf")
     max_x = max_y = max_z = float("-inf")
     have_bounds = False
@@ -227,7 +255,13 @@ def profile_accore_payload(payload: dict[str, Any]) -> dict[str, Any]:
         entity_type = str(entity.get("Type") or "")
         layer = str(entity.get("Layer") or "0")
         type_counts[entity_type] = type_counts.get(entity_type, 0) + 1
-        if entity_type in ANNOTATION_TYPES or any(token in layer.lower() for token in NON_GEOMETRIC_LAYER_TOKENS):
+        layer_counts[layer] = layer_counts.get(layer, 0) + 1
+        if discipline is not None:
+            resolved = resolve_layer_role(layer, discipline, rules=active_rules)
+            role = resolved.canonical_role.value
+            role_counts[role] = role_counts.get(role, 0) + 1
+        entity_type_upper = entity_type.upper()
+        if entity_type_upper in ANNOTATION_TYPES or any(token in layer.lower() for token in NON_GEOMETRIC_LAYER_TOKENS):
             raw_annotation_count += 1
         if entity_type in {"Polyline", "Polyline2d", "Polyline3d", "Circle", "Arc", "Line"}:
             raw_primary_candidate_count += 1
@@ -321,6 +355,15 @@ def profile_accore_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "dominant_cluster_bounds_mm": dominant_cluster_bounds,
         "dominant_cluster_centroid_mm": dominant_cluster_centroid,
         "dominant_entity_types": dominant_entity_types,
+        "raw_layers_detected": [
+            layer
+            for layer, _count in sorted(layer_counts.items(), key=lambda item: (-item[1], item[0]))[:20]
+        ],
+        "roles_detected": [
+            role
+            for role, _count in sorted(role_counts.items(), key=lambda item: (-item[1], item[0]))
+            if role != CanonicalRole.UNKNOWN.value
+        ],
     }
 
 
@@ -347,7 +390,11 @@ def extract_elements_from_accore_payload(
     max_entities: int,
     z_thickness_mm: float,
     z_ref_mm: float | None,
+    layer_rules: list[LayerRule] | None = None,
+    tolerances: ClashTolerances | None = None,
 ) -> list[Element25D]:
+    active_tolerances = tolerances or ClashTolerances(min_plan_area_mm2=min_area_mm2)
+    active_layer_rules = layer_rules if layer_rules is not None else load_project_layer_rules(project_name="default")
     factor_mm = float(payload.get("UnitsToMmFactor") or 1.0)
     z0 = 0.0 if z_ref_mm is None else float(z_ref_mm)
     entities = payload.get("Entities") or []
@@ -357,13 +404,24 @@ def extract_elements_from_accore_payload(
         if not isinstance(entity, dict):
             continue
         entity_type = str(entity.get("Type") or "")
+        entity_type_upper = entity_type.upper()
         layer = str(entity.get("Layer") or "0")
-        if entity_type in ANNOTATION_TYPES:
+        if entity_type_upper in ANNOTATION_TYPES:
             continue
-        if any(token in layer.lower() for token in NON_GEOMETRIC_LAYER_TOKENS):
-            continue
+        layer_resolution = resolve_layer_role(layer, discipline, rules=active_layer_rules)
+        layer_is_non_geom = any(token in layer.lower() for token in NON_GEOMETRIC_LAYER_TOKENS)
+        suppress_by_role = is_suppressed_role(
+            layer_resolution.canonical_role,
+            confidence=layer_resolution.rule_confidence,
+        )
 
-        footprint = _footprint_from_entity(entity, factor_mm=factor_mm, translation_mm=translation_mm)
+        footprint = _footprint_from_entity(
+            entity,
+            factor_mm=factor_mm,
+            translation_mm=translation_mm,
+            linear_buffer_mm=active_tolerances.linear_buffer_mm,
+            tesselation_chord_error_mm=active_tolerances.tesselation_chord_error_mm,
+        )
         if not footprint or len(footprint) < 3:
             continue
 
@@ -371,7 +429,7 @@ def extract_elements_from_accore_payload(
         if not polygon.is_valid:
             polygon = polygon.buffer(0)
         area = float(polygon.area)
-        if polygon.is_empty or area < min_area_mm2:
+        if polygon.is_empty or area < max(min_area_mm2, active_tolerances.min_plan_area_mm2):
             continue
 
         geometry_source = str(entity.get("_geometry_source") or "dwg_accore_bbox")
@@ -391,6 +449,14 @@ def extract_elements_from_accore_payload(
         block_name = str(entity.get("Name") or entity.get("BlockName") or "").strip() or None
         bbox_mm = _bounds_bbox_mm(bounds, factor_mm=factor_mm, translation_mm=translation_mm)
         centroid_mm = _centroid_from_footprint(footprint)
+        if suppress_by_role or layer_is_non_geom:
+            geometry_role = "suppressed"
+            if suppression_reason is None:
+                suppression_reason = (
+                    "layer_role_suppressed"
+                    if suppress_by_role
+                    else "non_geometric_layer_token"
+                )
         candidates.append(
             (
                 area,
@@ -399,6 +465,7 @@ def extract_elements_from_accore_payload(
                     source_ref=f"{path.as_posix()}|{layer}|{entity_type}|{handle}",
                     discipline=discipline,
                     category=f"{entity_type}:{layer}",
+                    layer_raw=layer,
                     footprint_coords_mm=footprint,
                     z_data=ZInterval(
                         level_id=level_id,
@@ -410,6 +477,11 @@ def extract_elements_from_accore_payload(
                         "file": path.name,
                         "source_file": path.as_posix(),
                         "layer": layer,
+                        "raw_layer": layer,
+                        "normalized_layer": layer_resolution.normalized_layer,
+                        "canonical_role": layer_resolution.canonical_role.value,
+                        "layer_rule_confidence": layer_resolution.rule_confidence,
+                        "layer_rule_reason": layer_resolution.rule_reason,
                         "handle": handle,
                         "cad_handle": handle,
                         "entity_type": entity_type,
@@ -440,6 +512,8 @@ def _footprint_from_entity(
     *,
     factor_mm: float,
     translation_mm: tuple[float, float],
+    linear_buffer_mm: float,
+    tesselation_chord_error_mm: float,
 ) -> list[tuple[float, float]] | None:
     entity_type = str(entity.get("Type") or "")
 
@@ -453,7 +527,7 @@ def _footprint_from_entity(
                 entity["_geometry_quality"] = "high"
                 entity["_geometry_role"] = "primary"
                 return translate_footprint(footprint, translation_mm[0], translation_mm[1])
-        footprint = _buffered_line_from_vertices(vertices, factor_mm=factor_mm, width_mm=LINEAR_BUFFER_MM)
+        footprint = _buffered_line_from_vertices(vertices, factor_mm=factor_mm, width_mm=linear_buffer_mm)
         if footprint:
             entity["_geometry_source"] = "dwg_accore_line"
             entity["_geometry_quality"] = "high"
@@ -489,7 +563,8 @@ def _footprint_from_entity(
             radius=radius,
             start_angle=start,
             end_angle=end,
-            width_mm=LINEAR_BUFFER_MM,
+            width_mm=linear_buffer_mm,
+            chord_error_mm=tesselation_chord_error_mm,
         )
         if footprint:
             entity["_geometry_source"] = "dwg_accore_arc"
@@ -509,7 +584,7 @@ def _footprint_from_entity(
                 float(end_point.get("X") or 0.0) * factor_mm,
                 float(end_point.get("Y") or 0.0) * factor_mm,
             ),
-            width_mm=LINEAR_BUFFER_MM,
+            width_mm=linear_buffer_mm,
         )
         if footprint:
             entity["_geometry_source"] = "dwg_accore_line"
@@ -646,21 +721,17 @@ def _buffered_arc(
     start_angle: float,
     end_angle: float,
     width_mm: float,
+    chord_error_mm: float,
 ) -> list[tuple[float, float]] | None:
-    if radius <= 0.0:
-        return None
-    end = end_angle
-    if end <= start_angle:
-        end += 2.0 * math.pi
-    steps = max(8, int(abs(end - start_angle) / (math.pi / 18.0)))
-    points = [
-        (
-            center_x + radius * math.cos(start_angle + (end - start_angle) * step / steps),
-            center_y + radius * math.sin(start_angle + (end - start_angle) * step / steps),
-        )
-        for step in range(steps + 1)
-    ]
-    return _buffered_linestring(points, width_mm=width_mm)
+    return buffered_arc(
+        center_x=center_x,
+        center_y=center_y,
+        radius=radius,
+        start_angle_rad=start_angle,
+        end_angle_rad=end_angle,
+        width_mm=width_mm,
+        chord_error_mm=chord_error_mm,
+    )
 
 
 def _buffered_linestring(
@@ -668,17 +739,7 @@ def _buffered_linestring(
     *,
     width_mm: float,
 ) -> list[tuple[float, float]] | None:
-    line = LineString(points)
-    if line.is_empty or line.length <= 0.0:
-        return None
-    polygon = line.buffer(width_mm, cap_style=2, join_style=2)
-    if not polygon.is_valid:
-        polygon = polygon.buffer(0)
-    if polygon.geom_type == "MultiPolygon":
-        polygon = max(polygon.geoms, key=lambda item: item.area, default=polygon)
-    if polygon.is_empty or polygon.area <= 0.0:
-        return None
-    return [(float(x), float(y)) for x, y in polygon.exterior.coords[:-1]]
+    return buffered_linestring(points, width_mm=width_mm)
 
 
 def _safe_stem(value: str) -> str:

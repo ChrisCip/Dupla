@@ -27,9 +27,11 @@ from coordination.core.registry import (
     ViewLevelPattern,
 )
 from coordination.core.units import from_mm, to_mm
+from coordination.core.tolerances import ClashTolerances
 
 __all__ = [
     "AttachmentPoint",
+    "ClashTolerances",
     "ClashConflict",
     "ClashIncident",
     "Discipline",
