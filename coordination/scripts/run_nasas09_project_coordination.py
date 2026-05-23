@@ -1356,6 +1356,7 @@ def _run_fast_compare(
         candidate_audits,
         required_disciplines=include_disciplines,
         pre_match_candidates=pre_match_candidates if args.cohort_manifest is None else None,
+        trust_cohort_bands=args.cohort_manifest is not None,
     )
     scheduled_pairs = [item for item in pair_schedule if item.scheduled]
     scheduled_file_set = {path for item in scheduled_pairs for path in (item.file_a, item.file_b)}

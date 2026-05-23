@@ -249,6 +249,7 @@ def build_pair_schedule(
     *,
     required_disciplines: tuple[Any, ...],
     pre_match_candidates: list[PreMatchCandidate] | None = None,
+    trust_cohort_bands: bool = False,
 ) -> list[PairScheduleItem]:
     required_values = {
         discipline.value if hasattr(discipline, "value") else str(discipline)
@@ -376,13 +377,14 @@ def build_pair_schedule(
                     continue
                 block_reason = None
                 scheduled = True
-                if left.audit_status != "eligible":
+                _eligible = {"eligible", "needs_alignment"} if trust_cohort_bands else {"eligible"}
+                if left.audit_status not in _eligible:
                     scheduled = False
                     block_reason = f"{left.file_name}:{left.audit_status}"
-                elif right.audit_status != "eligible":
+                elif right.audit_status not in _eligible:
                     scheduled = False
                     block_reason = f"{right.file_name}:{right.audit_status}"
-                elif left.coordinate_band_key != right.coordinate_band_key:
+                elif not trust_cohort_bands and left.coordinate_band_key != right.coordinate_band_key:
                     scheduled = False
                     block_reason = "coordinate_band_mismatch"
                 elif left.level_id != right.level_id:
