@@ -55,6 +55,7 @@ from coordination.reporting.reporting import (
     render_coordination_report_markdown,
     render_primary_incidents_markdown,
 )
+from coordination.reporting.revision_report import write_revision_reports
 from coordination.reporting.tile_renderer import render_all_annotated_tiles, render_all_incident_tiles
 from coordination.selection.coordinate_audit import (
     apply_coordinate_band_gating,
@@ -1540,6 +1541,23 @@ def _run_fast_compare(
         ),
         encoding="utf-8",
     )
+    # ── Revision reports: project file + global consolidated file ──
+    try:
+        project_report_out, project_report_root, general_report = write_revision_reports(
+            repo_root=REPO_ROOT,
+            project_root=nasas_root,
+            output_dir=args.output.parent,
+            project_name=doc.project_name or "Proyecto",
+            primary_payload=primary_payload,
+            scheduled_pair_count=len(scheduled_pairs),
+            generated_at=generated_at,
+        )
+        logger.info("Revision report (output): %s", project_report_out)
+        logger.info("Revision report (project): %s", project_report_root)
+        logger.info("Revision report (general): %s", general_report)
+    except Exception as exc:
+        logger.warning("Revision report generation failed: %s", exc)
+
     rendered_tiles = []
     if primary_incidents:
         try:
@@ -1974,6 +1992,31 @@ def _write_fast_compare_summary(
     if metrics:
         payload.update(metrics)
     args.output.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    try:
+        generated_at = str(payload.get("generated_at") or datetime.now(timezone.utc).isoformat())
+        summary_primary_payload = {
+            "generated_at": generated_at,
+            "project_name": doc.project_name,
+            "analysis_profile": FAST_COMPARE_ANALYSIS_PROFILE,
+            "incident_count": len(primary_incidents),
+            "incident_conflict_count": len(debug_conflicts),
+            "incidents": [
+                incident.model_dump() if hasattr(incident, "model_dump") else dict(incident)
+                for incident in primary_incidents
+            ],
+        }
+        scheduled_pair_count = int((metrics or {}).get("scheduled_pair_count", 0))
+        write_revision_reports(
+            repo_root=REPO_ROOT,
+            project_root=nasas_root,
+            output_dir=args.output.parent,
+            project_name=doc.project_name or "Proyecto",
+            primary_payload=summary_primary_payload,
+            scheduled_pair_count=scheduled_pair_count,
+            generated_at=generated_at,
+        )
+    except Exception as exc:
+        logger.warning("Revision report generation failed in summary path: %s", exc)
     if status == "readiness_only":
         logger.info("Fast compare listo solo para readiness: %s", readiness_md)
         return 0
