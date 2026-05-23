@@ -1,4 +1,44 @@
 role_pairs:
+  # Inherited from default (wall/beam/column/slab combos)
+  - left: WALL
+    right: WALL
+    enabled: true
+  - left: WALL
+    right: COLUMN
+    enabled: true
+  - left: WALL
+    right: BEAM
+    enabled: true
+  - left: WALL
+    right: SLAB
+    enabled: true
+  - left: OPENING
+    right: WALL
+    enabled: true
+  - left: STAIR
+    right: BEAM
+    enabled: true
+  - left: STAIR
+    right: SLAB
+    enabled: true
+  - left: COLUMN
+    right: OPENING
+    enabled: true
+  # TORTUGA-specific: main clash types are SLAB/SLAB (ARQ PLAFON/SOLAR vs EST SOLAR)
+  # and SLAB/BEAM (ARQ ceiling slab vs EST vigas)
+  - left: SLAB
+    right: SLAB
+    enabled: true
+  - left: SLAB
+    right: BEAM
+    enabled: true
+  - left: BEAM
+    right: SLAB
+    enabled: true
+  - left: COLUMN
+    right: SLAB
+    enabled: true
+  # Disable DETAIL/COLUMN noise
   - left: DETAIL
     right: COLUMN
     enabled: false

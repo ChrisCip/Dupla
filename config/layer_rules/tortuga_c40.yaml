@@ -1,4 +1,5 @@
 rules:
+  # ── Muros / Walls ────────────────────────────────────────────────────────
   - discipline: ARQUITECTURA
     pattern: "\\b(MUROS?|WALL|A[-_ ]?WALL)\\b"
     role: WALL
@@ -7,19 +8,62 @@ rules:
     reason: tortuga_arq_walls
 
   - discipline: ESTRUCTURA
-    pattern: "\\b(EST[ ._-]*MUROS?|MUROS? H A|WALL)\\b"
+    pattern: "\\b(EST[ ._-]*MUROS?|MUROS? H A|WALL|CONGRETO|CONCRETE)\\b"
     role: WALL
     priority: 250
     confidence: high
     reason: tortuga_est_walls
 
-  - discipline: ESTRUCTURA
-    pattern: "\\b(COLUMNA|COLUMNAS|COLUMN)\\b"
-    role: COLUMN
-    priority: 240
+  # ── Losas / Slabs  ───────────────────────────────────────────────────────
+  # SOLAR = losa solar (main structural slab in Tortuga)
+  - discipline: "*"
+    pattern: "^SOLAR$"
+    role: SLAB
+    priority: 290
     confidence: high
-    reason: tortuga_est_columns
+    reason: tortuga_solar_slab
 
+  # PLAFON = ceiling/plafond slab face
+  - discipline: "*"
+    pattern: "^PLAF[OÓ]N$"
+    role: SLAB
+    priority: 285
+    confidence: high
+    reason: tortuga_plafon_slab
+
+  # Techos 1, Techos 2do, TECHOS* = roof slabs
+  - discipline: "*"
+    pattern: "(?i)^TECHOS?(?:\\s+\\S+)?$"
+    role: SLAB
+    priority: 280
+    confidence: high
+    reason: tortuga_techo_slab
+
+  # piso, hatch piso = floor slab
+  - discipline: "*"
+    pattern: "(?i)^(?:HATCH\\s+)?PISO$"
+    role: SLAB
+    priority: 270
+    confidence: medium
+    reason: tortuga_piso_slab
+
+  # EST. ZAPATAS = footing plates
+  - discipline: ESTRUCTURA
+    pattern: "(?i)EST[.\\s]+ZAPATAS?"
+    role: SLAB
+    priority: 265
+    confidence: high
+    reason: tortuga_zapatas
+
+  # piscina = pool slab/shell
+  - discipline: "*"
+    pattern: "(?i)^PISCINA$"
+    role: SLAB
+    priority: 260
+    confidence: medium
+    reason: tortuga_piscina
+
+  # ── Vigas / Beams ────────────────────────────────────────────────────────
   - discipline: ESTRUCTURA
     pattern: "\\b(VIGA|VIGAS|BEAM|LOSA|SLAB)\\b"
     role: BEAM
@@ -27,9 +71,82 @@ rules:
     confidence: medium
     reason: tortuga_est_beam_like
 
+  # madera = timber beam/structure
+  - discipline: "*"
+    pattern: "(?i)^MADERA$"
+    role: BEAM
+    priority: 225
+    confidence: medium
+    reason: tortuga_madera_beam
+
+  # 1-Acero, EST. 1-Acero = steel structure
+  - discipline: ESTRUCTURA
+    pattern: "(?i)(EST[.\\s]+)?1[-\\s]+ACERO"
+    role: BEAM
+    priority: 225
+    confidence: medium
+    reason: tortuga_acero_beam
+
+  # ── Columnas ────────────────────────────────────────────────────────────
+  - discipline: ESTRUCTURA
+    pattern: "\\b(COLUMNA|COLUMNAS|COLUMN)\\b"
+    role: COLUMN
+    priority: 240
+    confidence: high
+    reason: tortuga_est_columns
+
+  # ── Sections / Detalles  ─────────────────────────────────────────────────
+  # SE-2, SE-3, SE-4 = sección estructural (section cut markers, not geometry)
+  - discipline: "*"
+    pattern: "(?i)^SE[-_]\\d+$"
+    role: DETAIL
+    priority: 300
+    confidence: high
+    reason: tortuga_section_marker
+
+  # corte = section cut views
+  - discipline: "*"
+    pattern: "(?i)^CORTE$"
+    role: DETAIL
+    priority: 295
+    confidence: high
+    reason: tortuga_corte_detail
+
+  # RELLENO SECCION = section fill hatch
+  - discipline: "*"
+    pattern: "(?i)RELLENO.+SECC"
+    role: DETAIL
+    priority: 295
+    confidence: high
+    reason: tortuga_relleno_seccion
+
+  # 2-Detalles, A-DETL-IDEN = detail layers
+  - discipline: "*"
+    pattern: "(?i)(^2[-\\s]DETALL|A[-_]DETL)"
+    role: DETAIL
+    priority: 280
+    confidence: medium
+    reason: tortuga_detail_misc
+
   - discipline: "*"
     pattern: "\\b(DETALLE|DETAIL|SIMBOLO|SIMBOLOS)\\b"
     role: DETAIL
     priority: 280
     confidence: medium
     reason: tortuga_detail
+
+  # EL0-EL4 = elevation layers (not structural geometry)
+  - discipline: "*"
+    pattern: "(?i)^EL\\d$"
+    role: DETAIL
+    priority: 275
+    confidence: medium
+    reason: tortuga_elevation_layer
+
+  # A-FLOR = floor plan annotation/grid layer
+  - discipline: "*"
+    pattern: "(?i)^A[-_]FLOR$"
+    role: DETAIL
+    priority: 270
+    confidence: medium
+    reason: tortuga_aflor_detail
