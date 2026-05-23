@@ -73,6 +73,7 @@ services:
       context: ./processor
       dockerfile: Dockerfile
     command: ["python", "worker.py"]
+    restart: unless-stopped
     env_file:
       - ./backend/.env
     environment:
@@ -109,6 +110,7 @@ services:
       context: ./coordination-service
       dockerfile: Dockerfile
     command: ["python", "worker.py"]
+    restart: unless-stopped
     env_file:
       - ./backend/.env
     environment:
