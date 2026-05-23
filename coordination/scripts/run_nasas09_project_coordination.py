@@ -1835,12 +1835,13 @@ def _build_fast_compare_primary_conflicts(
     conflicts: list[ClashConflict] = []
     required = {discipline.value for discipline in required_disciplines}
     for (_, _level_id), group in sorted(grouped.items()):
-        disciplines = {element.discipline.value for element in group}
-        if not required.issubset(disciplines):
+        scoped = [element for element in group if element.discipline.value in required]
+        disciplines = {element.discipline.value for element in scoped}
+        if len(disciplines) < 2:
             continue
         conflicts.extend(
             clash_pairs(
-                group,
+                scoped,
                 registry,
                 tolerances=tolerances,
                 strict_levels=strict_levels,
@@ -1875,11 +1876,12 @@ def _build_fast_compare_debug_conflicts(
     required = {discipline.value for discipline in required_disciplines}
     debug: list[ClashConflict] = []
     for _, group in sorted(grouped.items()):
-        disciplines = {element.discipline.value for element in group}
-        if not required.issubset(disciplines):
+        scoped = [element for element in group if element.discipline.value in required]
+        disciplines = {element.discipline.value for element in scoped}
+        if len(disciplines) < 2:
             continue
         for conflict in clash_pairs(
-            group,
+            scoped,
             registry,
             tolerances=tolerances,
             strict_levels=strict_levels,

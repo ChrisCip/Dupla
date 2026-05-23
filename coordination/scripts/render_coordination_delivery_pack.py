@@ -146,6 +146,7 @@ def _render_result_markdown(
             f"- Arquitectura: `{reader_sections.get('arquitectura', {}).get('coverage', 'not_in_run')}`",
             f"- Electrico: `{reader_sections.get('electrico', {}).get('coverage', 'not_in_run')}`",
             f"- Sanitario: `{reader_sections.get('sanitario', {}).get('coverage', 'not_in_run')}`",
+            f"- Mecanico: `{reader_sections.get('mecanico', {}).get('coverage', 'not_in_run')}`",
             "",
             "## Ruido tecnico separado",
             f"- Debug conflicts: `{noise.get('debug_conflict_count', 0)}`",

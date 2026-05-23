@@ -15,7 +15,13 @@ from coordination.core.registry import ProjectLevelRegistryDocument
 from coordination.selection.source_selection import normalize_source_text, relative_posix
 
 FAST_COMPARE_ANALYSIS_PROFILE = "fast_compare"
-FAST_COMPARE_DISCIPLINES = (Discipline.ARCH, Discipline.STRUC)
+FAST_COMPARE_DISCIPLINES = (
+    Discipline.ARCH,
+    Discipline.STRUC,
+    Discipline.MEP_ELEC,
+    Discipline.MEP_PLUMBING,
+    Discipline.MEP_HVAC,
+)
 FAST_COMPARE_LEVEL_THICKNESS_MM = {
     "CIMENTACION": 800.0,
     "SOTANO": 400.0,

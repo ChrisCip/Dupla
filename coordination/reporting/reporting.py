@@ -10,6 +10,36 @@ from typing import Any
 
 from coordination.learning.pattern_learner import override_confidence
 
+_READER_PROFILE_KEYS: tuple[str, ...] = ("arquitectura", "electrico", "sanitario", "mecanico")
+
+_DISCIPLINE_PROFILE_ALIASES: dict[str, frozenset[str]] = {
+    "arquitectura": frozenset({"ARQUITECTURA"}),
+    "estructura": frozenset({"ESTRUCTURA"}),
+    "electrico": frozenset({"ELECTRICIDAD", "ELECTRICO"}),
+    "sanitario": frozenset({"FONTANERIA", "HIDROSANITARIO"}),
+    "mecanico": frozenset({"CLIMATIZACION", "MECANICO"}),
+}
+
+_DISCIPLINE_LABELS: dict[str, str] = {
+    "ARQUITECTURA": "Arquitectura",
+    "ESTRUCTURA": "Estructura",
+    "ELECTRICIDAD": "Electrico",
+    "ELECTRICO": "Electrico",
+    "FONTANERIA": "Sanitario",
+    "HIDROSANITARIO": "Sanitario",
+    "CLIMATIZACION": "Mecanico",
+    "MECANICO": "Mecanico",
+}
+
+
+def _discipline_in_profile(discipline: str, profile_key: str) -> bool:
+    aliases = _DISCIPLINE_PROFILE_ALIASES.get(profile_key, frozenset())
+    return discipline.upper() in aliases
+
+
+def _discipline_values_for_profile(profile_key: str) -> frozenset[str]:
+    return _DISCIPLINE_PROFILE_ALIASES.get(profile_key, frozenset())
+
 _LAYER_ELEMENT_LABELS: dict[str, str] = {
     "PLAFONES": "plafón",
     "PLAFON": "plafón",
@@ -333,7 +363,7 @@ def render_coordination_report_markdown(
 
     lines.append("")
     lines.append("## Reader Sections")
-    for profile_key in ("arquitectura", "electrico", "sanitario"):
+    for profile_key in _READER_PROFILE_KEYS:
         section = context["reader_sections"][profile_key]
         lines.append("")
         lines.append(f"### {section['title']}")
@@ -437,11 +467,11 @@ def build_analysis_bot_context(
     audits = coordinate_audit_payload.get("audits") or []
     scheduled_pairs = [item for item in pair_schedule_payload.get("pairs") or [] if bool(item.get("scheduled"))]
     coverage = {
-        "arquitectura": _coverage_for_bot(audits, "ARQUITECTURA"),
-        "estructura": _coverage_for_bot(audits, "ESTRUCTURA"),
-        "electrico": _coverage_for_bot(audits, "ELECTRICO"),
-        "sanitario": _coverage_for_bot(audits, "HIDROSANITARIO"),
-        "mecanico": _coverage_for_bot(audits, "MECANICO"),
+        "arquitectura": _coverage_for_bot(audits, "arquitectura"),
+        "estructura": _coverage_for_bot(audits, "estructura"),
+        "electrico": _coverage_for_bot(audits, "electrico"),
+        "sanitario": _coverage_for_bot(audits, "sanitario"),
+        "mecanico": _coverage_for_bot(audits, "mecanico"),
     }
     semantic_summary = semantic_elements_payload or {}
     mapping_summary = clash_element_links_payload or {}
@@ -762,6 +792,7 @@ def render_coordination_human_report_markdown(
             f"- Arquitectura: `{reader_sections.get('arquitectura', {}).get('coverage', 'not_in_run')}`",
             f"- Electrico: `{reader_sections.get('electrico', {}).get('coverage', 'not_in_run')}`",
             f"- Sanitario: `{reader_sections.get('sanitario', {}).get('coverage', 'not_in_run')}`",
+            f"- Mecanico: `{reader_sections.get('mecanico', {}).get('coverage', 'not_in_run')}`",
             "",
             "## Ruido tecnico y limites del run",
             f"- Debug conflicts: `{noise.get('debug_conflict_count', 0)}`",
@@ -1054,8 +1085,13 @@ def _incident_card(
     return card
 
 
-def _coverage_for_bot(audits: list[dict[str, Any]], discipline: str) -> str:
-    statuses = [str(item.get("audit_status") or "unknown") for item in audits if str(item.get("discipline") or "") == discipline]
+def _coverage_for_bot(audits: list[dict[str, Any]], profile_key: str) -> str:
+    aliases = _discipline_values_for_profile(profile_key)
+    statuses = [
+        str(item.get("audit_status") or "unknown")
+        for item in audits
+        if str(item.get("discipline") or "").upper() in aliases
+    ]
     if not statuses:
         return "not_in_run"
     if any(status == "eligible" for status in statuses):
@@ -1095,13 +1131,20 @@ def _reader_sections(
         "arquitectura": "Arquitectura",
         "electrico": "Electrico",
         "sanitario": "Sanitario",
+        "mecanico": "Mecanico",
     }
     audits = coordinate_audit_payload.get("audits") or []
-    audit_disciplines = {str(item.get("discipline") or "") for item in audits}
+    audit_disciplines = {str(item.get("discipline") or "").upper() for item in audits}
     coverage_map = {
-        "arquitectura": "ARQUITECTURA" in audit_disciplines or any("ARQUITECTURA" in card["disciplines"] for card in cards),
-        "electrico": "ELECTRICO" in audit_disciplines or any("ELECTRICO" in card["disciplines"] for card in cards),
-        "sanitario": "HIDROSANITARIO" in audit_disciplines or any("HIDROSANITARIO" in card["disciplines"] for card in cards),
+        profile_key: any(
+            discipline in audit_disciplines
+            for discipline in _discipline_values_for_profile(profile_key)
+        )
+        or any(
+            any(_discipline_in_profile(discipline, profile_key) for discipline in card["disciplines"])
+            for card in cards
+        )
+        for profile_key in _READER_PROFILE_KEYS
     }
 
     sections: dict[str, dict[str, Any]] = {}
@@ -1263,26 +1306,23 @@ def _recommended_action(
         )
     if {"ARQUITECTURA", "ESTRUCTURA"}.issubset(discipline_set):
         return f"Validar si la geometria arquitectonica invade espacio estructural o si solo traza un contorno, y luego {urgency}."
-    if {"ARQUITECTURA", "ELECTRICO"}.issubset(discipline_set):
+    if {"ARQUITECTURA", "ELECTRICIDAD"}.issubset(discipline_set) or {"ARQUITECTURA", "ELECTRICO"}.issubset(discipline_set):
         return f"Revisar ruta, reserva y holguras entre arquitectura y el trazado electrico, y luego {urgency}."
-    if {"ARQUITECTURA", "HIDROSANITARIO"}.issubset(discipline_set):
+    if {"ARQUITECTURA", "FONTANERIA"}.issubset(discipline_set) or {"ARQUITECTURA", "HIDROSANITARIO"}.issubset(discipline_set):
         return f"Revisar ruta de tuberias, reserva de shaft y supuestos de pendiente u holgura, y luego {urgency}."
-    if {"ESTRUCTURA", "ELECTRICO"}.issubset(discipline_set):
+    if {"ARQUITECTURA", "CLIMATIZACION"}.issubset(discipline_set) or {"ARQUITECTURA", "MECANICO"}.issubset(discipline_set):
+        return f"Revisar ductos, equipos y reservas de shaft entre arquitectura y mecanica, y luego {urgency}."
+    if {"ESTRUCTURA", "ELECTRICIDAD"}.issubset(discipline_set) or {"ESTRUCTURA", "ELECTRICO"}.issubset(discipline_set):
         return f"Confirmar apertura, manga o estrategia de reruteo antes de coordinar la incidencia, y luego {urgency}."
-    if {"ESTRUCTURA", "HIDROSANITARIO"}.issubset(discipline_set):
+    if {"ESTRUCTURA", "FONTANERIA"}.issubset(discipline_set) or {"ESTRUCTURA", "HIDROSANITARIO"}.issubset(discipline_set):
         return f"Confirmar apertura, manga o estrategia de reruteo para sistemas hidrosanitarios, y luego {urgency}."
+    if {"ESTRUCTURA", "CLIMATIZACION"}.issubset(discipline_set) or {"ESTRUCTURA", "MECANICO"}.issubset(discipline_set):
+        return f"Confirmar reserva estructural, shaft o soporte para equipos/ductos mecanicos, y luego {urgency}."
     return f"Revisar el par directamente y {urgency}."
 
 
 def _action_owner(disciplines: tuple[str, str]) -> str:
-    owner_map = {
-        "ARQUITECTURA": "Arquitectura",
-        "ELECTRICO": "Electrico",
-        "ESTRUCTURA": "Estructura",
-        "HIDROSANITARIO": "Sanitario",
-        "MECANICO": "Mecanico",
-    }
-    return " + ".join(owner_map.get(item, item.title()) for item in disciplines)
+    return " + ".join(_DISCIPLINE_LABELS.get(item, item.title()) for item in disciplines)
 
 
 def _reader_profiles(
@@ -1295,16 +1335,21 @@ def _reader_profiles(
     tokens = _profile_tokens([*disciplines, *file_names, *layers])
     if "ARQUITECTURA" in disciplines:
         profiles.add("arquitectura")
-    if "ELECTRICO" in disciplines or any(
+    if any(_discipline_in_profile(discipline, "electrico") for discipline in disciplines) or any(
         token.startswith(("ELEC", "LIGHT", "POWER", "TOMA", "PANEL", "SWITCH", "OUTLET", "LUMIN"))
         for token in tokens
     ):
         profiles.add("electrico")
-    if "HIDROSANITARIO" in disciplines or any(
-        token.startswith(("SANIT", "AGUA", "DRENAJ", "PIPE", "TUB", "DESAG", "WASTE", "VENT"))
+    if any(_discipline_in_profile(discipline, "sanitario") for discipline in disciplines) or any(
+        token.startswith(("SANIT", "AGUA", "DRENAJ", "PIPE", "TUB", "DESAG", "WASTE", "VENT", "FONTAN"))
         for token in tokens
     ):
         profiles.add("sanitario")
+    if any(_discipline_in_profile(discipline, "mecanico") for discipline in disciplines) or any(
+        token.startswith(("MECAN", "HVAC", "CLIM", "DUCT", "AA", "AIRE", "EXTRAC"))
+        for token in tokens
+    ):
+        profiles.add("mecanico")
     return sorted(profiles)
 
 
@@ -1313,6 +1358,7 @@ def _reader_reason(*, disciplines: tuple[str, str], severity: str) -> dict[str, 
         "arquitectura": "la geometria arquitectonica o la reserva espacial estan implicadas",
         "electrico": "la ruta electrica o la reserva podria requerir ajuste",
         "sanitario": "la ruta sanitaria, el shaft o la pendiente podria requerir ajuste",
+        "mecanico": "ductos, equipos o reservas mecanicas podrian requerir ajuste",
     }
     if "ESTRUCTURA" in disciplines and severity in {"critical", "high"}:
         base["arquitectura"] = "una decision arquitectonica puede crear o resolver un conflicto estructural"

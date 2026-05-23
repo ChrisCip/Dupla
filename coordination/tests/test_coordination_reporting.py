@@ -143,6 +143,7 @@ def test_render_coordination_report_markdown_contains_interdisciplinary_sections
     assert "### Arquitectura" in markdown
     assert "### Electrico" in markdown
     assert "### Sanitario" in markdown
+    assert "### Mecanico" in markdown
     assert "incident_0001" in markdown
 
 

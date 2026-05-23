@@ -86,7 +86,7 @@ def _severity_from_area(area_mm2: float) -> str:
 _INSTRUCTIONS = """---
 
 > **Cómo usar este documento**
-> Este reporte es tu bitácora de trabajo. El programa detectó posibles conflictos entre planos de arquitectura y estructura. Tu labor es abrir los DWGs, ir a cada coordenada indicada, mirar con tus propios ojos y decidir: ¿es un clash real o es ruido? Al final de cada sección hay una tabla de validación donde vas marcando.
+> Este reporte es tu bitácora de trabajo. El programa detectó posibles conflictos entre planos de **Arquitectura, Estructura, Eléctrico, Hidrosanitario y Mecánico**. Tu labor es abrir los DWGs, ir a cada coordenada indicada, mirar con tus propios ojos y decidir: ¿es un clash real o es ruido? Al final de cada sección hay una tabla de validación donde vas marcando.
 
 ---
 
@@ -95,8 +95,8 @@ _INSTRUCTIONS = """---
 ### Paso 1 — Abrir los dos archivos en AutoCAD
 
 1. Abre AutoCAD.
-2. Abre el **Plano A** (Arquitectura) desde `Archivo → Abrir`.
-3. Abre el **Plano B** (Estructura) en la misma sesión: `Archivo → Abrir` nuevamente.
+2. Abre el **Plano A** (primera disciplina del par) desde `Archivo → Abrir`.
+3. Abre el **Plano B** (segunda disciplina) en la misma sesión: `Archivo → Abrir` nuevamente.
 4. Para ver ambos superpuestos: activa **"Ventanas en mosaico"** (`Ctrl + Alt + T`) o usa `Vista → Ventanas → Mosaico vertical`.
 5. Alternativa: usa **DWG Compare** (`dwgcompare` en la línea de comandos) si tienes AutoCAD 2019+.
 
