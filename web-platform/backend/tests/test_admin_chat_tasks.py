@@ -1,0 +1,245 @@
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_admin_list_users_master_ok(client, master_auth_headers_async: dict[str, str]):
+    res = await client.get("/api/admin/users", headers=master_auth_headers_async)
+    assert res.status_code == 200
+    body = res.json()
+    assert isinstance(body, list)
+    emails = {u["email"] for u in body}
+    assert "master@dupla.demo" in emails
+    assert "tester@dupla.demo" in emails
+    assert "worker@dupla.demo" in emails
+
+
+@pytest.mark.asyncio
+async def test_admin_forbidden_for_coordinator(client, auth_headers_async: dict[str, str]):
+    res = await client.get("/api/admin/users", headers=auth_headers_async)
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_forbidden_for_worker(client):
+    res = await client.post(
+        "/api/auth/token",
+        data={"username": "worker@dupla.demo", "password": "workerpass123"},
+    )
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    res = await client.get("/api/admin/users", headers=headers)
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_create_user(client, master_auth_headers_async: dict[str, str]):
+    res = await client.post(
+        "/api/admin/users",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "first_name": "Nuevo",
+            "last_name": "Usuario",
+            "email": "newuser@dupla.demo",
+            "password": "longpassword1",
+            "role": "PRESUPUESTO",
+            "module_ids": [1],
+        },
+    )
+    assert res.status_code == 201, res.text
+    assert res.json()["email"] == "newuser@dupla.demo"
+
+
+@pytest.mark.asyncio
+async def test_chat_flow(client, auth_headers_async: dict[str, str]):
+    convs = await client.get("/api/chat/conversations", headers=auth_headers_async)
+    assert convs.status_code == 200
+    conv_list = convs.json()
+    assert len(conv_list) >= 1
+    general = next(c for c in conv_list if c["kind"] == "GENERAL")
+    general_uuid = general["uuid"]
+
+    empty = await client.get("/api/chat/messages", headers=auth_headers_async)
+    assert empty.status_code == 200
+    assert empty.json() == []
+
+    post = await client.post(
+        "/api/chat/messages",
+        headers={**auth_headers_async, "Content-Type": "application/json"},
+        json={"body": "Hola equipo"},
+    )
+    assert post.status_code == 201, post.text
+    msg = post.json()
+    assert msg["body"] == "Hola equipo"
+    assert msg["conversation_uuid"] == general_uuid
+    mid = msg["uuid"]
+
+    again = await client.get("/api/chat/messages", headers=auth_headers_async)
+    assert again.status_code == 200
+    assert len(again.json()) == 1
+
+    after = await client.get(f"/api/chat/messages?after_uuid={mid}", headers=auth_headers_async)
+    assert after.status_code == 200
+    assert after.json() == []
+
+    scoped = await client.get(
+        f"/api/chat/conversations/{general_uuid}/messages",
+        headers=auth_headers_async,
+    )
+    assert scoped.status_code == 200
+    assert len(scoped.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_chat_direct_between_users(client, auth_headers_async: dict[str, str]):
+    res = await client.post(
+        "/api/auth/token",
+        data={"username": "worker@dupla.demo", "password": "workerpass123"},
+    )
+    assert res.status_code == 200
+    worker_token = res.json()["access_token"]
+    worker_headers = {"Authorization": f"Bearer {worker_token}"}
+
+    me = await client.get("/api/me", headers=auth_headers_async)
+    assert me.status_code == 200
+    tester_uuid = me.json()["uuid"]
+
+    open_dm = await client.post(
+        "/api/chat/conversations/direct",
+        headers={**worker_headers, "Content-Type": "application/json"},
+        json={"user_uuid": str(tester_uuid)},
+    )
+    assert open_dm.status_code == 200, open_dm.text
+    dm = open_dm.json()
+    assert dm["kind"] == "DIRECT"
+    dm_uuid = dm["uuid"]
+
+    send = await client.post(
+        f"/api/chat/conversations/{dm_uuid}/messages",
+        headers={**worker_headers, "Content-Type": "application/json"},
+        json={"body": "Hola coordinador"},
+    )
+    assert send.status_code == 201, send.text
+    assert send.json()["conversation_uuid"] == dm_uuid
+
+    tester_convs = await client.get("/api/chat/conversations", headers=auth_headers_async)
+    assert tester_convs.status_code == 200
+    titles = {c["uuid"]: c["display_title"] for c in tester_convs.json()}
+    assert dm_uuid in titles
+
+    msgs = await client.get(
+        f"/api/chat/conversations/{dm_uuid}/messages",
+        headers=auth_headers_async,
+    )
+    assert msgs.status_code == 200
+    assert len(msgs.json()) == 1
+    assert msgs.json()[0]["body"] == "Hola coordinador"
+
+
+@pytest.mark.asyncio
+async def test_chat_create_group(client, auth_headers_async: dict[str, str]):
+    worker_login = await client.post(
+        "/api/auth/token",
+        data={"username": "worker@dupla.demo", "password": "workerpass123"},
+    )
+    assert worker_login.status_code == 200
+    worker_token = worker_login.json()["access_token"]
+    worker_headers = {"Authorization": f"Bearer {worker_token}"}
+    worker_me = await client.get("/api/me", headers=worker_headers)
+    assert worker_me.status_code == 200
+    worker_uuid = worker_me.json()["uuid"]
+
+    grp = await client.post(
+        "/api/chat/conversations/group",
+        headers={**auth_headers_async, "Content-Type": "application/json"},
+        json={"title": "Equipo obra", "member_uuids": [str(worker_uuid)]},
+    )
+    assert grp.status_code == 201, grp.text
+    body = grp.json()
+    assert body["kind"] == "GROUP"
+    assert body["display_title"] == "Equipo obra"
+    gid = body["uuid"]
+
+    post = await client.post(
+        f"/api/chat/conversations/{gid}/messages",
+        headers={**auth_headers_async, "Content-Type": "application/json"},
+        json={"body": "Aviso del grupo"},
+    )
+    assert post.status_code == 201
+
+    worker_msgs = await client.get(
+        f"/api/chat/conversations/{gid}/messages",
+        headers=worker_headers,
+    )
+    assert worker_msgs.status_code == 200
+    assert len(worker_msgs.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_task_board_gerencia_can_create_and_patch(client, master_auth_headers_async: dict[str, str]):
+    board = await client.get("/api/tasks/board", headers=master_auth_headers_async)
+    assert board.status_code == 200
+    lists = board.json()["lists"]
+    assert len(lists) >= 1
+
+    list_uuid = lists[0]["uuid"]
+    create = await client.post(
+        "/api/tasks/cards",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"list_uuid": str(list_uuid), "title": "Tarea demo"},
+    )
+    assert create.status_code == 201, create.text
+    card_id = create.json()["uuid"]
+
+    patch = await client.patch(
+        f"/api/tasks/cards/{card_id}",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"title": "Actualizado por gerencia"},
+    )
+    assert patch.status_code == 200, patch.text
+    assert patch.json()["title"] == "Actualizado por gerencia"
+
+
+@pytest.mark.asyncio
+async def test_task_board_worker_create_and_move(client):
+    res = await client.post(
+        "/api/auth/token",
+        data={"username": "worker@dupla.demo", "password": "workerpass123"},
+    )
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    board = await client.get("/api/tasks/board", headers=headers)
+    assert board.status_code == 200
+    lists = board.json()["lists"]
+    a, b = lists[0]["uuid"], lists[1]["uuid"]
+
+    create = await client.post(
+        "/api/tasks/cards",
+        headers={**headers, "Content-Type": "application/json"},
+        json={"list_uuid": str(a), "title": "Moverme"},
+    )
+    assert create.status_code == 201, create.text
+    card_id = create.json()["uuid"]
+
+    patch = await client.patch(
+        f"/api/tasks/cards/{card_id}",
+        headers={**headers, "Content-Type": "application/json"},
+        json={"list_uuid": str(b), "position": 0},
+    )
+    assert patch.status_code == 200, patch.text
+    assert patch.json()["list_uuid"] == b
+
+
+@pytest.mark.asyncio
+async def test_task_board_coordinator_can_create_card(client, auth_headers_async: dict[str, str]):
+    board = await client.get("/api/tasks/board", headers=auth_headers_async)
+    assert board.status_code == 200
+    list_uuid = board.json()["lists"][0]["uuid"]
+    create = await client.post(
+        "/api/tasks/cards",
+        headers={**auth_headers_async, "Content-Type": "application/json"},
+        json={"list_uuid": str(list_uuid), "title": "Tarjeta coordinador"},
+    )
+    assert create.status_code == 201, create.text

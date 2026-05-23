@@ -1,0 +1,57 @@
+export type PhaseHint = {
+  title: string
+  body: string
+  tabId: 'resumen' | 'flujo' | 'documentos' | 'revisiones' | 'historial' | 'pliego' | 'hub'
+  cta: string
+}
+
+export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
+  BOOTSTRAPPING: {
+    title: 'Arranque del proyecto',
+    body: 'Completa el checklist de documentos y guárdalo. Luego avanza la fase cuando esté listo.',
+    tabId: 'flujo',
+    cta: 'Ir a Flujo',
+  },
+  AWAITING_FILES: {
+    title: 'Subir archivos',
+    body: 'Carga planos (DWG/DXF), PDF, IFC u otros adjuntos permitidos en Archivos. Con al menos un archivo cargado, puedes avanzar a revisión de arquitectura.',
+    tabId: 'documentos',
+    cta: 'Ir a Archivos',
+  },
+  ARCHITECTURE_REVIEW: {
+    title: 'Revisión de arquitectura',
+    body: 'Registra la decisión (aprobado / rechazo / parcial) y las notas en Revisiones. Con aprobación, el siguiente paso formal es el pliego de condiciones antes del presupuesto.',
+    tabId: 'revisiones',
+    cta: 'Ir a Revisiones',
+  },
+  SPECIFICATIONS: {
+    title: 'Pliego de condiciones',
+    body: 'Cuadrícula por capítulos de obra (preliminares, cimentación, estructura, instalaciones, acabados, carpintería, aparatos y cierre): unidad, cantidad y precio unitario por partida. Guarda, revisa la lista lateral y pide aprobación antes de avanzar a Presupuesto.',
+    tabId: 'pliego',
+    cta: 'Ir al Pliego',
+  },
+  BUDGETING_PIPELINE: {
+    title: 'Pipeline de presupuesto',
+    body: 'Con el pliego de condiciones cerrado, trabaja cotizaciones, volumetría y análisis; registra subcontratos si aplica.',
+    tabId: 'flujo',
+    cta: 'Ir a Flujo — presupuesto',
+  },
+  MANAGEMENT_APPROVAL: {
+    title: 'Aprobación de gerencia',
+    body: 'El presupuesto interno está listo: validación formal de gerencia antes de registrar la versión aprobada por el cliente.',
+    tabId: 'flujo',
+    cta: 'Ir a Flujo',
+  },
+  BUDGET_APPROVED: {
+    title: 'Presupuesto aprobado',
+    body: 'Continúa con archivos, el pliego y el control de entregas; cuando el proyecto esté cerrado, avanza a la fase final «Completo».',
+    tabId: 'documentos',
+    cta: 'Ir a Archivos',
+  },
+  COMPLETE: {
+    title: 'Proyecto completo',
+    body: 'Fase final. Puedes consultar archivos, exportaciones e historial del proyecto.',
+    tabId: 'flujo',
+    cta: 'Ir a Flujo',
+  },
+}

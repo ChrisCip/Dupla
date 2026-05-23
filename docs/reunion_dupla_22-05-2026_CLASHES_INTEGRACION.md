@@ -9,7 +9,7 @@ Objetivo: Integrar el motor de clashes de `coordination/` en la app web (Fase 5)
 | Repo / carpeta | Rol | Branch de trabajo |
 |---|---|---|
 | `Dupla/` (motor) | Detección 2.5D, reporting MD/JSON | `refactor-clash-segmentado` |
-| `dupla-feat-budget-analysis-pricing/` (app web) | UI Hallazgos, jobs, PDFs | `feat-budget-analysis-pricing` (local) |
+| `Dupla/web-platform/` (app web) | UI Hallazgos, jobs, PDFs, Docker | `refactor-clash-segmentado` |
 
 App en Docker: `http://localhost:5173` · API: `http://localhost:8000/docs`
 
@@ -125,7 +125,7 @@ Rutas API:
 
 ---
 
-## 8) Lo implementado en la app web (`dupla-feat-budget-analysis-pricing/`)
+## 8) Lo implementado en la app web (`Dupla/web-platform/`)
 
 | Área | Qué hay |
 |---|---|
@@ -141,7 +141,7 @@ Rutas API:
 
 1. Renombrar runner NASAS → entrypoint genérico (`run_clash_coordination.py`).
 2. Conectar salidas de clash al pliego Fase 6 en `core/pipeline.py`.
-3. Git remoto formal para monorepo app web (hoy carpeta local sin `.git` remoto configurado).
+3. Git remoto unificado en `github.com/ChrisCip/Dupla`, branch `refactor-clash-segmentado` (app en `web-platform/`).
 4. Regenerar nginx upstream tras rebuild backend (ver `frontend/nginx.conf` con resolver Docker).
 5. Opcional: fuentes DejaVu embebidas en imagen Docker para acentos estables en PDF.
 

@@ -1,0 +1,6 @@
+# Scripts ejecutados en Linux/containers: CRLF rompe shebangs (#!/usr/bin/env sh).
+*.sh text eol=lf
+
+# Definición de imagen y compose (consistente en todos los OS)
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
