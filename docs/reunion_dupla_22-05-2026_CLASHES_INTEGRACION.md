@@ -1,147 +1,175 @@
-# Instructivo de Integración de Clashes al Pipeline Central
+# Instructivo de Integración de Clashes — Reunión Dupla 22-05-2026
 
-Fecha: 22-05-2026  
-Audiencia: Programador de seguimiento (reunión Dupla 22-05-2026)  
-Objetivo: Integrar el motor de clashes de `coordination/` dentro de la Fase 5 del flujo principal de Dupla, manteniendo defensibilidad técnica y trazabilidad operativa.
+Fecha: 22-05-2026 (actualizado tras integración UI + PDF)  
+Audiencia: Equipo Dupla (reunión de seguimiento)  
+Objetivo: Integrar el motor de clashes de `coordination/` en la app web (Fase 5) y dejar trazabilidad operativa para revisión manual en AutoCAD.
 
----
+**Repos involucrados**
 
-## 1) Resumen ejecutivo
-
-Dupla hoy tiene dos tracks productivos:
-
-- Presupuesto (pipeline central): `dupla_run_full_analysis_local.py` + `core/pipeline.py`
-- Coordinación/clashes (pipeline paralelo): `coordination/` + `coordination/scripts/run_nasas09_project_coordination.py`
-
-El motor de clashes ya está maduro para uso operativo (selección -> audit -> schedule -> extracción -> clash -> reportes), pero aún no está acoplado al flujo principal de Fase 5.
-
-### Estado actual por proyecto
-
-| Proyecto | Estado V2 | Lectura |
+| Repo / carpeta | Rol | Branch de trabajo |
 |---|---|---|
-| TORTUGA C40 | 16 incidencias primarias | Clashes defendibles (SLAB/SLAB) |
-| SERENA 18 | 0 incidencias primarias | V1 era mayormente ruido de anotación (MARCO/PROYECCION) |
-| NASAS 09 | 0 incidencias primarias | Consistente con dataset actual y filtros de calidad |
+| `Dupla/` (motor) | Detección 2.5D, reporting MD/JSON | `refactor-clash-segmentado` |
+| `dupla-feat-budget-analysis-pricing/` (app web) | UI Hallazgos, jobs, PDFs | `feat-budget-analysis-pricing` (local) |
+
+App en Docker: `http://localhost:5173` · API: `http://localhost:8000/docs`
 
 ---
 
-## 2) Posición en flujo principal (Fase 5)
+## 1) Resumen ejecutivo para la reunión
+
+Dupla tiene **dos tracks** que ya convergen en la pestaña **Hallazgos**:
+
+- **Presupuesto** — pipeline central (`core/pipeline.py`, processor APS).
+- **Coordinación / clashes** — motor `coordination/` + servicio `coordination-service` en Docker.
+
+**Lo que ya funciona end-to-end (demo TEST_01):**
+
+1. Subir DWG a una carpeta del proyecto (p. ej. `TEST_01`).
+2. En **Hallazgos**, lanzar análisis de clashes (job async vía Redis).
+3. Ver estado del job, resumen y artefactos en `job.result`.
+4. Descargar **PDF humano** (guía de revisión para arquitecto) y **PDF técnico** (auditoría).
+5. El motor Dupla genera en paralelo `REVISION_CLASHES_ARQUITECTO_*.md`, `primary_incidents.json` y `coordination_report_context.json`.
+
+**Mensaje clave para el equipo:** el markdown de revisión ya tenía capas, centros y comandos `Z W`; los PDFs ahora consumen las **mismas fuentes** gracias a un adaptador de normalización (`normalize_incident_for_reports`).
+
+---
+
+## 2) Estado por proyecto (motor Dupla)
+
+| Proyecto | Incidencias primarias | Lectura |
+|---|---|---|
+| TORTUGA C40 | 16 | Clashes defendibles (p. ej. SOLAR/SOLAR, PLAFON/SOLAR) |
+| SERENA 18 | 53 en corrida real (`serena18_analysis_06`) | Geometría primaria; V1 tenía ruido de anotación |
+| NASAS 09 | 0 | Consistente con filtros de calidad actuales |
+
+---
+
+## 3) Arquitectura integrada (app web + motor)
 
 ```mermaid
-flowchart TD
-    fase4["Fase4_DocumentosClasificados"]
-    budgetIa["Fase5_BudgetIA_core_pipeline"]
-    clashesIa["Fase5_ClashesIA_coordination"]
-    fase6["Fase6_PliegoCondiciones"]
-    revisionArq["REVISION_CLASHES_ARQUITECTO.md"]
-    contextoTecnico["coordination_report_context.json"]
+flowchart LR
+    UI["Hallazgos UI\nWorkspaceHallazgosTab"]
+    API["backend FastAPI\nclash routes + ClashService"]
+    CS["coordination-service\nrun_clash_analysis"]
+    DUPLA["Dupla coordination/\nfast_compare + reporting"]
+    JOB["ProjectClashJob.result\nreport + artifacts"]
+    PDF["PDF humano / técnico\nReportLab"]
 
-    fase4 --> budgetIa
-    fase4 --> clashesIa
-    budgetIa --> fase6
-    clashesIa --> fase6
-    clashesIa --> revisionArq
-    clashesIa --> contextoTecnico
+    UI --> API
+    API --> CS
+    CS --> DUPLA
+    CS --> JOB
+    API --> PDF
+    JOB --> PDF
 ```
 
-Punto clave: la salida de coordinación se incorpora al pliego técnico (Fase 6), no como reemplazo del budget pipeline sino como capa complementaria de riesgos y conflictos entre disciplinas.
+**Artefactos en `job.result.artifacts`:**
+
+| Clave | Contenido |
+|---|---|
+| `primary_incidents` | JSON incidencias + geometría |
+| `coordination_context` | Tarjetas enriquecidas (`layer_pair`, `location_short`, …) |
+| `pair_schedule` | Pares programados |
+| `revision_md` | Markdown arquitecto (fallback en normalizador) |
+| `analyzed_documents` | Inventario DWG de la carpeta |
 
 ---
 
-## 3) API y entradas recomendadas
+## 4) PDFs exportables (app web)
 
-### Entrada técnica estable (hoy)
+Rutas API:
 
-- Script principal: `coordination/scripts/run_nasas09_project_coordination.py`
-- Perfil recomendado: `--analysis-profile fast_compare --stage full`
+- `GET .../clash/jobs/latest/exports/human.pdf`
+- `GET .../clash/jobs/latest/exports/technical.pdf`
 
-### Superficie de configuración por proyecto
+**PDF humano** — Guía de revisión manual: tarjetas por incidencia, comando `Z W`, bitácora, leyenda de alias.
 
-- Niveles: `{project_root}/coordination/{slug}_project_levels.json`
-- Reglas de capas: `config/layer_rules/{slug}.yaml`
-- Matriz de roles: `config/clash_role_matrix/{slug}.yaml`
-- Tolerancias: `config/tolerances/{slug}.yaml`
-- Cohort manual (opcional): `cohort_manifest.json`
-- Alineación manual (opcional): `alignment_manifest.json`
+**PDF técnico** — Auditoría: metadatos de corrida, pares programados, métricas, índice compacto, detalle por incidencia con **provenance** (`layers_source`, `center_source`, …), advertencias de calidad.
 
----
+### Correcciones recientes (importante para demo)
 
-## 4) Cómo integrar un proyecto nuevo (checklist operativo)
+1. **Datos en PDF** — Antes mostraba `no disponible` aunque el MD tuviera capas/centro/`Z W`. Causa: el builder leía `enriched.layers` como string; el contexto usa `layer_pair` y listas. Solución: `normalize_incident_for_reports()` con cadena de fallback (primary → context → revision_md).
+2. **PDF técnico — layout** — Índice de incidencias en **landscape**, columnas reducidas (sin Centro/Z en índice; van al detalle), `Paragraph` con wrap, alias en dos líneas.
+3. **PDF técnico — inventario** — Se eliminó la sección **Inventario analizado** del PDF final (solo queda leyenda de alias en apéndice).
 
-1. Crear o validar `project_levels.json` (niveles + patrones de vista).  
-2. Crear `layer_rules/{slug}.yaml` según capas reales del proyecto.  
-3. Crear `clash_role_matrix/{slug}.yaml` (overrides mínimos; preferir heredar default).  
-4. Ajustar `tolerances/{slug}.yaml` solo si hay falsos positivos/negativos sistemáticos.  
-5. Definir `cohort_manifest.json` con DWG comparables ARQ/EST.  
-6. Ejecutar corrida `fast_compare full`.  
-7. Validar telemetría antes de publicar resultados:  
-   - `pair_schedule_diagnostics.csv`  
-   - `layer_role_coverage.csv`  
-   - `coordinate_audit.json`
+**Metadata de job:** migración `032_clash_job_export_metadata` — `folder_id`, `cad_fingerprint`, `run_sequence`, `triggered_by_user_id`.
 
 ---
 
-## 5) Wiring técnico en pipeline central
+## 5) Cómo probar en la reunión (5 min)
 
-## Opción A (rápida, bajo riesgo): subprocess
+1. `docker compose up --build` en la app web.
+2. Proyecto demo **Tutorial · Workspace Dupla**, carpeta **TEST_01**.
+3. Hallazgos → **Analizar clashes** → esperar `completed`.
+4. Descargar PDF humano y técnico; comparar con `revision_md` del job.
+5. Verificar en PDF técnico: capas (p. ej. SOLAR), centro XY, `Z W`, y filas `*_source` en detalle.
 
-Desde `dupla_run_full_analysis_local.py`, después de clasificación documental/fuentes CAD, lanzar el runner de coordinación como proceso independiente, pasando root, registry y output folder del proyecto.
-
-Ventaja: menor acoplamiento inmediato.  
-Riesgo: menos reutilización de objetos internos.
-
-## Opción B (recomendada mediano plazo): wrapper Python
-
-Crear una función puente, por ejemplo:
-
-```python
-def run_clash_analysis(project_manifest, outputs_dir) -> dict:
-    ...
-```
-
-que traduzca el `ProjectManifest` del pipeline central a argumentos del runner de coordinación y devuelva paths a artefactos de salida clave.
-
-Ventaja: integración limpia para Fase 5/Fase 6.
+**Smoke mode:** `COORDINATION_SMOKE_MODE=true` en docker-compose usa fixture enriquecido con geometría TORTUGA-like.
 
 ---
 
-## 6) Artefactos obligatorios a consumir aguas abajo
+## 6) Motor Dupla — entrada técnica estable
 
-| Artefacto | Archivo | Uso |
-|---|---|---|
-| Incidencias primarias | `primary_incidents.json` | Riesgos técnicos de coordinación para Fase 6 |
-| Contexto técnico | `coordination_report_context.json` | Resumen técnico estructurado del run |
-| Reporte arquitecto por proyecto | `REVISION_CLASHES_ARQUITECTO_{PROJECT}.md` | Revisión manual de campo en AutoCAD |
-| Reporte general consolidado | `REVISION_CLASHES_ARQUITECTO.md` | Vista unificada de proyectos analizados |
-| Telemetría diagnóstica | `pair_schedule_diagnostics.csv`, `layer_role_coverage.csv` | QA de comparabilidad y semántica de capas |
+- Script: `coordination/scripts/run_nasas09_project_coordination.py` (renombrado pendiente).
+- Perfil: `--analysis-profile fast_compare --stage full`
+- Config por proyecto: `config/layer_rules/{slug}.yaml`, `clash_role_matrix`, `tolerances`, `{slug}_project_levels.json`
 
 ---
 
-## 7) Lo que ya quedó implementado en esta sesión
+## 7) Lo implementado en el motor (`Dupla/`)
 
-1. **TORTUGA**: reglas de capas ampliadas y matriz de roles corregida para SLAB/SLAB y SLAB/BEAM.  
-2. **SERENA**: scheduling robusto para cohort curado con `trust_cohort_bands`.  
-3. **Reporting**:
-   - reporte individual automático por proyecto (`REVISION_CLASHES_ARQUITECTO_{PROJECT}.md`)
-   - reporte general consolidado automático (`REVISION_CLASHES_ARQUITECTO.md`)
-
----
-
-## 8) Deuda técnica priorizada (auditada)
-
-1. Renombrar `run_nasas09_project_coordination.py` a un entrypoint genérico (`run_clash_coordination.py`) conservando backward compatibility.  
-2. Desacoplar heurísticas NASAS-centric en `core/nasas_paths.py` hacia utilidades neutrales de proyecto.  
-3. Agregar `--project-manifest` para parametrización homogénea con `pipeline/project_manifest.py`.  
-4. Conectar formalmente salidas de clashes al pliego de condiciones (Fase 6) en `core/pipeline.py`.
+1. TORTUGA: reglas de capas + matriz de roles (SLAB/SLAB, SLAB/BEAM).
+2. SERENA: scheduling con `trust_cohort_bands`.
+3. Reporting: `REVISION_CLASHES_ARQUITECTO_{PROJECT}.md` + consolidado.
+4. Perfiles de lector ampliados (arquitectura, eléctrico, sanitario, mecánico) en `coordination/reporting/reporting.py`.
 
 ---
 
-## 9) Criterio de aceptación para la integración
+## 8) Lo implementado en la app web (`dupla-feat-budget-analysis-pricing/`)
 
-Se considera integrada cuando el pipeline principal:
+| Área | Qué hay |
+|---|---|
+| Backend | `ProjectClashJob`, `ClashService`, rutas clash, export PDF |
+| coordination-service | Wrapper `run_clash_analysis`, `dupla_reports.py`, smoke fixture |
+| Frontend | `WorkspaceHallazgosTab` — job poll, botones PDF |
+| PDF | `backend/app/services/clash_reports/` — `normalize.py`, `human_pdf.py`, `technical_pdf.py` |
+| Tests | `test_clash_exports.py`, `test_clash_report_normalize.py` (18 tests OK) |
 
-- ejecuta coordinación automáticamente en Fase 5 para proyectos habilitados,
-- produce artefactos de clash junto a outputs de presupuesto,
-- expone `REVISION_CLASHES_ARQUITECTO.md` consolidado para revisión manual,
-- y serializa en output final un puntero explícito al `coordination_report_context.json`.
+---
 
+## 9) Deuda técnica priorizada
+
+1. Renombrar runner NASAS → entrypoint genérico (`run_clash_coordination.py`).
+2. Conectar salidas de clash al pliego Fase 6 en `core/pipeline.py`.
+3. Git remoto formal para monorepo app web (hoy carpeta local sin `.git` remoto configurado).
+4. Regenerar nginx upstream tras rebuild backend (ver `frontend/nginx.conf` con resolver Docker).
+5. Opcional: fuentes DejaVu embebidas en imagen Docker para acentos estables en PDF.
+
+---
+
+## 10) Criterio de aceptación integración
+
+- [x] UI Hallazgos lanza job de clashes por carpeta.
+- [x] Artefactos MD/JSON + PDF en job completado.
+- [x] PDF humano usable para revisión AutoCAD (capas, centro, `Z W`).
+- [x] PDF técnico con provenance y sin solapamiento en índice.
+- [ ] Pipeline central Fase 5 ejecuta clashes automáticamente (sin botón manual).
+- [ ] Pliego Fase 6 consume `coordination_report_context.json`.
+
+---
+
+## 11) Preguntas útiles para la reunión
+
+1. ¿Qué proyectos entran en piloto de clashes en producción (TORTUGA, SERENA, otros)?
+2. ¿Quién es el revisor previsto del PDF humano (arquitecto vs coordinador)?
+3. ¿Priorizamos acoplar Fase 5 central o pulir UX Hallazgos (filtros, histórico de corridas)?
+4. ¿Necesitamos export CSV además de PDF para bitácora?
+
+---
+
+## Referencias rápidas
+
+- Plan integración UI: `.cursor/plans/integración_clashes_ui_e4b078ff.plan.md`
+- Módulo reporting: `coordination/reporting/revision_report.py`
+- Normalizador PDF: `backend/app/services/clash_reports/normalize.py`
+- Sample PDFs: `backend/var/sample_pdfs/TEST_01_*.pdf` (generar con `scripts/generate_sample_clash_pdfs.py`)
