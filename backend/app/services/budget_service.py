@@ -78,11 +78,17 @@ class BudgetService:
         correlation_id = str(uuid.uuid4())
         logger.info(f"Enqueuing budget job for project {project_uuid} with correlation ID: {correlation_id}")
         try:
+            form_data: dict[str, str] = {}
+            if discipline:
+                form_data["discipline"] = discipline
+            form_data["project_name"] = project.name
+
             async with httpx.AsyncClient(timeout=60.0) as client:
                 resp = await client.post(
                     f"{processor_url}/jobs/process",
                     files=multipart_files,
-                    headers={"X-Correlation-ID": correlation_id}
+                    data=form_data,
+                    headers={"X-Correlation-ID": correlation_id},
                 )
         except Exception as exc:
             logger.error("Failed to reach processor service: %s", exc)

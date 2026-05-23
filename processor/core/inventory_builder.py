@@ -52,6 +52,39 @@ _MASONRY_TOKENS = ("masonry", "block", "brick", "cmu", "ladr", "mamp")
 _DRYWALL_TOKENS = ("drywall", "gypsum", "tablaroca", "yeso")
 _WOOD_TOKENS = ("wood", "madera", "timber")
 
+# Tokens that indicate a CAD layer is definitely NOT a wall.
+# Used by the geometry fallback to prevent misclassification.
+_NON_WALL_EXCLUDE_TOKENS = (
+    # Electrical / MEP
+    "cable", "cobre", "luces", "luz", "luminaria", "tomacorriente", "interruptor",
+    "monofasica", "trifasica", "electric", "circuito", "panel", "tablero",
+    "acometida", "telefono", "telefon", "data", "cctv", "sonido",
+    # Plumbing / sanitary
+    "agua", "sanitar", "plomer", "desague", "drenaje", "tuberia", "tubo",
+    "bomba", "cisterna", "glp", "gas",
+    # Annotations / text / symbols
+    "texto", "text", "anndtobj", "anndttext", "annobj", "simbologia",
+    "simbolo", "referencia", "tarjeta", "cartograf", "magenta",
+    "detalles", "titulo", "cajetin", "leyenda", "nota", "cota", "dim",
+    # Structural (already handled by structural builder)
+    "viga", "beam", "columna", "column", "losa", "slab", "zapata", "footing",
+    "cimiento", "fundacion", "foundation", "estribo", "acero",
+    "est_secciones", "estructura", "estructur",
+    # Furniture / fixtures / non-wall elements
+    "closet", "mueble", "furn", "cocina", "kitchen", "escaler",
+    "ascensor", "elevador", "elev-",
+    # Site / landscape
+    "solar", "solares", "vuelo", "relleno", "piso", "pisos",
+    "borde", "topograf", "curva", "terreno", "mverde",
+    # Fire / emergency
+    "incendio", "emergencia", "evacuacion", "extintor",
+    # Miscellaneous non-wall
+    "misc", "hath", "grdutiy", "layer5", "tornillo", "soporte",
+    "union", "cristal", "vidrio", "intermitente", "lineas tc",
+    "cable-cobre", "cascaron", "david", "mb3", "mb",
+    "din-sant", "_35", "w",
+)
+
 _SPACE_TYPE_TOKENS: dict[str, tuple[str, ...]] = {
     "bathroom": ("bath", "bano", "baño", "wc", "toilet"),
     "kitchen": ("kitchen", "cocina"),
@@ -566,6 +599,8 @@ def _layer_excludes_wall_geometry_fallback(role: str | None) -> bool:
         "plumbing",
         "door_window_symbol",
         "floor_ceiling",
+        "other_constructive",
+        "unknown",
     }
 
 
@@ -629,9 +664,15 @@ def _build_json_walls(
         wall_refs.setdefault(layer, []).extend(gpt_wall_refs.get(layer, []))
         gpt_wall_layers.add(layer)
 
+    # -----------------------------------------------------------------------
+    # GEOMETRY FALLBACK — DISABLED
+    # Previously, any unclassified layer with linework >= 3m was treated as
+    # a wall.  This caused massive budget inflation because layers for cables,
+    # text, plumbing, structural elements, furniture, etc. were all counted
+    # as walls.  Now we trust ONLY token matching ("wall", "muro") and GPT
+    # classification to identify wall layers.
+    # -----------------------------------------------------------------------
     classified_for_fallback: set[str] = set(token_wall_layers) | set(gpt_wall_layers)
-    unclassified_lengths: dict[str, float] = {}
-    unclassified_refs: dict[str, list[str]] = {}
     for hint in geometry_hints:
         layer = str(hint.get("layer", ""))
         if layer in classified_for_fallback:
@@ -641,19 +682,18 @@ def _build_json_walls(
         role = gpt_layer_roles.get(layer)
         if _layer_excludes_wall_geometry_fallback(role):
             continue
-        if _is_probable_wall_geometry(hint):
-            length = float(hint.get("length", 0))
-            unclassified_lengths[layer] = unclassified_lengths.get(layer, 0.0) + length
-            unclassified_refs.setdefault(layer, []).append(
-                f"geometry:{hint.get('handle') or layer}"
+        length = hint.get("length")
+        if length is not None and _is_probable_wall_geometry(hint):
+            # Log only — do NOT add to wall inventory
+            logger.debug(
+                "Geometry fallback SKIPPED layer '%s' (length=%.2fm) — "
+                "not positively identified as wall by tokens or GPT.",
+                layer,
+                float(length),
             )
 
     geometry_fallback_layers: set[str] = set()
-    for layer, total_length in unclassified_lengths.items():
-        if total_length >= 3.0:
-            wall_lengths[layer] = wall_lengths.get(layer, 0.0) + total_length
-            wall_refs.setdefault(layer, []).extend(unclassified_refs.get(layer, []))
-            geometry_fallback_layers.add(layer)
+    # (No layers added by fallback — only token_wall_layers and gpt_wall_layers are used)
 
     walls: list[Wall] = []
     for layer, length in wall_lengths.items():

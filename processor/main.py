@@ -25,6 +25,7 @@ def health_check():
 async def process_project(
     files: List[UploadFile] = File(...),
     discipline: Optional[str] = Form(None),
+    project_name: Optional[str] = Form(None),
     x_correlation_id: Optional[str] = Header(None),
 ):
     """
@@ -40,17 +41,15 @@ async def process_project(
         correlation_id = x_correlation_id or "unknown"
         logger.info(f"Received job processing request with correlation ID: {correlation_id}")
         dwg_files: List[tuple[str, bytes]] = []
-        pdf_content: Optional[bytes] = None
-        pdf_filename: Optional[str] = None
+        pdf_files: List[tuple[str, bytes]] = []
 
         for uf in files:
             name_lower = (uf.filename or "").lower()
             content = await uf.read()
             if name_lower.endswith(".dwg"):
                 dwg_files.append((uf.filename or "upload.dwg", content))
-            elif pdf_content is None and name_lower.endswith(".pdf"):
-                pdf_content = content
-                pdf_filename = uf.filename
+            elif name_lower.endswith(".pdf"):
+                pdf_files.append((uf.filename or "upload.pdf", content))
 
         if not dwg_files:
             raise HTTPException(status_code=422, detail="No .dwg file found in uploaded files")
@@ -59,9 +58,9 @@ async def process_project(
         job = q.enqueue(
             run_dupla_pipeline,
             dwg_files,
-            pdf_content=pdf_content,
-            pdf_filename=pdf_filename,
+            pdf_files=pdf_files,
             discipline_id=discipline,
+            project_name=project_name,
             correlation_id=correlation_id,
             job_timeout=3600,
         )

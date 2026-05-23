@@ -475,6 +475,7 @@ class PartidaGenerator:
         partidas = _extract_json_list(raw)
         if not partidas:
             logger.warning(
-                "PartidaGenerator: empty JSON from GPT-4o for chapter %s", chapter_code
+                "PartidaGenerator: empty JSON from GPT-4o for chapter %s. Raw response was: %s", 
+                chapter_code, raw
             )
         return partidas

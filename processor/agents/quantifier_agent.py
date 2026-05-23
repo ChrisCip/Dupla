@@ -77,19 +77,28 @@ def _wall_entity_description(wall: Wall) -> str:
         or ""
     )
     typ = str(typ).strip()
-    if not typ:
-        wid = str(getattr(wall, "id", "") or "").strip()
-        if wid and not wid.lower().startswith("vis-wall-"):
-            typ = wid
+    
     thick = wall.thickness_m
     thick_cm = int(round(thick * 100)) if thick is not None else None
     mat_code = str(raw.get("original_material_code") or wall.material_hint or "")
     loc = str(raw.get("ubicacion") or "").strip()
+    
     parts: list[str] = []
     if typ:
         parts.append(f"Muro tipo {typ}")
     else:
-        parts.append("[Tipo no identificado en plano] — muro")
+        wid = str(getattr(wall, "id", "") or "").strip()
+        if wid:
+            if wid.lower().startswith("json-wall-"):
+                layer_name = wid[len("json-wall-"):]
+                parts.append(f"Muro de capa CAD '{layer_name}'")
+            elif not wid.lower().startswith("vis-wall-"):
+                parts.append(f"Muro tipo {wid}")
+            else:
+                parts.append("Muro (detectado por visión)")
+        else:
+            parts.append("[Tipo no identificado en plano] — muro")
+
     if mat_code.startswith("block_"):
         parts.append(f"bloque {mat_code.replace('block_', '').replace('in', '')}\"")
     elif mat_code:
