@@ -314,7 +314,7 @@ def takeoff_budget_eligibility(
     if item_type in always_skip:
         return False, "type_excluded"
 
-    if takeoff.item_key in derived_from_keys:
+    if takeoff.item_key in derived_from_keys and item_type != "wall_net_area":
         return False, "derived_child"
 
     if item_type.endswith("_volume") and not item_type.endswith("_concrete_volume"):
@@ -350,6 +350,9 @@ def takeoff_budget_eligibility(
         return True, ""
 
     if item_type.startswith("wall_"):
+        material_hint = str(takeoff.inputs.get("material_hint") or "").lower()
+        if material_hint == "masonry" and item_type in {"wall_volume", "wall_length"}:
+            return False, "masonry_wall_budgeted_by_area"
         allowed = {
             "wall_net_area",
             "wall_volume",
@@ -573,13 +576,10 @@ def _finalize_formulas(
 
     for row in rows:
         if row.row_type == "line":
-            qty = float(row.quantity) if row.quantity is not None else 0.0
-            price = float(row.unit_price) if row.unit_price is not None else 0.0
-            row.amount = round(qty * price, 2)
-            row.metadata["excel_amount_formula"] = f"=ROUND(E{row.excel_row}*F{row.excel_row},2)"
+            row.amount = f"=ROUND(E{row.excel_row}*F{row.excel_row},2)"
             line_id = str(row.metadata.get("line_id", ""))
             if line_id in line_map:
-                line_map[line_id].amount_formula = row.metadata["excel_amount_formula"]
+                line_map[line_id].amount_formula = str(row.amount)
                 line_map[line_id].metadata["excel_row"] = row.excel_row
             continue
 
@@ -590,36 +590,18 @@ def _finalize_formulas(
                 for source_index in source_row_indices
                 if 0 <= source_index < len(rows) and rows[source_index].excel_row is not None
             ]
-            sum_val = 0.0
-            for source_index in source_row_indices:
-                if 0 <= source_index < len(rows):
-                    amt = rows[source_index].amount
-                    if amt is not None:
-                        try:
-                            sum_val += float(amt)
-                        except (ValueError, TypeError):
-                            pass
-
             row.quantity = 1
-            row.unit_price = round(sum_val, 2)
-            row.amount = round(row.quantity * row.unit_price, 2)
-            
-            row.metadata["excel_unit_price_formula"] = _sum_formula(source_excel_rows)
-            row.metadata["excel_amount_formula"] = f"=ROUND(E{row.excel_row}*F{row.excel_row},2)"
+            row.unit_price = _sum_formula(source_excel_rows)
+            row.amount = f"=ROUND(E{row.excel_row}*F{row.excel_row},2)"
             row.metadata["source_excel_rows"] = source_excel_rows
             continue
 
         subtotal_row_index = row.metadata.get("subtotal_row_index")
-        if row.row_type == "chapter" and isinstance(subtotal_row_index, int) and 0 <= subtotal_row_index < len(rows):
-            sub_row = rows[subtotal_row_index]
-            row.quantity = sub_row.quantity
-            row.unit_price = sub_row.unit_price
-            row.amount = sub_row.amount
-            
-            subtotal_excel_row = sub_row.excel_row
-            row.metadata["excel_quantity_formula"] = f"=E{subtotal_excel_row}"
-            row.metadata["excel_unit_price_formula"] = f"=F{subtotal_excel_row}"
-            row.metadata["excel_amount_formula"] = f"=G{subtotal_excel_row}"
+        if row.row_type == "chapter" and isinstance(subtotal_row_index, int):
+            subtotal_excel_row = rows[subtotal_row_index].excel_row
+            row.quantity = f"=E{subtotal_excel_row}"
+            row.unit_price = f"=F{subtotal_excel_row}"
+            row.amount = f"=G{subtotal_excel_row}"
 
     for chapter in chapters:
         chapter.line_keys = sorted(set(chapter.line_keys))
@@ -680,6 +662,26 @@ def compose_budget_rows(
             if alt_path:
                 chapter_path = alt_path
 
+        # --- Prepend Building Block and Level ---
+        prefix_segments: list[ChapterSegment] = []
+        if context.building_block:
+            block_code = f"BLQ-{context.building_block.replace(' ', '_')}"
+            prefix_segments.append(ChapterSegment(block_code, context.building_block))
+            if context.level_id:
+                level_code = f"{block_code}-LVL-{context.level_id.replace(' ', '_')}"
+                prefix_segments.append(ChapterSegment(level_code, context.level_id))
+        elif context.level_id:
+            level_code = f"LVL-{context.level_id.replace(' ', '_')}"
+            prefix_segments.append(ChapterSegment(level_code, context.level_id))
+
+        if prefix_segments:
+            base_prefix = prefix_segments[-1].code
+            adjusted_path = [
+                ChapterSegment(f"{base_prefix}-{seg.code}", seg.title)
+                for seg in chapter_path
+            ]
+            chapter_path = prefix_segments + adjusted_path
+
         prepared_lines.append(
             _PreparedLine(
                 takeoff=takeoff,
@@ -706,9 +708,7 @@ def compose_budget_rows(
     lines: list[BudgetLine] = []
     internal_code_counter = 1
 
-    grouped_prepared: dict[tuple[str, str, str, str], list[_PreparedLine]] = {}
-
-    for prepared in prepared_lines:
+    for line_index, prepared in enumerate(prepared_lines, start=1):
         leaf_chapter_id = _ensure_chapter_path(chapter_nodes, chapters, prepared.chapter_path)
         chapter_nodes[leaf_chapter_id].chapter.line_keys.append(prepared.takeoff.item_key)
 
@@ -720,47 +720,23 @@ def compose_budget_rows(
             if deterministic_bc3_code:
                 line_code = deterministic_bc3_code
             else:
-                line_code = "DUP-TEMP"
-
-        group_key = (leaf_chapter_id, line_code, prepared.summary, prepared.takeoff.unit)
-        grouped_prepared.setdefault(group_key, []).append(prepared)
-
-    for line_index, (group_key, group_items) in enumerate(grouped_prepared.items(), start=1):
-        leaf_chapter_id, line_code, summary, unit = group_key
-        
-        if line_code == "DUP-TEMP":
-            line_code = f"DUP-{internal_code_counter:04d}"
-            internal_code_counter += 1
-            
-        first = group_items[0]
-        deterministic_bc3_code = default_bc3_code_for_takeoff(first.takeoff) if first.candidate is None else None
-        
-        total_quantity = sum((p.takeoff.quantity or 0.0) for p in group_items)
-        
-        source_refs = []
-        assumptions = []
-        for p in group_items:
-            source_refs.extend(p.takeoff.source_refs)
-            assumptions.extend(p.takeoff.assumptions)
-            
-        source_refs = list(dict.fromkeys(source_refs))
-        assumptions = list(dict.fromkeys(assumptions))
+                line_code = f"DUP-{internal_code_counter:04d}"
+                internal_code_counter += 1
 
         line_metadata: dict[str, Any] = {
-            "item_type": first.takeoff.item_type,
-            "level_id": first.takeoff.level_id,
+            "item_type": prepared.takeoff.item_type,
+            "level_id": prepared.takeoff.level_id,
             "line_id": f"BLINE-{line_index:04d}",
-            "chapter_path": [segment.title for segment in first.chapter_path],
-            "chapter_codes": [segment.code for segment in first.chapter_path],
-            "source_discipline": infer_source_discipline(first.takeoff, context),
-            "candidate_summary": first.candidate.summary if first.candidate else None,
-            "candidate_rationale": first.candidate.rationale if first.candidate else None,
-            "candidate_source": first.candidate.source if first.candidate else None,
-            "trace_metadata": dict(first.takeoff.trace.metadata),
-            "aggregated_count": len(group_items),
+            "chapter_path": [segment.title for segment in prepared.chapter_path],
+            "chapter_codes": [segment.code for segment in prepared.chapter_path],
+            "source_discipline": infer_source_discipline(prepared.takeoff, context),
+            "candidate_summary": prepared.candidate.summary if prepared.candidate else None,
+            "candidate_rationale": prepared.candidate.rationale if prepared.candidate else None,
+            "candidate_source": prepared.candidate.source if prepared.candidate else None,
+            "trace_metadata": dict(prepared.takeoff.trace.metadata),
         }
-        if first.bc3_guard_drop_reason:
-            line_metadata["bc3_guard_drop_reason"] = first.bc3_guard_drop_reason
+        if prepared.bc3_guard_drop_reason:
+            line_metadata["bc3_guard_drop_reason"] = prepared.bc3_guard_drop_reason
 
         # --- Constructor APU layer ----------------------------------------
         # When a constructor APUMatcher is available, price the line against a
@@ -769,12 +745,16 @@ def compose_budget_rows(
         apu_match: Any | None = None
         if apu_matcher is not None:
             try:
-                apu_match = apu_matcher.match(first.takeoff)
+                apu_match = apu_matcher.match(prepared.takeoff)
             except Exception:
                 logger.warning(
-                    "APUMatcher.match failed for %s", first.takeoff.item_key, exc_info=True
+                    "APUMatcher.match failed for %s", prepared.takeoff.item_key, exc_info=True
                 )
                 apu_match = None
+
+        resolved_price: float | None
+        price_source: str
+        source_type: str
 
         if apu_match is not None:
             line_code = str(apu_match.code).strip() or line_code
@@ -802,41 +782,41 @@ def compose_budget_rows(
             ]
         else:
             resolved_price, price_source = _extract_unit_price(
-                first.candidate,
+                prepared.candidate,
                 bc3_catalog,
                 fallback_bc3_code=deterministic_bc3_code,
                 construcosto_snapshot=construcosto_snapshot,
-                summary=summary,
-                unit=unit,
+                summary=prepared.summary,
+                unit=prepared.takeoff.unit,
             )
             source_type = "bc3_catalog"
 
         line_metadata["price_source"] = price_source
         line_metadata["source_type"] = source_type
-        first.takeoff.trace.metadata["source_type"] = source_type
-        line_metadata["quantity_source_display"] = _quantity_source_display(first.takeoff)
+        prepared.takeoff.trace.metadata["source_type"] = source_type
+        line_metadata["quantity_source_display"] = _quantity_source_display(prepared.takeoff)
         line_metadata["bc3_origin"] = _line_bc3_origin(
-            first.candidate, bc3_catalog or {}, line_code
+            prepared.candidate, bc3_catalog or {}, line_code
         )
 
         budget_line = BudgetLine(
             line_id=f"BLINE-{line_index:04d}",
-            takeoff_key=first.takeoff.item_key,
+            takeoff_key=prepared.takeoff.item_key,
             chapter_id=leaf_chapter_id,
             code=line_code,
             nat="Partida",
-            unit=unit,
-            summary=summary,
-            quantity=total_quantity,
+            unit=prepared.takeoff.unit,
+            summary=prepared.summary,
+            quantity=prepared.takeoff.quantity,
             unit_price=resolved_price,
             candidate_code=(
                 apu_match.code
                 if apu_match is not None
-                else (first.candidate.bc3_code if first.candidate else deterministic_bc3_code)
+                else (prepared.candidate.bc3_code if prepared.candidate else deterministic_bc3_code)
             ),
-            candidate_score=first.candidate.score if first.candidate else None,
-            source_refs=source_refs,
-            assumptions=assumptions,
+            candidate_score=prepared.candidate.score if prepared.candidate else None,
+            source_refs=list(prepared.takeoff.source_refs),
+            assumptions=list(prepared.takeoff.assumptions),
             metadata=line_metadata,
         )
         lines.append(budget_line)
