@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   Box,
@@ -11,7 +11,16 @@ import {
 } from 'lucide-react'
 
 import { apiFetch } from '../../../api/client'
-import { MOCK_STRUCTURAL_ANALYSIS_REPORT } from '../../../data/mockStructuralAnalysisReport'
+import {
+  downloadClashHumanPdf,
+  downloadClashTechnicalPdf,
+  getCoordinationFolders,
+  getCoordinationInventory,
+  type CoordinationInventory,
+} from '../../../api/structuralAnalysis'
+import { useStructuralAnalysisJob } from '../../../hooks/useStructuralAnalysisJob'
+import { formatCoordinationInventorySummary } from '../../../lib/coordinationInventory'
+import type { Project } from '../../../types/project'
 import type { TechnicalFindingRow } from '../../../types/projectWorkspace'
 import type {
   StructuralAnalysisReport,
@@ -27,6 +36,7 @@ import { PrimaryButton } from '../../PrimaryButton'
 const SEVERITY_OPTIONS = ['crítico', 'alto', 'medio', 'bajo'] as const
 
 type WorkspaceHallazgosTabProps = {
+  project: Project | null
   projectUuid: string
   token: string | null
   findings: TechnicalFindingRow[]
@@ -190,15 +200,75 @@ function DocumentRow({
 }
 
 export function WorkspaceHallazgosTab({
+  project,
   projectUuid,
   token,
   findings,
   onRefresh,
   onContinueToPliego,
 }: WorkspaceHallazgosTabProps) {
-  const [report] = useState<StructuralAnalysisReport>(() => MOCK_STRUCTURAL_ANALYSIS_REPORT)
-  const [expandedClashIds, setExpandedClashIds] = useState<Set<string>>(() => new Set(['clash-1']))
-  const [footerHint, setFooterHint] = useState<string | null>(null)
+  const { report, job, isPolling, error: jobError, enqueue } = useStructuralAnalysisJob(projectUuid, token)
+  const [expandedClashIds, setExpandedClashIds] = useState<Set<string>>(() => new Set())
+  const [pdfBusy, setPdfBusy] = useState<'technical' | 'human' | null>(null)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+  const [folderOptions, setFolderOptions] = useState<Array<{ uuid: string; path: string }>>([])
+  const [selectedFolderUuid, setSelectedFolderUuid] = useState<string>('')
+  const [inventory, setInventory] = useState<CoordinationInventory | null>(null)
+  const [inventoryLoading, setInventoryLoading] = useState(false)
+
+  useEffect(() => {
+    if (!token || !projectUuid) return
+    void (async () => {
+      const folders = await getCoordinationFolders(projectUuid, token)
+      setFolderOptions(folders.map((f) => ({ uuid: f.uuid, path: f.path })))
+      const last = (project?.workflow_meta as Record<string, unknown> | undefined)?.coordination_last_folder_uuid
+      if (typeof last === 'string' && last && folders.some((f) => f.uuid === last)) {
+        setSelectedFolderUuid(last)
+      } else if (folders.length === 1) {
+        setSelectedFolderUuid(folders[0].uuid)
+      }
+    })()
+  }, [token, projectUuid, project?.workflow_meta])
+
+  useEffect(() => {
+    if (!token || !projectUuid) return
+    setInventoryLoading(true)
+    void (async () => {
+      const inv = await getCoordinationInventory(
+        projectUuid,
+        token,
+        selectedFolderUuid || null,
+      )
+      setInventory(inv)
+      setInventoryLoading(false)
+    })()
+  }, [token, projectUuid, selectedFolderUuid])
+
+  const canRunAnalysis = Boolean(
+    token &&
+      !isPolling &&
+      report.run_status !== 'running' &&
+      inventory?.ready,
+  )
+
+  const canDownloadPdf = report.run_status === 'completed' && Boolean(job) && Boolean(token)
+
+  async function handleDownloadPdf(kind: 'technical' | 'human') {
+    if (!token || !canDownloadPdf) return
+    setPdfError(null)
+    setPdfBusy(kind)
+    try {
+      if (kind === 'technical') {
+        await downloadClashTechnicalPdf(projectUuid, token, job?.id)
+      } else {
+        await downloadClashHumanPdf(projectUuid, token, job?.id)
+      }
+    } catch (e) {
+      setPdfError(e instanceof Error ? e.message : 'No se pudo descargar el PDF')
+    } finally {
+      setPdfBusy(null)
+    }
+  }
 
   const [discipline, setDiscipline] = useState('')
   const [severity, setSeverity] = useState<string>('medio')
@@ -250,24 +320,89 @@ export function WorkspaceHallazgosTab({
     }
   }, [token, projectUuid, discipline, severity, title, description, evidenceRef, onRefresh])
 
-  const onDocRetry = useCallback((docId: string) => {
-    setFooterHint(`Reintento de documento «${docId}» — conectar con la API de análisis cuando esté disponible.`)
+  const onDocRetry = useCallback((_docId: string) => {
+    // Re-análisis por documento: pendiente de endpoint dedicado.
   }, [])
+
+  const runAnalysis = useCallback(() => {
+    void enqueue({ folder_uuid: selectedFolderUuid || undefined })
+  }, [enqueue, selectedFolderUuid])
+
+  const projectDisplayName = project?.name ?? inventory?.project_name ?? 'Proyecto'
 
   return (
     <div className="space-y-8">
-      <header className="space-y-3">
-          <span
-            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusPill.className}`}
+      <Card className="border-primary/20 bg-primary/[0.04] p-4">
+        <h3 className="text-sm font-semibold text-ink">Información de coordinación</h3>
+        <p className="mt-1 text-xs text-muted">
+          Proyecto «{projectDisplayName}». Elige la carpeta de entrega (ej. TEST_01): se analizarán todos los .dwg
+          dentro de ella y subcarpetas, agrupados por la etiqueta de disciplina de cada archivo en Archivos (ARQ, EST,
+          ELC, etc.).
+        </p>
+        <div className="mt-3">
+          <label htmlFor="coord-folder" className="text-xs font-medium uppercase tracking-wide text-muted">
+            Carpeta fuente
+          </label>
+          <select
+            id="coord-folder"
+            className="du-input mt-1 w-full max-w-xl"
+            value={selectedFolderUuid}
+            onChange={(e) => setSelectedFolderUuid(e.target.value)}
           >
-            {statusPill.label}
-          </span>
+            <option value="">— Seleccionar carpeta —</option>
+            {folderOptions.map((f) => (
+              <option key={f.uuid} value={f.uuid}>
+                {f.path}
+              </option>
+            ))}
+          </select>
+        </div>
+        {inventoryLoading ? (
+          <p className="mt-3 text-sm text-muted">Cargando inventario…</p>
+        ) : inventory ? (
+          <div className="mt-3 space-y-2 text-sm">
+            <p className="text-ink">{formatCoordinationInventorySummary(inventory)}</p>
+            {inventory.blockers.length > 0 ? (
+              <ul className="list-disc space-y-1 pl-5 text-primary">
+                {inventory.blockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-emerald-800">Listo para ejecutar análisis de clashes.</p>
+            )}
+          </div>
+        ) : null}
+      </Card>
+
+      <header className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusPill.className}`}
+            >
+              {statusPill.label}
+            </span>
+            {isPolling ? (
+              <span className="text-xs text-muted">Actualizando cada 5 s…</span>
+            ) : null}
+          </div>
+          {jobError ? <p className="text-sm text-primary">{jobError}</p> : null}
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-2">
               <h2 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">{report.title}</h2>
               <p className="max-w-3xl text-sm text-muted sm:text-base">{report.subtitle}</p>
             </div>
-            <div className="grid shrink-0 grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+              <PrimaryButton
+                type="button"
+                disabled={!canRunAnalysis}
+                onClick={runAnalysis}
+              >
+                {isPolling || report.run_status === 'running'
+                  ? 'Análisis en curso…'
+                  : 'Ejecutar análisis de clashes'}
+              </PrimaryButton>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <Card className="flex flex-col items-center justify-center gap-1 border-primary/20 bg-primary/[0.06] p-3 sm:p-4">
                 <span className="text-xs font-semibold uppercase tracking-wide text-primary">Errores</span>
                 <span className="flex items-center gap-1 text-2xl font-bold tabular-nums text-primary sm:text-3xl">
@@ -290,8 +425,19 @@ export function WorkspaceHallazgosTab({
                 </span>
               </Card>
             </div>
+            </div>
           </div>
         </header>
+
+        {report.run_status === 'pending' && report.clashes.length === 0 && !job ? (
+          <Card className="border-dashed p-6 text-center">
+            <p className="text-sm text-muted">
+              {selectedFolderUuid
+                ? 'Selecciona una carpeta con planos etiquetados (ARQ/EST) y pulsa «Ejecutar análisis de clashes».'
+                : 'Elige la carpeta de entrega (ej. TEST_01) en el panel de coordinación arriba.'}
+            </p>
+          </Card>
+        ) : null}
 
         {report.clash_relationships.length > 0 ? (
           <section className="space-y-3" aria-label="Relaciones entre hallazgos">
@@ -307,14 +453,18 @@ export function WorkspaceHallazgosTab({
               Conflictos detectados
             </h3>
             <div className="space-y-3">
-              {report.clashes.map((c) => (
-                <ClashCard
-                  key={c.id}
-                  clash={c}
-                  expanded={expandedClashIds.has(c.id)}
-                  onToggle={() => toggleClash(c.id)}
-                />
-              ))}
+              {report.clashes.length === 0 ? (
+                <p className="text-sm text-muted">No se detectaron conflictos en la última corrida.</p>
+              ) : (
+                report.clashes.map((c) => (
+                  <ClashCard
+                    key={c.id}
+                    clash={c}
+                    expanded={expandedClashIds.has(c.id)}
+                    onToggle={() => toggleClash(c.id)}
+                  />
+                ))
+              )}
             </div>
           </section>
 
@@ -343,6 +493,9 @@ export function WorkspaceHallazgosTab({
           <h3 id="hallazgos-zoning-heading" className="text-lg font-semibold text-ink">
             Estado de zonificación
           </h3>
+          {report.zoning_rows.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">Sin datos de zonificación en esta corrida (MVP).</p>
+          ) : (
           <Card className="mt-3 overflow-x-auto p-0">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
@@ -369,6 +522,7 @@ export function WorkspaceHallazgosTab({
               </tbody>
             </table>
           </Card>
+          )}
         </section>
 
         <details className="group rounded-xl border border-black/10 bg-white shadow-[var(--shadow-card)]">
@@ -380,8 +534,8 @@ export function WorkspaceHallazgosTab({
           </summary>
           <div className="space-y-4 border-t border-black/10 px-5 py-4">
             <p className="text-sm text-muted">
-              Los datos del informe superior serán alimentados por la API de análisis. Esto sigue guardando hallazgos
-              técnicos en el proyecto.
+              Los datos del informe superior provienen del motor de coordinación Dupla. Esto sigue guardando hallazgos
+              técnicos manuales en el proyecto.
             </p>
             {localErr ? <p className="text-sm text-primary">{localErr}</p> : null}
             <ul className="divide-y divide-black/10 border-y border-black/10">
@@ -461,18 +615,26 @@ export function WorkspaceHallazgosTab({
       <footer className="flex flex-col gap-3 border-t border-black/10 bg-white pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1 text-sm text-muted">
           <p>{report.footer_status_message}</p>
-          {footerHint ? <p className="mt-1 text-xs text-ink">{footerHint}</p> : null}
+          {pdfError ? <p className="mt-1 text-xs text-primary">{pdfError}</p> : null}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button
             type="button"
-            className="du-pill-action"
-            onClick={() =>
-              setFooterHint('La exportación PDF del informe se conectará cuando la API de análisis esté disponible.')
-            }
+            className="du-pill-action disabled:opacity-50"
+            disabled={!canDownloadPdf || pdfBusy !== null}
+            onClick={() => void handleDownloadPdf('technical')}
           >
             <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
-            Descargar reporte PDF
+            {pdfBusy === 'technical' ? 'Descargando…' : 'Reporte técnico (PDF)'}
+          </button>
+          <button
+            type="button"
+            className="du-pill-action disabled:opacity-50"
+            disabled={!canDownloadPdf || pdfBusy !== null}
+            onClick={() => void handleDownloadPdf('human')}
+          >
+            <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
+            {pdfBusy === 'human' ? 'Descargando…' : 'Reporte humano (PDF)'}
           </button>
           <PrimaryButton
             type="button"

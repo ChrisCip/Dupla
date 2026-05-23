@@ -11,6 +11,7 @@ import {
 import { Link } from 'react-router-dom'
 
 import { apiFetch } from '../../api/client'
+import { getProjectFilesCount } from '../../api/structuralAnalysis'
 import { WORKFLOW_PHASE_LABELS, WORKFLOW_PHASE_ORDER } from '../../constants/workflowPhases'
 import { PHASE_WORKSPACE_HINTS } from '../../constants/projectWorkspaceHints'
 import type { DirectoryUserRow } from '../../lib/directoryUsers'
@@ -129,17 +130,14 @@ export function ProjectWorkspaceDashboard({
     let cancelled = false
     void (async () => {
       const [fr, ft, fe, fn, ff] = await Promise.all([
-        apiFetch(`/api/projects/${projectUuid}/files?limit=1&offset=0`, { token }),
+        getProjectFilesCount(projectUuid, token),
         apiFetch(`/api/tasks/board?mine=true&project_uuid=${encodeURIComponent(projectUuid)}`, { token }),
         apiFetch(`/api/projects/${projectUuid}/events?limit=5&offset=0`, { token }),
         apiFetch('/api/me/notifications?unread_only=false', { token }),
         apiFetch(`/api/projects/${projectUuid}/technical-findings`, { token }),
       ])
       if (cancelled) return
-      if (fr.ok) {
-        const j = (await fr.json()) as { total?: number }
-        if (typeof j.total === 'number') setFileTotal(j.total)
-      }
+      if (typeof fr === 'number') setFileTotal(fr)
       if (ft.ok) {
         const board = (await ft.json()) as TaskBoardDto
         let n = board.archived_cards?.length ?? 0

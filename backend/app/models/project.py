@@ -14,6 +14,7 @@ from app.domain.workflow_phase import WorkflowPhase
 
 if TYPE_CHECKING:
     from app.models.project_budget_job import ProjectBudgetJob
+    from app.models.project_clash_job import ProjectClashJob
     from app.models.project_price_database_file import ProjectPriceDatabaseFile
     from app.models.workflow_template import WorkflowTemplate, WorkflowTemplateStep
 
@@ -39,6 +40,7 @@ class Project(Base):
     project_bootstrap_criteria: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     specifications_document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     project_code: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, unique=True)
+    coordination_profile: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     location_text: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
     estimated_area_sqm: Mapped[Optional[float]] = mapped_column(Numeric(14, 2), nullable=True)
     floor_levels_count: Mapped[Optional[int]] = mapped_column(Integer(), nullable=True)
@@ -141,6 +143,12 @@ class Project(Base):
         back_populates="project",
         cascade="all, delete-orphan",
         order_by="ProjectBudgetJob.created_at.desc()",
+    )
+    clash_jobs: Mapped[list["ProjectClashJob"]] = relationship(
+        "ProjectClashJob",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        order_by="ProjectClashJob.created_at.desc()",
     )
 
 

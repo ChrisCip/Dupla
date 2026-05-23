@@ -36,6 +36,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://dupla:dupla@postgres:5432/dupla
       REDIS_URL: redis://redis:6379/0
       PROCESSOR_URL: http://processor:8000
+      COORDINATION_URL: http://coordination-service:8000
       JWT_SECRET: demo-secret-change-in-production-min-32-chars!!
 
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://frontend:80
@@ -48,6 +49,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      coordination-service:
+        condition: service_started
 
   processor:
     build:
@@ -80,6 +83,46 @@ services:
       redis:
         condition: service_healthy
 
+  coordination-service:
+    build:
+      context: ./coordination-service
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DUPLA_ROOT: /dupla
+      COORDINATION_OUTPUT_ROOT: /app/output
+      COORDINATION_SMOKE_MODE: "true"
+      PYTHONPATH: /dupla:/app
+    ports:
+      - "8002:8000"
+    volumes:
+      - dupla_coord_outputs:/app/output
+      - ${DUPLA_PATH:-../Dupla}:/dupla:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  coordination-worker:
+    build:
+      context: ./coordination-service
+      dockerfile: Dockerfile
+    command: ["python", "worker.py"]
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DUPLA_ROOT: /dupla
+      COORDINATION_OUTPUT_ROOT: /app/output
+      COORDINATION_SMOKE_MODE: "true"
+      PYTHONPATH: /dupla:/app
+    volumes:
+      - dupla_coord_outputs:/app/output
+      - ${DUPLA_PATH:-../Dupla}:/dupla:ro
+    depends_on:
+      redis:
+        condition: service_healthy
 
   frontend:
     build:
@@ -94,3 +137,4 @@ volumes:
   dupla_pg:
   dupla_uploads:
   dupla_outputs:
+  dupla_coord_outputs:
