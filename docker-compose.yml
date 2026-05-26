@@ -60,10 +60,16 @@ services:
       - ./backend/.env
     environment:
       REDIS_URL: redis://redis:6379/0
+      DUPLA_CACHE_DIR: /app/cache
+      DUPLA_ARTIFACT_DIR: /app/artifacts
+      DUPLA_ALLOW_MULTI_DISCIPLINE: "true"
+      DUPLA_JOB_TIMEOUT_SECONDS: "10800"
     ports:
       - "8001:8000"
     volumes:
       - dupla_outputs:/app/output
+      - dupla_cache:/app/cache
+      - dupla_artifacts:/app/artifacts
     depends_on:
       redis:
         condition: service_healthy
@@ -78,8 +84,14 @@ services:
       - ./backend/.env
     environment:
       REDIS_URL: redis://redis:6379/0
+      DUPLA_CACHE_DIR: /app/cache
+      DUPLA_ARTIFACT_DIR: /app/artifacts
+      DUPLA_ALLOW_MULTI_DISCIPLINE: "true"
+      DUPLA_JOB_TIMEOUT_SECONDS: "10800"
     volumes:
       - dupla_outputs:/app/output
+      - dupla_cache:/app/cache
+      - dupla_artifacts:/app/artifacts
     depends_on:
       redis:
         condition: service_healthy
@@ -140,3 +152,5 @@ volumes:
   dupla_uploads:
   dupla_outputs:
   dupla_coord_outputs:
+  dupla_cache:
+  dupla_artifacts:

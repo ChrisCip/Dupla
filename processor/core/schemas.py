@@ -4,7 +4,7 @@ Shared typed models for the active APS/JSON inventory pipeline.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Literal, Mapping
 
 InventorySource = Literal["json", "vision", "hybrid"]
@@ -340,8 +340,9 @@ def _list_of(
     default_source: InventorySource,
 ) -> list[Any]:
     items: list[Any] = []
+    field_names = {field_def.name for field_def in fields(model_cls)}
     for value in values:
-        payload = dict(value)
+        payload = {key: item for key, item in dict(value).items() if key in field_names}
         payload.setdefault("level_id", level_id)
         payload.setdefault("source", default_source)
         items.append(model_cls(**payload))

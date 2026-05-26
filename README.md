@@ -98,6 +98,19 @@ pytest
 
 Si no hay Postgres local, los tests se saltan con un mensaje explícito.
 
+## Limpieza de cache Vision del processor
+
+Tras cambios en la normalización de nombres/cache de Vision, elimina una vez
+los artifacts agregados antiguos para evitar reutilizar resultados envenenados
+con entradas `{"error": ...}`:
+
+```bash
+docker compose exec processor-worker bash -c '
+  rm -rf /app/cache/vision_analyze_plan
+  find /app/artifacts -path "*/vision/*" -delete 2>/dev/null
+'
+```
+
 ## Estructura
 
 - `backend/app/routes` — rutas HTTP
