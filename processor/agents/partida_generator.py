@@ -8,15 +8,18 @@ catalog. Every partida description is specific to this project.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
+import random
 import re
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
 
+from core.api_key_manager import APIKeyManager
 from core.schemas import QuantityTakeoff, QuantityTrace
 from knowledge.training_data import TrainingPair
 
@@ -29,6 +32,29 @@ try:
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
+
+
+def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return max(minimum, int(raw))
+    except ValueError:
+        logger.warning("%s=%r is invalid; using %d", name, raw, default)
+        return default
+
+
+def _env_float(name: str, default: float, *, minimum: float = 0.0) -> float:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return max(minimum, float(raw))
+    except ValueError:
+        logger.warning("%s=%r is invalid; using %.2f", name, raw, default)
+        return default
+
 
 # ---------------------------------------------------------------------------
 # Chapter catalog — 24 chapters across 4 disciplines
@@ -170,9 +196,15 @@ _PREFIX_TABLE: list[tuple[str, str]] = [
     ("wet_area_", "19"),
 ]
 
-BATCH_SIZE = 80  # takeoffs per GPT-4o-mini call
-_MODEL = "gpt-4o-mini"
+BATCH_SIZE = _env_int("DUPLA_PARTIDA_BATCH_SIZE", 20)
+OPENAI_CONCURRENCY = 30
+OPENAI_MAX_RETRIES = _env_int("DUPLA_OPENAI_MAX_RETRIES", 4)
+OPENAI_RETRY_BASE_SECONDS = _env_float("DUPLA_OPENAI_RETRY_BASE_SECONDS", 0.75)
+_MODEL = os.getenv("DUPLA_PARTIDA_MODEL", "gpt-4o")
 _TEMPERATURE = 0.2
+
+# Bump when system prompt or batch format changes; invalidates cache.
+PARTIDA_PROMPT_VERSION = "v2-json-schema"
 
 _SYSTEM_PROMPT = """\
 Eres un presupuestista dominicano senior especializado en proyectos residenciales
@@ -191,10 +223,77 @@ REGLAS ABSOLUTAS:
 4. El chapter_code y chapter_name deben tomarse del capitulo asignado al lote.
 5. El partida_code se forma como: {chapter_code}.{orden_dentro_capitulo:03d}
    Ejemplo: primer item del cap 06 = "06.001", segundo = "06.002"
-6. Devuelve SOLO un JSON array, sin texto adicional, sin bloques de codigo.
+6. Devuelve SOLO un JSON object con la forma {"items":[...]}, sin texto
+   adicional, sin bloques de codigo.
 7. El campo source_takeoff_key debe ser el item_key exacto del takeoff de entrada.
 8. Genera EXACTAMENTE una partida por takeoff recibido, usando el mismo orden.\
 """
+
+_PARTIDA_RESPONSE_FORMAT: dict[str, Any] = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "dupla_partida_batch",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["items"],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "chapter_code",
+                            "chapter_name",
+                            "discipline",
+                            "partida_code",
+                            "partida_description",
+                            "unit",
+                            "quantity",
+                            "source_takeoff_key",
+                        ],
+                        "properties": {
+                            "chapter_code": {
+                                "type": "string",
+                                "description": "Two-digit budget chapter code.",
+                            },
+                            "chapter_name": {
+                                "type": "string",
+                                "description": "Budget chapter display name.",
+                            },
+                            "discipline": {
+                                "type": "string",
+                                "enum": ["arquitectura", "estructural", "sanitario", "electrico"],
+                            },
+                            "partida_code": {
+                                "type": "string",
+                                "description": "Code in format XX.NNN.",
+                            },
+                            "partida_description": {
+                                "type": "string",
+                                "description": "Project-specific budget line description.",
+                            },
+                            "unit": {
+                                "type": "string",
+                                "description": "Unit copied exactly from the input takeoff.",
+                            },
+                            "quantity": {
+                                "type": "number",
+                                "description": "Quantity copied from the input takeoff.",
+                            },
+                            "source_takeoff_key": {
+                                "type": "string",
+                                "description": "Exact key copied from the input takeoff.",
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
+}
 
 
 def _infer_discipline(takeoff: QuantityTakeoff) -> str:
@@ -319,6 +418,51 @@ def _extract_json_list(text: str) -> list[dict[str, Any]]:
     return []
 
 
+def _fallback_partida_description(takeoff: QuantityTakeoff, chapter_name: str) -> str:
+    desc = str(takeoff.inputs.get("takeoff_description") or "").strip()
+    if desc:
+        return desc[:800]
+    return f"{chapter_name.title()} - {takeoff.item_type.replace('_', ' ')}"
+
+
+def _normalize_generated_partidas(
+    partidas: list[dict[str, Any]],
+    takeoffs: list[QuantityTakeoff],
+    *,
+    chapter_code: str,
+    chapter_name: str,
+    discipline: str,
+    partida_offset: int,
+) -> list[dict[str, Any]]:
+    """Return exactly one validated partida per takeoff, in input order."""
+    by_key: dict[str, dict[str, Any]] = {}
+    for partida in partidas:
+        source_key = str(partida.get("source_takeoff_key") or "").strip()
+        if source_key and source_key not in by_key:
+            by_key[source_key] = partida
+
+    normalized: list[dict[str, Any]] = []
+    for idx, takeoff in enumerate(takeoffs, start=1):
+        code = f"{chapter_code}.{partida_offset + idx:03d}"
+        partida = dict(by_key.get(takeoff.item_key) or {})
+        normalized.append(
+            {
+                "chapter_code": str(partida.get("chapter_code") or chapter_code),
+                "chapter_name": str(partida.get("chapter_name") or chapter_name),
+                "discipline": str(partida.get("discipline") or discipline),
+                "partida_code": str(partida.get("partida_code") or code),
+                "partida_description": str(
+                    partida.get("partida_description")
+                    or _fallback_partida_description(takeoff, chapter_name)
+                ),
+                "unit": str(takeoff.unit),
+                "quantity": float(takeoff.quantity),
+                "source_takeoff_key": takeoff.item_key,
+            }
+        )
+    return normalized
+
+
 class PartidaGenerator:
     """
     Generates project-specific budget partidas from quantity takeoffs using GPT-4o.
@@ -330,10 +474,32 @@ class PartidaGenerator:
     def __init__(self) -> None:
         if not HAS_OPENAI:
             raise ImportError("openai package is required for PartidaGenerator")
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable is not set")
-        self._client = AsyncOpenAI(api_key=api_key)
+        self._key_manager = APIKeyManager()
+        self._clients: dict[str, AsyncOpenAI] = {}
+        self._semaphore = asyncio.Semaphore(OPENAI_CONCURRENCY)
+        logger.info(
+            "PartidaGenerator initialized: model=%s batch_size=%d concurrency=%d keys=%d",
+            _MODEL,
+            BATCH_SIZE,
+            OPENAI_CONCURRENCY,
+            self._key_manager.key_count,
+        )
+
+    def _client_for_next_key(self) -> "AsyncOpenAI":
+        api_key = self._key_manager.next_key()
+        client = self._clients.get(api_key)
+        if client is None:
+            client = AsyncOpenAI(api_key=api_key)
+            self._clients[api_key] = client
+        return client
+
+    def _client_and_key_for_next_key(self) -> tuple["AsyncOpenAI", str]:
+        api_key = self._key_manager.next_key()
+        client = self._clients.get(api_key)
+        if client is None:
+            client = AsyncOpenAI(api_key=api_key)
+            self._clients[api_key] = client
+        return client, api_key
 
     async def generate(
         self,
@@ -349,7 +515,24 @@ class PartidaGenerator:
 
         pres_reference_line takeoffs are skipped (they already have descriptions).
         """
-        non_pres = [t for t in takeoffs if t.item_type != "pres_reference_line"]
+        non_pres_raw = [t for t in takeoffs if t.item_type != "pres_reference_line"]
+        seen_item_keys: set[str] = set()
+        non_pres: list[QuantityTakeoff] = []
+        duplicate_count = 0
+        for takeoff in non_pres_raw:
+            if takeoff.item_key in seen_item_keys:
+                duplicate_count += 1
+                continue
+            seen_item_keys.add(takeoff.item_key)
+            non_pres.append(takeoff)
+
+        if duplicate_count:
+            logger.warning(
+                "PartidaGenerator collapsed %d duplicate takeoffs by item_key (%d -> %d)",
+                duplicate_count,
+                len(non_pres_raw),
+                len(non_pres),
+            )
         if not non_pres:
             return []
 
@@ -361,8 +544,6 @@ class PartidaGenerator:
 
         results: list[dict[str, Any]] = []
         chapter_offsets: dict[str, int] = {}
-
-        import asyncio
 
         tasks = []
         for chapter_code in sorted(groups.keys()):
@@ -387,10 +568,13 @@ class PartidaGenerator:
                     )
                 )
                 chapter_offsets[chapter_code] = offset + len(batch)
-        
+
         if tasks:
-            batch_results = await asyncio.gather(*tasks)
+            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
             for partidas in batch_results:
+                if isinstance(partidas, Exception):
+                    logger.warning("PartidaGenerator batch task failed: %s", partidas)
+                    continue
                 results.extend(partidas)
 
         logger.info(
@@ -399,6 +583,60 @@ class PartidaGenerator:
             len(results),
         )
         return results
+
+    async def _create_structured_completion(
+        self,
+        *,
+        messages: list[dict[str, str]],
+        chapter_code: str,
+        takeoff_count: int,
+    ) -> str:
+        retryable_statuses = {408, 409, 429, 500, 502, 503, 504}
+        last_exc: Exception | None = None
+
+        async with self._semaphore:
+            for attempt in range(1, max(1, OPENAI_MAX_RETRIES) + 1):
+                client, api_key = self._client_and_key_for_next_key()
+                try:
+                    resp = await client.chat.completions.create(
+                        model=_MODEL,
+                        max_tokens=4000,
+                        temperature=_TEMPERATURE,
+                        response_format=_PARTIDA_RESPONSE_FORMAT,
+                        messages=messages,
+                    )
+                    return resp.choices[0].message.content or ""
+                except Exception as exc:
+                    last_exc = exc
+                    status_code = getattr(exc, "status_code", None)
+                    response = getattr(exc, "response", None)
+                    if status_code is None and response is not None:
+                        status_code = getattr(response, "status_code", None)
+
+                    if status_code == 429:
+                        self._key_manager.mark_rate_limited(api_key)
+
+                    is_retryable = status_code in retryable_statuses or status_code is None
+                    if attempt >= OPENAI_MAX_RETRIES or not is_retryable:
+                        raise
+
+                    delay = min(
+                        20.0,
+                        OPENAI_RETRY_BASE_SECONDS * (2 ** (attempt - 1)) + random.random(),
+                    )
+                    logger.warning(
+                        "PartidaGenerator retry %d/%d in %.2fs "
+                        "(chapter=%s takeoffs=%d status=%s)",
+                        attempt,
+                        OPENAI_MAX_RETRIES,
+                        delay,
+                        chapter_code,
+                        takeoff_count,
+                        status_code or "unknown",
+                    )
+                    await asyncio.sleep(delay)
+
+        raise RuntimeError("PartidaGenerator structured completion failed") from last_exc
 
     async def _generate_batch(
         self,
@@ -410,7 +648,16 @@ class PartidaGenerator:
         few_shot_block: str,
         partida_offset: int,
     ) -> list[dict[str, Any]]:
-        """Single GPT-4o call for one batch within a chapter."""
+        """Single GPT-4o call for one batch within a chapter (cached)."""
+        from core.stage_cache import (
+            cache_get,
+            cache_set,
+            compose_key,
+            sha256_json,
+            _STATS,
+        )
+        import time
+
         takeoff_payload: list[dict[str, Any]] = []
         for t in takeoffs:
             item: dict[str, Any] = {
@@ -426,6 +673,25 @@ class PartidaGenerator:
             if level:
                 item["level"] = level
             takeoff_payload.append(item)
+
+        cache_key = compose_key(
+            sha256_json({
+                "takeoffs": takeoff_payload,
+                "chapter": chapter_code,
+                "few_shot": sha256_json(few_shot_block or "")[:16],
+                "offset": partida_offset,
+            }),
+            _MODEL,
+            PARTIDA_PROMPT_VERSION,
+        )
+        cached = cache_get("partida_generate_batch", cache_key)
+        if cached is not None:
+            logger.info(
+                "[cache] HIT partida_generate_batch chapter=%s (%d takeoffs)",
+                chapter_code, len(takeoffs),
+            )
+            return cached
+        _STATS.bump("partida_generate_batch", misses=1)
 
         catalog_block = "\n".join(
             f"  {code}: {name} (disciplina: {disc})"
@@ -445,24 +711,23 @@ class PartidaGenerator:
             f"{chapter_code}.{start_num:03d}\n\n"
             f"TAKEOFFS A CONVERTIR EN PARTIDAS ({len(takeoffs)} items):\n"
             + json.dumps(takeoff_payload, ensure_ascii=False, indent=2)
-            + "\n\nDevuelve SOLO el JSON array de partidas. "
+            + "\n\nDevuelve SOLO un JSON object con la propiedad items. "
             "Formato de cada elemento:\n"
-            '{"chapter_code":"XX","chapter_name":"...","discipline":"...",'
+            '{"items":[{"chapter_code":"XX","chapter_name":"...","discipline":"...",'
             '"partida_code":"XX.NNN","partida_description":"...","unit":"...",'
-            '"quantity":0.0,"source_takeoff_key":"..."}'
+            '"quantity":0.0,"source_takeoff_key":"..."}]}'
         )
 
+        t0 = time.monotonic()
         try:
-            resp = await self._client.chat.completions.create(
-                model=_MODEL,
-                max_tokens=4000,
-                temperature=_TEMPERATURE,
+            raw = await self._create_structured_completion(
                 messages=[
                     {"role": "system", "content": _SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},
                 ],
+                chapter_code=chapter_code,
+                takeoff_count=len(takeoffs),
             )
-            raw = resp.choices[0].message.content or ""
         except Exception:
             logger.warning(
                 "PartidaGenerator batch failed (chapter=%s, %d takeoffs)",
@@ -472,10 +737,30 @@ class PartidaGenerator:
             )
             return []
 
-        partidas = _extract_json_list(raw)
-        if not partidas:
+        parsed_partidas = _extract_json_list(raw)
+        if not parsed_partidas:
             logger.warning(
-                "PartidaGenerator: empty JSON from GPT-4o for chapter %s. Raw response was: %s", 
+                "PartidaGenerator: empty JSON from GPT-4o for chapter %s. Raw response was: %s",
                 chapter_code, raw
             )
-        return partidas
+        else:
+            if len(parsed_partidas) != len(takeoffs):
+                logger.warning(
+                    "PartidaGenerator schema-valid response count mismatch "
+                    "(chapter=%s expected=%d got=%d); normalizing",
+                    chapter_code,
+                    len(takeoffs),
+                    len(parsed_partidas),
+                )
+            partidas = _normalize_generated_partidas(
+                parsed_partidas,
+                takeoffs,
+                chapter_code=chapter_code,
+                chapter_name=chapter_name,
+                discipline=discipline,
+                partida_offset=partida_offset,
+            )
+            _STATS.bump("partida_generate_batch", seconds_saved_estimate=time.monotonic() - t0)
+            cache_set("partida_generate_batch", cache_key, partidas)
+            return partidas
+        return []

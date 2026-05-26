@@ -1836,24 +1836,39 @@ def quantify_inventory(
     *,
     runner_source_discipline: str | None = None,
 ) -> list[QuantityTakeoff]:
+    levels_list = list(levels)
     takeoffs: list[QuantityTakeoff] = []
+    multi_level = len(levels_list) > 1
 
-    for level in levels:
-        takeoffs.extend(_level_surface_takeoffs(level))
-        takeoffs.extend(_wall_takeoffs(level))
-        takeoffs.extend(_door_takeoffs(level))
-        takeoffs.extend(_window_takeoffs(level))
-        takeoffs.extend(_area_group_takeoffs(level))
+    for level in levels_list:
+        level_takeoffs: list[QuantityTakeoff] = []
+        level_takeoffs.extend(_level_surface_takeoffs(level))
+        level_takeoffs.extend(_wall_takeoffs(level))
+        level_takeoffs.extend(_door_takeoffs(level))
+        level_takeoffs.extend(_window_takeoffs(level))
+        level_takeoffs.extend(_area_group_takeoffs(level))
         wet_area_fixtures = _wet_area_fixture_takeoffs(level)
-        takeoffs.extend(wet_area_fixtures)
-        takeoffs.extend(_stair_takeoffs(level))
-        takeoffs.extend(
+        level_takeoffs.extend(wet_area_fixtures)
+        level_takeoffs.extend(_stair_takeoffs(level))
+        level_takeoffs.extend(
             _fixture_takeoffs(
                 level,
                 skip_sanitary_fixture_dupes=bool(wet_area_fixtures),
             )
         )
-        takeoffs.extend(_structural_takeoffs(level))
+        level_takeoffs.extend(_structural_takeoffs(level))
+
+        if multi_level and level.level_id:
+            # Wall and structural IDs are layer-based (e.g. json-wall-muros) and
+            # repeat verbatim across levels, so the resulting item_keys collide
+            # and trip _assert_unique_takeoff_keys. Floor/ceiling already embed
+            # level_id; prefix the rest only when there is more than one level.
+            prefix = f"{level.level_id}:"
+            for takeoff in level_takeoffs:
+                if not takeoff.item_key.startswith(prefix):
+                    takeoff.item_key = f"{prefix}{takeoff.item_key}"
+
+        takeoffs.extend(level_takeoffs)
 
     if runner_source_discipline:
         for takeoff in takeoffs:

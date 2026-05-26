@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Optional
 from uuid import UUID
 import uuid
+import unicodedata
 
 import httpx
 from fastapi import HTTPException, status
@@ -27,6 +28,106 @@ from app.services.project_service import ProjectService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+_BUDGET_ALL_DISCIPLINE_ALIASES = {
+    "todas",
+    "todos",
+    "todo",
+    "all",
+    "*",
+    "multidisciplina",
+    "multidisciplinas",
+}
+_BUDGET_AUTO_DISCIPLINE_ALIASES = {"auto", "infer", "inferir", "automatico"}
+_BUDGET_DISCIPLINE_ALIASES: dict[str, str] = {
+    "arquitectura": "arquitectura",
+    "arquitectonica": "arquitectura",
+    "arquitectonico": "arquitectura",
+    "arq": "arquitectura",
+    "estructura": "estructura",
+    "estructural": "estructura",
+    "est": "estructura",
+    "electrico": "electrico",
+    "electrica": "electrico",
+    "electricidad": "electrico",
+    "elec": "electrico",
+    "sanitario": "sanitario",
+    "sanitaria": "sanitario",
+    "plomeria": "sanitario",
+    "hidrosanitario": "sanitario",
+    "agua potable": "sanitario",
+    "aguas negras": "sanitario",
+    "drenaje": "sanitario",
+    "desague": "sanitario",
+}
+_BUDGET_DISCIPLINE_HINTS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (
+        ("agua potable", "aguas negras", "hidrosanit", "sanitar", "plomer", "drenaje", "desague", "hs-"),
+        "sanitario",
+    ),
+    (
+        ("electrico", "electrica", "electricidad", "luminaria", "tomacorriente", "panel", "e-"),
+        "electrico",
+    ),
+    (
+        ("estructura", "estructural", "cimiento", "ciment", "zapata", "viga", "columna", "losa", "encofrado", "es-"),
+        "estructura",
+    ),
+    (
+        ("arquitectura", "arquitectonica", "arq", "planta", "fachada", "puerta", "ventana", "a-"),
+        "arquitectura",
+    ),
+)
+
+
+def _fold_text(value: str | None) -> str:
+    """Lowercase and remove accents so UI/backend aliases stay stable."""
+    text = (value or "").strip().lower()
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+
+
+def _infer_budget_discipline_from_files(files: list[ProjectFile]) -> str:
+    probes: list[str] = []
+    for pf in files:
+        probes.append(str(pf.discipline or ""))
+        probes.append(str(pf.original_name or ""))
+
+    for probe in probes:
+        low = _fold_text(probe)
+        for keywords, canonical in _BUDGET_DISCIPLINE_HINTS:
+            if any(keyword in low for keyword in keywords):
+                return canonical
+        for alias, canonical in _BUDGET_DISCIPLINE_ALIASES.items():
+            if alias and alias in low:
+                return canonical
+
+    return "arquitectura"
+
+
+def _normalize_budget_discipline(raw: str | None, files: list[ProjectFile]) -> str:
+    """Return the canonical processor discipline for a budget job.
+
+    The processor now treats an empty discipline as base_extraction. That is
+    useful internally, but /budget/jobs must always request a real budget mode
+    so the UI does not render a completed empty budget. For this endpoint,
+    omitted/empty means "todas" to preserve the existing user workflow.
+    """
+    value = _fold_text(raw)
+    if not value or value in _BUDGET_ALL_DISCIPLINE_ALIASES:
+        return "todas"
+    if value in _BUDGET_AUTO_DISCIPLINE_ALIASES:
+        return _infer_budget_discipline_from_files(files)
+
+    normalized = _BUDGET_DISCIPLINE_ALIASES.get(value)
+    if normalized:
+        return normalized
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail=(
+            "Disciplina invalida para presupuesto. Usa arquitectura, "
+            "estructura, electrico, sanitario o todas."
+        ),
+    )
 
 
 class BudgetService:
@@ -61,6 +162,8 @@ class BudgetService:
         if not all_files:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="El proyecto no tiene archivos adjuntos")
 
+        budget_discipline = _normalize_budget_discipline(discipline, all_files)
+
         upload_root = Path(settings.upload_root)
         multipart_files: list[tuple[str, tuple[str, bytes, str]]] = []
         for pf in all_files:
@@ -76,12 +179,17 @@ class BudgetService:
 
         processor_url = settings.processor_url
         correlation_id = str(uuid.uuid4())
-        logger.info(f"Enqueuing budget job for project {project_uuid} with correlation ID: {correlation_id}")
+        logger.info(
+            "Enqueuing budget job for project %s with correlation ID: %s discipline=%s",
+            project_uuid,
+            correlation_id,
+            budget_discipline,
+        )
         try:
-            form_data: dict[str, str] = {}
-            if discipline:
-                form_data["discipline"] = discipline
-            form_data["project_name"] = project.name
+            form_data: dict[str, str] = {
+                "discipline": budget_discipline,
+                "project_name": project.name,
+            }
 
             async with httpx.AsyncClient(timeout=60.0) as client:
                 resp = await client.post(
@@ -110,7 +218,7 @@ class BudgetService:
             project_id=project.id,
             job_id=str(job_id),
             status="queued",
-            discipline=discipline,
+            discipline=budget_discipline,
         )
         self._session.add(job)
         await self._session.flush()

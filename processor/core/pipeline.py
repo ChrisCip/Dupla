@@ -5,6 +5,9 @@ Pipeline helpers for the active APS/JSON-first architecture.
 from __future__ import annotations
 
 import logging
+import re
+import time
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -27,6 +30,7 @@ def infer_source_discipline(takeoff: QuantityTakeoff, context: ProjectContext | 
     return "architectural"
 from core.semantic_adapter import adapt_semantic_to_inventory
 from core.semantic_enrichment import enrich_semantics
+from core.stage_cache import _STATS
 from knowledge.bc3_embeddings import load_or_build_embeddings
 from knowledge.pres_expansion import synthetic_takeoffs_from_pres
 from knowledge.training_data import extract_training_pairs
@@ -117,8 +121,9 @@ async def _match_or_generate(
     """
     import os as _os  # local import — avoids shadowing the module-level namespace
 
-    api_key = _os.getenv("OPENAI_API_KEY")
-    if api_key:
+    api_keys = (_os.getenv("DUPLA_OPENAI_KEYS") or "").strip()
+    api_key = (_os.getenv("OPENAI_API_KEY") or "").strip()
+    if api_keys or api_key:
         try:
             from agents.partida_generator import PartidaGenerator
             from agents.partida_adapter import adapt_generated_to_legacy_format
@@ -277,6 +282,7 @@ async def build_budget_from_inventory(
         max_per_level=int(context.metadata.get("pres_max_per_level", 250)),
         fallback_unmatched=bool(context.metadata.get("pres_fallback_unmatched", True)),
     )
+    _assert_unique_takeoff_keys(expanded_takeoffs)
     _stamp_takeoffs_source_discipline(expanded_takeoffs, project_discipline)
     candidates, bc3_catalog_for_budget = await _match_or_generate(
         expanded_takeoffs,
@@ -323,31 +329,511 @@ def _coerce_vision_payloads(
     return list(vision_payloads)
 
 
+_LEVEL_LABEL_PATTERN = re.compile(
+    r"^(n[+\-]?\d|nivel|level|piso|planta|sotano|techo|cubierta|azotea|mezzanine|pb\b|s\d|n\d)",
+    re.IGNORECASE,
+)
+
+
+def _is_acceptable_level_label(text: str) -> bool:
+    if not text or len(text) > 40:
+        return False
+    return _LEVEL_LABEL_PATTERN.match(text) is not None
+
+
 def _extract_level_markers(cad_facts: dict[str, Any]) -> list[str]:
-    """Pull unique level names from inventory_hints.level_markers."""
+    """Pull unique, label-like level names from inventory_hints.level_markers.
+
+    Mirrors the filter applied in agents.vision_agent._resolve_vision_level_name:
+    rejects free-form CAD annotations that get accidentally captured as markers
+    (e.g. "El nivel de desplante sera de 0.80m..."). Without this filter the
+    CAD-only fallback used to spawn one fake level per annotation, producing N×
+    duplicate takeoffs and tripping _assert_unique_takeoff_keys.
+    """
     markers = cad_facts.get("inventory_hints", {}).get("level_markers", [])
     seen: set[str] = set()
     unique: list[str] = []
     for marker in markers:
         text = str(marker.get("content", "") if isinstance(marker, Mapping) else marker).strip()
-        if text and text not in seen:
-            seen.add(text)
-            unique.append(text)
+        if not _is_acceptable_level_label(text):
+            continue
+        if text in seen:
+            continue
+        seen.add(text)
+        unique.append(text)
     return unique
 
 
-def _build_cad_only_levels(cad_facts: dict[str, Any]) -> list[LevelInventory]:
-    """Build one LevelInventory per detected level marker, or a single fallback."""
+def _unique_strings(*groups: Iterable[str | None]) -> list[str]:
+    seen: set[str] = set()
+    merged: list[str] = []
+    for group in groups:
+        for item in group:
+            value = str(item or "").strip()
+            if value and value not in seen:
+                seen.add(value)
+                merged.append(value)
+    return merged
+
+
+def _norm_key(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip().lower())
+
+
+def _round_key(value: Any, digits: int = 3) -> float | None:
+    if value is None:
+        return None
+    try:
+        return round(float(value), digits)
+    except (TypeError, ValueError):
+        return None
+
+
+def _slug_key(parts: Iterable[Any], *, fallback: str) -> str:
+    raw = "-".join(str(part) for part in parts if part is not None and str(part) != "")
+    slug = re.sub(r"[^a-z0-9]+", "-", raw.lower()).strip("-")
+    return slug or fallback
+
+
+def _source_refs_for_entity(entity: Any) -> list[str]:
+    refs = list(getattr(entity, "source_refs", []) or [])
+    source_image = getattr(entity, "source_image", None)
+    if source_image:
+        refs.append(f"vision:{source_image}")
+    return _unique_strings(refs)
+
+
+def _entity_page_key(entity: Any) -> str:
+    refs = _source_refs_for_entity(entity)
+    for ref in refs:
+        if ref.startswith("vision:"):
+            parts = ref.split(":")
+            if len(parts) >= 2 and parts[1]:
+                return parts[1]
+    source_image = getattr(entity, "source_image", None)
+    if source_image:
+        return str(source_image)
+    return str(getattr(entity, "level_id", None) or "__global__")
+
+
+def _entity_inputs(entity: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+    inputs = getattr(entity, "inputs", {}) or {}
+    if not isinstance(inputs, dict):
+        inputs = {}
+    raw = inputs.get("raw") if isinstance(inputs.get("raw"), dict) else {}
+    return inputs, raw
+
+
+def _entity_label(entity: Any, *input_keys: str) -> str:
+    inputs, raw = _entity_inputs(entity)
+    for key in input_keys:
+        value = inputs.get(key) or raw.get(key)
+        if str(value or "").strip():
+            return _norm_key(value)
+    for attr_name in ("type_hint", "fixture_type", "element_type", "id"):
+        value = getattr(entity, attr_name, None)
+        if str(value or "").strip():
+            return _norm_key(value)
+    return ""
+
+
+def _first_not_none(values: Iterable[Any]) -> Any:
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def _all_refs(entities: Iterable[Any]) -> list[str]:
+    return _unique_strings(*(_source_refs_for_entity(entity) for entity in entities))
+
+
+def _merge_entity_strings(entities: Iterable[Any], attr_name: str) -> list[str]:
+    return _unique_strings(*(getattr(entity, attr_name, []) or [] for entity in entities))
+
+
+def _merge_entity_inputs(entities: Iterable[Any]) -> dict[str, Any]:
+    merged: dict[str, Any] = {}
+    raw_values: list[dict[str, Any]] = []
+    for entity in entities:
+        inputs, raw = _entity_inputs(entity)
+        for key, value in inputs.items():
+            if key == "raw" and isinstance(value, dict):
+                raw_values.append(value)
+            elif key not in merged and value is not None:
+                merged[key] = value
+        if raw:
+            raw_values.append(raw)
+    if raw_values:
+        raw_merged: dict[str, Any] = {}
+        for raw in raw_values:
+            for key, value in raw.items():
+                if key not in raw_merged and value is not None:
+                    raw_merged[key] = value
+        if raw_merged:
+            merged["raw"] = raw_merged
+    return merged
+
+
+def _wall_typology(wall: Any) -> str:
+    inputs, raw = _entity_inputs(wall)
+    return _norm_key(
+        inputs.get("wall_typology")
+        or raw.get("wall_typology")
+        or raw.get("tipo")
+        or raw.get("type_label")
+        or getattr(wall, "wall_system", None)
+        or getattr(wall, "id", None)
+    )
+
+
+def _wall_material(wall: Any) -> str:
+    inputs, raw = _entity_inputs(wall)
+    return _norm_key(
+        getattr(wall, "material_hint", None)
+        or inputs.get("material")
+        or inputs.get("material_hint")
+        or raw.get("original_material_code")
+        or raw.get("material")
+    )
+
+
+def _wall_group_key(wall: Any) -> tuple[str, str, float | None]:
+    return (_wall_typology(wall), _wall_material(wall), _round_key(getattr(wall, "thickness_m", None)))
+
+
+def _dedupe_vision_walls(walls: list[Any], *, level_id: str) -> list[dict[str, Any]]:
+    """Bucket vision walls by SLUG of the typology key (not raw tuple) so that
+    distinct typology tuples whose slug collides do not produce two payloads
+    with the same `vision-wall-<slug>` id.
+    """
+    groups: dict[str, list[Any]] = defaultdict(list)
+    slug_key: dict[str, tuple[str, str, float | None]] = {}
+    for wall in walls:
+        key = _wall_group_key(wall)
+        slug = _slug_key(key, fallback="unknown")
+        groups[slug].append(wall)
+        slug_key.setdefault(slug, key)
+
+    merged: list[dict[str, Any]] = []
+    for slug, group in groups.items():
+        key = slug_key[slug]
+        page_entities: dict[str, dict[str, Any]] = defaultdict(dict)
+        for index, wall in enumerate(group):
+            page = _entity_page_key(wall)
+            entity_id = str(getattr(wall, "id", None) or f"wall-{index}")
+            current = page_entities[page].get(entity_id)
+            if current is None:
+                page_entities[page][entity_id] = wall
+                continue
+            current_measure = float(getattr(current, "length_m", 0) or getattr(current, "area_m2", 0) or 0)
+            next_measure = float(getattr(wall, "length_m", 0) or getattr(wall, "area_m2", 0) or 0)
+            if next_measure > current_measure:
+                page_entities[page][entity_id] = wall
+
+        page_totals: dict[str, dict[str, float]] = {}
+        page_representatives: dict[str, Any] = {}
+        for page, entities_by_id in page_entities.items():
+            entities = list(entities_by_id.values())
+            page_totals[page] = {
+                "length_m": sum(float(getattr(item, "length_m", 0) or 0) for item in entities),
+                "area_m2": sum(float(getattr(item, "area_m2", 0) or 0) for item in entities),
+            }
+            page_representatives[page] = max(
+                entities,
+                key=lambda item: float(getattr(item, "length_m", 0) or getattr(item, "area_m2", 0) or 0),
+            )
+
+        best_page = max(
+            page_totals,
+            key=lambda page: (page_totals[page]["length_m"], page_totals[page]["area_m2"]),
+        )
+        representative = page_representatives[best_page]
+        payload = representative.to_dict()
+        payload.update(
+            {
+                "id": f"vision-wall-{slug}",
+                "level_id": level_id,
+                "source": "vision",
+                "source_refs": _all_refs(group),
+                "source_layers": _merge_entity_strings(group, "source_layers"),
+                "assumptions": _unique_strings(
+                    _merge_entity_strings(group, "assumptions"),
+                    [
+                        (
+                            "Deduplicated repeated wall typology across vision pages; "
+                            "kept the maximum per-page quantity to avoid cross-sheet double counting."
+                        )
+                    ]
+                    if len(page_entities) > 1
+                    else [],
+                ),
+                "conflict_notes": _merge_entity_strings(group, "conflict_notes"),
+                "evidence": _merge_entity_strings(group, "evidence"),
+                "inputs": _merge_entity_inputs(group),
+                "length_m": page_totals[best_page]["length_m"] or getattr(representative, "length_m", None),
+                "area_m2": page_totals[best_page]["area_m2"] or getattr(representative, "area_m2", None),
+                "height_m": _first_not_none(getattr(wall, "height_m", None) for wall in group),
+                "thickness_m": _first_not_none(getattr(wall, "thickness_m", None) for wall in group),
+                "material_hint": _first_not_none(getattr(wall, "material_hint", None) for wall in group),
+                "wall_system": _first_not_none(getattr(wall, "wall_system", None) for wall in group),
+                "openings_count": max(int(getattr(wall, "openings_count", 0) or 0) for wall in group),
+            }
+        )
+        payload["inputs"].setdefault("wall_typology", key[0] or payload["id"])
+        merged.append(payload)
+    return merged
+
+
+def _dedupe_count_entities(
+    entities: list[Any],
+    *,
+    key_fn: Any,
+    id_prefix: str,
+    level_id: str,
+) -> list[dict[str, Any]]:
+    """Group vision entities and produce one payload per logical group.
+
+    Group by the SLUG of `key_fn(entity)` — not by the raw tuple — so that
+    different tuples whose slug collides (e.g. ('v.1','beam') vs ('v 1','beam')
+    both produce 'v-1-beam') still land in the same group instead of emitting
+    two payloads with the same id and tripping `_assert_unique_takeoff_keys`.
+    """
+    groups: dict[str, list[Any]] = defaultdict(list)
+    for entity in entities:
+        slug = _slug_key(key_fn(entity), fallback="unknown")
+        groups[slug].append(entity)
+
+    merged: list[dict[str, Any]] = []
+    for slug, group in groups.items():
+        representative = max(group, key=lambda entity: int(getattr(entity, "count", 1) or 1))
+        payload = representative.to_dict()
+        payload.update(
+            {
+                "id": f"{id_prefix}-{slug}",
+                "level_id": level_id,
+                "source": "vision",
+                "source_refs": _all_refs(group),
+                "assumptions": _merge_entity_strings(group, "assumptions"),
+                "conflict_notes": _merge_entity_strings(group, "conflict_notes"),
+                "evidence": _merge_entity_strings(group, "evidence"),
+                "inputs": _merge_entity_inputs(group),
+                "count": max(int(getattr(entity, "count", 1) or 1) for entity in group),
+            }
+        )
+        if hasattr(representative, "source_layers"):
+            payload["source_layers"] = _merge_entity_strings(group, "source_layers")
+        merged.append(payload)
+    return merged
+
+
+def _merged_level_name(cad_facts: dict[str, Any], levels: list[LevelInventory]) -> str:
     markers = _extract_level_markers(cad_facts)
-    if not markers:
-        fallback_name = str(cad_facts.get("project") or "level_01")
-        return [
-            build_level_inventory(cad_facts, None, level_id="level_01", level_name=fallback_name)
-        ]
-    levels: list[LevelInventory] = []
-    for idx, name in enumerate(markers, start=1):
-        level_id = f"level_{idx:02d}"
-        levels.append(build_level_inventory(cad_facts, None, level_id=level_id, level_name=name))
+    if len(markers) == 1:
+        return markers[0]
+    for level in levels:
+        name = str(level.level_name or "").strip()
+        if name and not re.search(r"(?:^|[_-])page[_-]?\d+|pdf[_-]?\d+", name, flags=re.IGNORECASE):
+            return name
+    return "level_01"
+
+
+def _merge_vision_levels(
+    cad_facts: dict[str, Any],
+    levels: list[LevelInventory],
+) -> LevelInventory:
+    level_name = _merged_level_name(cad_facts, levels)
+    level_id = "level_01"
+    floor_areas = [float(level.floor_area_m2) for level in levels if level.floor_area_m2 is not None]
+    ceiling_areas = [float(level.ceiling_area_m2) for level in levels if level.ceiling_area_m2 is not None]
+
+    all_doors = [door for level in levels for door in level.doors]
+    all_windows = [window for level in levels for window in level.windows]
+    all_openings = [opening for level in levels for opening in level.openings]
+    all_fixtures = [fixture for level in levels for fixture in level.fixtures]
+    all_structural = [element for level in levels for element in level.structural_elements]
+    all_wet_areas = [item for level in levels for item in level.wet_areas]
+    all_kitchens = [item for level in levels for item in level.kitchens]
+    all_stairs = [item for level in levels for item in level.stairs]
+
+    payload = {
+        "level_id": level_id,
+        "level_name": level_name,
+        "source": "vision",
+        "source_image": None,
+        "source_refs": _unique_strings(
+            *(level.source_refs or [f"vision:{level.source_image}"] if level.source_image else level.source_refs for level in levels)
+        ),
+        "assumptions": _unique_strings(*(level.assumptions for level in levels)),
+        "conflict_notes": _unique_strings(*(level.conflict_notes for level in levels)),
+        "space_types": _unique_strings(*(level.space_types for level in levels)),
+        "system_notes": _unique_strings(*(level.system_notes for level in levels)),
+        "structural_notes": _unique_strings(*(level.structural_notes for level in levels)),
+        "notes": _unique_strings(*(level.notes for level in levels)),
+        "cad_hints": {},
+        "inputs": {
+            "merged_vision_pages": len(levels),
+            "source_level_ids": [level.level_id for level in levels],
+        },
+        "floor_area_m2": max(floor_areas) if floor_areas else None,
+        "ceiling_area_m2": max(ceiling_areas) if ceiling_areas else None,
+        "walls": _dedupe_vision_walls(
+            [wall for level in levels for wall in level.walls],
+            level_id=level_id,
+        ),
+        "openings": _dedupe_count_entities(
+            all_openings,
+            key_fn=lambda opening: (
+                _norm_key(getattr(opening, "opening_type", None)),
+                _round_key(getattr(opening, "width_m", None)),
+                _round_key(getattr(opening, "height_m", None)),
+                _norm_key(getattr(opening, "wall_id", None)),
+            ),
+            id_prefix="vision-opening",
+            level_id=level_id,
+        ),
+        "doors": _dedupe_count_entities(
+            all_doors,
+            key_fn=lambda door: (
+                _norm_key(getattr(door, "id", None)),
+                _entity_label(door, "door_label", "label"),
+                _round_key(getattr(door, "width_m", None)),
+                _round_key(getattr(door, "height_m", None)),
+            ),
+            id_prefix="vision-door",
+            level_id=level_id,
+        ),
+        "windows": _dedupe_count_entities(
+            all_windows,
+            key_fn=lambda window: (
+                _norm_key(getattr(window, "id", None)),
+                _entity_label(window, "window_label", "label"),
+                _round_key(getattr(window, "width_m", None)),
+                _round_key(getattr(window, "height_m", None)),
+            ),
+            id_prefix="vision-window",
+            level_id=level_id,
+        ),
+        "wet_areas": _dedupe_count_entities(
+            all_wet_areas,
+            key_fn=lambda wet_area: (
+                _norm_key(getattr(wet_area, "kind", None)),
+                _round_key(getattr(wet_area, "estimated_area_m2", None)),
+            ),
+            id_prefix="vision-wet-area",
+            level_id=level_id,
+        ),
+        "kitchens": _dedupe_count_entities(
+            all_kitchens,
+            key_fn=lambda kitchen: (_round_key(getattr(kitchen, "estimated_area_m2", None)),),
+            id_prefix="vision-kitchen",
+            level_id=level_id,
+        ),
+        "stairs": _dedupe_count_entities(
+            all_stairs,
+            key_fn=lambda stair: (
+                _round_key(getattr(stair, "width_m", None)),
+                _round_key(getattr(stair, "elevation_change_m", None)),
+            ),
+            id_prefix="vision-stair",
+            level_id=level_id,
+        ),
+        "fixtures": _dedupe_count_entities(
+            all_fixtures,
+            key_fn=lambda fixture: (
+                _entity_label(fixture, "fixture_label", "label"),
+                _norm_key(getattr(fixture, "fixture_type", None)),
+                _norm_key(getattr(fixture, "location_hint", None)),
+            ),
+            id_prefix="vision-fixture",
+            level_id=level_id,
+        ),
+        "structural_elements": _dedupe_count_entities(
+            all_structural,
+            key_fn=lambda element: (
+                _entity_label(element, "structural_label", "notation", "label"),
+                _norm_key(getattr(element, "element_type", None)),
+            ),
+            id_prefix="vision-structural",
+            level_id=level_id,
+        ),
+    }
+    return level_inventory_from_dict(payload, default_source="vision")
+
+
+def _assert_hybrid_level_invariant(levels: list[LevelInventory], cad_facts: dict[str, Any]) -> None:
+    markers = _extract_level_markers(cad_facts)
+    if len(levels) > 1 and not markers:
+        raise RuntimeError(
+            "Hybrid inventory invariant violated: build_hybrid_inventory returned "
+            f"{len(levels)} levels without CAD level markers. Vision pages must not become fake levels."
+        )
+
+
+def _assert_unique_takeoff_keys(takeoffs: Iterable[QuantityTakeoff]) -> None:
+    counts = Counter(takeoff.item_key for takeoff in takeoffs)
+    offenders = counts.most_common(5)
+    offenders = [(key, count) for key, count in offenders if count > 1]
+    if offenders:
+        formatted = ", ".join(f"{key} x{count}" for key, count in offenders)
+        raise RuntimeError(
+            "Duplicate takeoff item_key detected before budget generation. "
+            f"Top offenders: {formatted}"
+        )
+
+
+def _log_duplicate_takeoff_diagnostics(
+    hybrid_inventory: list[LevelInventory],
+    base_takeoffs: Iterable[QuantityTakeoff],
+    expanded_takeoffs: Iterable[QuantityTakeoff],
+    *,
+    stage: str,
+) -> None:
+    """Log Counter-based duplicate snapshots around the failing assertion.
+
+    Captures level_ids in hybrid_inventory plus the top duplicate item_keys at
+    each pipeline stage (base, expanded, post-PRES). The signal here is what
+    points at the actual source of duplication — relax nothing on its basis.
+    """
+    base_counts = Counter(t.item_key for t in base_takeoffs)
+    expanded_counts = Counter(t.item_key for t in expanded_takeoffs)
+    base_dups = [(k, c) for k, c in base_counts.most_common(5) if c > 1]
+    expanded_dups = [(k, c) for k, c in expanded_counts.most_common(5) if c > 1]
+    logger.info(
+        "[probe %s] hybrid_levels=%d ids=%s base_dups=%d expanded_dups=%d",
+        stage,
+        len(hybrid_inventory),
+        [level.level_id for level in hybrid_inventory],
+        len(base_dups),
+        len(expanded_dups),
+    )
+    if base_dups:
+        logger.warning("[probe %s] base duplicates: %s", stage, base_dups)
+    if expanded_dups:
+        logger.warning("[probe %s] expanded duplicates: %s", stage, expanded_dups)
+
+
+def _build_cad_only_levels(cad_facts: dict[str, Any]) -> list[LevelInventory]:
+    """Always return exactly one LevelInventory.
+
+    CAD facts are the merged drawing and cannot be split per level without
+    per-level vision evidence: the CAD pipeline reports global aggregates
+    (total length of every wall layer, total column count, …) not per-floor
+    breakdowns. Spawning one level per marker therefore duplicated CAD-derived
+    takeoffs N times and crashed _assert_unique_takeoff_keys.
+
+    Naming: when _extract_level_markers returns exactly one label-like marker,
+    we adopt it; otherwise default to "level_01".
+    """
+    markers = _extract_level_markers(cad_facts)
+    if len(markers) == 1:
+        level_name = markers[0]
+    else:
+        level_name = "level_01"
+    levels = [
+        build_level_inventory(cad_facts, None, level_id="level_01", level_name=level_name)
+    ]
+    _assert_hybrid_level_invariant(levels, cad_facts)
     return levels
 
 
@@ -368,7 +854,7 @@ def build_hybrid_inventory(
         return _build_cad_only_levels(cad_facts)
 
     error_count = 0
-    hybrid_levels: list[LevelInventory] = []
+    vision_levels: list[LevelInventory] = []
     for index, payload in enumerate(coerced_payloads, start=1):
         if isinstance(payload, LevelInventory):
             vision_level = payload
@@ -385,25 +871,35 @@ def build_hybrid_inventory(
             payload_dict.setdefault("level_name", payload_dict["level_id"])
             vision_level = level_inventory_from_dict(payload_dict, default_source="vision")
 
-        hybrid_levels.append(
-            build_level_inventory(
-                cad_facts,
-                vision_level,
-                level_id=vision_level.level_id,
-                level_name=vision_level.level_name,
-            )
-        )
+        vision_levels.append(vision_level)
 
-    if not hybrid_levels and cad_facts:
+    if not vision_levels and cad_facts:
         logger.warning(
             "All %d vision payloads failed — falling back to CAD-only inventory",
             error_count,
         )
         return _build_cad_only_levels(cad_facts)
 
+    if not vision_levels:
+        logger.warning("All %d vision payloads failed and CAD facts are empty", error_count)
+        return []
+
+    merged_vision_level = _merge_vision_levels(cad_facts, vision_levels)
+    hybrid_levels = [
+        build_level_inventory(
+            cad_facts,
+            merged_vision_level,
+            level_id=merged_vision_level.level_id,
+            level_name=merged_vision_level.level_name,
+        )
+    ]
+    _assert_hybrid_level_invariant(hybrid_levels, cad_facts)
+
     logger.info(
-        "Hybrid inventory built: %d levels (%d vision errors skipped)",
-        len(hybrid_levels), error_count,
+        "Hybrid inventory built: %d level(s) from %d vision payload(s), %d errors skipped",
+        len(hybrid_levels),
+        len(vision_levels),
+        error_count,
     )
     return hybrid_levels
 
@@ -417,7 +913,9 @@ def build_takeoffs_from_sources(
         normalized CAD facts + vision inventory -> hybrid inventory -> quantity takeoffs
     """
     hybrid_inventory = build_hybrid_inventory(cad_facts, vision_payloads)
-    return hybrid_inventory, quantify_inventory(hybrid_inventory)
+    takeoffs = quantify_inventory(hybrid_inventory)
+    _assert_unique_takeoff_keys(takeoffs)
+    return hybrid_inventory, takeoffs
 
 
 def build_expanded_takeoffs_from_sources(
@@ -430,6 +928,7 @@ def build_expanded_takeoffs_from_sources(
         hybrid_inventory,
         rules_engine=rules_engine,
     )
+    _assert_unique_takeoff_keys(expanded_takeoffs)
     return hybrid_inventory, base_takeoffs, expanded_takeoffs
 
 
@@ -446,6 +945,7 @@ async def build_budget_from_sources(
     apu_matcher: Any | None = None,
 ) -> dict[str, Any]:
     logger.info("build_budget_from_sources: starting hybrid inventory + takeoffs")
+    build_hybrid_t0 = time.monotonic()
     hybrid_inventory = build_hybrid_inventory(cad_facts, vision_payloads)
 
     # --- Semantic layer + quality ---
@@ -496,6 +996,10 @@ async def build_budget_from_sources(
         "Takeoffs: %d base -> %d expanded (rules applied)",
         len(base_takeoffs), len(expanded_takeoffs),
     )
+    _log_duplicate_takeoff_diagnostics(
+        hybrid_inventory, base_takeoffs, expanded_takeoffs, stage="pre-PRES",
+    )
+    _STATS.bump("build_hybrid_exp", seconds_saved_estimate=time.monotonic() - build_hybrid_t0)
 
     expanded_takeoffs = merge_pres_template_takeoffs(
         hybrid_inventory,
@@ -506,7 +1010,11 @@ async def build_budget_from_sources(
         fallback_unmatched=bool(context.metadata.get("pres_fallback_unmatched", True)),
     )
     logger.info("After PRES merge: %d takeoffs", len(expanded_takeoffs))
+    _log_duplicate_takeoff_diagnostics(
+        hybrid_inventory, base_takeoffs, expanded_takeoffs, stage="post-PRES",
+    )
 
+    _assert_unique_takeoff_keys(expanded_takeoffs)
     _stamp_takeoffs_source_discipline(expanded_takeoffs, project_discipline)
 
     logger.info("Resolving candidates for %d takeoffs", len(expanded_takeoffs))
