@@ -12,6 +12,7 @@ from shapely.geometry import MultiPolygon, Polygon, box
 
 from coordination.core.clash import ClashConflict, ClashIncident
 from coordination.core.models_25d import Element25D
+from coordination.reporting.dwg_identity import element_belongs_to_file
 
 logger = logging.getLogger(__name__)
 
@@ -657,3 +658,201 @@ def _incident_conflicts(incident: ClashIncident) -> list[ClashConflict]:
     if isinstance(conflicts, list):
         return [item for item in conflicts if isinstance(item, ClashConflict)]
     return [incident.representative_conflict]
+
+
+def _filter_elements_for_file(
+    elements: list[Element25D],
+    file_path: str,
+    *,
+    alias_map: dict[str, str] | None = None,
+) -> list[Element25D]:
+    return [
+        element
+        for element in elements
+        if element_belongs_to_file(element, file_path, alias_map=alias_map)
+    ]
+
+
+def _render_clash_marker(
+    *,
+    clash_bounds_mm: tuple[float, float, float, float],
+    marker_code: str,
+    min_x: float,
+    max_y: float,
+    scale: float,
+    marker_style: str = "rectangle",
+) -> list[str]:
+    bx1, by1, bx2, by2 = (float(v) for v in clash_bounds_mm)
+    pad = max((bx2 - bx1), (by2 - by1)) * 0.08 + 120.0
+    mx1, my1, mx2, my2 = bx1 - pad, by1 - pad, bx2 + pad, by2 + pad
+    top_left = _cad_to_svg(mx1, my2, min_x, max_y, scale)
+    bottom_right = _cad_to_svg(mx2, my1, min_x, max_y, scale)
+    width = max(bottom_right[0] - top_left[0], 8.0)
+    height = max(bottom_right[1] - top_left[1], 8.0)
+    label_x = top_left[0]
+    label_y = max(12.0, top_left[1] - 6.0)
+    lines = ['<g class="clash-marker">']
+    if marker_style == "cloud":
+        cx = top_left[0] + width / 2.0
+        cy = top_left[1] + height / 2.0
+        rx = width / 2.2
+        ry = height / 2.2
+        cloud_path = (
+            f"M {cx - rx:.1f},{cy:.1f} "
+            f"C {cx - rx:.1f},{cy - ry:.1f} {cx - rx * 0.4:.1f},{cy - ry:.1f} {cx:.1f},{cy - ry * 0.85:.1f} "
+            f"C {cx + rx * 0.5:.1f},{cy - ry:.1f} {cx + rx:.1f},{cy - ry * 0.5:.1f} {cx + rx:.1f},{cy:.1f} "
+            f"C {cx + rx:.1f},{cy + ry * 0.6:.1f} {cx + rx * 0.3:.1f},{cy + ry:.1f} {cx:.1f},{cy + ry:.1f} "
+            f"C {cx - rx * 0.5:.1f},{cy + ry:.1f} {cx - rx:.1f},{cy + ry * 0.4:.1f} {cx - rx:.1f},{cy:.1f} Z"
+        )
+        lines.append(
+            f'<path d="{cloud_path}" fill="#EC4899" fill-opacity="0.18" stroke="#EC4899" '
+            f'stroke-width="2" stroke-dasharray="5 3" vector-effect="non-scaling-stroke"/>'
+        )
+        lines.append(
+            f'<rect x="{top_left[0]:.2f}" y="{top_left[1]:.2f}" width="{width:.2f}" height="{height:.2f}" '
+            f'fill="none" stroke="#DC2626" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'
+        )
+    else:
+        lines.append(
+            f'<rect x="{top_left[0]:.2f}" y="{top_left[1]:.2f}" width="{width:.2f}" height="{height:.2f}" '
+            f'fill="none" stroke="#DC2626" stroke-width="2.5" vector-effect="non-scaling-stroke"/>'
+        )
+    lines.extend(
+        [
+            f'<rect x="{label_x:.2f}" y="{label_y - 14:.2f}" width="{max(36, len(marker_code) * 8 + 8):.2f}" height="18" '
+            f'fill="#DC2626" fill-opacity="0.92"/>',
+            f'<text x="{label_x + 4:.2f}" y="{label_y:.2f}" font-family="Segoe UI,Arial,sans-serif" '
+            f'font-size="12" font-weight="700" fill="#FFFFFF">{_escape_svg(marker_code)}</text>',
+            "</g>",
+        ]
+    )
+    return lines
+
+
+def render_dwg_panel_svg(
+    *,
+    panel_id: str,
+    file_path: str,
+    file_label: str,
+    bbox_cad_mm: tuple[float, float, float, float],
+    all_elements: list[Element25D],
+    clash_bounds_mm: tuple[float, float, float, float],
+    marker_code: str,
+    level_id: str,
+    clash_conflicts: list[ClashConflict] | None = None,
+    width_px: int = 520,
+    marker_style: str = "rectangle",
+    alias_map: dict[str, str] | None = None,
+) -> RenderedTile:
+    """Render one DWG-side crop for a clash comparison sheet."""
+    min_x, min_y, max_x, max_y = bbox_cad_mm
+    cad_width = max(max_x - min_x, 1.0)
+    cad_height = max(max_y - min_y, 1.0)
+    scale = width_px / cad_width
+    height_px = max(1, int(round(cad_height * scale)))
+    elements = _filter_elements_for_file(
+        collect_elements_in_bbox(all_elements, bbox_cad_mm, level_id=level_id),
+        file_path,
+        alias_map=alias_map,
+    )
+    clash_ids = _clash_element_ids(clash_conflicts or [])
+
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width_px} {height_px}" width="{width_px}" height="{height_px}">',
+        f'<rect width="100%" height="100%" fill="{BG_COLOR}"/>',
+    ]
+    parts.extend(_render_grid(min_x, min_y, max_x, max_y, scale, width_px, height_px))
+
+    for element in elements:
+        polygon = _element_polygon(element)
+        if polygon is None:
+            continue
+        color = _discipline_color(element)
+        stroke_width = HIGHLIGHT_STROKE_WIDTH if element.id in clash_ids else NORMAL_STROKE_WIDTH
+        points = _polygon_to_svg_points(list(polygon.exterior.coords), min_x, max_y, scale)
+        parts.append(
+            f'<polygon points="{points}" fill="{color}20" stroke="{color}" '
+            f'stroke-width="{stroke_width}" vector-effect="non-scaling-stroke"/>'
+        )
+
+    if not elements:
+        parts.append(
+            f'<text x="{width_px / 2:.1f}" y="{height_px / 2:.1f}" text-anchor="middle" '
+            f'font-family="Segoe UI,Arial,sans-serif" font-size="12" fill="#6B7280">'
+            "Sin geometría extraída en esta ventana</text>"
+        )
+
+    parts.extend(
+        _render_clash_marker(
+            clash_bounds_mm=clash_bounds_mm,
+            marker_code=marker_code,
+            min_x=min_x,
+            max_y=max_y,
+            scale=scale,
+            marker_style=marker_style,
+        )
+    )
+    parts.append("</svg>")
+
+    return RenderedTile(
+        tile_id=panel_id,
+        svg_content="\n".join(parts),
+        bbox_cad_mm=bbox_cad_mm,
+        width_px=width_px,
+        height_px=height_px,
+        scale_mm_per_px=1.0 / scale,
+        elements_in_tile=[element.id for element in elements],
+        texts_in_tile=[],
+        incident_id=panel_id.split("_panel_")[0] if "_panel_" in panel_id else None,
+    )
+
+
+def render_dwg_comparison_panels(
+    incident: ClashIncident,
+    all_elements: list[Element25D],
+    *,
+    marker_code: str,
+    file_aliases: dict[str, str] | None = None,
+    padding_factor: float = 0.35,
+    width_px: int = 520,
+    marker_style: str = "rectangle",
+) -> tuple[RenderedTile, RenderedTile, bool]:
+    """Return left/right DWG panel SVG tiles for the same CAD window."""
+    bbox = compute_tile_bbox(incident, padding_factor=padding_factor)
+    file_a, file_b = incident.file_pair
+    aliases = file_aliases or {}
+    label_a = aliases.get(file_a) or Path(file_a).name
+    label_b = aliases.get(file_b) or Path(file_b).name
+    conflicts = _incident_conflicts(incident)
+    clash_bounds = tuple(float(v) for v in incident.plan_bounds_mm)
+
+    left = render_dwg_panel_svg(
+        panel_id=f"{incident.incident_id}_panel_a",
+        file_path=file_a,
+        file_label=f"Plano A — {label_a}",
+        bbox_cad_mm=bbox,
+        all_elements=all_elements,
+        clash_bounds_mm=clash_bounds,
+        marker_code=marker_code,
+        level_id=incident.level_id,
+        clash_conflicts=conflicts,
+        width_px=width_px,
+        marker_style=marker_style,
+        alias_map=aliases,
+    )
+    right = render_dwg_panel_svg(
+        panel_id=f"{incident.incident_id}_panel_b",
+        file_path=file_b,
+        file_label=f"Plano B — {label_b}",
+        bbox_cad_mm=bbox,
+        all_elements=all_elements,
+        clash_bounds_mm=clash_bounds,
+        marker_code=marker_code,
+        level_id=incident.level_id,
+        clash_conflicts=conflicts,
+        width_px=width_px,
+        marker_style=marker_style,
+        alias_map=aliases,
+    )
+    has_visual = bool(left.elements_in_tile or right.elements_in_tile)
+    return left, right, has_visual

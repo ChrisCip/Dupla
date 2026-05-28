@@ -271,8 +271,9 @@ def render_coordination_report_markdown(
     pair_schedule_payload: dict[str, Any] | None = None,
     patterns: dict[str, Any] | None = None,
     project_type: str | None = None,
+    report_context: dict[str, Any] | None = None,
 ) -> str:
-    context = build_coordination_report_context(
+    context = report_context or build_coordination_report_context(
         summary_payload=summary_payload,
         primary_payload=primary_payload,
         debug_payload=debug_payload,
@@ -444,6 +445,29 @@ def render_coordination_report_markdown(
                 f"- `clearance_mm`: `{tolerances.get('clearance_mm')}`",
             ]
         )
+    normalized = context.get("normalized_incidents") or []
+    if normalized:
+        lines.extend(
+            [
+                "",
+                "## Data Provenance (normalized incidents)",
+                "| ID | Code | layers_source | center_source | bounds_source | zoom_source | Warnings |",
+                "| --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for item in normalized[:30]:
+            prov = item.get("provenance") or {}
+            warnings = "; ".join(item.get("warnings") or []) or "none"
+            lines.append(
+                "| "
+                f"`{item.get('incident_id')}` | "
+                f"`{item.get('human_code')}` | "
+                f"`{prov.get('layers_source')}` | "
+                f"`{prov.get('center_source')}` | "
+                f"`{prov.get('bounds_source')}` | "
+                f"`{prov.get('zoom_source')}` | "
+                f"{warnings} |"
+            )
     lines.append("")
     return "\n".join(lines)
 
@@ -1038,11 +1062,18 @@ def _incident_card(
     pair_label = f"{file_names[0]} vs {file_names[1]}"
     bounds = tuple(float(value) for value in incident.get("plan_bounds_mm") or representative.get("plan_intersection_bounds_mm") or (0, 0, 0, 0))
     centroid = tuple(float(value) for value in incident.get("plan_centroid_mm") or representative.get("plan_intersection_centroid_mm") or (0, 0))
+    bounds_for_zoom = list(bounds) if bounds != (0.0, 0.0, 0.0, 0.0) else []
+    zoom_command = None
+    if len(bounds_for_zoom) == 4:
+        from coordination.reporting.revision_report import _zoom_command
+
+        zoom_command = _zoom_command(bounds_for_zoom)
 
     card = {
         "incident_id": str(incident.get("incident_id") or "unknown"),
         "pair_label": pair_label,
         "file_names": file_names,
+        "file_pair": list(incident.get("file_pair") or ()),
         "discipline_pair": " / ".join(disciplines),
         "disciplines": disciplines,
         "level_id": str(incident.get("level_id") or representative.get("level_ids", ["mixed"])[0]),
@@ -1058,7 +1089,14 @@ def _incident_card(
         "geometry_sources": geometry_sources,
         "level_assignment_sources": level_assignment_sources,
         "layer_pair": " / ".join(layer for layer in layers if layer),
+        "layer_a": layers[0] if layers else None,
+        "layer_b": layers[1] if len(layers) > 1 else None,
+        "layers": list(layers),
         "entity_pair": " / ".join(entity for entity in entities if entity),
+        "center_x": centroid[0] if len(centroid) >= 2 and centroid != (0.0, 0.0) else None,
+        "center_y": centroid[1] if len(centroid) >= 2 and centroid != (0.0, 0.0) else None,
+        "bounds_mm": list(bounds) if bounds != (0.0, 0.0, 0.0, 0.0) else None,
+        "zoom_command": zoom_command,
         "project_type": project_type,
         "known_pattern_label": None,
         "human_description": _human_clash_description(
