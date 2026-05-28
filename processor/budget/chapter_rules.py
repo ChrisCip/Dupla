@@ -706,6 +706,28 @@ def _wet_area_summary(takeoff: QuantityTakeoff) -> str:
     return "Revestimiento ceramica en bano"
 
 
+_GENERIC_CAD_TOKENS: tuple[str, ...] = (
+    "capa CAD",
+    "json-beam",
+    "json-column",
+    "json-slab",
+    "json-footing",
+    "json-wall",
+    "xref",
+    "hatch ",
+    "layer 0",
+    "no identificado",
+    "tipo no identificado",
+)
+
+
+def _is_generic_cad_label(text: str) -> bool:
+    if not text:
+        return True
+    lowered = text.lower()
+    return any(token.lower() in lowered for token in _GENERIC_CAD_TOKENS)
+
+
 def build_budget_summary(
     takeoff: QuantityTakeoff,
     candidate: BudgetCandidate | None = None,
@@ -715,12 +737,29 @@ def build_budget_summary(
         summary = str(takeoff.inputs.get("pres_summary", "") or "").strip()
         return summary or takeoff.item_key
 
+    # LLM-generated descriptions (PartidaGenerator) follow Dupla's semantic
+    # naming rules — they are project-specific and avoid raw CAD layer names
+    # like "Muro de capa CAD 'a-wall'" or "json-beam-vigas". Prefer them when
+    # available, falling back to the quantifier's takeoff_description.
+    llm_summary = ""
+    if candidate is not None and candidate.source == "partida_generator":
+        llm_summary = candidate.summary.strip()
+        if llm_summary and not _is_generic_cad_label(llm_summary):
+            return llm_summary
+
     specific = str(takeoff.inputs.get("takeoff_description") or "").strip()
-    if specific:
+    if specific and not _is_generic_cad_label(specific):
         return specific
 
+    if llm_summary:
+        return llm_summary
+
     if candidate is not None:
-        return candidate.summary.strip() or takeoff.item_type.replace("_", " ").strip()
+        candidate_summary = candidate.summary.strip()
+        if candidate_summary:
+            return candidate_summary
+    if specific:
+        return specific
     if item_type == "structural_area":
         return "Superficie estructural (referencia)"
 

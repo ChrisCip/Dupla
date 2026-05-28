@@ -249,6 +249,8 @@ class QuantityTakeoff(ModelBase):
     assumptions: list[str] = field(default_factory=list)
     source_refs: list[str] = field(default_factory=list)
     trace: QuantityTrace = field(default_factory=QuantityTrace)
+    confidence: float = 1.0
+    requiere_revision: bool = False
 
 
 @dataclass(kw_only=True)

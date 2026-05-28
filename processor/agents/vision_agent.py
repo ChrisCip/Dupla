@@ -27,6 +27,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from core.api_key_manager import APIKeyManager
+from core.confidence_rubric import score_vision_entity
 from core.schemas import LevelInventory, level_inventory_from_dict
 
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -734,7 +735,7 @@ def _simple_to_level_inventory(
                 ),
                 "structural": w.get("structural") or False,
                 "finish_required": True,
-                "confidence": 0.70,
+                "confidence": score_vision_entity(w).score,
                 "evidence": [
                     f"Wall identified: material={raw_material}, location={w.get('location')}, "
                     f"thickness={thickness}m, length={w.get('estimated_length_m')}m."
@@ -768,7 +769,7 @@ def _simple_to_level_inventory(
                 "height_m": d.get("height_m"),
                 "type_hint": d.get("type"),
                 "material_hint": d.get("material"),
-                "confidence": 0.70,
+                "confidence": score_vision_entity(d).score,
                 "evidence": [
                     f"Counted from plan image: type={d.get('type')}, count={d.get('count')}."
                 ],
@@ -800,7 +801,7 @@ def _simple_to_level_inventory(
                 "width_m": w.get("width_m"),
                 "height_m": w.get("height_m"),
                 "type_hint": w.get("type"),
-                "confidence": 0.70,
+                "confidence": score_vision_entity(w).score,
                 "evidence": [
                     f"Counted from plan image: type={w.get('type')}, count={w.get('count')}."
                 ],
@@ -821,7 +822,7 @@ def _simple_to_level_inventory(
                 "kind": a.get("kind") or "bathroom",
                 "count": int(count) if count is not None else 1,
                 "estimated_area_m2": a.get("area_m2"),
-                "confidence": 0.65,
+                "confidence": score_vision_entity(a).score,
                 "evidence": [
                     f"Identified from plan image: kind={a.get('kind')}, count={a.get('count')}."
                 ],
@@ -841,7 +842,7 @@ def _simple_to_level_inventory(
                 "conflict_notes": [],
                 "count": int(count) if count is not None else 1,
                 "estimated_area_m2": k.get("area_m2"),
-                "confidence": 0.65,
+                "confidence": score_vision_entity(k).score,
                 "evidence": ["Kitchen identified from plan image."],
             }
         )
@@ -860,7 +861,7 @@ def _simple_to_level_inventory(
                 "count": int(count) if count is not None else 1,
                 "flights": s.get("flights"),
                 "width_m": s.get("width_m"),
-                "confidence": 0.70,
+                "confidence": score_vision_entity(s).score,
                 "evidence": ["Stair identified from plan image."],
             }
         )
@@ -918,7 +919,7 @@ def _simple_to_level_inventory(
                 "material_hint": material,
                 "reinforcement_hint": "reinforced" if material == "concrete" or e.get("has_reinforcement") else None,
                 "concrete_grade_hint": concrete_grade_hint,
-                "confidence": 0.65,
+                "confidence": score_vision_entity(e).score,
                 "evidence": [
                     f"Structural element from plan: notation={notation}, type={etype}, "
                     f"section={e.get('section_width_m')}x{e.get('section_height_m')}m, "
