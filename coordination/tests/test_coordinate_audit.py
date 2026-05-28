@@ -176,6 +176,113 @@ def test_build_pair_schedule_blocks_level_mismatch_after_band_match() -> None:
     assert schedule[0].block_reason == "level_mismatch"
 
 
+def test_apply_coordinate_band_gating_uses_per_discipline_dominant_band() -> None:
+    fontaneria = SourceAudit(
+        rel_path="HID/S-100.dwg",
+        file_name="S-100.dwg",
+        suffix=".dwg",
+        issue_key="d:2025",
+        cohort_id="hid",
+        discipline="FONTANERIA",
+        level_id="NPT_P1",
+        level_source="pattern:test",
+        coordinate_band_key=(347, 1248),
+        coordinate_band="X~173.5M, Y~624.1M",
+        audit_status="eligible",
+    )
+    arq = fontaneria.model_copy(
+        update={
+            "rel_path": "ARQ/PLANTA.dwg",
+            "file_name": "PLANTA.dwg",
+            "discipline": "ARQUITECTURA",
+            "coordinate_band_key": (337, 1249),
+            "coordinate_band": "X~168.8M, Y~624.6M",
+        }
+    )
+    est = arq.model_copy(
+        update={
+            "rel_path": "EST/E03.dwg",
+            "file_name": "E03.dwg",
+            "discipline": "ESTRUCTURA",
+        }
+    )
+
+    gated = apply_coordinate_band_gating(
+        [fontaneria, arq, est],
+        required_disciplines=(Discipline.ARCH, Discipline.STRUC, Discipline.MEP_PLUMBING),
+    )
+    by_path = {item.rel_path: item for item in gated}
+
+    assert by_path["ARQ/PLANTA.dwg"].audit_status == "eligible"
+    assert by_path["EST/E03.dwg"].audit_status == "eligible"
+    assert by_path["HID/S-100.dwg"].audit_status == "eligible"
+
+
+def test_build_pair_schedule_schedules_site_proximity_cross_band_pair() -> None:
+    arch = SourceAudit(
+        rel_path="PLANOS/ARQ/PLANTA.dwg",
+        file_name="PLANTA.dwg",
+        suffix=".dwg",
+        issue_key="dir:arq",
+        cohort_id="prematch_npt_p1_arch_01",
+        discipline=Discipline.ARCH.value,
+        level_id="NPT_P1",
+        level_source="default_level",
+        drawing_type="floor_plan",
+        coordinate_band_key=(347, 1248),
+        coordinate_band="X~173.69M, Y~624.14M",
+        audit_status="eligible",
+        roles_detected=["WALL", "SLAB"],
+    )
+    struc = arch.model_copy(
+        update={
+            "rel_path": "PLANOS/EST/E03.dwg",
+            "file_name": "E03.dwg",
+            "issue_key": "dir:est",
+            "discipline": Discipline.STRUC.value,
+            "drawing_type": "formwork",
+            "coordinate_band_key": (337, 1249),
+            "coordinate_band": "X~168.81M, Y~624.65M",
+            "audit_status": "needs_alignment",
+            "notes": ["fuera de la banda dominante de disciplina"],
+            "roles_detected": ["BEAM", "SLAB"],
+        }
+    )
+    pre_match = PreMatchCandidate(
+        file_a=arch.rel_path,
+        file_b=struc.rel_path,
+        file_name_a=arch.file_name,
+        file_name_b=struc.file_name,
+        issue_key_a="dir:arq",
+        issue_key_b="dir:est",
+        discipline_a=Discipline.ARCH.value,
+        discipline_b=Discipline.STRUC.value,
+        level_id="NPT_P1",
+        drawing_type_a="floor_plan",
+        drawing_type_b="formwork",
+        drawing_type_compatibility=1.0,
+        revision_proximity=0.4,
+        geometry_overlap_hint=1.0,
+        anchor_quality=0.9,
+        score=0.79,
+        decision="auto_comparable",
+        reason_codes=("cross_revision_pair_required",),
+        documentary_cohort_relation="cross_cohort",
+    )
+
+    schedule = build_pair_schedule(
+        [arch, struc],
+        required_disciplines=(Discipline.ARCH, Discipline.STRUC),
+        pre_match_candidates=[pre_match],
+    )
+
+    assert len(schedule) == 1
+    assert schedule[0].scheduled is True
+    assert schedule[0].alignment_status == "required"
+    assert "site_proximity_band" in schedule[0].reason_codes
+    assert schedule[0].primary_rejection_rule is None
+
+
 def test_build_pair_schedule_promotes_cross_cohort_pair_from_audit() -> None:
     arch = SourceAudit(
         rel_path="PLANOS/ARQ/PLANTA.dwg",

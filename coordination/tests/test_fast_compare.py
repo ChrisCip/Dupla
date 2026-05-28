@@ -364,8 +364,8 @@ def test_run_fast_compare_skips_extraction_when_no_pairs_scheduled(tmp_path, mon
                         "raw_primary_candidate_count": 25,
                         "raw_annotation_count": 10,
                         "raw_bbox_only_count": 5,
-                        "bounds_mm": (900_000.0, 0.0, 910_000.0, 10_000.0, 0.0, 0.0),
-                        "centroid_mm": (905_000.0, 5_000.0, 0.0),
+                        "bounds_mm": (7_000_000.0, 0.0, 7_010_000.0, 10_000.0, 0.0, 0.0),
+                        "centroid_mm": (7_005_000.0, 5_000.0, 0.0),
                         "dominant_entity_types": ["Polyline"],
                     }
                 },

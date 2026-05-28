@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Literal
 
@@ -79,6 +79,17 @@ class PairScheduleItem(BaseModel):
     expected_role_intersection: list[str] = Field(default_factory=list)
     schedule_reason: str | None = None
     rejection_reason: str | None = None
+    discipline_a: str | None = None
+    discipline_b: str | None = None
+    file_a_audit_status: AuditStatus | None = None
+    file_b_audit_status: AuditStatus | None = None
+    file_a_coordinate_band: str | None = None
+    file_b_coordinate_band: str | None = None
+    primary_rejection_rule: str | None = None
+
+
+_NON_SCHEDULABLE_AUDIT_STATUSES = frozenset({"annotation_noise", "bbox_only", "extract_failed"})
+_DEFAULT_SITE_BAND_DELTA = 12
 
 
 def build_source_audit(
@@ -218,30 +229,90 @@ def apply_coordinate_band_gating(
         discipline.value if hasattr(discipline, "value") else str(discipline)
         for discipline in required_disciplines
     }
-    band_counts: Counter[tuple[int, int]] = Counter(
-        audit.coordinate_band_key
-        for audit in audits
-        if audit.audit_status == "eligible"
-        and audit.coordinate_band_key is not None
-        and audit.discipline in required_values
-    )
-    if not band_counts:
-        return audits
-    dominant_band = band_counts.most_common(1)[0][0]
-
-    gated: list[SourceAudit] = []
+    by_discipline: dict[str, list[SourceAudit]] = defaultdict(list)
     for audit in audits:
         if (
             audit.audit_status == "eligible"
             and audit.coordinate_band_key is not None
+            and audit.discipline in required_values
+        ):
+            by_discipline[audit.discipline].append(audit)
+
+    dominant_by_discipline: dict[str, tuple[int, int]] = {}
+    for discipline, items in by_discipline.items():
+        band_counts = Counter(item.coordinate_band_key for item in items)
+        dominant_by_discipline[discipline] = band_counts.most_common(1)[0][0]
+
+    if not dominant_by_discipline:
+        return audits
+
+    gated: list[SourceAudit] = []
+    for audit in audits:
+        dominant_band = dominant_by_discipline.get(audit.discipline)
+        if (
+            audit.audit_status == "eligible"
+            and audit.coordinate_band_key is not None
+            and dominant_band is not None
             and audit.coordinate_band_key != dominant_band
         ):
             notes = list(audit.notes)
-            notes.append("fuera de la banda dominante")
+            notes.append("fuera de la banda dominante de disciplina")
             gated.append(audit.model_copy(update={"audit_status": "needs_alignment", "notes": notes}))
         else:
             gated.append(audit)
     return gated
+
+
+def _coordinate_bands_site_compatible(
+    left: SourceAudit,
+    right: SourceAudit,
+    *,
+    max_band_delta: int = _DEFAULT_SITE_BAND_DELTA,
+) -> bool:
+    if left.coordinate_band_key is None or right.coordinate_band_key is None:
+        return False
+    delta_x = abs(left.coordinate_band_key[0] - right.coordinate_band_key[0])
+    delta_y = abs(left.coordinate_band_key[1] - right.coordinate_band_key[1])
+    return max(delta_x, delta_y) <= max_band_delta
+
+
+def _primary_rejection_rule(
+    *,
+    block_reason: str | None,
+    scheduled: bool,
+) -> str | None:
+    if scheduled:
+        return None
+    if not block_reason:
+        return "unknown"
+    if block_reason == "level_mismatch":
+        return "level_mismatch"
+    if block_reason == "coordinate_band_mismatch":
+        return "coordinate_band_mismatch"
+    if block_reason == "role_missing":
+        return "role_missing"
+    if block_reason == "manual_pairing_needed":
+        return "manual_pairing_needed"
+    if block_reason.endswith(":needs_alignment"):
+        return "audit_status_needs_alignment"
+    if block_reason.endswith(":bbox_only"):
+        return "audit_status_bbox_only"
+    if block_reason.endswith(":extract_failed"):
+        return "audit_status_extract_failed"
+    if block_reason.endswith(":annotation_noise"):
+        return "audit_status_annotation_noise"
+    return "audit_status_other"
+
+
+def _pair_schedule_side_fields(left: SourceAudit, right: SourceAudit) -> dict[str, object]:
+    return {
+        "discipline_a": left.discipline,
+        "discipline_b": right.discipline,
+        "file_a_audit_status": left.audit_status,
+        "file_b_audit_status": right.audit_status,
+        "file_a_coordinate_band": left.coordinate_band,
+        "file_b_coordinate_band": right.coordinate_band,
+    }
 
 
 def build_pair_schedule(
@@ -276,17 +347,25 @@ def build_pair_schedule(
             promotion_basis = None
             reason_codes = list(pair.reason_codes)
             updated_score = float(pair.score)
-            if left.audit_status != "eligible":
+            if left.audit_status in _NON_SCHEDULABLE_AUDIT_STATUSES:
                 scheduled = False
                 block_reason = f"{left.file_name}:{left.audit_status}"
-            elif right.audit_status != "eligible":
+            elif right.audit_status in _NON_SCHEDULABLE_AUDIT_STATUSES:
                 scheduled = False
                 block_reason = f"{right.file_name}:{right.audit_status}"
             elif left.level_id != right.level_id:
                 scheduled = False
                 block_reason = "level_mismatch"
             elif left.coordinate_band_key != right.coordinate_band_key:
-                if pair.decision == "auto_comparable":
+                if pair.decision == "auto_comparable" and _coordinate_bands_site_compatible(left, right):
+                    updated_score = min(round(updated_score + 0.05, 3), 1.0)
+                    selection_reason = "promoted_from_coordinate_audit"
+                    promotion_basis = "same_level + site_proximity_bands + alignment_required"
+                    if "audit_promoted" not in reason_codes:
+                        reason_codes.append("audit_promoted")
+                    if "site_proximity_band" not in reason_codes:
+                        reason_codes.append("site_proximity_band")
+                elif pair.decision == "auto_comparable":
                     scheduled = False
                     block_reason = "coordinate_band_mismatch"
                 else:
@@ -316,6 +395,12 @@ def build_pair_schedule(
                 scheduled = False
                 block_reason = "role_missing"
             coord_compatible = left.coordinate_band_key == right.coordinate_band_key
+            site_proximity = _coordinate_bands_site_compatible(left, right)
+            alignment_required = (
+                left.audit_status == "needs_alignment"
+                or right.audit_status == "needs_alignment"
+                or (scheduled and not coord_compatible and site_proximity)
+            )
             readiness = _pair_readiness(
                 scheduled=scheduled,
                 block_reason=block_reason,
@@ -329,6 +414,7 @@ def build_pair_schedule(
                 (set(arq_roles) & {"WALL", "OPENING", "STAIR"})
                 | (set(est_roles) & {"WALL", "COLUMN", "BEAM", "SLAB"})
             )
+            rejection_rule = _primary_rejection_rule(block_reason=block_reason, scheduled=scheduled)
 
             schedule.append(
                 PairScheduleItem(
@@ -349,20 +435,22 @@ def build_pair_schedule(
                     block_reason=block_reason,
                     readiness=readiness,
                     coordinate_compatible=coord_compatible,
-                    alignment_status=(
-                        "required"
-                        if left.audit_status == "needs_alignment" or right.audit_status == "needs_alignment"
-                        else "not_required"
-                    ),
+                    alignment_status="required" if alignment_required else "not_required",
                     arq_roles_present=sorted(arq_roles),
                     est_roles_present=sorted(est_roles),
                     expected_role_intersection=expected_roles,
                     schedule_reason=(
-                        "eligible + same_level + compatible_band + role_coverage"
-                        if scheduled
-                        else None
+                        "same_level + role_coverage + alignment_optional"
+                        if scheduled and not alignment_required
+                        else (
+                            "same_level + role_coverage + alignment_required"
+                            if scheduled
+                            else None
+                        )
                     ),
                     rejection_reason=block_reason if not scheduled else None,
+                    primary_rejection_rule=rejection_rule,
+                    **_pair_schedule_side_fields(left, right),
                 )
             )
     else:
@@ -396,6 +484,12 @@ def build_pair_schedule(
                     scheduled = False
                     block_reason = "role_missing"
                 score = 1.0 if scheduled else 0.0
+                coord_compatible = left.coordinate_band_key == right.coordinate_band_key
+                alignment_required = (
+                    left.audit_status == "needs_alignment"
+                    or right.audit_status == "needs_alignment"
+                    or (scheduled and not coord_compatible)
+                )
 
                 schedule.append(
                     PairScheduleItem(
@@ -420,12 +514,8 @@ def build_pair_schedule(
                             arq_roles=arq_roles,
                             est_roles=est_roles,
                         ),
-                        coordinate_compatible=left.coordinate_band_key == right.coordinate_band_key,
-                        alignment_status=(
-                            "required"
-                            if left.audit_status == "needs_alignment" or right.audit_status == "needs_alignment"
-                            else "not_required"
-                        ),
+                        coordinate_compatible=coord_compatible,
+                        alignment_status="required" if alignment_required else "not_required",
                         arq_roles_present=sorted(arq_roles),
                         est_roles_present=sorted(est_roles),
                         expected_role_intersection=sorted(set(arq_roles) | set(est_roles)),
@@ -435,6 +525,11 @@ def build_pair_schedule(
                             else None
                         ),
                         rejection_reason=block_reason if not scheduled else None,
+                        primary_rejection_rule=_primary_rejection_rule(
+                            block_reason=block_reason,
+                            scheduled=scheduled,
+                        ),
+                        **_pair_schedule_side_fields(left, right),
                     )
                 )
     return schedule

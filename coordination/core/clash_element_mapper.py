@@ -7,6 +7,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from coordination.reporting.dwg_identity import lookup_semantic_by_file
 from coordination.semantic.semantic_elements import SemanticElement25D
 
 ANNOTATION_LAYER_TOKENS = ("TITULOS", "ESCALA_HUMANA", "TEXT", "ANNO", "DIM", "LABEL")
@@ -86,7 +87,7 @@ def _map_single_incident(
 
     for index, source_file in enumerate(file_pair):
         source_ref = source_refs[index] if index < len(source_refs) else ""
-        candidates = semantic_by_file.get(source_file, [])
+        candidates = lookup_semantic_by_file(semantic_by_file, source_file)
         side_results.append(
             _best_candidate_for_side(
                 source_file=source_file,
@@ -295,11 +296,17 @@ def _mapping_confidence(*, left: dict[str, Any], right: dict[str, Any], score: f
 def _semantic_elements_by_file(elements_by_dwg_payload: dict[str, Any]) -> dict[str, list[SemanticElement25D]]:
     out: dict[str, list[SemanticElement25D]] = {}
     for file_payload in elements_by_dwg_payload.get("files") or []:
-        source_file = str(file_payload.get("source_file") or "")
-        out[source_file] = [
+        source_file = str(file_payload.get("source_file") or file_payload.get("file_name") or "")
+        if not source_file:
+            continue
+        elements = [
             SemanticElement25D.model_validate(item)
             for item in file_payload.get("elements") or []
         ]
+        out[source_file] = elements
+        file_name = str(file_payload.get("file_name") or "")
+        if file_name and file_name not in out:
+            out[file_name] = elements
     return out
 
 

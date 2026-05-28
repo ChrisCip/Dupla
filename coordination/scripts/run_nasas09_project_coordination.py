@@ -47,6 +47,11 @@ from coordination.extraction.from_dwg_ezdxf import extract_elements_from_dwg
 from coordination.extraction.from_pdf_vector import extract_elements_from_pdf
 from coordination.extraction.from_raster_image import extract_elements_from_image
 from coordination.learning.pattern_learner import load_patterns
+from coordination.reporting.human_report_pdf import render_coordination_human_report_pdf
+from coordination.reporting.incident_normalizer import (
+    normalize_incidents_for_run,
+    normalized_incident_to_dict,
+)
 from coordination.reporting.reporting import (
     build_analysis_bot_context,
     build_coordination_report_context,
@@ -63,6 +68,11 @@ from coordination.selection.coordinate_audit import (
     build_source_audit,
     render_coordinate_audit_markdown,
     render_hotspot_markdown,
+)
+from coordination.selection.coordination_package import (
+    alignment_gaps_for_scheduled_pairs,
+    build_coordination_package_diagnostics,
+    render_coordination_package_markdown,
 )
 from coordination.selection.fast_compare import (
     CAD_SUFFIXES,
@@ -178,6 +188,16 @@ def main() -> int:
         help="JSON opcional con translate_mm por archivo para alinear fuentes manualmente.",
     )
     parser.add_argument(
+        "--require-cohort-manifest",
+        action="store_true",
+        help="Exige --cohort-manifest para ejecutar fast_compare (paquete de coordinacion).",
+    )
+    parser.add_argument(
+        "--allow-unaligned-clash",
+        action="store_true",
+        help="Solo diagnostico: permite clash aunque falte alignment_manifest en pares que lo requieren.",
+    )
+    parser.add_argument(
         "--shared-site-origin",
         dest="shared_site_origin",
         action="store_true",
@@ -276,6 +296,12 @@ def main() -> int:
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
     if args.analysis_profile == FAST_COMPARE_ANALYSIS_PROFILE:
+        if args.require_cohort_manifest and args.cohort_manifest is None:
+            logger.error(
+                "fast_compare con --require-cohort-manifest exige --cohort-manifest "
+                "(paquete de coordinacion con source_files)."
+            )
+            return 1
         args.mix_issues = False
         args.include_images = False
         args.allow_proxy_hard_clashes = False
@@ -1245,16 +1271,30 @@ def _run_fast_compare(
         }
     overall_metrics["alignment_overrides_count"] = len(alignment_overrides)
 
+    cohort_manifest_obj = None
     if args.cohort_manifest is not None:
-        manifest = load_cohort_manifest(args.cohort_manifest, root=nasas_root)
-        selected_candidates = apply_manifest_selection(candidates, manifest=manifest)
+        cohort_manifest_obj = load_cohort_manifest(args.cohort_manifest, root=nasas_root)
+        selected_candidates = apply_manifest_selection(candidates, manifest=cohort_manifest_obj)
+        if not selected_candidates:
+            logger.error(
+                "cohort manifest no selecciono archivos. Revise source_files en %s",
+                args.cohort_manifest,
+            )
+            return 1
         readiness_payload["cohort_manifest"] = {
-            "cohort_name": manifest.cohort_name,
-            "source_file_count": len(manifest.source_files),
+            "cohort_name": cohort_manifest_obj.cohort_name,
+            "source_file_count": len(cohort_manifest_obj.source_files),
             "selected_count": len(selected_candidates),
+            "path": str(args.cohort_manifest),
         }
+        readiness_payload["coordination_package_mode"] = "cohort_manifest"
     else:
         selected_candidates = select_preferred_candidates(candidates, pair_candidates=pre_match_candidates)
+        readiness_payload["coordination_package_mode"] = "preferred_selection"
+        readiness_payload["coordination_package_warning"] = (
+            "Sin cohort_manifest: escaneo amplio del repositorio. "
+            "Para clash defendible use un paquete (--cohort-manifest) con DWGs de la misma entrega/nivel."
+        )
 
     selected_candidates = [
         _apply_alignment_override_to_candidate(
@@ -1416,6 +1456,67 @@ def _run_fast_compare(
         len(pair_schedule),
         float(overall_metrics["schedule_seconds"]),
     )
+
+    audit_by_rel = {audit.rel_path: audit for audit in candidate_audits}
+    alignment_gaps = alignment_gaps_for_scheduled_pairs(
+        scheduled_pairs=scheduled_pairs,
+        audit_by_rel=audit_by_rel,
+        alignment_overrides=alignment_overrides,
+    )
+    package_diag_json = args.output.parent / "coordination_package_diagnostics.json"
+    package_diag_md = args.output.parent / "coordination_package_diagnostics.md"
+    package_status = "scheduled"
+    if not scheduled_pairs:
+        package_status = "no_scheduled_pairs"
+    elif alignment_gaps:
+        package_status = "alignment_required_missing"
+    package_payload = build_coordination_package_diagnostics(
+        project_name=doc.project_name or "Proyecto",
+        nasas_root=nasas_root,
+        cohort_manifest=cohort_manifest_obj,
+        alignment_overrides=alignment_overrides,
+        selected_candidates=selected_candidates,
+        candidate_audits=candidate_audits,
+        scheduled_pairs=pair_schedule,
+        primary_incident_count=0,
+        status=package_status,
+        alignment_gaps=alignment_gaps,
+    )
+    _write_json(package_diag_json, package_payload)
+    package_diag_md.write_text(render_coordination_package_markdown(package_payload), encoding="utf-8")
+    overall_metrics["alignment_gap_count"] = len(alignment_gaps)
+    overall_metrics["coordination_package_diagnostics_json"] = str(package_diag_json)
+    readiness_payload["coordination_package_diagnostics"] = {
+        "path": str(package_diag_json),
+        "status": package_status,
+        "scheduled_pair_count": len(scheduled_pairs),
+        "alignment_gap_count": len(alignment_gaps),
+    }
+
+    if alignment_gaps and not args.allow_unaligned_clash:
+        logger.error(
+            "Clash bloqueado: %d archivo(s) requieren alignment_manifest (status=alignment_required_missing). "
+            "Ver %s",
+            len(alignment_gaps),
+            package_diag_md,
+        )
+        return _write_fast_compare_summary(
+            args=args,
+            doc=doc,
+            nasas_root=nasas_root,
+            readiness_json=readiness_json,
+            readiness_md=readiness_md,
+            coordinate_audit_json=coordinate_audit_json,
+            coordinate_audit_md=coordinate_audit_md,
+            pair_schedule_json=pair_schedule_json,
+            selected_candidates=selected_candidates,
+            all_elements=[],
+            primary_incidents=[],
+            debug_conflicts=[],
+            suppressed_elements=[],
+            status="alignment_required_missing",
+            metrics=overall_metrics,
+        )
 
     if args.stage == "coordinate_audit":
         return _write_fast_compare_summary(
@@ -1644,6 +1745,7 @@ def _run_fast_compare(
     analysis_bot_context_json = args.output.parent / "analysis_bot_context.json"
     coordination_human_md = args.output.parent / "coordination_report_human.md"
     coordination_human_html = args.output.parent / "coordination_report_human.html"
+    coordination_human_pdf = args.output.parent / "coordination_report_human.pdf"
     semantic_elements_payload = None
     clash_element_links_payload = None
     if args.enable_semantic_mapping:
@@ -1704,6 +1806,23 @@ def _run_fast_compare(
         except Exception as exc:
             logger.warning("Annotated tile rendering failed: %s", exc)
     _write_json(technical_report_context_json, technical_report_context)
+    revision_md_text = ""
+    for candidate in args.output.parent.glob("REVISION_CLASHES_ARQUITECTO*.md"):
+        revision_md_text = candidate.read_text(encoding="utf-8")
+        break
+    try:
+        normalized_incidents = normalize_incidents_for_run(
+            project_name=doc.project_name or "Proyecto",
+            primary_payload=primary_payload,
+            report_context=technical_report_context,
+            revision_md=revision_md_text,
+        )
+        technical_report_context["normalized_incidents"] = [
+            normalized_incident_to_dict(item) for item in normalized_incidents
+        ]
+        _write_json(technical_report_context_json, technical_report_context)
+    except Exception as exc:
+        logger.warning("Incident normalization for report context failed: %s", exc)
     technical_report_md.write_text(
         render_coordination_report_markdown(
             project_name=doc.project_name or "Proyecto",
@@ -1726,6 +1845,7 @@ def _run_fast_compare(
             coordinate_audit_payload=coordinate_audit_payload,
             pair_schedule_payload=pair_schedule_payload,
             patterns=learned_patterns,
+            report_context=technical_report_context,
         ),
         encoding="utf-8",
     )
@@ -1774,10 +1894,39 @@ def _run_fast_compare(
         ),
         encoding="utf-8",
     )
+    try:
+        render_coordination_human_report_pdf(
+            output_path=coordination_human_pdf,
+            project_name=doc.project_name or "Proyecto",
+            run_label=args.output.parent.name,
+            generated_at=generated_at,
+            report_context=technical_report_context,
+            primary_payload=primary_payload,
+            all_elements=all_elements,
+            revision_md=revision_md_text,
+        )
+        logger.info("Human PDF report: %s", coordination_human_pdf)
+    except Exception as exc:
+        logger.warning("Human PDF report generation failed: %s", exc)
     _write_validation_template_csv(
         args.output.parent / "validation_template.csv",
         technical_report_context,
     )
+
+    final_package_payload = build_coordination_package_diagnostics(
+        project_name=doc.project_name or "Proyecto",
+        nasas_root=nasas_root,
+        cohort_manifest=cohort_manifest_obj,
+        alignment_overrides=alignment_overrides,
+        selected_candidates=selected_candidates,
+        candidate_audits=candidate_audits,
+        scheduled_pairs=pair_schedule,
+        primary_incident_count=len(primary_incidents),
+        status="completed",
+        alignment_gaps=[],
+    )
+    _write_json(package_diag_json, final_package_payload)
+    package_diag_md.write_text(render_coordination_package_markdown(final_package_payload), encoding="utf-8")
 
     return _write_fast_compare_summary(
         args=args,
@@ -1805,6 +1954,7 @@ def _run_fast_compare(
         analysis_bot_context_json=analysis_bot_context_json,
         coordination_human_md=coordination_human_md,
         coordination_human_html=coordination_human_html,
+        coordination_human_pdf=coordination_human_pdf,
         elements_by_dwg_json=elements_by_dwg_json if semantic_elements_payload else None,
         clash_element_links_json=clash_element_links_json if clash_element_links_payload else None,
     )
@@ -1958,6 +2108,7 @@ def _write_fast_compare_summary(
     analysis_bot_context_json: Path | None = None,
     coordination_human_md: Path | None = None,
     coordination_human_html: Path | None = None,
+    coordination_human_pdf: Path | None = None,
     elements_by_dwg_json: Path | None = None,
     clash_element_links_json: Path | None = None,
 ) -> int:
@@ -1988,6 +2139,7 @@ def _write_fast_compare_summary(
         "analysis_bot_context_json": str(analysis_bot_context_json) if analysis_bot_context_json else None,
         "coordination_report_human_md": str(coordination_human_md) if coordination_human_md else None,
         "coordination_report_human_html": str(coordination_human_html) if coordination_human_html else None,
+        "coordination_report_human_pdf": str(coordination_human_pdf) if coordination_human_pdf else None,
         "elements_by_dwg_json": str(elements_by_dwg_json) if elements_by_dwg_json else None,
         "clash_element_links_json": str(clash_element_links_json) if clash_element_links_json else None,
     }
@@ -2065,8 +2217,15 @@ def _write_pair_schedule_diagnostics_csv(path: Path, pairs: list) -> None:
         "cohort_id",
         "file_a",
         "file_b",
+        "discipline_a",
+        "discipline_b",
+        "file_a_audit_status",
+        "file_b_audit_status",
+        "file_a_coordinate_band",
+        "file_b_coordinate_band",
         "scheduled",
         "readiness",
+        "primary_rejection_rule",
         "coordinate_compatible",
         "alignment_status",
         "selection_reason",
@@ -2088,8 +2247,15 @@ def _write_pair_schedule_diagnostics_csv(path: Path, pairs: list) -> None:
                     "cohort_id": payload.get("cohort_id"),
                     "file_a": payload.get("file_a"),
                     "file_b": payload.get("file_b"),
+                    "discipline_a": payload.get("discipline_a"),
+                    "discipline_b": payload.get("discipline_b"),
+                    "file_a_audit_status": payload.get("file_a_audit_status"),
+                    "file_b_audit_status": payload.get("file_b_audit_status"),
+                    "file_a_coordinate_band": payload.get("file_a_coordinate_band"),
+                    "file_b_coordinate_band": payload.get("file_b_coordinate_band"),
                     "scheduled": payload.get("scheduled"),
                     "readiness": payload.get("readiness"),
+                    "primary_rejection_rule": payload.get("primary_rejection_rule"),
                     "coordinate_compatible": payload.get("coordinate_compatible"),
                     "alignment_status": payload.get("alignment_status"),
                     "selection_reason": payload.get("selection_reason"),
