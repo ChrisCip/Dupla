@@ -328,17 +328,10 @@ export function WorkspaceHallazgosTab({
     void enqueue({ folder_uuid: selectedFolderUuid || undefined })
   }, [enqueue, selectedFolderUuid])
 
-  const projectDisplayName = project?.name ?? inventory?.project_name ?? 'Proyecto'
-
   return (
     <div className="space-y-8">
       <Card className="border-primary/20 bg-primary/[0.04] p-4">
         <h3 className="text-sm font-semibold text-ink">Información de coordinación</h3>
-        <p className="mt-1 text-xs text-muted">
-          Proyecto «{projectDisplayName}». Elige la carpeta de entrega (ej. TEST_01): se analizarán todos los .dwg
-          dentro de ella y subcarpetas, agrupados por la etiqueta de disciplina de cada archivo en Archivos (ARQ, EST,
-          ELC, etc.).
-        </p>
         <div className="mt-3">
           <label htmlFor="coord-folder" className="text-xs font-medium uppercase tracking-wide text-muted">
             Carpeta fuente
@@ -433,7 +426,7 @@ export function WorkspaceHallazgosTab({
           <Card className="border-dashed p-6 text-center">
             <p className="text-sm text-muted">
               {selectedFolderUuid
-                ? 'Selecciona una carpeta con planos etiquetados (ARQ/EST) y pulsa «Ejecutar análisis de clashes».'
+                ? 'Selecciona una carpeta con planos etiquetados y pulsa «Ejecutar análisis de clashes».'
                 : 'Elige la carpeta de entrega (ej. TEST_01) en el panel de coordinación arriba.'}
             </p>
           </Card>

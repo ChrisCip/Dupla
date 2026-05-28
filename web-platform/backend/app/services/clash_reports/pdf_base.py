@@ -29,7 +29,10 @@ from reportlab.platypus import (
 PAGE_MARGIN = 18 * mm
 FOOTER_H = 12 * mm
 
-LABEL_RED = colors.HexColor("#F05A5A")
+DUPLA_PRIMARY = colors.HexColor("#C10D12")
+DUPLA_PRIMARY_DARK = colors.HexColor("#9A0A0E")
+DUPLA_MUTED = colors.HexColor("#666666")
+LABEL_RED = DUPLA_PRIMARY
 VALUE_BACKGROUND = colors.white
 GRID_COLOR = colors.HexColor("#555555")
 
@@ -90,6 +93,7 @@ def _styles() -> dict[str, ParagraphStyle]:
             fontSize=16,
             leading=20,
             spaceAfter=8,
+            textColor=DUPLA_PRIMARY_DARK,
         ),
         "h2": ParagraphStyle(
             "ClashH2",
@@ -99,6 +103,7 @@ def _styles() -> dict[str, ParagraphStyle]:
             leading=15,
             spaceBefore=10,
             spaceAfter=6,
+            textColor=DUPLA_PRIMARY_DARK,
         ),
         "h3": ParagraphStyle(
             "ClashH3",
@@ -108,6 +113,7 @@ def _styles() -> dict[str, ParagraphStyle]:
             leading=13,
             spaceBefore=6,
             spaceAfter=4,
+            textColor=DUPLA_PRIMARY_DARK,
         ),
         "body": ParagraphStyle(
             "ClashBody",
@@ -148,7 +154,7 @@ def _styles() -> dict[str, ParagraphStyle]:
             fontName=_FONT_BODY,
             fontSize=8,
             leading=10,
-            wordWrap="LTR",
+            wordWrap="CJK",
         ),
         "cell_dense": ParagraphStyle(
             "ClashCellDense",
@@ -156,7 +162,15 @@ def _styles() -> dict[str, ParagraphStyle]:
             fontName=_FONT_BODY,
             fontSize=7,
             leading=9,
-            wordWrap="LTR",
+            wordWrap="CJK",
+        ),
+        "cell_index": ParagraphStyle(
+            "ClashCellIndex",
+            parent=base["BodyText"],
+            fontName=_FONT_BODY,
+            fontSize=6.5,
+            leading=8,
+            wordWrap="CJK",
         ),
         "cell_header": ParagraphStyle(
             "ClashCellHeader",
@@ -165,6 +179,16 @@ def _styles() -> dict[str, ParagraphStyle]:
             fontSize=8,
             leading=10,
             textColor=colors.white,
+            wordWrap="CJK",
+        ),
+        "cell_header_dense": ParagraphStyle(
+            "ClashCellHeaderDense",
+            parent=base["BodyText"],
+            fontName=_FONT_BOLD,
+            fontSize=7,
+            leading=9,
+            textColor=colors.white,
+            wordWrap="CJK",
         ),
         "field_label": ParagraphStyle(
             "ClashFieldLabel",
@@ -202,8 +226,41 @@ def P(text: Any, style: str = "body") -> Paragraph:
     return Paragraph(_escape(text), _styles()[style])
 
 
-def P_cell(text: Any, *, dense: bool = False) -> Paragraph:
-    return Paragraph(_escape(text), _styles()["cell_dense" if dense else "cell"])
+def P_cell(text: Any, *, dense: bool = False, index: bool = False) -> Paragraph:
+    if index:
+        style = "cell_index"
+    elif dense:
+        style = "cell_dense"
+    else:
+        style = "cell"
+    return Paragraph(_escape(text), _styles()[style])
+
+
+def P_cell_id(text: Any) -> Paragraph:
+    """Wrap long incident IDs at underscores for narrow index columns."""
+    raw = str(text if text is not None else "")
+    if len(raw) > 14 and "_" in raw:
+        split_at = raw.index("_") + 1
+        html = f"{_escape(raw[:split_at])}<br/>{_escape(raw[split_at:])}"
+        return Paragraph(html, _styles()["cell_index"])
+    return Paragraph(_escape(raw), _styles()["cell_index"])
+
+
+def P_cell_lines(text: Any, *, index: bool = False) -> Paragraph:
+    """Paragraph cell allowing explicit <br/> line breaks (content is escaped per line)."""
+    style = _styles()["cell_index" if index else "cell_dense"]
+    parts = str(text if text is not None else "").split("<br/>")
+    html = "<br/>".join(_escape(part) for part in parts)
+    return Paragraph(html, style)
+
+
+def _scale_col_widths(col_widths: list[float], avail: float) -> list[float]:
+    if not col_widths:
+        return col_widths
+    total = sum(col_widths)
+    if total <= 0:
+        return [avail / len(col_widths)] * len(col_widths)
+    return [w * avail / total for w in col_widths]
 
 
 def P_alias(text: Any) -> Paragraph:
@@ -245,7 +302,9 @@ def field_table(rows: Iterable[tuple[str, str]], *, label_width: float | None = 
         for k, v in rows
     ]
     lw = label_width if label_width is not None else 4.2 * cm
-    table = Table(data, colWidths=[lw, None], hAlign="LEFT")
+    avail = A4[0] - 2 * PAGE_MARGIN
+    vw = max(avail - lw, 40 * mm)
+    table = Table(data, colWidths=[lw, vw], hAlign="LEFT")
     table.setStyle(_field_table_style())
     return table
 
@@ -257,10 +316,12 @@ def data_table(
     col_widths: list[float] | None = None,
     page_width: float | None = None,
     dense: bool = False,
+    index_mode: bool = False,
 ) -> Table:
     styles = _styles()
-    cell_style = styles["cell_dense" if dense else "cell"]
-    head = [Paragraph(_escape(h), styles["cell_header"]) for h in headers]
+    head_style = styles["cell_header_dense" if (dense or index_mode) else "cell_header"]
+    cell_style = styles["cell_index" if index_mode else ("cell_dense" if dense else "cell")]
+    head = [Paragraph(_escape(h), head_style) for h in headers]
     body = []
     for row in rows:
         cells = []
@@ -275,23 +336,20 @@ def data_table(
     if col_widths is None:
         col_widths = [avail / len(headers)] * len(headers)
     elif len(col_widths) == len(headers):
-        total = sum(col_widths)
-        if total > avail:
-            scale = avail / total
-            col_widths = [w * scale for w in col_widths]
+        col_widths = _scale_col_widths(col_widths, avail)
     table = Table(data, colWidths=col_widths, repeatRows=1, hAlign="LEFT", splitByRow=1)
     table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#333333")),
+                ("BACKGROUND", (0, 0), (-1, 0), DUPLA_PRIMARY_DARK),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("GRID", (0, 0), (-1, -1), 0.35, GRID_COLOR),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fafafa")]),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fdf2f2")]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 3),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
             ]
         )
     )
@@ -344,10 +402,15 @@ class ClashPdfDoc(BaseDocTemplate):
     def _draw_page(self, canvas, doc) -> None:
         canvas.saveState()
         pw, ph = doc.pagesize
-        canvas.setFont(_FONT_BODY, 8)
+        canvas.setStrokeColor(DUPLA_PRIMARY)
+        canvas.setLineWidth(1)
+        canvas.line(PAGE_MARGIN, ph - PAGE_MARGIN - 2, pw - PAGE_MARGIN, ph - PAGE_MARGIN - 2)
+        canvas.setFont(_FONT_BOLD, 8)
+        canvas.setFillColor(DUPLA_PRIMARY_DARK)
         canvas.drawString(PAGE_MARGIN, ph - PAGE_MARGIN, self._doc_title)
+        canvas.setFont(_FONT_BODY, 8)
+        canvas.setFillColor(DUPLA_MUTED)
         canvas.drawRightString(pw - PAGE_MARGIN, 10 * mm, f"Pagina {doc.page}")
-        canvas.setFillColor(colors.HexColor("#444444"))
         canvas.drawString(PAGE_MARGIN, 10 * mm, self._meta_line)
         canvas.restoreState()
 

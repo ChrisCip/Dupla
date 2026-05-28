@@ -220,6 +220,11 @@ def _disciplines_from_enriched(card: dict[str, Any]) -> tuple[str | None, str | 
 
 
 def _layers_from_enriched(card: dict[str, Any]) -> tuple[str | None, str | None]:
+    if card.get("layer_a") or card.get("layer_b"):
+        la = str(card.get("layer_a") or "").strip() or None
+        lb = str(card.get("layer_b") or "").strip() or None
+        if la or lb:
+            return la, lb
     lp = card.get("layer_pair")
     if isinstance(lp, str):
         la, lb = _parse_layer_pair_text(lp)
@@ -248,17 +253,41 @@ def normalize_incident_for_reports(
     rep = raw.get("representative_conflict") or {}
     inc_id = str(raw.get("incident_id") or _NA)
 
-    pair = raw.get("file_pair") or enriched.get("file_names") or []
+    pair = raw.get("file_pair") or enriched.get("file_pair") or enriched.get("file_names") or []
     if isinstance(pair, tuple):
         pair = list(pair)
     file_a_full = basename(pair[0] if len(pair) > 0 else "")
     file_b_full = basename(pair[1] if len(pair) > 1 else "")
 
-    # Layers
+    # Layers: incident.layers -> source_refs -> raw_layers -> enriched -> revision
     la, lb = layers_from_incident(raw)
     if la or lb:
         prov.layers_source = "source_refs"
-    if (la is None or lb is None) and enriched:
+    incident_layers = raw.get("layers") or enriched.get("layers")
+    if isinstance(incident_layers, (list, tuple)) and len(incident_layers) >= 2:
+        ila = str(incident_layers[0] or "").strip() or None
+        ilb = str(incident_layers[1] or "").strip() or None
+        if ila or ilb:
+            if la is None and ila:
+                la, prov.layers_source = ila, "incident.layers"
+            if lb is None and ilb:
+                lb, prov.layers_source = ilb, "incident.layers"
+    rep_layers = (raw.get("representative_conflict") or {}).get("raw_layers")
+    if isinstance(rep_layers, (list, tuple)) and len(rep_layers) >= 2:
+        rla = str(rep_layers[0] or "").strip() or None
+        rlb = str(rep_layers[1] or "").strip() or None
+        if rla and rla != "?":
+            if la is None:
+                la, prov.layers_source = rla, "representative_conflict.raw_layers"
+        if rlb and rlb != "?":
+            if lb is None:
+                lb, prov.layers_source = rlb, "representative_conflict.raw_layers"
+    if enriched.get("layer_a") or enriched.get("layer_b"):
+        if la is None and enriched.get("layer_a"):
+            la, prov.layers_source = str(enriched["layer_a"]), "coordination_context.layer_a"
+        if lb is None and enriched.get("layer_b"):
+            lb, prov.layers_source = str(enriched["layer_b"]), "coordination_context.layer_b"
+    if la is None or lb is None:
         ela, elb = _layers_from_enriched(enriched)
         if la is None and ela:
             la, prov.layers_source = ela, "coordination_context.layer_pair"
@@ -304,6 +333,10 @@ def normalize_incident_for_reports(
     if bounds:
         prov.bounds_source = "incident.plan_bounds_mm"
     if bounds is None:
+        bounds = _is_valid_bounds(enriched.get("bounds_mm"))
+        if bounds:
+            prov.bounds_source = "coordination_context.bounds_mm"
+    if bounds is None:
         bounds = _is_valid_bounds(rep.get("plan_intersection_bounds_mm"))
         if bounds:
             prov.bounds_source = "representative_conflict.plan_intersection_bounds_mm"
@@ -316,6 +349,14 @@ def normalize_incident_for_reports(
     center = _is_valid_center(raw.get("plan_centroid_mm"))
     if center:
         prov.center_source = "incident.plan_centroid_mm"
+    if center is None:
+        center = _is_valid_center(
+            (enriched.get("center_x"), enriched.get("center_y"))
+            if enriched.get("center_x") is not None and enriched.get("center_y") is not None
+            else None
+        )
+        if center:
+            prov.center_source = "coordination_context.center_xy"
     if center is None:
         center = _is_valid_center(rep.get("plan_intersection_centroid_mm"))
         if center:
@@ -331,12 +372,30 @@ def normalize_incident_for_reports(
         center = ((bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2)
         prov.center_source = "bbox_centroid"
 
+    if bounds is None and center is not None:
+        from app.services.clash_reports.formatting import ZOOM_CENTER_RADIUS_MM
+
+        cx, cy = center
+        r = float(ZOOM_CENTER_RADIUS_MM)
+        bounds = (cx - r, cy - r, cx + r, cy + r)
+        prov.bounds_source = "expanded_center_window"
+
     # Zoom
     zoom_cmd: str | None = None
     zoom_fb: str | None = None
-    if revision_parsed.get("zoom_command"):
-        zoom_cmd = str(revision_parsed["zoom_command"]).strip()
-        prov.zoom_source = "revision_md"
+    explicit = (
+        raw.get("zoom_command")
+        or enriched.get("zoom_command")
+        or revision_parsed.get("zoom_command")
+    )
+    if explicit and str(explicit).strip().upper().startswith("Z W"):
+        zoom_cmd = str(explicit).strip()
+        if raw.get("zoom_command"):
+            prov.zoom_source = "incident.zoom_command"
+        elif enriched.get("zoom_command"):
+            prov.zoom_source = "coordination_context.zoom_command"
+        else:
+            prov.zoom_source = "revision_md"
     elif bounds:
         zoom_cmd = _zoom_from_bounds(bounds)
         prov.zoom_source = "generated_from_bounds"

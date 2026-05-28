@@ -115,6 +115,36 @@ def test_build_report_bundle_uses_context_when_primary_sparse():
     assert inc.provenance.layers_source == "coordination_context.layer_pair"
 
 
+def test_normalize_layers_from_raw_layers_web():
+    raw = {
+        "incident_id": "incident_0003",
+        "file_pair": ["a.dwg", "b.dwg"],
+        "representative_conflict": {"raw_layers": ["PLAFON", "SOLAR"]},
+    }
+    norm = normalize_incident_for_reports(
+        raw=raw,
+        human_code="T-C1",
+        group_code="T-C",
+    )
+    assert norm.layer_a == "PLAFON"
+    assert norm.layer_b == "SOLAR"
+    assert norm.provenance.layers_source == "representative_conflict.raw_layers"
+
+
+def test_normalize_center_from_enriched_xy():
+    raw = {"incident_id": "incident_0004", "file_pair": ["a.dwg", "b.dwg"]}
+    enriched = {"center_x": 48765.0, "center_y": 35327.0, "layer_pair": "SOLAR / SOLAR"}
+    norm = normalize_incident_for_reports(
+        raw=raw,
+        human_code="T-D1",
+        group_code="T-D",
+        enriched=enriched,
+    )
+    assert norm.center_text != "no disponible"
+    assert norm.provenance.center_source == "coordination_context.center_xy"
+    assert norm.zoom_command is not None
+
+
 def test_merge_enriched_cards_combines_sections():
     context = {
         "all_incidents": [{"incident_id": "a", "layer_pair": "X / Y"}],

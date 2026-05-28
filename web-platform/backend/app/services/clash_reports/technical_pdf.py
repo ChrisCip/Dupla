@@ -14,13 +14,17 @@ from app.services.clash_reports.formatting import (
     SEVERITY_HIGH_Z_MM,
     SEVERITY_MEDIUM_AREA_M2,
     SEVERITY_MEDIUM_Z_MM,
+    format_center_index,
     format_optional,
+    format_zoom_index,
 )
 from app.services.clash_reports.pdf_base import (
     P,
     P_alias,
     P_alias_pair,
     P_cell,
+    P_cell_id,
+    P_cell_lines,
     build_pdf,
     data_table,
     field_table,
@@ -33,6 +37,25 @@ from app.services.clash_reports.pdf_base import (
 
 _PAGE_W = A4[0] - 36 * mm
 _LS_W = landscape_page_width()
+
+# Index column weight fractions (sum = 1.0); scaled to landscape width in data_table.
+_INDEX_COL_WEIGHTS = [
+    0.09,  # ID
+    0.05,  # Codigo
+    0.15,  # Par
+    0.06,  # Nivel
+    0.06,  # Tipo
+    0.05,  # Conf.
+    0.05,  # Sev.
+    0.06,  # Area
+    0.05,  # Z prof.
+    0.13,  # Centro
+    0.25,  # Z W
+]
+
+
+def _index_col_widths() -> list[float]:
+    return [w * _LS_W for w in _INDEX_COL_WEIGHTS]
 
 
 def _run_metadata(bundle: ReportBundle) -> list:
@@ -70,18 +93,21 @@ def _pair_schedule_table(bundle: ReportBundle) -> list:
         alias_b = bundle.alias_registry.alias_for(fb, discipline=str(pair.get("discipline_b") or ""))
         rows.append(
             [
-                f"P{idx:03d}",
+                P_cell(f"P{idx:03d}", dense=True),
                 P_alias_pair(alias_a, alias_b),
-                format_optional(pair.get("level_id") or pair.get("level")),
-                f"{format_optional(pair.get('discipline_a'))} / {format_optional(pair.get('discipline_b'))}",
-                "programado" if pair.get("scheduled", True) else "omitido",
+                P_cell(format_optional(pair.get("level_id") or pair.get("level")), dense=True),
+                P_cell(
+                    f"{format_optional(pair.get('discipline_a'))} / {format_optional(pair.get('discipline_b'))}",
+                    dense=True,
+                ),
+                P_cell("programado" if pair.get("scheduled", True) else "omitido", dense=True),
             ]
         )
     return [
         data_table(
             ["Par #", "Archivos (alias)", "Nivel", "Disciplinas", "Estado"],
             rows,
-            col_widths=[14 * mm, 42 * mm, 18 * mm, 38 * mm, 22 * mm],
+            col_widths=[w * _PAGE_W for w in (0.08, 0.34, 0.14, 0.32, 0.12)],
             page_width=_PAGE_W,
             dense=True,
         ),
@@ -114,50 +140,55 @@ def _metrics_dashboard(bundle: ReportBundle) -> list:
 
 
 def _incident_index(bundle: ReportBundle) -> list:
-    """Compact index in landscape; full fields live in the detail section."""
+    """Landscape index with wrapped Paragraph cells; full fields in detail section."""
     if not bundle.incidents:
         return [P("Sin incidencias.", "body"), Spacer(1, 6)]
 
     rows = [
         [
-            P_cell(inc.incident_id, dense=True),
-            P_cell(inc.human_code, dense=True),
+            P_cell_id(inc.incident_id),
+            P_cell(inc.human_code, index=True),
             P_alias_pair(inc.file_a_alias, inc.file_b_alias),
-            P_cell(inc.level_id, dense=True),
-            P_cell(inc.clash_type, dense=True),
-            P_cell(inc.confidence, dense=True),
-            P_cell(inc.severity, dense=True),
-            P_cell(inc.area_m2_text, dense=True),
-            P_cell("si" if inc.zoom_command else "no", dense=True),
+            P_cell(inc.level_id, index=True),
+            P_cell(inc.clash_type, index=True),
+            P_cell(inc.confidence, index=True),
+            P_cell(inc.severity, index=True),
+            P_cell(inc.area_m2_text, index=True),
+            P_cell(inc.z_depth_text, index=True),
+            P_cell_lines(format_center_index(inc.center_text), index=True),
+            P_cell(format_zoom_index(inc.zoom_command), index=True),
         ]
         for inc in bundle.incidents
     ]
-    # Landscape: 9 columns; Centro/Z omitted (see detail section).
-    col_widths = [
-        26 * mm,  # ID
-        14 * mm,  # Codigo
-        36 * mm,  # Par (two-line alias)
-        18 * mm,  # Nivel
-        16 * mm,  # Tipo
-        14 * mm,  # Conf.
-        14 * mm,  # Sev.
-        18 * mm,  # Area
-        12 * mm,  # Z W
+    headers = [
+        "ID",
+        "Codigo",
+        "Par",
+        "Nivel",
+        "Tipo",
+        "Conf.",
+        "Sev.",
+        "Area",
+        "Z",
+        "Centro",
+        "Z W",
     ]
     return [
         *page_break_landscape(),
+        P("Indice de incidencias", "h2"),
+        Spacer(1, 4),
         P(
-            "Resumen compacto. Centro, profundidad Z y demas campos estan en "
+            "Campos completos (limites, handles, provenance) en la seccion "
             "Detalle tecnico por incidencia.",
             "small",
         ),
         Spacer(1, 4),
         data_table(
-            ["ID", "Codigo", "Par", "Nivel", "Tipo", "Conf.", "Sev.", "Area", "Z W"],
+            headers,
             rows,
-            col_widths=col_widths,
+            col_widths=_index_col_widths(),
             page_width=_LS_W,
-            dense=True,
+            index_mode=True,
         ),
         Spacer(1, 8),
         *page_break_portrait(),
@@ -216,7 +247,7 @@ def _alias_legend_table(bundle: ReportBundle) -> list:
         data_table(
             ["Alias", "Nombre completo"],
             rows,
-            col_widths=[28 * mm, _PAGE_W - 28 * mm],
+            col_widths=[0.22 * _PAGE_W, 0.78 * _PAGE_W],
             page_width=_PAGE_W,
             dense=True,
         ),
@@ -255,7 +286,6 @@ def build_technical_pdf(bundle: ReportBundle) -> bytes:
         *_pair_schedule_table(bundle),
         *section("Metricas"),
         *_metrics_dashboard(bundle),
-        *section("Indice de incidencias"),
         *_incident_index(bundle),
         *section("Detalle tecnico por incidencia"),
         *_incident_details(bundle),

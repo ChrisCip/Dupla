@@ -193,7 +193,7 @@ def build_human_pdf(bundle: ReportBundle) -> bytes:
     status = "validacion manual requerida" if bundle.incidents else "sin incidencias primarias"
 
     story: list = [
-        P("Guia de Revision Manual de Clashes", "title"),
+        P("Informe de Coordinacion de Clashes", "title"),
         meta_block(
             [
                 ("Proyecto", str(meta.get("project_name", ""))),
@@ -206,7 +206,7 @@ def build_human_pdf(bundle: ReportBundle) -> bytes:
             ]
         ),
         Spacer(1, 10),
-        P("Resumen ejecutivo", "h2"),
+        P("Resumen ejecutivo - Dupla", "h2"),
         *_summary_cards(summary),
         *_instructions_block(),
         P("Orden de revision recomendado", "h2"),
@@ -235,4 +235,4 @@ def build_human_pdf(bundle: ReportBundle) -> bytes:
         f"{meta.get('project_name', '')} | {meta.get('folder_name', '')} | "
         f"Corrida {int(meta.get('run_sequence') or 1):02d}"
     )
-    return build_pdf(story, title="Guia de Revision Manual de Clashes", meta_line=meta_line)
+    return build_pdf(story, title="Informe de Coordinacion de Clashes", meta_line=meta_line)

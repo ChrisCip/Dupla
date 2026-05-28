@@ -1,4 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Form
+from fastapi.responses import FileResponse
+from pathlib import Path
 from redis import Redis
 from rq import Queue
 from rq.job import Job
@@ -103,3 +105,45 @@ def get_job_status(job_id: str, x_correlation_id: Optional[str] = Header(None)):
     if job.is_failed:
         return {"job_id": job_id, "status": "failed", "error": str(job.exc_info)}
     return {"job_id": job_id, "status": job.get_status()}
+
+
+def _resolve_human_pdf_path(job_id: str) -> Path:
+    try:
+        job = Job.fetch(job_id, connection=redis_conn)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not job.is_finished:
+        raise HTTPException(status_code=409, detail="Job not completed")
+
+    result = job.result or {}
+    artifacts = result.get("artifacts") if isinstance(result, dict) else None
+    output_root = Path(os.getenv("COORDINATION_OUTPUT_ROOT", "/app/output"))
+    candidates: list[Path] = []
+
+    if isinstance(artifacts, dict):
+        human_pdf = artifacts.get("human_pdf_path")
+        if human_pdf:
+            candidates.append(Path(str(human_pdf)))
+        out_dir = artifacts.get("output_dir")
+        if out_dir:
+            candidates.append(Path(str(out_dir)) / "coordination_report_human.pdf")
+
+    candidates.append(output_root / job_id / "coordination_report_human.pdf")
+
+    for c in candidates:
+        if c and c.is_file():
+            return c
+
+    raise HTTPException(status_code=404, detail="Human PDF artifact not found for this job")
+
+
+@app.get("/jobs/{job_id}/exports/human.pdf")
+def get_job_human_pdf(job_id: str, x_correlation_id: Optional[str] = Header(None)):
+    """Serve the rich coordination human PDF produced for this job."""
+    path = _resolve_human_pdf_path(job_id)
+    return FileResponse(
+        path=str(path),
+        media_type="application/pdf",
+        filename="coordination_report_human.pdf",
+    )

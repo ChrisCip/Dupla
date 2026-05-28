@@ -206,6 +206,7 @@ def run_clash_analysis(
         "pair_schedule": artifact_bundle["pair_schedule"],
         "analyzed_documents": artifact_bundle["analyzed_documents"],
         "output_dir": artifact_bundle["paths"]["output_dir"],
+        "human_pdf_path": artifact_bundle["paths"].get("human_pdf"),
     }
 
     return {

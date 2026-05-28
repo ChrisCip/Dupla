@@ -213,7 +213,7 @@ def layers_from_incident(incident: dict[str, Any]) -> tuple[str | None, str | No
             continue
         parts = ref.split("|")
         layer = parts[1].strip() if len(parts) > 1 else None
-        layers.append(layer if layer and layer != "?" else None)
+        layers.append(layer if layer and layer not in {"?", "0"} else None)
     while len(layers) < 2:
         layers.append(None)
     return layers[0], layers[1]
@@ -255,6 +255,28 @@ def format_alias_pair_for_pdf(alias_a: str, alias_b: str) -> str:
     a = format_alias_for_pdf(alias_a.strip())
     b = format_alias_for_pdf(alias_b.strip())
     return f"{a}<br/>{b}"
+
+
+def format_center_index(center_text: str) -> str:
+    """Compact center coordinates for dense index tables (two lines)."""
+    if _is_missing(center_text):
+        return _NA
+    text = str(center_text)
+    mx = re.search(r"X:\s*([\d.\-]+)", text)
+    my = re.search(r"Y:\s*([\d.\-]+)", text)
+    if mx and my:
+        return f"X:{mx.group(1)}<br/>Y:{my.group(1)}"
+    return text.replace(" · ", "<br/>")
+
+
+def format_zoom_index(zoom_command: str | None, *, max_chars: int = 48) -> str:
+    """Abbreviated Z W command for index cells; full command stays in detail."""
+    if _is_missing(zoom_command):
+        return "no"
+    cmd = str(zoom_command).strip()
+    if len(cmd) <= max_chars:
+        return cmd
+    return cmd[: max_chars - 1] + "…"
 
 
 def _discipline_prefix(filename: str, discipline: str | None) -> str:

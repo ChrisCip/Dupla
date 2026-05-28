@@ -129,6 +129,39 @@ def test_clash_pdf_builders_return_pdf_bytes():
     assert human[:4] == b"%PDF"
     assert len(technical) > 2000
     assert len(human) > 2000
+    assert b"Inventario analizado" not in technical
+
+
+def test_technical_pdf_index_many_incidents():
+    svc = ClashExportService(session=MagicMock())
+    meta = {
+        "project_name": "Tutorial · Workspace Dupla",
+        "folder_name": "TEST_01",
+        "user_display": "Carlos Ruiz",
+        "run_date": "2026-05-22",
+        "run_sequence": 1,
+    }
+    base = _incident_dict()
+    incidents = []
+    for i in range(24):
+        row = dict(base)
+        row["incident_id"] = f"incident_{i:04d}"
+        row["plan_centroid_mm"] = [148000 + i * 1000, -163000 - i * 500]
+        row["plan_bounds_mm"] = [
+            148000 + i * 1000,
+            -163000 - i * 500,
+            158000 + i * 1000,
+            -154000 - i * 500,
+        ]
+        incidents.append(row)
+    artifacts = _sample_artifacts()
+    primary = json.loads(artifacts["primary_incidents"])
+    primary["incidents"] = incidents
+    primary["incident_count"] = len(incidents)
+    artifacts["primary_incidents"] = json.dumps(primary)
+    pdf = svc.build_clash_technical_pdf(meta=meta, artifacts=artifacts)
+    assert pdf[:4] == b"%PDF"
+    assert len(pdf) > 5000
 
 
 def test_report_bundle_includes_zoom_command_not_bare_ze():
