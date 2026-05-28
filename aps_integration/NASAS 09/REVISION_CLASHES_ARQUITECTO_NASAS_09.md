@@ -1,5 +1,5 @@
 # Guía de Revisión Manual de Clashes — NASAS 09
-**Generado el:** 2026-05-25
+**Generado el:** 2026-05-28
 **Preparado por:** Sistema de Coordinación Dupla
 **Para:** Arquitecto revisor
 **Modo:** Validación campo a campo en AutoCAD

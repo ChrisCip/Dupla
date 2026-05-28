@@ -1,5 +1,5 @@
 # Guía de Revisión Manual de Clashes — General
-**Generado el:** 2026-05-23
+**Generado el:** 2026-05-28
 **Preparado por:** Sistema de Coordinación Dupla
 **Modo:** Consolidado por proyecto (automático)
 
@@ -7,9 +7,9 @@
 
 | Proyecto | Archivo fuente |
 |---|---|
-| `NASAS_09` | `aps_integration/NASAS 09/NASAS arquitectura/REVISION_CLASHES_ARQUITECTO_NASAS_09.md` |
-| `SERENA_18` | `ARQUITECTURA/SERENA 18/SERENA 18/REVISION_CLASHES_ARQUITECTO_SERENA_18.md` |
-| `TORTUGA_C40` | `ARQUITECTURA/TORTUGA C40/TORTUGA C40/REVISION_CLASHES_ARQUITECTO_TORTUGA_C40.md` |
+| `NASAS_09` | `aps_integration/NASAS 09/REVISION_CLASHES_ARQUITECTO_NASAS_09.md` |
+| `SERENA_18` | `repositorios/SERENA 18/REVISION_CLASHES_ARQUITECTO_SERENA_18.md` |
+| `TORTUGA_C40` | `repositorios/TORTUGA C40/REVISION_CLASHES_ARQUITECTO_TORTUGA_C40.md` |
 
 ---
 
@@ -63,17 +63,17 @@ Ejemplo: `Z W 148000,-163000 158000,-154000`
 
 ## PROYECTO — NASAS_09
 
-_Fuente: `aps_integration/NASAS 09/NASAS arquitectura/REVISION_CLASHES_ARQUITECTO_NASAS_09.md`_
+_Fuente: `aps_integration/NASAS 09/REVISION_CLASHES_ARQUITECTO_NASAS_09.md`_
 
 # Guía de Revisión Manual de Clashes — NASAS 09
-**Generado el:** 2026-05-23
+**Generado el:** 2026-05-28
 **Preparado por:** Sistema de Coordinación Dupla
 **Para:** Arquitecto revisor
 **Modo:** Validación campo a campo en AutoCAD
 
 ## Estado — Sin incidencias primarias
 
-> El análisis completó 10 pares programados y no encontró conflictos geométricos entre elementos estructurales primarios (muros, losas, vigas, columnas).
+> El análisis completó 0 pares programados y no encontró conflictos geométricos entre elementos estructurales primarios (muros, losas, vigas, columnas).
 >
 > Esto puede indicar que el proyecto está bien coordinado en las capas detectadas, o que las capas estructurales necesitan revisión en la configuración de reglas.
 
@@ -134,19 +134,15 @@ Ejemplo: `Z W 148000,-163000 158000,-154000`
 
 ## PROYECTO — SERENA_18
 
-_Fuente: `ARQUITECTURA/SERENA 18/SERENA 18/REVISION_CLASHES_ARQUITECTO_SERENA_18.md`_
+_Fuente: `repositorios/SERENA 18/REVISION_CLASHES_ARQUITECTO_SERENA_18.md`_
 
 # Guía de Revisión Manual de Clashes — SERENA 18
-**Generado el:** 2026-05-23
+**Generado el:** 2026-05-28
 **Preparado por:** Sistema de Coordinación Dupla
 **Para:** Arquitecto revisor
 **Modo:** Validación campo a campo en AutoCAD
 
-## Estado — Sin incidencias primarias
-
-> El análisis completó 510 pares programados y no encontró conflictos geométricos entre elementos estructurales primarios (muros, losas, vigas, columnas).
->
-> Esto puede indicar que el proyecto está bien coordinado en las capas detectadas, o que las capas estructurales necesitan revisión en la configuración de reglas.
+## Estado — 2 incidencia(s) primaria(s) · 0 conflicto(s)
 
 ---
 
@@ -193,22 +189,90 @@ Ejemplo: `Z W 148000,-163000 158000,-154000`
 
 ---
 
-## Próximos pasos recomendados
+## Orden de Revisión Recomendado
 
-1. Verificar que las capas ARQ y EST estén correctamente nombradas (ver `layer_role_coverage.csv` en la carpeta de salida).
-2. Si el proyecto tiene capas no estándar, agregar reglas en `config/layer_rules/serena_18.yaml`.
-3. Revisar `pair_schedule_diagnostics.csv` para entender por qué cada par fue o no programado.
+| # | Grupo | Capas | Incidentes | Área total (m²) | Prioridad |
+|---|---|---|---|---|---|
+| 1 | S-A | `muros bajo techo` / `EST - EJE DE VIGA` | 2 | 0.16 | **Empieza aquí** |
 
+---
+
+## GRUPO S-A — `muros bajo techo` vs `EST - EJE DE VIGA`
+
+**2 incidente(s)** · Área total acumulada: **0.16 m²**
+
+
+
+### S-A1 — `incident_0000`
+
+| Campo | Valor |
+|---|---|
+| **ID Programa** | `incident_0000` |
+| **Par** | `Serena 18 -PLANTA PISOS 10-10-2022.dwg` vs `EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` |
+| **Capas** | `muros bajo techo` (ARQ) vs `EST - EJE DE VIGA` (EST) |
+| **Área de solapamiento** | 0.09 m² |
+| **Elementos involucrados** | 2 |
+| **Severidad** | Baja |
+| **Confianza del programa** | Media |
+| **Nivel** | NPT_P1 |
+| **Centro del clash** | X: 168,805,823 mm · Y: 624,651,710 mm |
+
+**Cómo llegar — Comando AutoCAD:**
+```
+Z W 168799968,624646685 168811677,624656735
+```
+
+**Qué buscar:** Activa solo las capas `muros bajo techo` y `EST - EJE DE VIGA`. ¿Se solapan los elementos de ambos planos en ese punto? Verifica si la geometría es constructiva (muros, losas, vigas) o anotación (marcos, títulos, símbolos).
+
+---
+
+### S-A2 — `incident_0001`
+
+| Campo | Valor |
+|---|---|
+| **ID Programa** | `incident_0001` |
+| **Par** | `Serena 18 -PLANTA PISOS 10-10-2022.dwg` vs `EST. SERENA 18 - E03 - PLANO DE ENCOFRADO.dwg` |
+| **Capas** | `muros bajo techo` (ARQ) vs `EST - EJE DE VIGA` (EST) |
+| **Área de solapamiento** | 0.07 m² |
+| **Elementos involucrados** | 1 |
+| **Severidad** | Baja |
+| **Confianza del programa** | Media |
+| **Nivel** | NPT_P1 |
+| **Centro del clash** | X: 168,808,659 mm · Y: 624,649,214 mm |
+
+**Cómo llegar — Comando AutoCAD:**
+```
+Z W 168801982,624644204 168815336,624654224
+```
+
+**Qué buscar:** Activa solo las capas `muros bajo techo` y `EST - EJE DE VIGA`. ¿Se solapan los elementos de ambos planos en ese punto? Verifica si la geometría es constructiva (muros, losas, vigas) o anotación (marcos, títulos, símbolos).
+
+---
+
+---
+
+## Bitácora de Validación — SERENA 18
+
+*Completa esta tabla a medida que revisas cada punto.*
+
+| Código | Capas | Área (m²) | Decisión | Notas del revisor | Fecha |
+|---|---|---|---|---|---|
+| S-A1 (`incident_0000`) | `muros bajo techo` / `EST - EJE DE VIGA` | 0.09 | ☐ ✅ REAL · ☐ ❌ FALSO · ☐ ⚠️ PENDIENTE | | |
+| S-A2 (`incident_0001`) | `muros bajo techo` / `EST - EJE DE VIGA` | 0.07 | ☐ ✅ REAL · ☐ ❌ FALSO · ☐ ⚠️ PENDIENTE | | |
+
+---
+
+*Reporte generado por Dupla — pipeline 2.5D con roles canónicos y tolerancias explícitas.*
 
 
 ---
 
 ## PROYECTO — TORTUGA_C40
 
-_Fuente: `ARQUITECTURA/TORTUGA C40/TORTUGA C40/REVISION_CLASHES_ARQUITECTO_TORTUGA_C40.md`_
+_Fuente: `repositorios/TORTUGA C40/REVISION_CLASHES_ARQUITECTO_TORTUGA_C40.md`_
 
 # Guía de Revisión Manual de Clashes — TORTUGA C40
-**Generado el:** 2026-05-23
+**Generado el:** 2026-05-28
 **Preparado por:** Sistema de Coordinación Dupla
 **Para:** Arquitecto revisor
 **Modo:** Validación campo a campo en AutoCAD
