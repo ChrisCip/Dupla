@@ -59,6 +59,8 @@ export function cardMatchesSearch(card: TaskCardDto, needle: string): boolean {
   const cf = (card.creator_first_name ?? '').toLowerCase()
   const cl = (card.creator_last_name ?? '').toLowerCase()
   const ph = labelForCreatedPhase(card.created_in_phase)?.toLowerCase() ?? ''
+  const pn = (card.project_name ?? '').toLowerCase()
+  const pc = (card.project_code ?? '').toLowerCase()
   return (
     t.includes(needle) ||
     d.includes(needle) ||
@@ -68,20 +70,16 @@ export function cardMatchesSearch(card: TaskCardDto, needle: string): boolean {
     al.includes(needle) ||
     cf.includes(needle) ||
     cl.includes(needle) ||
-    ph.includes(needle)
+    ph.includes(needle) ||
+    pn.includes(needle) ||
+    pc.includes(needle)
   )
 }
 
-export function boardQueryParams(
-  mine: boolean,
-  assigneeUuid: string,
-  includeArchived: boolean,
-  projectUuid: string,
-): string {
+export function boardQueryParams(includeArchived: boolean, projectUuid: string): string {
   const p = new URLSearchParams()
+  p.set('mine', 'true')
   if (includeArchived) p.set('include_archived', 'true')
-  if (mine) p.set('mine', 'true')
-  else if (assigneeUuid) p.set('assignee_uuid', assigneeUuid)
   if (projectUuid) p.set('project_uuid', projectUuid)
   const s = p.toString()
   return s ? `?${s}` : ''

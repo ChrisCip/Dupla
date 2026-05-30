@@ -1,8 +1,12 @@
 # Grupo Dupla — Core
 
-Monorepo: **FastAPI** (PostgreSQL + Redis) + **Vite/React** (Tailwind, Zod, Zustand).
+## Descripción del sistema
 
-**Documentación:** índice general, módulos y referencia técnica en **[`docs/README.md`](docs/README.md)** (incluye [`docs/TECHNICAL.md`](docs/TECHNICAL.md) y [`docs/modules/`](docs/modules/)).
+**Dupla** es una plataforma web de gestión de **obras y proyectos de arquitectura** pensada para equipos internos: reúne en un solo entorno el **ciclo de vida del proyecto** (fases y flujo de trabajo), el **repositorio documental** (planos y anexos en formatos técnicos habituales, con carpetas, metadatos y trazabilidad), la **comunicación** (chat con canal general, conversaciones directas, grupos y hilo vinculado a cada obra), y la **operación** (tablero de tareas tipo Kanban, con posibilidad de filtrar por proyecto).
+
+Cada **proyecto** se abre en un **workspace** con pestañas: datos generales, flujo y fase actual, **archivos**, entregas de planos, revisiones, **especificaciones y pliegos** (incl. integración con plantillas GA-FO cuando están disponibles), **presupuesto** y metadatos asociados, **eventos** (historial/auditoría), **materiales**, etc. **Gerencia** crea obras, arrastra fases en tablero o transiciona con reglas de dominio, y administra el **alta de usuarios** y asignación del **módulo Arquitectura**, condición para acceder al negocio de proyectos. El resto de **roles** (Control, Presupuesto, Arquitectura) operan en el límite de su permiso sobre cada proyecto. La autenticación es por **JWT**; la API está en **FastAPI** con **PostgreSQL** (persistencia) y **Redis** (caché, sincronización de chat y avisos). El cliente es **React** con **Vite**, enrutado bajo una shell autenticada con menú lateral, y expone además **tutoriales guiados** (recorridos in situ) y una guía de referencia escrita.
+
+Este repositorio es un **monorepo**: `backend` (API, servicios, repositorios, migraciones **Alembic**, seed de demo) y `frontend` (TypeScript, Tailwind, **Zustand** para sesión/estado, formularios con **react-hook-form** y **Zod**). Puede ejecutarse con **Docker Compose** (recomendado) o con backend y frontend levantados por separado. La descripción de **módulos funcionales, flujos y pantallas** vive en [`docs/`](docs/README.md); detalles de arquitectura, variables y pruebas en [`docs/TECHNICAL.md`](docs/TECHNICAL.md). Lo que sigue en este README concentra **cómo levantar el entorno**, **usuarios de prueba** y estructura de carpetas.
 
 ## Requisitos
 

@@ -190,19 +190,20 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
       }}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-black/10 bg-white p-6 shadow-lg"
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-black/10 bg-white shadow-lg"
         role="dialog"
         aria-labelledby="task-modal-title"
         aria-modal="true"
       >
-        <h2 id="task-modal-title" className="sr-only">
-          Tarea
-        </h2>
-        {readOnly ? (
-          <p className="du-meta">Solo lectura (administrador).</p>
-        ) : null}
+        <div className="min-h-0 flex-1 overflow-y-scroll px-6 pb-6 pt-6 [-webkit-overflow-scrolling:touch]">
+          <h2 id="task-modal-title" className="sr-only">
+            Tarea
+          </h2>
+          {readOnly ? (
+            <p className="du-meta">Solo lectura (administrador).</p>
+          ) : null}
 
-        <div className="mt-4 space-y-4">
+          <div className="mt-4 space-y-4">
           {!editing ? (
             <>
               <div>
@@ -441,11 +442,12 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
               </div>
             </>
           )}
-          {error ? <p className="text-sm text-primary">{error}</p> : null}
+            {error ? <p className="text-sm text-primary">{error}</p> : null}
+          </div>
         </div>
 
         <div
-          className={`mt-6 flex flex-wrap items-center gap-3 ${readOnly ? 'justify-end' : 'justify-between'}`}
+          className={`flex shrink-0 flex-wrap items-center gap-3 border-t border-black/10 bg-white px-6 py-4 ${readOnly ? 'justify-end' : 'justify-between'}`}
         >
           {!readOnly ? (
             <div className="flex min-w-0 flex-wrap gap-2">

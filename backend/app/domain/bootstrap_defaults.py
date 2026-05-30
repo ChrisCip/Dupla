@@ -1,21 +1,23 @@
 from __future__ import annotations
 
-import uuid
 from typing import Any
+
+# IDs alineados con `frontend/src/constants/defaultBootstrapCriteria.ts`
+_BOOTSTRAP_ENTRIES: tuple[tuple[str, str], ...] = (
+    (
+        "dupla-bootstrap-estructural",
+        "Planos estructurales (cimentaciones, zapatas, columnas y vigas)",
+    ),
+    ("dupla-bootstrap-tecnicos", "Planos técnicos"),
+    (
+        "dupla-bootstrap-elementos",
+        "Planos con información completa por cada elemento",
+    ),
+)
 
 
 def default_bootstrap_criteria() -> list[dict[str, Any]]:
-    labels = [
-        "Planos estructurales (cimentaciones, zapatas, columnas y vigas)",
-        "Planos técnicos",
-        "Planos con información completa por cada elemento",
-    ]
     return [
-        {
-            "id": str(uuid.uuid4()),
-            "label": label,
-            "required": True,
-            "done": False,
-        }
-        for label in labels
+        {"id": sid, "label": label, "required": True, "done": False}
+        for sid, label in _BOOTSTRAP_ENTRIES
     ]

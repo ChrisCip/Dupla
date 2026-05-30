@@ -1,6 +1,5 @@
 import { type FormEvent, useEffect, useRef } from 'react'
-
-import { PrimaryButton } from '../PrimaryButton'
+import { Send } from 'lucide-react'
 
 type ChatComposerProps = {
   value: string
@@ -35,20 +34,20 @@ export function ChatComposer({
 
   return (
     <form
-      className="border-t border-black/10 bg-black/2 px-4 py-3"
+      className="border-t border-black/10 bg-[#fafafa] px-4 py-3 sm:px-5"
       onSubmit={handleSubmit}
     >
       {error ? <p className="mb-2 text-sm text-primary">{error}</p> : null}
       <label className="du-label sr-only" htmlFor="chat-composer-input">
         Mensaje
       </label>
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-2 rounded-xl border border-black/10 bg-white p-2 shadow-sm">
         <textarea
           id="chat-composer-input"
           ref={taRef}
           rows={1}
-          className="du-input max-h-[120px] min-h-[44px] flex-1 resize-none py-2.5"
-          placeholder="Escribe un mensaje… (Enter envía, Shift+Enter nueva línea)"
+          className="max-h-[120px] min-h-[44px] flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-ink outline-none placeholder:text-muted"
+          placeholder="Escribe un mensaje…"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={sending || disabled}
@@ -60,14 +59,16 @@ export function ChatComposer({
             }
           }}
         />
-        <PrimaryButton
+        <button
           type="submit"
-          className="shrink-0"
+          className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary text-white shadow-md outline-none transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
           disabled={sending || !value.trim() || disabled}
+          aria-label={sending ? 'Enviando' : 'Enviar mensaje'}
         >
-          {sending ? 'Enviando…' : 'Enviar'}
-        </PrimaryButton>
+          <Send className="size-5" strokeWidth={2} aria-hidden />
+        </button>
       </div>
+      <p className="mt-2 text-[11px] text-muted">Enter para enviar · Shift+Enter nueva línea</p>
     </form>
   )
 }

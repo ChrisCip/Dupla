@@ -12,6 +12,8 @@ export type TaskCardDto = {
   position: number
   list_uuid: string
   project_uuid: string | null
+  project_name: string | null
+  project_code: string | null
   created_at: string
   created_by_uuid: string | null
   creator_email: string | null

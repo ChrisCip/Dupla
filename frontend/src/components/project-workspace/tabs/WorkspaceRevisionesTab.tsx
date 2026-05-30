@@ -2,6 +2,13 @@ import { Card } from '../../Card'
 import { PrimaryButton } from '../../PrimaryButton'
 import type { RevisionRow } from '../../../types/projectWorkspace'
 
+const REVISION_ROLE_LABELS: Record<string, string> = {
+  ARQUITECTURA: 'Arquitectura',
+  CONTROL: 'Control',
+  PRESUPUESTO: 'Presupuesto',
+  GERENCIA: 'Gerencia',
+}
+
 type WorkspaceRevisionesTabProps = {
   flowMsg: string | null
   revDecision: string
@@ -23,11 +30,12 @@ export function WorkspaceRevisionesTab({
 }: WorkspaceRevisionesTabProps) {
   return (
     <Card className="space-y-4 p-6">
-      <h2 className="text-lg font-semibold text-ink">Revisiones de arquitectura</h2>
+      <h2 className="text-lg font-semibold text-ink">Revisiones</h2>
       <p className="text-sm text-muted">
-        Puedes registrar una revisión en cualquier fase del proyecto. Para avanzar a «Pliego de condiciones» sigue siendo
-        necesaria una revisión <span className="font-medium text-ink">aprobada</span> cuando el flujo esté en revisión
-        de arquitectura.
+        Cada registro queda asociado a tu rol (arquitectura, control, presupuesto o gerencia). Para pasar del paso de{' '}
+        <span className="font-medium text-ink">revisión de arquitectura</span> al paso de{' '}
+        <span className="font-medium text-ink">pliego de condiciones</span>, la última revisión pertinente debe estar{' '}
+        <span className="font-medium text-ink">aprobada</span>.
       </p>
       {flowMsg ? <p className="text-sm text-primary">{flowMsg}</p> : null}
       <div className="space-y-3 border-b border-black/10 pb-4">
@@ -48,12 +56,19 @@ export function WorkspaceRevisionesTab({
         </PrimaryButton>
       </div>
       <ul className="space-y-2 text-sm">
-        {revisions.map((r) => (
-          <li key={r.uuid} className="rounded border border-black/10 px-3 py-2">
-            <span className="font-medium">v{r.version}</span> · {r.decision}
-            {r.notes ? <p className="text-muted">{r.notes}</p> : null}
-          </li>
-        ))}
+        {revisions.map((r) => {
+          const roleLabel = REVISION_ROLE_LABELS[r.revision_role] ?? r.revision_role
+          return (
+            <li key={r.uuid} className="rounded border border-black/10 px-3 py-2">
+              <span className="font-medium">Revisión de {roleLabel}</span>
+              <span className="text-muted"> · {r.decision}</span>
+              <span className="du-meta ml-2 text-xs">
+                {new Date(r.created_at).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+              </span>
+              {r.notes ? <p className="mt-1 text-muted">{r.notes}</p> : null}
+            </li>
+          )
+        })}
       </ul>
       {revisions.length === 0 ? <p className="text-sm text-muted">Sin revisiones.</p> : null}
     </Card>

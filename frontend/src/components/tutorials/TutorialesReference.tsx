@@ -4,17 +4,30 @@ import { ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { formatAllowedProjectExtensionsHint } from '../../constants/projectAllowedFiles'
+import {
+  type TutorialsGuidesFilter,
+  TUTORIALS_TOC_IDS_BY_FILTER,
+} from '../../constants/tutorialsGuidesFilter'
 import { TUTORIAL_PROJECT_PATH } from '../../constants/tutorialProject'
 import { TUTORIALS_TOC } from '../../constants/tutorialesToc'
 import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
+
+const TUTORIAL_HASH_ALIASES: Record<string, string> = {
+  especificaciones: 'pliego',
+  presupuesto: 'flujo',
+  pliegos: 'pliego',
+  materiales: 'archivos',
+  observaciones: 'hallazgos',
+}
 
 const sectionClass = 'space-y-3'
 const h3Class = 'text-base font-semibold text-ink'
 const pClass = 'text-sm leading-relaxed text-ink'
 const listClass = 'list-inside list-disc space-y-1.5 text-sm leading-relaxed text-ink'
-const cardClass = 'rounded-xl border border-black/10 bg-white p-5 shadow-[var(--shadow-card)]'
+const cardClass =
+  'rounded-xl border-2 border-primary/20 bg-white p-5 shadow-[0_1px_0_rgba(193,13,18,0.05)] sm:p-6'
 const accordionItemClass =
-  'scroll-mt-6 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[var(--shadow-card)]'
+  'scroll-mt-6 overflow-hidden rounded-xl border-2 border-primary/20 bg-white shadow-[0_1px_0_rgba(193,13,18,0.05)] transition-[border-color,box-shadow] hover:border-primary/35'
 
 function scrollTargetIntoViewSmooth(id: string): void {
   requestAnimationFrame(() => {
@@ -24,10 +37,18 @@ function scrollTargetIntoViewSmooth(id: string): void {
   })
 }
 
+export type TutorialesReferenceProps = {
+  /** Filtra índice y acordeones según la pestaña de «Tutoriales y guías». */
+  activeFilter: TutorialsGuidesFilter
+}
+
 /** Guía escrita completa (ancla del índice); cada sección va en un acordeón. */
-export function TutorialesReference() {
+export function TutorialesReference({ activeFilter }: TutorialesReferenceProps) {
   const extHint = formatAllowedProjectExtensionsHint()
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  const visibleIds = TUTORIALS_TOC_IDS_BY_FILTER[activeFilter]
+  const visibleToc = TUTORIALS_TOC.filter((t) => visibleIds.includes(t.id))
 
   const toggleSection = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
@@ -42,9 +63,10 @@ export function TutorialesReference() {
   useEffect(() => {
     const applyHash = (hash: string) => {
       const raw = hash.startsWith('#') ? hash.slice(1) : hash
-      if (raw && TUTORIALS_TOC.some((t) => t.id === raw)) {
-        setExpandedId(raw)
-        scrollTargetIntoViewSmooth(raw)
+      const canonical = raw ? TUTORIAL_HASH_ALIASES[raw] ?? raw : ''
+      if (canonical && visibleIds.includes(canonical)) {
+        setExpandedId(canonical)
+        scrollTargetIntoViewSmooth(canonical)
       } else if (!raw) {
         setExpandedId(null)
       }
@@ -53,7 +75,13 @@ export function TutorialesReference() {
     const onHashChange = () => applyHash(window.location.hash)
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+  }, [visibleIds])
+
+  useEffect(() => {
+    if (expandedId && !visibleIds.includes(expandedId)) {
+      setExpandedId(null)
+    }
+  }, [activeFilter, expandedId, visibleIds])
 
   const sectionBodies: Record<string, ReactNode> = {
     navegacion: (
@@ -84,8 +112,8 @@ export function TutorialesReference() {
         <h3 className={h3Class}>Crear un proyecto</h3>
         <ul className={listClass}>
           <li>
-            Abre el flujo de <strong>Nuevo proyecto</strong> (modal con pasos). Indica un nombre
-            reconocible y, si quieres, cliente.
+            Abre el flujo de <strong>Nuevo proyecto</strong> (varios pasos: identificación, dimensiones,
+            ubicación, tipo y equipo). Indica un nombre reconocible y, si quieres, cliente.
           </li>
           <li>
             <strong>Tipo residencial:</strong> sigue el flujo completo desde criterios de arranque
@@ -113,11 +141,11 @@ export function TutorialesReference() {
     workspace: (
       <div className={sectionClass}>
         <p className={pClass}>
-          Cuando abres una obra desde la lista, entras a la <strong>vista de la obra</strong>: a la
-          izquierda tienes las secciones (datos, archivos, etc.) y al centro el contenido. Puedes pasar
-          de una sección a otra en cualquier momento; lo que puedas hacer en cada una depende de la etapa
-          del proceso y de tu perfil. Si aparece la opción de pantalla completa, úsala cuando necesites más
-          espacio.
+          Cuando abres una obra desde la lista, entras a la <strong>vista de la obra</strong>. Primero ves{' '}
+          <strong>Inicio</strong>: una rejilla con tarjetas para cada área (Detalles, Flujo, Archivos,
+          Control de entregas, Revisiones, Hallazgos, Pliego y Eventos). Al abrir un área, arriba aparece{' '}
+          <strong>Volver al inicio</strong> para regresar a la rejilla. El contenido central cambia según
+          la sección; lo que puedas hacer depende de la etapa del proceso y de tu perfil.
         </p>
         <p className={pClass}>
           Para practicar sin tocar obras reales, usa el{' '}
@@ -149,6 +177,10 @@ export function TutorialesReference() {
           <li>
             Las acciones de <strong>avanzar fase</strong> u otros cambios dependen de tu perfil y de las
             reglas del proceso; la aplicación te dirá en pantalla si algo falta o si se guardó bien.
+          </li>
+          <li>
+            Cuando el proyecto está en etapa de <strong>presupuesto</strong>, las cotizaciones, volumetría y
+            metadatos del pipeline se gestionan aquí (ya no hay una pestaña aparte solo para presupuesto).
           </li>
         </ul>
       </div>
@@ -190,36 +222,39 @@ export function TutorialesReference() {
     'entrega-planos': (
       <div className={sectionClass}>
         <p className={pClass}>
-          Administración de solicitudes de <strong>entrega de planos (SDP)</strong>: altas, ediciones y
-          bajas de filas según los botones disponibles. Los detalles de cada fila (fechas, estados,
-          observaciones) siguen el formulario que muestre la aplicación.
+          Administración de solicitudes de <strong>control de entregas</strong> (entrega de planos): altas,
+          ediciones y bajas de filas según los botones disponibles. Los detalles de cada fila (fechas,
+          estados, observaciones) siguen el formulario que muestre la aplicación.
         </p>
       </div>
     ),
     revisiones: (
       <div className={sectionClass}>
         <p className={pClass}>
-          Registro y decisión sobre <strong>revisiones</strong> del proyecto: revisa el listado,
-          aporta notas y utiliza la decisión aprobada / rechazada (u opciones equivalentes) según el
-          formulario visible. Los datos concretos dependen del estado del proyecto y de tu rol.
+          Registro y decisión sobre <strong>revisiones</strong> del proyecto (por rol: arquitectura,
+          control, presupuesto, según corresponda): revisa el listado, aporta notas y utiliza la decisión
+          aprobada / rechazada (u opciones equivalentes) según el formulario visible. Los datos concretos
+          dependen del estado del proyecto y de tu rol.
         </p>
       </div>
     ),
-    especificaciones: (
+    hallazgos: (
       <div className={sectionClass}>
         <p className={pClass}>
-          Trabajo con el <strong>pliego / especificaciones</strong>: resumen, campos estructurados y
-          guardado. Sincroniza cambios con el botón de guardar cuando proceda; los mensajes de error
-          indican campos obligatorios o conflictos de versión.
+          <strong>Hallazgos técnicos:</strong> registro manual de interferencias u observaciones en la obra.
+          Puedes dar de alta filas con disciplina, severidad (por ejemplo crítico, alto, medio, bajo), título,
+          descripción y, si aplica, referencia a evidencia. El listado muestra lo ya cargado; los mensajes de
+          error en pantalla indican si falta algún dato obligatorio o hubo un fallo al guardar.
         </p>
       </div>
     ),
-    presupuesto: (
+    pliego: (
       <div className={sectionClass}>
         <p className={pClass}>
-          Aquí se sigue el <strong>presupuesto de la obra</strong> (versiones acordadas, hitos con el
-          cliente, etc.). Completa los campos que puedas editar y guarda; verás reflejado el estado del
-          trámite presupuestario.
+          Trabajo con el <strong>pliego de condiciones</strong>: documento técnico por acordeones (alcance,
+          especificaciones, materiales, etc.), resumen ejecutivo, lista de revisión en el panel derecho y hilo de
+          comentarios del proyecto. Guarda el borrador con el botón correspondiente y sigue el estado hasta la
+          aprobación.
         </p>
       </div>
     ),
@@ -249,23 +284,6 @@ export function TutorialesReference() {
         </ul>
       </div>
     ),
-    pliegos: (
-      <div className={sectionClass}>
-        <p className={pClass}>
-          Formularios y estado de ítems del <strong>pliego</strong> (incluye integración con datos de
-          arquitectura cuando el flujo lo requiera). Completa y guarda los bloques según las secciones
-          visibles; respeta las validaciones indicadas en pantalla.
-        </p>
-      </div>
-    ),
-    materiales: (
-      <div className={sectionClass}>
-        <p className={pClass}>
-          Listado y edición de <strong>materiales</strong> vinculados al proyecto: altas, cambios y
-          bajas según los controles mostrados. Útil para cubicación y trazabilidad documental.
-        </p>
-      </div>
-    ),
     'config-proyecto': (
       <div className={sectionClass}>
         <p className={pClass}>
@@ -278,21 +296,27 @@ export function TutorialesReference() {
     tablero: (
       <div className={sectionClass}>
         <p className={pClass}>
-          En <strong>Tablero</strong> (menú lateral) ves <strong>todas las tareas del equipo</strong> en
-          columnas por estado: mueve tarjetas y ábrelas para ver el detalle.
+          En <strong>Tablero</strong> (menú lateral) ves <strong>solo las tareas de tu cuenta</strong>:
+          las asignadas a ti y los borradores que hayas creado sin asignar, en columnas por estado. Mueves
+          tarjetas y las abres para ver el detalle; en cada tarjeta se muestra la obra cuando aplica. No se
+          listan las tareas de otras personas.
         </p>
         <ul className={listClass}>
           <li>
-            <strong>Nueva tarea:</strong> botón para crear una tarea; si el formulario lo permite,
-            puedes asociarla a una obra concreta.
+            <strong>Nueva tarea:</strong> botón para crear una tarea; si el formulario lo permite, puedes
+            asociarla a una obra concreta.
           </li>
           <li>
-            <strong>Filtros:</strong> solo lo tuyo, por persona, tareas archivadas y búsqueda de texto en
-            el tablero.
+            <strong>Búsqueda y archivadas:</strong> buscas texto en las tarjetas y puedes incluir tareas
+            archivadas con el interruptor correspondiente.
           </li>
           <li>
-            <strong>Solo una obra:</strong> desde la sección Detalles de esa obra, el enlace «Tablero del
-            proyecto» abre este mismo tablero ya filtrado para que solo veas las tareas de esa obra.
+            <strong>Desde Proyectos:</strong> el bloque <strong>Mis tareas</strong> te lleva al mismo tablero
+            (equivalente al acceso del menú).
+          </li>
+          <li>
+            <strong>Solo una obra:</strong> desde Detalles de esa obra, el enlace al tablero abre esta vista
+            filtrada por esa obra.
           </li>
         </ul>
       </div>
@@ -330,13 +354,16 @@ export function TutorialesReference() {
   return (
     <>
       <nav aria-label="Índice de la guía escrita" className={`${cardClass} mb-8`}>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Guía por secciones</h2>
+        <h2 className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-primary/90">
+          Guía por secciones
+        </h2>
+        <p className="mb-4 text-sm text-muted">Tema actual: filtro de arriba en la página.</p>
         <ol className="columns-1 gap-x-8 gap-y-1 text-sm sm:columns-2">
-          {TUTORIALS_TOC.map((item, i) => (
+          {visibleToc.map((item, i) => (
             <li key={item.id} className="mb-1 break-inside-avoid">
               <a
                 href={`#${item.id}`}
-                className="text-primary underline-offset-2 hover:underline"
+                className="font-medium text-primary underline-offset-2 hover:underline"
                 onClick={(e) => {
                   e.preventDefault()
                   revealAndScroll(item.id)
@@ -350,14 +377,14 @@ export function TutorialesReference() {
       </nav>
 
       <div className="space-y-3">
-        {TUTORIALS_TOC.map((item) => {
+        {visibleToc.map((item) => {
           const isOpen = expandedId === item.id
           return (
             <div key={item.id} id={item.id} className={accordionItemClass}>
               <h2 className="m-0">
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left text-base font-semibold text-ink transition-colors hover:bg-black/3 sm:px-5"
+                  className="flex w-full items-center justify-between gap-3 border-l-[3px] border-transparent px-4 py-3.5 text-left text-base font-semibold text-ink transition-colors hover:border-primary/40 hover:bg-primary/4 sm:px-5"
                   aria-expanded={isOpen}
                   aria-controls={`panel-${item.id}`}
                   id={`heading-${item.id}`}
@@ -382,7 +409,7 @@ export function TutorialesReference() {
                   id={`panel-${item.id}`}
                   role="region"
                   aria-labelledby={`heading-${item.id}`}
-                  className="border-t border-black/10 px-4 pb-4 pt-1 sm:px-5 sm:pb-5"
+                  className="border-t border-primary/10 px-4 pb-4 pt-1 sm:px-5 sm:pb-5"
                 >
                   {sectionBodies[item.id]}
                 </div>

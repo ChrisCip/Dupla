@@ -1,4 +1,5 @@
 import { AUTH_PERSIST_KEY } from '../store/authConstants'
+import { emitToast } from '../components/ToastProvider'
 
 const base = import.meta.env.VITE_API_BASE ?? ''
 
@@ -29,6 +30,9 @@ function handleUnauthorizedSession(path: string): void {
   window.location.assign('/login')
 }
 
+// Status codes that should NOT emit a generic toast (callers handle them explicitly)
+const SILENT_STATUSES = new Set([401, 404])
+
 export async function apiFetch(
   path: string,
   init: RequestInit & { token?: string | null } = {},
@@ -42,8 +46,24 @@ export async function apiFetch(
     h.set('Content-Type', 'application/json')
   }
   const res = await fetch(apiUrl(path), { ...rest, headers: h })
+
   if (res.status === 401) {
     handleUnauthorizedSession(path)
   }
+
+  if (res.status >= 400 && !SILENT_STATUSES.has(res.status)) {
+    // Clone so the caller can still read the body
+    res.clone().json().then((body: unknown) => {
+      const detail =
+        body && typeof body === 'object' && 'detail' in body
+          ? String((body as { detail: unknown }).detail)
+          : `Error ${res.status}`
+      emitToast(detail, res.status >= 500 ? 'error' : 'warning')
+    }).catch(() => {
+      emitToast(`Error ${res.status}`, 'error')
+    })
+  }
+
   return res
 }
+

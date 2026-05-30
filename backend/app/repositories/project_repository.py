@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
 
@@ -9,7 +9,6 @@ from sqlalchemy.orm import selectinload
 
 from app.domain.bootstrap_defaults import default_bootstrap_criteria
 from app.domain.project_updated import touch_project_updated_at
-from app.domain.workflow_phase import WorkflowPhase
 from app.models.project import Project, ProjectArchitectureData
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
@@ -24,11 +23,13 @@ def _default_workflow_meta() -> dict[str, Any]:
             "volumetry_done": False,
             "cost_analysis_done": False,
             "budget_marked_complete": False,
+            "control_review_done": False,
             "client_approved_version_label": None,
             "volumetry": {},
             "cost_analysis": {},
             "budget_versions": [],
-        }
+        },
+        "automation_tasks": {},
     }
 
 
@@ -37,7 +38,11 @@ class ProjectRepository:
         self._session = session
 
     async def list_for_user(self, user_uuid: UUID, *, is_master: bool) -> list[Project]:
-        stmt = select(Project).order_by(Project.updated_at.desc())
+        stmt = (
+            select(Project)
+            .options(selectinload(Project.current_workflow_step))
+            .order_by(Project.updated_at.desc())
+        )
         if not is_master:
             member_projects = select(ProjectMember.project_id).where(ProjectMember.user_id == user_uuid)
             stmt = stmt.where(or_(Project.created_by == user_uuid, Project.id.in_(member_projects)))
@@ -109,10 +114,33 @@ class ProjectRepository:
     async def get_by_uuid(self, project_uuid: UUID) -> Optional[Project]:
         result = await self._session.execute(
             select(Project)
-            .options(selectinload(Project.architecture_data))
+            .options(
+                selectinload(Project.architecture_data),
+                selectinload(Project.current_workflow_step),
+            )
             .where(Project.id == project_uuid)
         )
         return result.scalar_one_or_none()
+
+    async def list_for_template(self, template_id: UUID, *, is_master: bool, user_uuid: UUID) -> list[Project]:
+        stmt = (
+            select(Project)
+            .options(selectinload(Project.current_workflow_step))
+            .where(Project.workflow_template_id == template_id)
+            .order_by(Project.updated_at.desc())
+        )
+        if not is_master:
+            member_projects = select(ProjectMember.project_id).where(ProjectMember.user_id == user_uuid)
+            stmt = stmt.where(or_(Project.created_by == user_uuid, Project.id.in_(member_projects)))
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_by_project_code(self, code: str) -> Optional[Project]:
+        c = code.strip()
+        if not c:
+            return None
+        q = select(Project).where(Project.project_code == c)
+        return (await self._session.execute(q)).scalar_one_or_none()
 
     async def create_with_architecture(
         self,
@@ -122,21 +150,42 @@ class ProjectRepository:
         created_by: UUID,
         project_kind: str,
         workflow_phase: str,
+        workflow_template_id: UUID,
+        current_workflow_step_id: UUID,
+        project_code: Optional[str] = None,
+        location_text: Optional[str] = None,
+        estimated_area_sqm: Optional[float] = None,
+        floor_levels_count: Optional[int] = None,
+        deadline: Optional[date] = None,
+        responsible_user_id: Optional[UUID] = None,
+        responsible_external_name: Optional[str] = None,
+        responsible_external_email: Optional[str] = None,
     ) -> Project:
-        bootstrap = (
-            default_bootstrap_criteria()
-            if workflow_phase == WorkflowPhase.BOOTSTRAPPING.value
-            else []
-        )
+        # Siempre sembramos el checklist por defecto; las transiciones solo lo exigen en fase Arranque.
+        bootstrap = default_bootstrap_criteria()
+        pc = project_code.strip() if project_code else None
+        pc = pc or None
+        loc = location_text.strip() if location_text else None
+        loc = loc or None
         project = Project(
             name=name,
             client_name=client_name,
             project_kind=project_kind,
             created_by=created_by,
             workflow_phase=workflow_phase,
+            workflow_template_id=workflow_template_id,
+            current_workflow_step_id=current_workflow_step_id,
             workflow_meta=_default_workflow_meta(),
             project_bootstrap_criteria=bootstrap,
             specifications_document={},
+            project_code=pc,
+            location_text=loc,
+            estimated_area_sqm=estimated_area_sqm,
+            floor_levels_count=floor_levels_count,
+            deadline=deadline,
+            responsible_user_id=responsible_user_id,
+            responsible_external_name=responsible_external_name,
+            responsible_external_email=responsible_external_email,
         )
         self._session.add(project)
         await self._session.flush()

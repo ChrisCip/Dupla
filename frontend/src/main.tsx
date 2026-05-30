@@ -5,11 +5,15 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import 'driver.js/dist/driver.css'
 import App from './App.tsx'
+import { ToastProvider } from './components/ToastProvider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </BrowserRouter>
   </StrictMode>,
 )
+

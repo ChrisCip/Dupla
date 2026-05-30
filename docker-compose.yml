@@ -30,18 +30,56 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://dupla:dupla@postgres:5432/dupla
       REDIS_URL: redis://redis:6379/0
+      PROCESSOR_URL: http://processor:8000
       JWT_SECRET: demo-secret-change-in-production-min-32-chars!!
+
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://frontend:80
     ports:
       - "8000:8000"
+    volumes:
+      - dupla_uploads:/app/var/uploads
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  processor:
+    build:
+      context: ./processor
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8001:8000"
+    volumes:
+      - dupla_outputs:/app/output
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  processor-worker:
+    build:
+      context: ./processor
+      dockerfile: Dockerfile
+    command: ["python", "worker.py"]
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - dupla_outputs:/app/output
+    depends_on:
+      redis:
+        condition: service_healthy
+
 
   frontend:
     build:
@@ -54,3 +92,5 @@ services:
 
 volumes:
   dupla_pg:
+  dupla_uploads:
+  dupla_outputs:

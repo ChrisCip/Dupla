@@ -13,11 +13,19 @@ export type DirectoryUserRow = {
   module_ids: number[]
 }
 
+const UUID_STRING_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Rechaza valores como "null", "undefined" o texto que no sea UUID. */
+export function isValidUuidString(value: string): boolean {
+  return UUID_STRING_RE.test(value.trim())
+}
+
 export function normalizeDirectoryUser(raw: unknown): DirectoryUserRow | null {
   if (!raw || typeof raw !== 'object') return null
   const o = raw as Record<string, unknown>
-  const uuid = o.uuid != null ? String(o.uuid) : ''
-  if (!uuid) return null
+  const rawId = o.uuid != null ? o.uuid : o.id
+  const uuid = rawId != null ? String(rawId).trim() : ''
+  if (!isValidUuidString(uuid)) return null
   const fn =
     typeof o.first_name === 'string'
       ? o.first_name

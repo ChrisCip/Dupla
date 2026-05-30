@@ -64,3 +64,9 @@ body {
     @apply ring-2 ring-primary/30 ring-offset-2 ring-offset-[var(--color-surface)];
   }
 }
+
+@keyframes du-toast-shrink {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+

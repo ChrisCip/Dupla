@@ -4,6 +4,8 @@ import { PrimaryButton } from '../../PrimaryButton'
 import type { SubcontractQuoteRow } from '../../../types/projectWorkspace'
 
 type WorkspacePresupuestoTabProps = {
+  role: string | null
+  workflowPhase: string | null
   projectUuid: string
   token: string | null
   flowMsg: string | null
@@ -25,6 +27,8 @@ type WorkspacePresupuestoTabProps = {
 }
 
 export function WorkspacePresupuestoTab({
+  role,
+  workflowPhase,
   projectUuid,
   token,
   flowMsg,
@@ -44,41 +48,84 @@ export function WorkspacePresupuestoTab({
   quotes,
   onLoadAuxLists,
 }: WorkspacePresupuestoTabProps) {
+  const canMarkControl = role === 'CONTROL' || role === 'GERENCIA'
+  const awaitingBudgetApproval = workflowPhase === 'MANAGEMENT_APPROVAL'
+  const missingControlGate = awaitingBudgetApproval && !bpDraft.control_review_done
+  const missingClientVersion = awaitingBudgetApproval && !clientVersion.trim()
   return (
     <div className="space-y-6">
       <Card className="space-y-4 p-6">
         <h2 className="text-lg font-semibold text-ink">Pipeline de presupuesto</h2>
         <p className="text-sm text-muted">
-          Esta fase sigue al <strong className="text-ink">pliego de condiciones</strong>. Marca cada hito cuando
-          corresponda y registra la versión aprobada por el cliente antes del cierre.
+          Esta fase sigue al <strong className="text-ink">pliego de condiciones</strong>. El orden operativo es:
         </p>
+        <ol className="list-decimal space-y-1 pl-5 text-sm text-muted">
+          <li>Cotizaciones de subcontratación</li>
+          <li>Volumetría</li>
+          <li>Análisis de costo</li>
+          <li>Presupuesto interno marcado como completo</li>
+          <li className="font-medium text-ink">Revisión de Control</li>
+          <li>Versión aprobada por el cliente registrada</li>
+          <li>Avance a gerencia / cierre (desde la pestaña Flujo)</li>
+        </ol>
         {flowMsg ? <p className="text-sm text-primary">{flowMsg}</p> : null}
-        {(
-          [
-            ['subcontracts_done', 'Cotizaciones de subcontratación listas'],
-            ['volumetry_done', 'Volumetría completada'],
-            ['cost_analysis_done', 'Análisis de costo completado'],
-            ['budget_marked_complete', 'Presupuesto interno completado'],
-          ] as const
-        ).map(([key, label]) => (
-          <label key={key} className="flex items-center gap-2 text-sm">
+        {awaitingBudgetApproval && (missingControlGate || missingClientVersion) ? (
+          <div className="rounded-md border border-primary/25 bg-primary/[0.06] px-3 py-2 text-sm text-ink">
+            Antes de pasar a «Presupuesto aprobado por cliente», debes marcar la revisión de Control y completar la
+            etiqueta de versión del cliente (y guardar).{' '}
+            {missingControlGate ? <span className="font-medium text-primary"> Falta revisión de Control.</span> : null}{' '}
+            {missingClientVersion ? (
+              <span className="font-medium text-primary"> Falta versión aprobada por el cliente.</span>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="space-y-3 border-t border-black/10 pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Hitos del pipeline</p>
+          {(
+            [
+              ['subcontracts_done', 'Cotizaciones de subcontratación listas'],
+              ['volumetry_done', 'Volumetría completada'],
+              ['cost_analysis_done', 'Análisis de costo completado'],
+              ['budget_marked_complete', 'Presupuesto interno completado'],
+            ] as const
+          ).map(([key, label]) => (
+            <label key={key} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={!!bpDraft[key]}
+                onChange={(e) => setBpDraft((d) => ({ ...d, [key]: e.target.checked }))}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        <div className="space-y-2 border-l-2 border-primary/35 pl-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Control</p>
+          <label className={`flex items-center gap-2 text-sm ${!canMarkControl ? 'opacity-60' : ''}`}>
             <input
               type="checkbox"
-              checked={!!bpDraft[key]}
-              onChange={(e) => setBpDraft((d) => ({ ...d, [key]: e.target.checked }))}
+              disabled={!canMarkControl}
+              checked={!!bpDraft.control_review_done}
+              onChange={(e) => setBpDraft((d) => ({ ...d, control_review_done: e.target.checked }))}
             />
-            {label}
+            Revisión de Control completada
+            {!canMarkControl ? (
+              <span className="text-xs text-muted">(solo Control o Gerencia)</span>
+            ) : null}
           </label>
-        ))}
-        <label className="block text-sm text-muted">
-          Etiqueta de versión aprobada por el cliente
-          <input
-            className="du-input mt-1"
-            value={clientVersion}
-            onChange={(e) => setClientVersion(e.target.value)}
-            placeholder="ej. v2"
-          />
-        </label>
+        </div>
+        <div className="space-y-2 border-t border-black/10 pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Cliente</p>
+          <label className="block text-sm text-muted">
+            Etiqueta de versión aprobada por el cliente
+            <input
+              className="du-input mt-1"
+              value={clientVersion}
+              onChange={(e) => setClientVersion(e.target.value)}
+              placeholder="ej. v2"
+            />
+          </label>
+        </div>
         <PrimaryButton type="button" onClick={onSaveBudgetPipeline}>
           Guardar estado del pipeline
         </PrimaryButton>

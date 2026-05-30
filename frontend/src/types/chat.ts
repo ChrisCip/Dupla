@@ -16,6 +16,8 @@ export type ChatConversationSummary = {
   unread_count?: number
   participant_count?: number | null
   participants?: ChatParticipantRef[] | null
+  /** Presente cuando `kind === 'PROJECT'`. */
+  project_uuid?: string | null
 }
 
 export type ChatMessage = {

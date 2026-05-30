@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.inspection import inspect
 
 from app.models.architecture_revision import ArchitectureRevision
+from app.models.project_technical_finding import ProjectTechnicalFinding
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
 from app.models.project_file_folder import ProjectFileFolder
@@ -17,12 +18,27 @@ from app.models.user_notification import UserNotification
 
 
 class ProjectTransitionRequest(BaseModel):
-    target_phase: str = Field(..., min_length=1, max_length=64)
+    target_phase: Optional[str] = Field(default=None, max_length=64)
+    target_step_uuid: Optional[UUID] = None
+
+    @model_validator(mode="after")
+    def need_phase_or_step(self) -> ProjectTransitionRequest:
+        if not self.target_phase and not self.target_step_uuid:
+            raise ValueError("Indica target_phase o target_step_uuid")
+        return self
 
 
 class ProjectPatchRequest(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     client_name: Optional[str] = Field(default=None, max_length=255)
+    project_code: Optional[str] = Field(default=None, max_length=80)
+    location_text: Optional[str] = None
+    estimated_area_sqm: Optional[Decimal] = None
+    floor_levels_count: Optional[int] = Field(default=None, ge=0)
+    deadline: Optional[date] = None
+    responsible_user_uuid: Optional[UUID] = None
+    responsible_external_name: Optional[str] = Field(default=None, max_length=255)
+    responsible_external_email: Optional[str] = Field(default=None, max_length=255)
 
 
 class BootstrapCriteriaReplaceRequest(BaseModel):
@@ -31,6 +47,10 @@ class BootstrapCriteriaReplaceRequest(BaseModel):
 
 class SpecificationsReplaceRequest(BaseModel):
     document: dict[str, Any] = Field(default_factory=dict)
+
+
+class PliegoGenerateRequest(BaseModel):
+    force: bool = False
 
 
 class WorkflowMetaPatchRequest(BaseModel):
@@ -165,6 +185,7 @@ class ArchitectureRevisionCreateRequest(BaseModel):
 class ArchitectureRevisionResponse(BaseModel):
     uuid: UUID
     version: int
+    revision_role: str
     decision: str
     notes: Optional[str]
     checklist: dict[str, Any]
@@ -176,6 +197,7 @@ class ArchitectureRevisionResponse(BaseModel):
         return cls(
             uuid=row.id,
             version=row.version,
+            revision_role=row.revision_role,
             decision=row.decision.value,
             notes=row.notes,
             checklist=row.checklist or {},
@@ -233,6 +255,38 @@ class SubcontractLineCreateRequest(BaseModel):
     price: Decimal = Field(..., ge=Decimal("0"))
     currency: str = Field(default="MXN", max_length=8)
     external_ref: Optional[str] = Field(default=None, max_length=255)
+
+
+class TechnicalFindingCreateRequest(BaseModel):
+    discipline: str = Field(..., min_length=1, max_length=64)
+    severity: str = Field(..., min_length=1, max_length=32)
+    title: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(..., min_length=1)
+    evidence_ref: Optional[str] = None
+
+
+class TechnicalFindingResponse(BaseModel):
+    uuid: UUID
+    discipline: str
+    severity: str
+    title: str
+    description: str
+    evidence_ref: Optional[str]
+    created_at: datetime
+    created_by_user_uuid: Optional[UUID]
+
+    @classmethod
+    def from_row(cls, row: ProjectTechnicalFinding) -> TechnicalFindingResponse:
+        return cls(
+            uuid=row.id,
+            discipline=row.discipline,
+            severity=row.severity,
+            title=row.title,
+            description=row.description,
+            evidence_ref=row.evidence_ref,
+            created_at=row.created_at,
+            created_by_user_uuid=row.created_by,
+        )
 
 
 class UserNotificationResponse(BaseModel):

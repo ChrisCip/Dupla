@@ -63,11 +63,11 @@ async def test_project_architecture_flow(client, master_auth_headers_async: dict
     create = await client.post(
         "/api/projects",
         headers=master_auth_headers_async,
-        data={"name": "Obra demo", "client_name": "Cliente", "project_kind": "RESIDENTIAL"},
+        data={"name": "Obra demo", "client_name": "Cliente", "project_kind": "CLIENT"},
     )
     assert create.status_code == 201, create.text
     created = create.json()
-    assert created["project_kind"] == "RESIDENTIAL"
+    assert created["project_kind"] == "CLIENT"
     assert created["workflow_phase"] == "BOOTSTRAPPING"
     pid = created["uuid"]
     project_uuid = uuid.UUID(pid)
@@ -146,10 +146,10 @@ async def test_exports_return_bytes(client, master_auth_headers_async: dict[str,
     create = await client.post(
         "/api/projects",
         headers=master_auth_headers_async,
-        data={"name": "Export demo", "project_kind": "RESIDENTIAL"},
+        data={"name": "Export demo", "project_kind": "CLIENT"},
     )
     assert create.status_code == 201
-    assert create.json()["project_kind"] == "RESIDENTIAL"
+    assert create.json()["project_kind"] == "CLIENT"
     assert create.json()["workflow_phase"] == "BOOTSTRAPPING"
     pid = uuid.UUID(create.json()["uuid"])
 
@@ -160,3 +160,96 @@ async def test_exports_return_bytes(client, master_auth_headers_async: dict[str,
     pdf = await client.get(f"/api/projects/{pid}/exports/pliego.pdf", headers=master_auth_headers_async)
     assert pdf.status_code == 200
     assert pdf.content[:4] == b"%PDF"
+
+    doc_pdf = await client.get(
+        f"/api/projects/{pid}/exports/documentary-report.pdf",
+        headers=master_auth_headers_async,
+    )
+    assert doc_pdf.status_code == 200
+    assert doc_pdf.content[:4] == b"%PDF"
+
+
+@pytest.mark.asyncio
+async def test_pliego_generate_approve_and_transition_to_budget(
+    client, master_auth_headers_async: dict[str, str]
+):
+    create = await client.post(
+        "/api/projects",
+        headers=master_auth_headers_async,
+        data={"name": "Pliego flow", "client_name": "C", "project_kind": "CLIENT"},
+    )
+    assert create.status_code == 201, create.text
+    pid = create.json()["uuid"]
+
+    boot = await client.put(
+        f"/api/projects/{pid}/bootstrap",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"criteria": [{"id": "a", "label": "Uno", "required": True, "done": True}]},
+    )
+    assert boot.status_code == 200, boot.text
+
+    t1 = await client.post(
+        f"/api/projects/{pid}/transitions",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"target_phase": "AWAITING_FILES"},
+    )
+    assert t1.status_code == 200, t1.text
+
+    up = await client.post(
+        f"/api/projects/{pid}/files",
+        headers=master_auth_headers_async,
+        files=[("file", ("p.pdf", io.BytesIO(b"%PDF-1.4\n"), "application/pdf"))],
+    )
+    assert up.status_code == 201, up.text
+
+    t2 = await client.post(
+        f"/api/projects/{pid}/transitions",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"target_phase": "ARCHITECTURE_REVIEW"},
+    )
+    assert t2.status_code == 200, t2.text
+
+    rev = await client.post(
+        f"/api/projects/{pid}/architecture-revisions",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"decision": "APPROVED", "notes": "ok", "checklist": {}},
+    )
+    assert rev.status_code == 201, rev.text
+
+    t3 = await client.post(
+        f"/api/projects/{pid}/transitions",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"target_phase": "SPECIFICATIONS"},
+    )
+    assert t3.status_code == 200, t3.text
+
+    gen = await client.post(
+        f"/api/projects/{pid}/specifications/generate",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"force": False},
+    )
+    assert gen.status_code == 200, gen.text
+    spec = gen.json().get("specifications_document") or {}
+    assert "business_pliego" in spec
+
+    block_fail = await client.post(
+        f"/api/projects/{pid}/transitions",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"target_phase": "BUDGETING_PIPELINE"},
+    )
+    assert block_fail.status_code == 409, block_fail.text
+
+    ap = await client.post(
+        f"/api/projects/{pid}/specifications/approve",
+        headers=master_auth_headers_async,
+    )
+    assert ap.status_code == 200, ap.text
+    assert ap.json()["specifications_document"]["business_pliego"]["approved"] is True
+
+    tb = await client.post(
+        f"/api/projects/{pid}/transitions",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"target_phase": "BUDGETING_PIPELINE"},
+    )
+    assert tb.status_code == 200, tb.text
+    assert tb.json()["workflow_phase"] == "BUDGETING_PIPELINE"

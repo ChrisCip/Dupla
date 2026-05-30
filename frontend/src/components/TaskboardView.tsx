@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
 import { boardQueryParams, cardMatchesSearch, CARD_MIME, labelForCreatedPhase } from '../lib/taskboard'
+import {
+  columnAccentForListTitle,
+  computeTaskboardKpis,
+  flattenBoardLists,
+  type TaskViewMode,
+} from '../lib/taskboardViews'
 import { formatPersonFullName } from '../lib/personDisplay'
 import { TaskboardCardModal } from './TaskboardCardModal'
 import { TaskboardCreateModal } from './TaskboardCreateModal'
+import { TaskboardListTable } from './TaskboardListTable'
 import { TaskboardToolbar } from './TaskboardToolbar'
 import { useAuthStore } from '../store/authStore'
 import type { TaskAssigneeOption, TaskBoardDto, TaskCardDto, TaskListDto } from '../types/taskBoard'
@@ -30,13 +37,13 @@ export function TaskboardView({
   hideEmbeddedHeader = false,
 }: TaskboardViewProps) {
   const token = useAuthStore((s) => s.token)
+  const userUuid = useAuthStore((s) => s.userUuid)
+  const [searchParams, setSearchParams] = useSearchParams()
   const [board, setBoard] = useState<TaskBoardDto | null>(null)
   const [assignees, setAssignees] = useState<TaskAssigneeOption[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [includeArchived, setIncludeArchived] = useState(false)
-  const [mineOnly, setMineOnly] = useState(false)
-  const [filterAssignee, setFilterAssignee] = useState('')
   const [boardSearch, setBoardSearch] = useState('')
   const [modalCard, setModalCard] = useState<TaskCardDto | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
@@ -50,7 +57,7 @@ export function TaskboardView({
   const load = useCallback(async () => {
     if (!token) return
     setError(null)
-    const qs = boardQueryParams(mineOnly, filterAssignee, includeArchived, projectFilter)
+    const qs = boardQueryParams(includeArchived, projectFilter)
     const res = await apiFetch(`/api/tasks/board${qs}`, { token })
     if (!res.ok) {
       setError('No se pudo cargar el tablero')
@@ -58,21 +65,28 @@ export function TaskboardView({
       return
     }
     setBoard((await res.json()) as TaskBoardDto)
-  }, [token, mineOnly, filterAssignee, includeArchived, projectFilter])
+  }, [token, includeArchived, projectFilter])
 
-  const loadAssignees = useCallback(async () => {
-    if (!token) return
-    const qs = assigneeProjectScope
-      ? `?project_uuid=${encodeURIComponent(assigneeProjectScope)}`
-      : ''
-    const res = await apiFetch(`/api/tasks/assignees${qs}`, { token })
-    if (!res.ok) return
-    setAssignees((await res.json()) as TaskAssigneeOption[])
-  }, [token, assigneeProjectScope])
+  const selfAssignees = useMemo(
+    () => (userUuid ? assignees.filter((a) => a.uuid === userUuid) : []),
+    [assignees, userUuid],
+  )
 
   useEffect(() => {
-    void loadAssignees()
-  }, [loadAssignees])
+    let cancelled = false
+    void (async () => {
+      if (!token) return
+      const qs = assigneeProjectScope
+        ? `?project_uuid=${encodeURIComponent(assigneeProjectScope)}`
+        : ''
+      const res = await apiFetch(`/api/tasks/assignees${qs}`, { token })
+      if (!res.ok || cancelled) return
+      setAssignees((await res.json()) as TaskAssigneeOption[])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token, assigneeProjectScope])
 
   useEffect(() => {
     let cancelled = false
@@ -169,9 +183,27 @@ export function TaskboardView({
 
   const listOptions = lists.map((l) => ({ uuid: l.uuid, title: l.title }))
 
-  const todosSelected = !mineOnly && filterAssignee === ''
-
   const embedded = variant === 'embedded'
+
+  const viewMode: TaskViewMode =
+    embedded ? 'board' : searchParams.get('view') === 'list' ? 'list' : 'board'
+
+  function setViewMode(next: TaskViewMode) {
+    if (embedded) return
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev)
+        if (next === 'board') p.delete('view')
+        else p.set('view', 'list')
+        return p
+      },
+      { replace: true },
+    )
+  }
+
+  const kpis = useMemo(() => computeTaskboardKpis(lists), [lists])
+
+  const listRows = useMemo(() => flattenBoardLists(displayLists), [displayLists])
 
   const boardViewportMaxWidth = useMemo(() => {
     if (!embedded || maxVisibleColumns == null || maxVisibleColumns < 1) return undefined
@@ -181,28 +213,127 @@ export function TaskboardView({
     return `calc(${maxVisibleColumns} * ${colRem}rem + ${gaps} * ${gapRem}rem)`
   }, [embedded, maxVisibleColumns])
 
+  function columnDotClass(accent: ReturnType<typeof columnAccentForListTitle>): string {
+    if (accent === 'green') return 'bg-emerald-500'
+    if (accent === 'red') return 'bg-primary'
+    if (accent === 'amber') return 'bg-amber-400'
+    return 'bg-black/35'
+  }
+
   return (
     <div className={`flex min-h-0 flex-1 flex-col ${embedded ? 'gap-2 overflow-hidden' : 'gap-4'}`}>
       {!embedded ? (
-        <div className="shrink-0" data-tour="taskboard-header">
-          <h1 className="text-2xl font-semibold text-ink md:text-3xl">Tablero de tareas</h1>
-          <p className="mt-2 text-sm text-muted">
-            Asigna personas, descripciones breves y archiva lo completado. Clic en una tarjeta para el detalle.
-          </p>
-          {projectFilter ? (
-            <p className="mt-2 text-sm text-ink">
-              Filtrando por proyecto.{' '}
-              <Link className="font-semibold text-primary underline-offset-2 hover:underline" to="/app/tasks">
-                Ver tablero global
-              </Link>{' '}
-              ·{' '}
-              <Link
-                className="font-semibold text-primary underline-offset-2 hover:underline"
-                to={`/app/projects/${projectFilter}`}
+        <div className="shrink-0 space-y-4" data-tour="taskboard-header">
+          <nav className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            <Link to="/app/projects" className="hover:text-primary">
+              Dupla
+            </Link>
+            <span className="mx-2 text-black/20">/</span>
+            <span className="text-ink">Mis tareas</span>
+          </nav>
+
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold tracking-tight text-ink md:text-3xl">Mis tareas</h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
+                Haz clic en cualquier tarea para ir directamente a trabajar en ella.
+              </p>
+              {projectFilter ? (
+                <p className="mt-3 text-sm text-ink">
+                  Filtrando por proyecto.{' '}
+                  <Link className="font-semibold text-primary underline-offset-2 hover:underline" to="/app/tasks">
+                    Ver todas mis tareas
+                  </Link>{' '}
+                  ·{' '}
+                  <Link
+                    className="font-semibold text-primary underline-offset-2 hover:underline"
+                    to={`/app/projects/${projectFilter}`}
+                  >
+                    Volver al proyecto
+                  </Link>
+                </p>
+              ) : null}
+            </div>
+
+            <div
+              className="flex shrink-0 rounded-lg border border-black/10 bg-[#f8f9fb] p-1 shadow-sm"
+              role="tablist"
+              aria-label="Vista de tareas"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'board'}
+                className={`rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wide transition ${
+                  viewMode === 'board'
+                    ? 'bg-white text-primary shadow-sm ring-1 ring-black/8'
+                    : 'text-muted hover:text-ink'
+                }`}
+                onClick={() => setViewMode('board')}
               >
-                Volver al workspace
-              </Link>
-            </p>
+                Tablero
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'list'}
+                className={`rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wide transition ${
+                  viewMode === 'list'
+                    ? 'bg-white text-primary shadow-sm ring-1 ring-black/8'
+                    : 'text-muted hover:text-ink'
+                }`}
+                onClick={() => setViewMode('list')}
+              >
+                Lista
+              </button>
+              <button
+                type="button"
+                disabled
+                className="cursor-not-allowed rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wide text-muted opacity-50"
+                title="Próximamente"
+              >
+                Cronograma
+              </button>
+            </div>
+          </div>
+
+          {board && !loading ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Asignadas</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{kpis.assigned}</p>
+              </div>
+              <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted">En proceso</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{kpis.inProgress}</p>
+              </div>
+              <div
+                className={`rounded-xl border px-4 py-3 shadow-sm ${
+                  kpis.atRisk > 0
+                    ? 'border-primary/35 bg-primary text-white'
+                    : 'border-black/10 bg-white'
+                }`}
+              >
+                <p
+                  className={`text-[10px] font-bold uppercase tracking-wide ${kpis.atRisk > 0 ? 'text-white/90' : 'text-muted'}`}
+                >
+                  Bloqueadas
+                </p>
+                <p
+                  className={`mt-1 text-2xl font-bold tabular-nums ${kpis.atRisk > 0 ? 'text-white' : 'text-ink'}`}
+                >
+                  {String(kpis.atRisk).padStart(2, '0')}
+                </p>
+              </div>
+              <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Completadas</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{kpis.completed}</p>
+              </div>
+              <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm sm:col-span-2 lg:col-span-1">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Cumplimiento</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-600">{kpis.compliancePct}%</p>
+              </div>
+            </div>
           ) : null}
         </div>
       ) : hideEmbeddedHeader ? null : (
@@ -214,25 +345,23 @@ export function TaskboardView({
       ) : error || !board ? (
         <p className="text-sm text-primary">{error ?? 'Sin datos'}</p>
       ) : (
-        <>
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
           <TaskboardToolbar
             embedded={embedded}
             showAddTask
             onAddTask={() => setCreateOpen(true)}
             boardSearch={boardSearch}
             setBoardSearch={setBoardSearch}
-            mineOnly={mineOnly}
-            setMineOnly={setMineOnly}
-            filterAssignee={filterAssignee}
-            setFilterAssignee={setFilterAssignee}
             includeArchived={includeArchived}
             setIncludeArchived={setIncludeArchived}
-            assignees={assignees}
-            todosSelected={todosSelected}
           />
 
+          {viewMode === 'list' && !embedded ? (
+            <TaskboardListTable rows={listRows} onOpenCard={openCard} />
+          ) : null}
+
           <div
-            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-black/10 bg-black/2 shadow-[var(--shadow-card)] ${embedded ? 'min-h-0' : ''}`}
+            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-black/10 bg-black/2 shadow-[var(--shadow-card)] ${embedded ? 'min-h-0' : ''} ${viewMode === 'list' && !embedded ? 'hidden' : ''}`}
           >
             <div
               className={
@@ -273,7 +402,14 @@ export function TaskboardView({
                         embedded ? 'px-2 py-1.5 text-xs' : 'px-2.5 py-2 text-sm'
                       }`}
                     >
-                      {list.title}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`size-2 shrink-0 rounded-full ${columnDotClass(columnAccentForListTitle(list.title))}`}
+                          aria-hidden
+                        />
+                        <span className="min-w-0 flex-1 truncate">{list.title}</span>
+                        <span className="shrink-0 tabular-nums text-muted">{sortedCards(list).length}</span>
+                      </div>
                     </div>
                     <div
                       className={`min-h-0 flex-1 overflow-y-auto ${
@@ -345,6 +481,22 @@ export function TaskboardView({
                                   embedded ? 'mt-1.5 space-y-1 pt-1.5' : 'mt-2 space-y-2 pt-2'
                                 }`}
                               >
+                                {card.project_uuid &&
+                                (card.project_name?.trim() || card.project_code?.trim()) ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-semibold uppercase tracking-wide text-muted">
+                                      Proyecto
+                                    </span>
+                                    <span className="min-w-0 break-words font-medium text-ink">
+                                      {card.project_name?.trim() || 'Obra'}
+                                      {card.project_code?.trim() ? (
+                                        <span className="ml-1 font-mono text-muted">
+                                          ({card.project_code.trim()})
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  </div>
+                                ) : null}
                                 {createdPhaseLabel ? (
                                   <div className="flex flex-col gap-0.5">
                                     <span className="font-semibold uppercase tracking-wide text-muted">
@@ -445,14 +597,14 @@ export function TaskboardView({
               </div>
             </div>
           ) : null}
-        </>
+        </div>
       )}
 
       {modalCard && token ? (
         <TaskboardCardModal
           token={token}
           card={modalCard}
-          assignees={assignees}
+          assignees={selfAssignees.length > 0 ? selfAssignees : assignees}
           readOnly={false}
           onClose={() => setModalCard(null)}
           onSaved={() => void load()}
@@ -463,7 +615,7 @@ export function TaskboardView({
         <TaskboardCreateModal
           token={token}
           lists={listOptions}
-          assignees={assignees}
+          assignees={selfAssignees.length > 0 ? selfAssignees : assignees}
           defaultProjectUuid={projectFilter || undefined}
           onClose={() => setCreateOpen(false)}
           onCreated={() => void load()}

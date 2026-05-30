@@ -53,6 +53,10 @@ class ChatConversationResponse(BaseModel):
     unread_count: int = 0
     participant_count: Optional[int] = None
     participants: Optional[list[ChatAuthorResponse]] = None
+    project_uuid: Optional[UUID] = Field(
+        default=None,
+        description="Solo conversaciones PROJECT: UUID público de la obra.",
+    )
 
 
 class ChatDirectCreateRequest(BaseModel):

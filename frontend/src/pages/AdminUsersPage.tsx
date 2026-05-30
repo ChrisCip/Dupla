@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { apiFetch } from '../api/client'
+import { AdminUserImportModal } from '../components/AdminUserImportModal'
 import { AdminUserModal } from '../components/AdminUserModal'
 import { Card } from '../components/Card'
 import { PrimaryButton } from '../components/PrimaryButton'
@@ -23,6 +24,7 @@ export function AdminUsersPage() {
   const [listError, setListError] = useState<string | null>(null)
   const [loadingList, setLoadingList] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [importModalOpen, setImportModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
   const [editingUser, setEditingUser] = useState<ListedUser | null>(null)
 
@@ -80,9 +82,18 @@ export function AdminUsersPage() {
             Alta y edición de credenciales, rol y acceso al workspace. Solo rol Gerencia.
           </p>
         </div>
-        <PrimaryButton type="button" className="shrink-0 self-start" onClick={openCreate}>
-          Nuevo usuario
-        </PrimaryButton>
+        <div className="flex flex-wrap gap-2 shrink-0 self-start">
+          <button
+            type="button"
+            className="rounded-md border border-black/15 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ink hover:bg-black/4"
+            onClick={() => setImportModalOpen(true)}
+          >
+            Importar usuarios
+          </button>
+          <PrimaryButton type="button" onClick={openCreate}>
+            Nuevo usuario
+          </PrimaryButton>
+        </div>
       </div>
 
       <Card className="overflow-hidden p-0">
@@ -129,6 +140,15 @@ export function AdminUsersPage() {
           </table>
         </div>
       </Card>
+
+      {token ? (
+        <AdminUserImportModal
+          token={token}
+          open={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          onImported={() => void refresh()}
+        />
+      ) : null}
 
       {token ? (
         <AdminUserModal

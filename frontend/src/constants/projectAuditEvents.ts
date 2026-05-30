@@ -3,7 +3,7 @@ import { WORKFLOW_PHASE_LABELS } from './workflowPhases'
 /** Etiquetas legibles para `project_events.event_type`. */
 export const PROJECT_EVENT_LABELS: Record<string, string> = {
   PROJECT_CREATED: 'Proyecto creado',
-  PROJECT_META_UPDATED: 'Nombre o cliente actualizado',
+  PROJECT_META_UPDATED: 'Metadatos del proyecto actualizados',
   PROJECT_MEMBERS_UPDATED: 'Equipo del proyecto actualizado',
   WORKFLOW_TRANSITION: 'Cambio de fase',
   BOOTSTRAP_UPDATED: 'Checklist de arranque actualizado',
@@ -63,6 +63,18 @@ function linesForPayload(eventType: string, payload: Payload): string[] {
       const client = payload.client_name as { from?: string | null; to?: string | null } | undefined
       if (client?.from != null || client?.to != null) {
         out.push(`Cliente: «${client?.from ?? '—'}» → «${client?.to ?? '—'}»`)
+      }
+      const ru = payload.responsible_user_uuid as { from?: string | null; to?: string | null } | undefined
+      if (ru?.from != null || ru?.to != null) {
+        out.push(`Responsable interno: «${ru?.from ?? '—'}» → «${ru?.to ?? '—'}»`)
+      }
+      const ren = payload.responsible_external_name as { from?: string | null; to?: string | null } | undefined
+      if (ren?.from != null || ren?.to != null) {
+        out.push(`Responsable externo (nombre): «${ren?.from ?? '—'}» → «${ren?.to ?? '—'}»`)
+      }
+      const ree = payload.responsible_external_email as { from?: string | null; to?: string | null } | undefined
+      if (ree?.from != null || ree?.to != null) {
+        out.push(`Responsable externo (correo): «${ree?.from ?? '—'}» → «${ree?.to ?? '—'}»`)
       }
       break
     }

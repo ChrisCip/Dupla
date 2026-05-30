@@ -12,17 +12,29 @@ import { ProjectMemberPicker } from './ProjectMemberPicker'
 import type { DirectoryUserRow } from '../../lib/directoryUsers'
 
 const STEP = {
-  datos: {
-    title: 'Datos generales',
+  identidad: {
+    title: 'Identificación',
     description:
-      'Identifica la obra con un nombre reconocible (código interno, dirección o nombre comercial). El cliente es opcional y ayuda a filtrar y agrupar proyectos después.',
+      'Nombre obligatorio; cliente y código son opcionales y ayudan a filtrar y reconocer la obra después.',
     footerHint: 'Identificación',
   },
-  tipo: {
-    title: 'Tipo de proyecto',
+  obra: {
+    title: 'Obra y dimensiones',
     description:
-      'El tipo define la fase inicial: los residenciales siguen el flujo completo desde criterios de arranque; los de licitación entran en revisión de arquitectura y requieren archivos antes de invitar al equipo.',
-    footerHint: 'Tipo',
+      'Superficie útil aproximada y cantidad de niveles; puedes corregirlos más adelante en la ficha del proyecto.',
+    footerHint: 'Dimensiones',
+  },
+  ubicacion: {
+    title: 'Ubicación y coordinación',
+    description:
+      'Dónde está la obra, fecha límite, responsable interno en Dupla y, si aplica, contacto externo (cliente u otro).',
+    footerHint: 'Ubicación',
+  },
+  tipo: {
+    title: 'Tipo y flujo',
+    description:
+      'El tipo define la fase inicial y la plantilla ordena los pasos del proceso en tablero y workspace.',
+    footerHint: 'Tipo y flujo',
   },
   archivos: {
     title: 'Archivos de licitación',
@@ -38,17 +50,20 @@ const STEP = {
   },
 } as const
 
+/** Cliente / desarrollo: 5 pasos. Licitación: 6 (incluye archivos). */
 function projectKindMaxStep(kind: ProjectKindValue): number {
-  return kind === 'TENDER' ? 4 : 3
+  return kind === 'TENDER' ? 6 : 5
 }
 
 function getStepMeta(step: number, kind: ProjectKindValue): (typeof STEP)[keyof typeof STEP] {
-  if (step === 1) return STEP.datos
-  if (step === 2) return STEP.tipo
-  if (step === 3 && kind === 'TENDER') return STEP.archivos
-  if (step === 3 && kind === 'RESIDENTIAL') return STEP.participantes
-  if (step === 4) return STEP.participantes
-  return STEP.datos
+  if (step === 1) return STEP.identidad
+  if (step === 2) return STEP.obra
+  if (step === 3) return STEP.ubicacion
+  if (step === 4) return STEP.tipo
+  if (step === 5 && kind === 'TENDER') return STEP.archivos
+  if (step === 5 && kind !== 'TENDER') return STEP.participantes
+  if (step === 6) return STEP.participantes
+  return STEP.identidad
 }
 
 function ProjectKindRadio({
@@ -106,12 +121,31 @@ type CreateProjectModalProps = {
   setProjectKind: React.Dispatch<React.SetStateAction<ProjectKindValue>>
   createFiles: File[]
   setCreateFiles: React.Dispatch<React.SetStateAction<File[]>>
+  createProjectCode: string
+  setCreateProjectCode: React.Dispatch<React.SetStateAction<string>>
+  createLocation: string
+  setCreateLocation: React.Dispatch<React.SetStateAction<string>>
+  createArea: string
+  setCreateArea: React.Dispatch<React.SetStateAction<string>>
+  createFloors: string
+  setCreateFloors: React.Dispatch<React.SetStateAction<string>>
+  createDeadline: string
+  setCreateDeadline: React.Dispatch<React.SetStateAction<string>>
+  createResponsible: string
+  setCreateResponsible: React.Dispatch<React.SetStateAction<string>>
+  createResponsibleExternalName: string
+  setCreateResponsibleExternalName: React.Dispatch<React.SetStateAction<string>>
+  createResponsibleExternalEmail: string
+  setCreateResponsibleExternalEmail: React.Dispatch<React.SetStateAction<string>>
   createMembers: Set<string>
   setCreateMembers: React.Dispatch<React.SetStateAction<Set<string>>>
   adminUsersCreate: DirectoryUserRow[]
   userUuid: string | null
   error: string | null
   submitting: boolean
+  workflowTemplates: { uuid: string; name: string }[]
+  workflowTemplateUuid: string
+  setWorkflowTemplateUuid: React.Dispatch<React.SetStateAction<string>>
 }
 
 export function CreateProjectModal({
@@ -125,17 +159,37 @@ export function CreateProjectModal({
   setProjectKind,
   createFiles,
   setCreateFiles,
+  createProjectCode,
+  setCreateProjectCode,
+  createLocation,
+  setCreateLocation,
+  createArea,
+  setCreateArea,
+  createFloors,
+  setCreateFloors,
+  createDeadline,
+  setCreateDeadline,
+  createResponsible,
+  setCreateResponsible,
+  createResponsibleExternalName,
+  setCreateResponsibleExternalName,
+  createResponsibleExternalEmail,
+  setCreateResponsibleExternalEmail,
   createMembers,
   setCreateMembers,
   adminUsersCreate,
   userUuid,
   error,
   submitting,
+  workflowTemplates,
+  workflowTemplateUuid,
+  setWorkflowTemplateUuid,
 }: CreateProjectModalProps) {
   const [step, setStep] = useState(1)
   const [tenderFileRejectNote, setTenderFileRejectNote] = useState<string | null>(null)
 
   const maxStep = projectKindMaxStep(projectKind)
+  const hasWorkflowTemplates = workflowTemplates.length > 0
   const stepNumbers = useMemo(() => Array.from({ length: maxStep }, (_, i) => i + 1), [maxStep])
 
   useEffect(() => {
@@ -146,7 +200,7 @@ export function CreateProjectModal({
   const stepMeta = getStepMeta(step, projectKind)
 
   const isLastStep =
-    (projectKind === 'RESIDENTIAL' && step === 3) || (projectKind === 'TENDER' && step === 4)
+    (projectKind !== 'TENDER' && step === 5) || (projectKind === 'TENDER' && step === 6)
 
   function goNext() {
     if (step === 1 && !canGoNextFromStep1) return
@@ -179,7 +233,7 @@ export function CreateProjectModal({
         aria-labelledby="create-project-title"
         aria-modal="true"
       >
-        <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-black/10 bg-gradient-to-br from-primary/[0.08] to-black/[0.02] px-4 py-5 md:w-[15vw] md:min-w-0 md:border-b-0 md:border-r md:py-6">
+        <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-black/10 bg-gradient-to-br from-primary/[0.08] to-black/[0.02] px-4 py-5 md:w-[min(100%,20rem)] md:min-w-[18rem] md:shrink-0 md:border-b-0 md:border-r md:px-5 md:py-6 lg:min-w-[20rem] xl:min-w-[22rem]">
           <div className="flex justify-center px-2">
             <DuplaLogo className="h-10 w-auto max-w-[min(100%,12rem)] object-contain" />
           </div>
@@ -191,12 +245,17 @@ export function CreateProjectModal({
             <p className="mt-3 text-sm leading-relaxed text-muted">{stepMeta.description}</p>
           </div>
           <div className="mt-6 shrink-0 border-t border-black/10 pt-4">
-            <div className="flex items-center justify-center gap-1.5" aria-label="Pasos">
+            <div
+              className="flex flex-nowrap items-center justify-center gap-0.5 sm:gap-1"
+              aria-label="Pasos"
+            >
               {stepNumbers.map((n) => (
-                <span key={n} className="flex items-center gap-1.5">
-                  {n > 1 ? <span className="h-px w-5 bg-black/15" aria-hidden /> : null}
+                <span key={n} className="flex items-center gap-0.5 sm:gap-1">
+                  {n > 1 ? (
+                    <span className="h-px w-2 shrink-0 bg-black/15 sm:w-2.5" aria-hidden />
+                  ) : null}
                   <span
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold sm:h-8 sm:w-8 sm:text-xs ${
                       step === n
                         ? 'bg-primary text-white shadow-sm'
                         : step > n
@@ -256,10 +315,147 @@ export function CreateProjectModal({
                         disabled={submitting}
                       />
                     </div>
+                    <div>
+                      <label htmlFor="modal-project-code" className="du-label">
+                        Código de registro <span className="font-normal text-muted">(opcional)</span>
+                      </label>
+                      <input
+                        id="modal-project-code"
+                        className="du-input mt-1 w-full"
+                        value={createProjectCode}
+                        onChange={(e) => setCreateProjectCode(e.target.value)}
+                        maxLength={80}
+                        disabled={submitting}
+                      />
+                    </div>
                   </div>
                 ) : null}
 
                 {step === 2 ? (
+                  <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="modal-project-area" className="du-label">
+                          Área estimada (m²)
+                        </label>
+                        <input
+                          id="modal-project-area"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="du-input mt-1 w-full"
+                          value={createArea}
+                          onChange={(e) => setCreateArea(e.target.value)}
+                          disabled={submitting}
+                          autoFocus
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="modal-project-floors" className="du-label">
+                          Niveles
+                        </label>
+                        <input
+                          id="modal-project-floors"
+                          type="number"
+                          min={0}
+                          step="1"
+                          className="du-input mt-1 w-full"
+                          value={createFloors}
+                          onChange={(e) => setCreateFloors(e.target.value)}
+                          disabled={submitting}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {step === 3 ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="modal-project-location" className="du-label">
+                        Ubicación
+                      </label>
+                      <textarea
+                        id="modal-project-location"
+                        className="du-input mt-1 min-h-[88px] w-full"
+                        value={createLocation}
+                        onChange={(e) => setCreateLocation(e.target.value)}
+                        rows={3}
+                        placeholder="Dirección, barrio o referencia"
+                        disabled={submitting}
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="modal-project-deadline" className="du-label">
+                        Fecha límite
+                      </label>
+                      <input
+                        id="modal-project-deadline"
+                        type="date"
+                        className="du-input mt-1 w-full"
+                        value={createDeadline}
+                        onChange={(e) => setCreateDeadline(e.target.value)}
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="modal-project-responsible" className="du-label">
+                        Responsable interno
+                      </label>
+                      <select
+                        id="modal-project-responsible"
+                        className="du-input mt-1 w-full"
+                        value={createResponsible}
+                        onChange={(e) => setCreateResponsible(e.target.value)}
+                        disabled={submitting}
+                      >
+                        <option value="">—</option>
+                        {userUuid ? (
+                          <option value={userUuid}>Yo (creador)</option>
+                        ) : null}
+                        {adminUsersCreate
+                          .filter((u) => !userUuid || u.uuid !== userUuid)
+                          .map((u) => (
+                            <option key={u.uuid} value={u.uuid}>
+                              {u.first_name} {u.last_name} ({u.email})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="modal-project-responsible-ext-name" className="du-label">
+                        Responsable externo (nombre)
+                      </label>
+                      <input
+                        id="modal-project-responsible-ext-name"
+                        className="du-input mt-1 w-full"
+                        value={createResponsibleExternalName}
+                        onChange={(e) => setCreateResponsibleExternalName(e.target.value)}
+                        disabled={submitting}
+                        maxLength={255}
+                        placeholder="Ej. contacto del cliente"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="modal-project-responsible-ext-email" className="du-label">
+                        Responsable externo (correo)
+                      </label>
+                      <input
+                        id="modal-project-responsible-ext-email"
+                        type="email"
+                        className="du-input mt-1 w-full"
+                        value={createResponsibleExternalEmail}
+                        onChange={(e) => setCreateResponsibleExternalEmail(e.target.value)}
+                        disabled={submitting}
+                        maxLength={255}
+                        placeholder="Opcional"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                {step === 4 ? (
                   <div>
                     <div className="du-label" id="project-kind-group-label">
                       Selecciona el tipo
@@ -281,10 +477,30 @@ export function CreateProjectModal({
                         />
                       ))}
                     </div>
+                    <label className="mt-6 block">
+                      <span className="du-label">Plantilla de flujo</span>
+                      <select
+                        className="du-input mt-1 w-full"
+                        value={workflowTemplateUuid}
+                        onChange={(e) => setWorkflowTemplateUuid(e.target.value)}
+                        disabled={submitting || workflowTemplates.length === 0}
+                      >
+                        {workflowTemplates.map((t) => (
+                          <option key={t.uuid} value={t.uuid}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                      {!hasWorkflowTemplates ? (
+                        <p className="mt-2 text-xs text-primary">
+                          No hay plantillas activas. Crea una en Flujos para poder guardar el proyecto.
+                        </p>
+                      ) : null}
+                    </label>
                   </div>
                 ) : null}
 
-                {step === 3 && projectKind === 'TENDER' ? (
+                {step === 5 && projectKind === 'TENDER' ? (
                   <div>
                     <label htmlFor="modal-project-files" className="du-label">
                       Archivos iniciales <span className="text-primary">(obligatorio)</span>
@@ -327,7 +543,7 @@ export function CreateProjectModal({
                   </div>
                 ) : null}
 
-                {((step === 3 && projectKind === 'RESIDENTIAL') || step === 4) ? (
+                {((step === 5 && projectKind !== 'TENDER') || step === 6) ? (
                   <div>
                     <ProjectMemberPicker
                       users={adminUsersCreate}
@@ -368,7 +584,7 @@ export function CreateProjectModal({
                   <PrimaryButton
                     className="min-w-28"
                     type="button"
-                    disabled={submitting}
+                    disabled={submitting || !hasWorkflowTemplates}
                     onClick={handleCreateClick}
                   >
                     {submitting ? 'Creando…' : 'Crear proyecto'}

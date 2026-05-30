@@ -12,6 +12,8 @@ class WorkflowPhase(StrEnum):
     MANAGEMENT_APPROVAL = "MANAGEMENT_APPROVAL"
     BUDGET_APPROVED = "BUDGET_APPROVED"
     COMPLETE = "COMPLETE"
+    # Paso de plantilla solo automatización (plantillas configurables).
+    CUSTOM_AUTOMATION = "CUSTOM_AUTOMATION"
 
 
 # Linear primary path (valid single-step transitions)

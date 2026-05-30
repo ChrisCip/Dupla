@@ -51,6 +51,58 @@ async def test_admin_create_user(client, master_auth_headers_async: dict[str, st
 
 
 @pytest.mark.asyncio
+async def test_admin_import_users(client, master_auth_headers_async: dict[str, str]):
+    res = await client.post(
+        "/api/admin/users/import",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "users": [
+                {
+                    "first_name": "Import",
+                    "last_name": "Uno",
+                    "email": "import1@dupla.demo",
+                    "role": "PRESUPUESTO",
+                    "module_ids": [1],
+                },
+                {
+                    "first_name": "Import",
+                    "last_name": "Dos",
+                    "email": "import2@dupla.demo",
+                    "role": "CONTROL",
+                    "module_ids": [1],
+                },
+            ]
+        },
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert len(body["created"]) == 2
+    assert all(len(row["password"]) >= 8 for row in body["created"])
+    assert body["skipped"] == []
+    assert body["errors"] == []
+
+    again = await client.post(
+        "/api/admin/users/import",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "users": [
+                {
+                    "first_name": "Import",
+                    "last_name": "Uno",
+                    "email": "import1@dupla.demo",
+                    "role": "PRESUPUESTO",
+                    "module_ids": [1],
+                },
+            ]
+        },
+    )
+    assert again.status_code == 200, again.text
+    skipped = again.json()["skipped"]
+    assert len(skipped) == 1
+    assert skipped[0]["email"] == "import1@dupla.demo"
+
+
+@pytest.mark.asyncio
 async def test_chat_flow(client, auth_headers_async: dict[str, str]):
     convs = await client.get("/api/chat/conversations", headers=auth_headers_async)
     assert convs.status_code == 200

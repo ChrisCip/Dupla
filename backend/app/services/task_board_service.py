@@ -12,7 +12,8 @@ from sqlalchemy.orm import selectinload
 from app.config import get_settings
 from app.models.project import Project
 from app.models.task_board import TaskCard, TaskCardComment, TaskList
-from app.models.user import User, UserModule
+from app.domain.tutorial_project import TASK_LIST_TODO_UUID
+from app.models.user import User, UserModule, UserRole
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.task_board import (
@@ -120,6 +121,13 @@ class TaskBoardService:
                     detail="El asignado debe ser miembro del equipo del proyecto",
                 )
 
+    def _task_visible_to_viewer(self, card: TaskCard, viewer_id: uuid.UUID) -> bool:
+        if card.assignee_id == viewer_id:
+            return True
+        if card.assignee_id is None and card.created_by == viewer_id:
+            return True
+        return False
+
     async def get_board(
         self,
         *,
@@ -129,27 +137,27 @@ class TaskBoardService:
         filter_assignee: Optional[uuid.UUID],
         filter_project: Optional[uuid.UUID] = None,
     ) -> TaskBoardResponse:
+        if filter_assignee is not None and filter_assignee != viewer.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo podés consultar tus propias tareas",
+            )
+
         result = await self._session.execute(
             select(TaskList)
             .options(
                 selectinload(TaskList.cards).selectinload(TaskCard.creator),
                 selectinload(TaskList.cards).selectinload(TaskCard.assignee),
+                selectinload(TaskList.cards).selectinload(TaskCard.project),
             )
             .order_by(TaskList.position)
         )
         lists = list(result.scalars().all())
 
-        assignee_target: Optional[uuid.UUID] = None
-        if mine:
-            assignee_target = viewer.id
-        elif filter_assignee is not None:
-            assignee_target = filter_assignee
-
         list_responses: list[TaskListResponse] = []
         for tl in lists:
             active = [c for c in tl.cards if not c.archived]
-            if assignee_target is not None:
-                active = [c for c in active if c.assignee_id == assignee_target]
+            active = [c for c in active if self._task_visible_to_viewer(c, viewer.id)]
             if filter_project is not None:
                 active = [c for c in active if c.project_id == filter_project]
             list_responses.append(TaskListResponse.from_list(tl, active))
@@ -159,21 +167,35 @@ class TaskBoardService:
             q = (
                 select(TaskCard)
                 .where(TaskCard.archived.is_(True))
-                .options(selectinload(TaskCard.creator), selectinload(TaskCard.assignee))
+                .options(
+                    selectinload(TaskCard.creator),
+                    selectinload(TaskCard.assignee),
+                    selectinload(TaskCard.project),
+                )
                 .order_by(TaskCard.archived_at.desc(), TaskCard.created_at.desc())
             )
             arch_rows = list((await self._session.execute(q)).scalars().all())
-            filtered = arch_rows
-            if assignee_target is not None:
-                filtered = [c for c in arch_rows if c.assignee_id == assignee_target]
+            filtered = [c for c in arch_rows if self._task_visible_to_viewer(c, viewer.id)]
             if filter_project is not None:
                 filtered = [c for c in filtered if c.project_id == filter_project]
             archived_cards = [TaskCardResponse.from_card(c) for c in filtered]
 
         return TaskBoardResponse(lists=list_responses, archived_cards=archived_cards)
 
-    async def create_card(self, actor: User, body: TaskCardCreateRequest) -> TaskCard:
-        await self._validate_assignee(body.assignee_uuid, project_scope_id=body.project_uuid)
+    async def create_card(
+        self,
+        actor: User,
+        body: TaskCardCreateRequest,
+        *,
+        allow_assign_other: bool = False,
+    ) -> TaskCard:
+        assignee = body.assignee_uuid if body.assignee_uuid is not None else actor.id
+        if not allow_assign_other and assignee != actor.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Solo podés asignarte tareas a vos mismo",
+            )
+        await self._validate_assignee(assignee, project_scope_id=body.project_uuid)
         await self._require_project_access_for_card(actor, body.project_uuid)
 
         lst = await self._session.get(TaskList, body.list_uuid)
@@ -197,7 +219,7 @@ class TaskBoardService:
             description=body.description.strip() if body.description else None,
             position=position,
             created_by=actor.id,
-            assignee_id=body.assignee_uuid,
+            assignee_id=assignee,
             archived=False,
             archived_at=None,
             created_at=datetime.now(timezone.utc),
@@ -206,7 +228,7 @@ class TaskBoardService:
         )
         self._session.add(card)
         await self._session.flush()
-        await self._session.refresh(card, attribute_names=["creator", "assignee"])
+        await self._session.refresh(card, attribute_names=["creator", "assignee", "project"])
         if body.project_uuid is not None:
             proj = await self._projects.get_by_uuid(body.project_uuid)
             if proj is not None:
@@ -230,6 +252,9 @@ class TaskBoardService:
         if card is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
 
+        if not self._task_visible_to_viewer(card, actor.id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
+
         await self._require_project_access_for_card(actor, card.project_id)
 
         snap: dict[str, Any] = {
@@ -248,8 +273,14 @@ class TaskBoardService:
             target_project_id = updates["project_uuid"]
 
         if "assignee_uuid" in updates:
-            await self._validate_assignee(updates["assignee_uuid"], project_scope_id=target_project_id)
-            card.assignee_id = updates["assignee_uuid"]
+            uid = updates["assignee_uuid"]
+            if uid is not None and uid != actor.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Solo podés asignarte tareas a vos mismo",
+                )
+            await self._validate_assignee(uid, project_scope_id=target_project_id)
+            card.assignee_id = uid if uid is not None else actor.id
 
         if "project_uuid" in updates:
             await self._require_project_access_for_card(actor, updates["project_uuid"])
@@ -288,13 +319,15 @@ class TaskBoardService:
                 await self._move_card(card, card.list_id, updates["position"])
 
         await self._session.flush()
-        await self._session.refresh(card, attribute_names=["creator", "assignee"])
+        await self._session.refresh(card, attribute_names=["creator", "assignee", "project"])
         await self._audit_task_patch(actor, snap, card)
         return card
 
     async def delete_card(self, actor: User, card_uuid: uuid.UUID) -> None:
         card = await self._session.get(TaskCard, card_uuid)
         if card is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
+        if not self._task_visible_to_viewer(card, actor.id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
         await self._require_project_access_for_card(actor, card.project_id)
         pid = card.project_id
@@ -314,7 +347,11 @@ class TaskBoardService:
         result = await self._session.execute(
             select(TaskCard)
             .where(TaskCard.id == card_uuid)
-            .options(selectinload(TaskCard.creator), selectinload(TaskCard.assignee)),
+            .options(
+                selectinload(TaskCard.creator),
+                selectinload(TaskCard.assignee),
+                selectinload(TaskCard.project),
+            ),
         )
         card = result.scalar_one_or_none()
         if card is None:
@@ -433,6 +470,8 @@ class TaskBoardService:
         card = await self._session.get(TaskCard, card_uuid)
         if card is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
+        if not self._task_visible_to_viewer(card, actor.id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
         await self._require_project_access_for_card(actor, card.project_id)
         q = (
             select(TaskCardComment)
@@ -445,6 +484,8 @@ class TaskBoardService:
     async def add_card_comment(self, actor: User, card_uuid: uuid.UUID, body: str) -> TaskCardComment:
         card = await self._session.get(TaskCard, card_uuid)
         if card is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
+        if not self._task_visible_to_viewer(card, actor.id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
         await self._require_project_access_for_card(actor, card.project_id)
         text = body.strip()
@@ -464,3 +505,35 @@ class TaskBoardService:
         await self._session.flush()
         await self._session.refresh(row, attribute_names=["author"])
         return row
+
+    async def create_automation_card_for_phase(
+        self,
+        actor: User,
+        *,
+        project_id: uuid.UUID,
+        title: str,
+        description: Optional[str],
+        preferred_roles: list[UserRole],
+    ) -> Optional[TaskCard]:
+        settings = get_settings()
+        mid = settings.architecture_module_id
+        assignee: Optional[uuid.UUID] = None
+        for role in preferred_roles:
+            uid = await self._users.first_team_member_with_role(project_id, role)
+            if uid is not None:
+                assignee = uid
+                break
+        if assignee is None:
+            for role in preferred_roles:
+                ids = await self._users.list_ids_by_module_and_roles(mid, [role])
+                if ids:
+                    assignee = ids[0]
+                    break
+        body = TaskCardCreateRequest(
+            list_uuid=TASK_LIST_TODO_UUID,
+            title=title.strip(),
+            description=(description.strip() if description else None),
+            assignee_uuid=assignee,
+            project_uuid=project_id,
+        )
+        return await self.create_card(actor, body, allow_assign_other=True)

@@ -36,10 +36,22 @@ type WorkspaceArchivosTabProps = {
   flowMsg: string | null
 }
 
+const PROJECT_FILE_CATEGORY_LABELS: Record<string, string> = {
+  PDF_DOCUMENT: 'PDF',
+  CAD_DRAWING: 'CAD',
+  BIM_MODEL: 'BIM',
+  LEGAL_TECHNICAL: 'Téc.-legal',
+}
+
 function disciplineLabel(raw: string | null | undefined): string | null {
   if (!raw) return null
   const v = raw as ProjectFileDisciplineValue
   return PROJECT_FILE_DISCIPLINE_LABELS[v] ?? raw
+}
+
+function fileCategoryLabel(raw: string | null | undefined): string | null {
+  if (!raw?.trim()) return null
+  return PROJECT_FILE_CATEGORY_LABELS[raw] ?? raw
 }
 
 function formatUploadedAt(iso: string) {
@@ -536,6 +548,11 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                         ) : (
                           <span className="text-[10px] text-muted">Sin clasificar</span>
                         )}
+                        {fileCategoryLabel(f.category) ? (
+                          <span className="rounded-full bg-black/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-ink">
+                            {fileCategoryLabel(f.category)}
+                          </span>
+                        ) : null}
                       </div>
                       {f.description ? (
                         <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted">{f.description}</p>
@@ -605,6 +622,11 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                         ) : (
                           <span className="mt-1 block text-[11px]">Sin clasificar</span>
                         )}
+                        {fileCategoryLabel(f.category) ? (
+                          <span className="mt-1 inline-block rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-ink">
+                            {fileCategoryLabel(f.category)}
+                          </span>
+                        ) : null}
                         {f.description ? <p className="mt-1 line-clamp-2 text-muted">{f.description}</p> : null}
                       </td>
                       <td className="whitespace-nowrap py-2 text-right align-top">
@@ -717,6 +739,11 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                       ) : (
                         <span className="text-[10px] text-muted">Sin clasificar</span>
                       )}
+                      {fileCategoryLabel(f.category) ? (
+                        <span className="rounded-full bg-black/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-ink">
+                          {fileCategoryLabel(f.category)}
+                        </span>
+                      ) : null}
                     </div>
                     {f.description ? (
                       <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted">{f.description}</p>
@@ -839,6 +866,11 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                       ) : (
                         <span className="mt-1 block">Sin clasificar</span>
                       )}
+                      {fileCategoryLabel(f.category) ? (
+                        <span className="mt-1 inline-block rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-ink">
+                          {fileCategoryLabel(f.category)}
+                        </span>
+                      ) : null}
                       {f.description ? <p className="mt-1 line-clamp-2 text-muted">{f.description}</p> : null}
                     </td>
                     <td className="whitespace-nowrap py-2 text-right align-top">

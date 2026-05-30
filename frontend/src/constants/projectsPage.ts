@@ -31,3 +31,17 @@ export function formatProjectUpdatedAt(iso: string | undefined): string {
   if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' })
 }
+
+/** Plazo vencido respecto a hoy (solo fecha); ignorado si la obra ya está en COMPLETE. */
+export function isProjectDeadlinePast(
+  deadline: string | null | undefined,
+  workflowPhase: string | undefined,
+): boolean {
+  if (!deadline || workflowPhase === 'COMPLETE') return false
+  const d = new Date(deadline.includes('T') ? deadline : `${deadline}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime() < today.getTime()
+}

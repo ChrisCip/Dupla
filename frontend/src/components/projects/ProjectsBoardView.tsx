@@ -1,3 +1,7 @@
+import { useMemo } from 'react'
+import { LayoutGrid } from 'lucide-react'
+
+import { FlowTemplateIcon } from '../flows/FlowTemplateIcon'
 import { Card } from '../Card'
 import {
   effectivePrevWorkflowPhase,
@@ -5,9 +9,21 @@ import {
   WORKFLOW_PHASE_LABELS,
   WORKFLOW_PHASE_ORDER,
 } from '../../constants/workflowPhases'
-import { formatProjectUpdatedAt, PROJECT_BOARD_PHASE_ICONS } from '../../constants/projectsPage'
+import {
+  formatProjectUpdatedAt,
+  isProjectDeadlinePast,
+  PROJECT_BOARD_PHASE_ICONS,
+} from '../../constants/projectsPage'
 import { projectKindLabel } from '../../constants/projectKind'
 import type { Project } from '../../types/project'
+
+export type BoardColumnDef = {
+  id: string
+  title: string
+  behaviorKind?: string
+  /** Lucide key del paso (plantilla); solo en tablero por paso. */
+  iconKey?: string
+}
 
 type ProjectsBoardViewProps = {
   loadingList: boolean
@@ -15,11 +31,36 @@ type ProjectsBoardViewProps = {
   filteredProjects: Project[]
   projectSearch: string
   boardMsg: string | null
-  onDropOnPhaseColumn: (e: React.DragEvent, phaseKey: string) => void
+  onDropOnPhaseColumn: (e: React.DragEvent, columnId: string) => void
   onDragOverBoard: (e: React.DragEvent) => void
   onDragStartProject: (e: React.DragEvent, projectUuid: string) => void
   onDragEndBoard: () => void
   onOpenCard: (projectUuid: string) => void
+  /** Si se define, columnas dinámicas (tablero por plantilla); las ids son UUID de paso. */
+  boardColumns?: BoardColumnDef[]
+  columnMode?: 'phase' | 'step'
+}
+
+function PhaseLikeIcon({ behaviorKind }: { behaviorKind?: string }) {
+  const bk = behaviorKind ?? ''
+  const Icon =
+    PROJECT_BOARD_PHASE_ICONS[bk as keyof typeof PROJECT_BOARD_PHASE_ICONS] ?? LayoutGrid
+  return <Icon className="h-4 w-4 shrink-0 text-white" strokeWidth={2} aria-hidden />
+}
+
+function ColumnHeaderGlyph({
+  columnMode,
+  behaviorKind,
+  iconKey,
+}: {
+  columnMode: 'phase' | 'step'
+  behaviorKind?: string
+  iconKey?: string
+}) {
+  if (columnMode === 'step' && iconKey?.trim()) {
+    return <FlowTemplateIcon name={iconKey} className="h-4 w-4 shrink-0 text-white" strokeWidth={2} />
+  }
+  return <PhaseLikeIcon behaviorKind={behaviorKind} />
 }
 
 export function ProjectsBoardView({
@@ -33,7 +74,36 @@ export function ProjectsBoardView({
   onDragStartProject,
   onDragEndBoard,
   onOpenCard,
+  boardColumns,
+  columnMode = 'phase',
 }: ProjectsBoardViewProps) {
+  const useSteps = columnMode === 'step' && boardColumns && boardColumns.length > 0
+  const orderedStepIds = useSteps ? boardColumns!.map((c) => c.id) : []
+
+  function stepAdjacency(p: Project): { hasNext: boolean; hasPrev: boolean } {
+    const cur = p.current_workflow_step_uuid
+    const i = orderedStepIds.indexOf(cur)
+    if (i < 0) return { hasNext: false, hasPrev: false }
+    return { hasNext: i < orderedStepIds.length - 1, hasPrev: i > 0 }
+  }
+
+  const phaseColumns: BoardColumnDef[] = useMemo(() => {
+    const order = [...WORKFLOW_PHASE_ORDER]
+    const fixedIds = new Set<string>(order)
+    const extras = new Set<string>()
+    for (const p of filteredProjects) {
+      if (!fixedIds.has(p.workflow_phase)) extras.add(p.workflow_phase)
+    }
+    const ids = [...order, ...Array.from(extras).sort()]
+    return ids.map((pk) => ({
+      id: pk,
+      title: WORKFLOW_PHASE_LABELS[pk] ?? pk,
+      behaviorKind: pk,
+    }))
+  }, [filteredProjects])
+
+  const columns: BoardColumnDef[] = useSteps ? boardColumns! : phaseColumns
+
   return (
     <Card
       data-tour="projects-board"
@@ -55,31 +125,38 @@ export function ProjectsBoardView({
           ) : null}
           <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
             <div className="flex h-full w-max min-w-full items-stretch gap-1.5">
-              {WORKFLOW_PHASE_ORDER.map((phaseKey) => {
-                const label = WORKFLOW_PHASE_LABELS[phaseKey] ?? phaseKey
-                const inColumn = filteredProjects.filter((p) => p.workflow_phase === phaseKey)
-                const PhaseIcon = PROJECT_BOARD_PHASE_ICONS[phaseKey]
+              {columns.map((col) => {
+                const inColumn = filteredProjects.filter((p) =>
+                  useSteps ? p.current_workflow_step_uuid === col.id : p.workflow_phase === col.id,
+                )
                 return (
                   <div
-                    key={phaseKey}
+                    key={col.id}
                     className="flex h-full min-h-0 w-[10rem] shrink-0 flex-col rounded-lg border border-black/10 bg-black/[0.02] shadow-[var(--shadow-card)] sm:w-[11rem]"
                     onDragOver={onDragOverBoard}
-                    onDrop={(e) => onDropOnPhaseColumn(e, phaseKey)}
+                    onDrop={(e) => onDropOnPhaseColumn(e, col.id)}
                   >
                     <div
                       className="flex min-h-[5.5rem] shrink-0 flex-col items-center justify-center gap-1.5 border-b border-white/25 bg-primary px-1.5 py-2.5 text-center text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)] sm:min-h-24"
-                      title={label}
+                      title={col.title}
                     >
-                      <PhaseIcon className="h-4 w-4 shrink-0 text-white" strokeWidth={2} aria-hidden />
+                      <ColumnHeaderGlyph
+                        columnMode={columnMode}
+                        behaviorKind={col.behaviorKind ?? col.id}
+                        iconKey={col.iconKey}
+                      />
                       <span className="w-full text-[10px] font-semibold uppercase leading-snug tracking-wide sm:text-xs">
-                        {label}
+                        {col.title}
                       </span>
                     </div>
                     <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1">
                       {inColumn.map((p) => {
-                        const hasNext = NEXT_WORKFLOW_PHASE[p.workflow_phase] !== undefined
-                        const hasPrev =
-                          effectivePrevWorkflowPhase(p.project_kind, p.workflow_phase) !== undefined
+                        const hasNext = useSteps
+                          ? stepAdjacency(p).hasNext
+                          : NEXT_WORKFLOW_PHASE[p.workflow_phase] !== undefined
+                        const hasPrev = useSteps
+                          ? stepAdjacency(p).hasPrev
+                          : effectivePrevWorkflowPhase(p.project_kind, p.workflow_phase) !== undefined
                         const canMovePhase = hasNext || hasPrev
                         return (
                           <div
@@ -111,6 +188,9 @@ export function ProjectsBoardView({
                               <h3 className="line-clamp-2 pr-0.5 text-xs font-semibold leading-snug tracking-tight text-ink sm:text-sm">
                                 {p.name}
                               </h3>
+                              {p.project_code?.trim() ? (
+                                <p className="mt-0.5 font-mono text-[10px] leading-tight text-muted">{p.project_code}</p>
+                              ) : null}
                               <div className="mt-1.5 space-y-1">
                                 <div className="flex items-start gap-1">
                                   <span className="du-meta w-9 shrink-0 text-[10px] sm:text-xs">Cliente</span>
@@ -133,17 +213,24 @@ export function ProjectsBoardView({
                                 </div>
                               </div>
                               <div className="mt-1.5 flex items-start justify-between gap-1 border-t border-black/[0.05] pt-1">
-                                {!canMovePhase ? (
-                                  <span className="rounded bg-black/[0.05] px-1 py-0.5 text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted sm:text-xs">
-                                    Fin flujo
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] font-medium uppercase leading-tight tracking-wide text-muted sm:text-xs">
-                                    {hasPrev ? '←' : ''}
-                                    {hasPrev && hasNext ? ' ' : ''}
-                                    {hasNext ? '→' : ''}
-                                  </span>
-                                )}
+                                <div className="flex min-w-0 flex-wrap items-center gap-1">
+                                  {!canMovePhase ? (
+                                    <span className="rounded bg-black/[0.05] px-1 py-0.5 text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted sm:text-xs">
+                                      Fin flujo
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-medium uppercase leading-tight tracking-wide text-muted sm:text-xs">
+                                      {hasPrev ? '←' : ''}
+                                      {hasPrev && hasNext ? ' ' : ''}
+                                      {hasNext ? '→' : ''}
+                                    </span>
+                                  )}
+                                  {isProjectDeadlinePast(p.deadline, p.workflow_phase) ? (
+                                    <span className="rounded bg-primary/15 px-1 py-0.5 text-[9px] font-bold uppercase leading-tight text-primary">
+                                      Plazo
+                                    </span>
+                                  ) : null}
+                                </div>
                                 <span className="text-[10px] font-medium leading-tight text-muted opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:text-xs">
                                   Abrir →
                                 </span>

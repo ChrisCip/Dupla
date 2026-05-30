@@ -1,3 +1,4 @@
+import { projectKindLabel } from '../constants/projectKind'
 import { WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
 
 export type ProjectEventRow = {
@@ -40,9 +41,15 @@ export function describeProjectEvent(ev: ProjectEventRow): ProjectEventTrace {
     case 'WORKFLOW_TRANSITION': {
       const fromP = typeof p.from_phase === 'string' ? p.from_phase : ''
       const toP = typeof p.to_phase === 'string' ? p.to_phase : ''
+      const fromTitle = typeof p.from_step_title === 'string' ? p.from_step_title.trim() : ''
+      const toTitle = typeof p.to_step_title === 'string' ? p.to_step_title.trim() : ''
+      const fromDisplay =
+        fromTitle.length > 0 ? `${fromTitle} (${phaseLabel(fromP)})` : phaseLabel(fromP) || '—'
+      const toDisplay =
+        toTitle.length > 0 ? `${toTitle} (${phaseLabel(toP)})` : phaseLabel(toP) || '—'
       rows.push(
-        { label: 'Fase origen', value: phaseLabel(fromP) },
-        { label: 'Fase destino', value: phaseLabel(toP) },
+        { label: 'Paso origen', value: fromDisplay },
+        { label: 'Paso destino', value: toDisplay },
         { label: 'Dirección', value: directionLabel(p.direction) },
       )
       return { title: 'Cambio de fase del proyecto', rows }
@@ -53,12 +60,7 @@ export function describeProjectEvent(ev: ProjectEventRow): ProjectEventTrace {
         { label: 'Cliente', value: str(p.client_name) },
         {
           label: 'Tipo',
-          value:
-            p.project_kind === 'TENDER'
-              ? 'Licitación'
-              : p.project_kind === 'RESIDENTIAL'
-                ? 'Residencial'
-                : str(p.project_kind),
+          value: projectKindLabel(typeof p.project_kind === 'string' ? p.project_kind : undefined),
         },
       )
       return { title: 'Proyecto creado', rows }
@@ -88,6 +90,21 @@ export function describeProjectEvent(ev: ProjectEventRow): ProjectEventTrace {
       if (clientField && typeof clientField === 'object' && clientField !== null) {
         const o = clientField as { from?: unknown; to?: unknown }
         rows.push({ label: 'Cliente', value: `${str(o.from)} → ${str(o.to)}` })
+      }
+      const ru = p.responsible_user_uuid
+      if (ru && typeof ru === 'object' && ru !== null) {
+        const o = ru as { from?: unknown; to?: unknown }
+        rows.push({ label: 'Responsable interno (UUID)', value: `${str(o.from)} → ${str(o.to)}` })
+      }
+      const ren = p.responsible_external_name
+      if (ren && typeof ren === 'object' && ren !== null) {
+        const o = ren as { from?: unknown; to?: unknown }
+        rows.push({ label: 'Responsable externo (nombre)', value: `${str(o.from)} → ${str(o.to)}` })
+      }
+      const ree = p.responsible_external_email
+      if (ree && typeof ree === 'object' && ree !== null) {
+        const o = ree as { from?: unknown; to?: unknown }
+        rows.push({ label: 'Responsable externo (correo)', value: `${str(o.from)} → ${str(o.to)}` })
       }
       return { title: 'Datos del proyecto modificados', rows }
     }

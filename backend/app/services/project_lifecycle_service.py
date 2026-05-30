@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import json
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Optional
@@ -19,20 +20,43 @@ from app.domain.project_kind import ProjectKind
 from app.domain.project_updated import touch_project_updated_at
 from app.domain.project_uploads import sanitize_project_original_filename, validate_project_file_extension
 from app.domain.task_board_constants import TASK_LIST_DONE_UUID
+from app.domain.business_pliego import (
+    BUSINESS_PLIEGO_KEY,
+    apply_approval,
+    business_pliego_sections_equal,
+    clear_approval_in_block,
+    default_empty_sections,
+    get_business_pliego_block,
+    pliego_sections_incomplete_message,
+    sections_dict,
+    transition_blockers_for_business_pliego,
+)
+from app.domain.ga_fo_01_arquitectura import GA_FO_SPEC_KEY, apply_ga_fo_approval, clear_ga_fo_approval
+from app.domain.workflow_template_phase import (
+    effective_workflow_phase_for_step,
+    workflow_phase_from_template_step_index,
+)
 from app.domain.workflow_phase import LINEAR_NEXT, LINEAR_PREV, WorkflowPhase
 from app.models.architecture_revision import ArchitectureRevision, ArchitectureRevisionDecision
 from app.models.project import Project
 from app.models.task_board import TaskCard
+from app.models.project_technical_finding import ProjectTechnicalFinding
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
 from app.models.project_file_folder import ProjectFileFolder
 from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
 from app.models.user import User, UserRole
 from app.models.user_notification import UserNotification
+from app.models.workflow_template import WorkflowTemplateStep
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
+from app.repositories.workflow_template_repository import WorkflowTemplateRepository
+from app.schemas.chat import ChatPostRequest
+from app.services.chat_service import ChatService
+from app.services.pliego_business_service import PliegoBusinessService
 from app.services.project_file_ai_service import ProjectFileAIService
 from app.services.project_service import ProjectService
+from app.services.task_board_service import TaskBoardService
 
 
 class ProjectLifecycleService:
@@ -41,7 +65,15 @@ class ProjectLifecycleService:
         self._projects = ProjectRepository(session)
         self._users = UserRepository(session)
         self._project_svc = ProjectService(session)
+        self._workflow_templates = WorkflowTemplateRepository(session)
         self._settings = get_settings()
+
+    @staticmethod
+    def _domain_phase_for_project(project: Project) -> WorkflowPhase:
+        try:
+            return WorkflowPhase(project.workflow_phase)
+        except ValueError:
+            return WorkflowPhase.BOOTSTRAPPING
 
     async def _load_project_full(self, project_uuid: UUID) -> Optional[Project]:
         result = await self._session.execute(
@@ -93,13 +125,13 @@ class ProjectLifecycleService:
         v = (await self._session.execute(q)).scalar_one()
         return int(v) + 1
 
-    async def _assert_transition_guards(
+    async def _assert_transition_guards_pair(
         self,
         _user: User,
         project: Project,
+        current: WorkflowPhase,
         target: WorkflowPhase,
     ) -> None:
-        current = WorkflowPhase(project.workflow_phase)
         if current == WorkflowPhase.BOOTSTRAPPING and target == WorkflowPhase.AWAITING_FILES:
             if not self._bootstrap_required_ok(project):
                 raise HTTPException(
@@ -122,11 +154,13 @@ class ProjectLifecycleService:
                 )
         if current == WorkflowPhase.SPECIFICATIONS and target == WorkflowPhase.BUDGETING_PIPELINE:
             spec = project.specifications_document or {}
-            summary = (spec.get("summary") or "").strip() if isinstance(spec, dict) else ""
-            if len(summary) < 10:
+            if not isinstance(spec, dict):
+                spec = {}
+            msg = transition_blockers_for_business_pliego(spec)
+            if msg is not None:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="Completa el pliego de condiciones (resumen mínimo 10 caracteres) antes de presupuesto",
+                    detail=msg,
                 )
         if current == WorkflowPhase.BUDGETING_PIPELINE and target == WorkflowPhase.MANAGEMENT_APPROVAL:
             await self._sync_subcontracts_flag(project)
@@ -152,11 +186,24 @@ class ProjectLifecycleService:
                 and bp.get("cost_analysis_done")
                 and bp.get("budget_marked_complete")
                 and (bp.get("client_approved_version_label") or "").strip()
+                and bp.get("control_review_done")
             ):
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="Completa el pipeline de presupuesto y la versión aprobada por el cliente",
+                    detail=(
+                        "Completa el pipeline de presupuesto, la versión aprobada por el cliente "
+                        "y la revisión de Control"
+                    ),
                 )
+
+    async def _assert_transition_guards(
+        self,
+        user: User,
+        project: Project,
+        target: WorkflowPhase,
+    ) -> None:
+        current = WorkflowPhase(project.workflow_phase)
+        await self._assert_transition_guards_pair(user, project, current, target)
 
     async def _count_pending_tasks_for_project(self, project_id: UUID) -> int:
         q = (
@@ -170,41 +217,164 @@ class ProjectLifecycleService:
         )
         return int((await self._session.execute(q)).scalar_one())
 
+    def _sync_workflow_phase_denorm(
+        self,
+        project: Project,
+        target_step: WorkflowTemplateStep,
+        *,
+        step_index: int,
+    ) -> None:
+        project.workflow_phase = effective_workflow_phase_for_step(step_index)
+
+    async def _apply_template_forward_guards(
+        self,
+        user: User,
+        project: Project,
+        from_step_index: int,
+        to_step_index: int,
+    ) -> None:
+        from_eff = workflow_phase_from_template_step_index(from_step_index)
+        to_eff = workflow_phase_from_template_step_index(to_step_index)
+        await self._assert_transition_guards_pair(
+            user,
+            project,
+            WorkflowPhase(from_eff),
+            WorkflowPhase(to_eff),
+        )
+
+    async def _run_step_enter_actions(self, actor: User, project: Project, to_step: WorkflowTemplateStep) -> None:
+        raw_actions = to_step.on_enter_actions or []
+        if not isinstance(raw_actions, list):
+            return
+        tasks_svc = TaskBoardService(self._session)
+        chat_svc = ChatService(self._session)
+        for raw in raw_actions:
+            if not isinstance(raw, dict):
+                continue
+            kind = raw.get("type")
+            if kind == "notify_role":
+                role_str = str(raw.get("role") or "").strip().upper()
+                try:
+                    role_enum = UserRole(role_str)
+                except ValueError:
+                    continue
+                mids = await self._users.list_ids_by_module_and_roles(
+                    self._settings.architecture_module_id,
+                    [role_enum],
+                )
+                title = str(raw.get("title") or "Actualización de flujo").strip()
+                body = str(raw.get("body") or f"Proyecto «{project.name}».").strip()
+                now = datetime.now(timezone.utc)
+                for uid in mids:
+                    self._session.add(
+                        UserNotification(
+                            user_id=uid,
+                            project_id=project.id,
+                            kind="WORKFLOW_STEP_ACTION",
+                            title=title,
+                            body=body,
+                            created_at=now,
+                        )
+                    )
+            elif kind == "create_task":
+                rrole = str(raw.get("role") or "").strip().upper()
+                try:
+                    pref = [UserRole(rrole)]
+                except ValueError:
+                    pref = [UserRole.CONTROL]
+                title_t = str(raw.get("title") or "Tarea de flujo").strip()
+                desc = str(raw.get("description") or "").strip()
+                await tasks_svc.create_automation_card_for_phase(
+                    actor,
+                    project_id=project.id,
+                    title=title_t,
+                    description=desc or title_t,
+                    preferred_roles=pref,
+                )
+            elif kind == "project_chat_message":
+                body = str(raw.get("body") or "").strip()
+                if not body:
+                    continue
+                conv_wrap = await chat_svc.get_or_create_project_conversation(actor, project.id)
+                await chat_svc.post_conversation_message(
+                    actor,
+                    conv_wrap.uuid,
+                    ChatPostRequest(body=body),
+                )
+
     async def transition_phase(
         self,
         user: User,
         project_uuid: UUID,
-        target_phase: WorkflowPhase,
+        target_phase: Optional[WorkflowPhase] = None,
+        *,
+        target_step_uuid: Optional[UUID] = None,
     ) -> Project:
         project = await self._project_svc.get_project(user, project_uuid)
-        current = WorkflowPhase(project.workflow_phase)
-        expected_next = LINEAR_NEXT.get(current)
-        expected_prev = LINEAR_PREV.get(current)
+        if project.current_workflow_step is None:
+            await self._session.refresh(project, ["current_workflow_step"])
 
-        is_forward = expected_next == target_phase
-        is_backward = expected_prev == target_phase
-
-        if not is_forward and not is_backward:
-            hint = expected_next.value if expected_next is not None else None
-            prev_hint = expected_prev.value if expected_prev is not None else None
-            parts = []
-            if hint is not None:
-                parts.append(f"siguiente válida: {hint}")
-            if prev_hint is not None:
-                parts.append(f"anterior válida: {prev_hint}")
-            detail = "Transición inválida."
-            if parts:
-                detail = f"Transición inválida ({'; '.join(parts)})."
+        steps = await self._workflow_templates.list_steps_ordered(project.workflow_template_id)
+        if not steps:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=detail,
+                detail="La plantilla de flujo no tiene pasos",
+            )
+        step_by_id = {s.id: s for s in steps}
+        order_index = {s.id: i for i, s in enumerate(steps)}
+
+        cur_step = step_by_id.get(project.current_workflow_step_id)
+        if cur_step is None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Paso de flujo inválido en el proyecto")
+        cur_i = order_index[cur_step.id]
+
+        target_step: Optional[WorkflowTemplateStep] = None
+        if target_step_uuid is not None:
+            target_step = step_by_id.get(target_step_uuid)
+            if target_step is None or target_step.workflow_template_id != project.workflow_template_id:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Paso destino inválido")
+        elif target_phase is not None:
+            tpv = target_phase.value
+            fwd = steps[cur_i + 1] if cur_i + 1 < len(steps) else None
+            back = steps[cur_i - 1] if cur_i > 0 else None
+            candidates: list[WorkflowTemplateStep] = []
+            if fwd is not None and workflow_phase_from_template_step_index(cur_i + 1) == tpv:
+                candidates.append(fwd)
+            if back is not None and workflow_phase_from_template_step_index(cur_i - 1) == tpv:
+                candidates.append(back)
+            if not candidates:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Transición inválida para la fase solicitada",
+                )
+            if len(candidates) > 1:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Hay más de un paso posible; usa target_step_uuid",
+                )
+            target_step = candidates[0]
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Indica target_phase o target_step_uuid",
             )
 
+        assert target_step is not None
+        tgt_i = order_index[target_step.id]
+        is_forward = tgt_i == cur_i + 1
+        is_backward = tgt_i == cur_i - 1
+        if not is_forward and not is_backward:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Solo se permite avanzar o retroceder un paso en el flujo",
+            )
+
+        tgt_effective_phase = effective_workflow_phase_for_step(tgt_i)
         if (
             is_backward
             and project.project_kind == ProjectKind.TENDER.value
-            and target_phase
-            in (WorkflowPhase.BOOTSTRAPPING, WorkflowPhase.AWAITING_FILES)
+            and tgt_effective_phase
+            in (WorkflowPhase.BOOTSTRAPPING.value, WorkflowPhase.AWAITING_FILES.value)
         ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -213,6 +383,22 @@ class ProjectLifecycleService:
                     "«Revisión de arquitectura»."
                 ),
             )
+
+        if is_forward and target_step.requires_approval_role:
+            need = target_step.requires_approval_role.strip().upper()
+            if user.role.value != need:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Se requiere aprobación del rol {need}",
+                )
+
+        if is_forward and target_step.blocked_by_step_id:
+            blk = step_by_id.get(target_step.blocked_by_step_id)
+            if blk is not None and cur_i < order_index[blk.id]:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Este paso está bloqueado por otro paso del flujo",
+                )
 
         if is_forward:
             pending = await self._count_pending_tasks_for_project(project.id)
@@ -224,25 +410,39 @@ class ProjectLifecycleService:
                         "Complétalas o archívalas antes de avanzar de fase."
                     ),
                 )
-            await self._assert_transition_guards(user, project, target_phase)
+            await self._apply_template_forward_guards(user, project, cur_i, tgt_i)
 
-        prev = project.workflow_phase
-        project.workflow_phase = target_phase.value
+        prev_step_id = project.current_workflow_step_id
+
+        project.current_workflow_step_id = target_step.id
+        self._sync_workflow_phase_denorm(project, target_step, step_index=tgt_i)
+
         await self._projects.record_event(
             project_id=project.id,
             actor_user_id=user.id,
             event_type="WORKFLOW_TRANSITION",
             payload={
-                "from_phase": prev,
-                "to_phase": target_phase.value,
+                "from_phase": workflow_phase_from_template_step_index(cur_i),
+                "to_phase": workflow_phase_from_template_step_index(tgt_i),
+                "from_step_title": cur_step.title,
+                "to_step_title": target_step.title,
+                "from_step_uuid": str(prev_step_id),
+                "to_step_uuid": str(target_step.id),
                 "direction": "forward" if is_forward else "backward",
             },
         )
+
         if is_forward:
-            if target_phase == WorkflowPhase.SPECIFICATIONS:
+            cur_eff = workflow_phase_from_template_step_index(cur_i)
+            tgt_eff = workflow_phase_from_template_step_index(tgt_i)
+            if cur_eff == WorkflowPhase.ARCHITECTURE_REVIEW.value and tgt_eff == WorkflowPhase.SPECIFICATIONS.value:
                 await self._notify_architecture_complete(project)
-            if target_phase == WorkflowPhase.BUDGET_APPROVED:
+            if tgt_eff == WorkflowPhase.BUDGET_APPROVED.value:
                 await self._notify_budget_approved(project)
+            tgt_auto = WorkflowPhase(tgt_eff)
+            await self._run_phase_automation(user, project, cur_eff, tgt_auto)
+            await self._run_step_enter_actions(user, project, target_step)
+
         touch_project_updated_at(project)
         await self._session.flush()
         return project
@@ -297,24 +497,96 @@ class ProjectLifecycleService:
             payload={"recipient_count": len(mids)},
         )
 
-    async def update_project_meta(
-        self,
-        user: User,
-        project_uuid: UUID,
-        *,
-        name: Optional[str] = None,
-        client_name: Optional[str] = None,
-    ) -> Project:
+    async def update_project_meta(self, user: User, project_uuid: UUID, patch: dict[str, Any]) -> Project:
         project = await self._project_svc.get_project(user, project_uuid)
         payload: dict[str, Any] = {}
-        if name is not None:
-            payload["name"] = {"from": project.name, "to": name.strip()}
-            project.name = name.strip()
-        if client_name is not None:
+        if "name" in patch and patch["name"] is not None:
+            payload["name"] = {"from": project.name, "to": str(patch["name"]).strip()}
+            project.name = str(patch["name"]).strip()
+        if "client_name" in patch:
             prev = project.client_name
-            nxt = client_name.strip() or None
+            nxt = str(patch["client_name"]).strip() if patch["client_name"] is not None else ""
+            nxt = nxt or None
             payload["client_name"] = {"from": prev, "to": nxt}
             project.client_name = nxt
+        if "project_code" in patch:
+            pc = str(patch["project_code"]).strip() if patch["project_code"] is not None else ""
+            pc = pc or None
+            if pc is not None:
+                other = await self._projects.get_by_project_code(pc)
+                if other is not None and other.id != project.id:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Ya existe otro proyecto con ese código",
+                    )
+            payload["project_code"] = {"from": project.project_code, "to": pc}
+            project.project_code = pc
+        if "location_text" in patch:
+            lt = str(patch["location_text"]).strip() if patch["location_text"] is not None else ""
+            lt = lt or None
+            payload["location_text"] = {"from": project.location_text, "to": lt}
+            project.location_text = lt
+        if "estimated_area_sqm" in patch:
+            v = patch["estimated_area_sqm"]
+            if v is None:
+                payload["estimated_area_sqm"] = None
+                project.estimated_area_sqm = None
+            else:
+                dec = v if isinstance(v, Decimal) else Decimal(str(v))
+                payload["estimated_area_sqm"] = str(dec)
+                project.estimated_area_sqm = float(dec)
+        if "floor_levels_count" in patch:
+            fc = patch["floor_levels_count"]
+            payload["floor_levels_count"] = fc
+            project.floor_levels_count = fc if fc is not None else None
+        if "deadline" in patch:
+            dl_raw = patch["deadline"]
+            if dl_raw is None:
+                project.deadline = None
+                payload["deadline"] = None
+            elif isinstance(dl_raw, date):
+                project.deadline = dl_raw
+                payload["deadline"] = dl_raw.isoformat()
+            elif isinstance(dl_raw, str):
+                project.deadline = date.fromisoformat(dl_raw[:10])
+                payload["deadline"] = project.deadline.isoformat()
+            else:
+                project.deadline = None
+                payload["deadline"] = None
+        if "responsible_user_uuid" in patch:
+            ru = patch["responsible_user_uuid"]
+            if ru is None:
+                payload["responsible_user_uuid"] = None
+                project.responsible_user_id = None
+            else:
+                uid = ru if isinstance(ru, UUID) else UUID(str(ru))
+                if not await self._projects.user_is_project_team_member(project, uid):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="El responsable debe pertenecer al equipo del proyecto",
+                    )
+                payload["responsible_user_uuid"] = str(uid)
+                project.responsible_user_id = uid
+        if "responsible_external_name" in patch:
+            ren = patch["responsible_external_name"]
+            prev = project.responsible_external_name
+            if ren is None:
+                nxt = None
+            else:
+                s = str(ren).strip()
+                nxt = s or None
+            payload["responsible_external_name"] = {"from": prev, "to": nxt}
+            project.responsible_external_name = nxt
+        if "responsible_external_email" in patch:
+            ree = patch["responsible_external_email"]
+            prev = project.responsible_external_email
+            if ree is None:
+                nxt = None
+            else:
+                s = str(ree).strip()
+                nxt = s or None
+            payload["responsible_external_email"] = {"from": prev, "to": nxt}
+            project.responsible_external_email = nxt
         if payload:
             await self._projects.record_event(
                 project_id=project.id,
@@ -333,7 +605,7 @@ class ProjectLifecycleService:
         criteria: list[dict[str, Any]],
     ) -> Project:
         project = await self._project_svc.get_project(user, project_uuid)
-        if WorkflowPhase(project.workflow_phase) != WorkflowPhase.BOOTSTRAPPING:
+        if self._domain_phase_for_project(project) != WorkflowPhase.BOOTSTRAPPING:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="El checklist solo es editable en fase BOOTSTRAPPING",
@@ -356,7 +628,7 @@ class ProjectLifecycleService:
         document: dict[str, Any],
     ) -> Project:
         project = await self._project_svc.get_project(user, project_uuid)
-        wf = WorkflowPhase(project.workflow_phase)
+        wf = self._domain_phase_for_project(project)
         allowed = {
             WorkflowPhase.ARCHITECTURE_REVIEW,
             WorkflowPhase.SPECIFICATIONS,
@@ -369,15 +641,119 @@ class ProjectLifecycleService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="El pliego de condiciones no es editable en esta fase",
             )
-        project.specifications_document = document
+        old_spec: dict[str, Any] = (
+            dict(project.specifications_document) if isinstance(project.specifications_document, dict) else {}
+        )
+        doc: dict[str, Any] = dict(document) if isinstance(document, dict) else {}
+        new_block = get_business_pliego_block(doc)
+        if new_block:
+            old_block = get_business_pliego_block(old_spec)
+            osec = sections_dict(old_block) if old_block else default_empty_sections()
+            nsec = sections_dict(new_block)
+            if not business_pliego_sections_equal(osec, nsec):
+                clear_approval_in_block(new_block)
+            doc[BUSINESS_PLIEGO_KEY] = new_block
+        old_ga = old_spec.get(GA_FO_SPEC_KEY) if isinstance(old_spec, dict) else None
+        new_ga = doc.get(GA_FO_SPEC_KEY)
+        if isinstance(old_ga, dict) and isinstance(new_ga, dict):
+            if json.dumps(old_ga.get("item_states"), sort_keys=True, default=str) != json.dumps(
+                new_ga.get("item_states"), sort_keys=True, default=str
+            ):
+                clear_ga_fo_approval(new_ga)
+                doc[GA_FO_SPEC_KEY] = new_ga
+        project.specifications_document = doc
         summary = ""
-        if isinstance(document, dict):
-            summary = str((document.get("summary") or "")).strip()
+        if isinstance(doc, dict):
+            summary = str((doc.get("summary") or "")).strip()
         await self._projects.record_event(
             project_id=project.id,
             actor_user_id=user.id,
             event_type="SPECIFICATIONS_UPDATED",
             payload={"summary_chars": len(summary)},
+        )
+        touch_project_updated_at(project)
+        await self._session.flush()
+        return project
+
+    async def generate_business_pliego(
+        self,
+        user: User,
+        project_uuid: UUID,
+        force: bool,
+    ) -> Project:
+        project = await self._project_svc.get_project(user, project_uuid)
+        wf = self._domain_phase_for_project(project)
+        if wf not in (WorkflowPhase.ARCHITECTURE_REVIEW, WorkflowPhase.SPECIFICATIONS):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Generar pliego automático solo está disponible en fase de arquitectura o de pliego",
+            )
+        old_spec: dict[str, Any] = (
+            dict(project.specifications_document) if isinstance(project.specifications_document, dict) else {}
+        )
+        old_block = get_business_pliego_block(old_spec)
+        if not force and old_block and old_block.get("generated_at"):
+            return project
+        pbs = PliegoBusinessService(self._session)
+        loaded = await pbs.load_project(project.id)
+        block = await pbs.build_draft_block(loaded)
+        merged = pbs.merge_draft_into_spec(old_spec, block)
+        project.specifications_document = merged
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="PLIEGO_DRAFT_GENERATED",
+            payload={},
+        )
+        touch_project_updated_at(project)
+        await self._session.flush()
+        return project
+
+    async def approve_business_pliego(
+        self,
+        user: User,
+        project_uuid: UUID,
+    ) -> Project:
+        if user.role not in (UserRole.GERENCIA, UserRole.ARQUITECTURA):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo Gerencia o Arquitectura pueden aprobar el pliego de condiciones",
+            )
+        project = await self._project_svc.get_project(user, project_uuid)
+        wf = self._domain_phase_for_project(project)
+        if wf not in (WorkflowPhase.ARCHITECTURE_REVIEW, WorkflowPhase.SPECIFICATIONS):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La aprobación del pliego solo aplica en fase de arquitectura o de pliego",
+            )
+        spec: dict[str, Any] = (
+            dict(project.specifications_document) if isinstance(project.specifications_document, dict) else {}
+        )
+        msg = pliego_sections_incomplete_message(spec)
+        if msg is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=msg,
+            )
+        block = get_business_pliego_block(spec)
+        if block:
+            apply_approval(block, user.id)
+            spec[BUSINESS_PLIEGO_KEY] = block
+        else:
+            ga = spec.get(GA_FO_SPEC_KEY)
+            if not isinstance(ga, dict) or ga.get("schema_version") != 1:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Falta el pliego estructurado; genere el borrador o guarde las secciones.",
+                )
+            apply_ga_fo_approval(ga, user.id)
+            spec[GA_FO_SPEC_KEY] = ga
+        project.specifications_document = spec
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="PLIEGO_APPROVED",
+            payload={},
         )
         touch_project_updated_at(project)
         await self._session.flush()
@@ -392,8 +768,18 @@ class ProjectLifecycleService:
         project = await self._project_svc.get_project(user, project_uuid)
         meta = dict(project.workflow_meta or {})
         if "budget_pipeline" in patch and isinstance(patch["budget_pipeline"], dict):
+            bp_old = _budget_pipeline(meta)
+            incoming = patch["budget_pipeline"]
+            wants_true = bool(incoming.get("control_review_done"))
+            had_true = bool(bp_old.get("control_review_done"))
+            if wants_true and not had_true:
+                if user.role not in (UserRole.CONTROL, UserRole.GERENCIA):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Solo Control o Gerencia pueden marcar la revisión de Control",
+                    )
             bp = _budget_pipeline(meta)
-            bp.update(patch["budget_pipeline"])
+            bp.update(incoming)
             _set_budget_pipeline(meta, bp)
         project.workflow_meta = meta
         p = await self._load_project_full(project_uuid)
@@ -466,10 +852,14 @@ class ProjectLifecycleService:
     ) -> ArchitectureRevision:
         project = await self._project_svc.get_project(user, project_uuid)
         ver = await self._next_revision_version(project.id)
+        role_val = user.role.value if hasattr(user.role, "value") else str(user.role)
+        if role_val not in {"GERENCIA", "ARQUITECTURA", "CONTROL", "PRESUPUESTO"}:
+            role_val = "GERENCIA"
         rev = ArchitectureRevision(
             id=uuid.uuid4(),
             project_id=project.id,
             version=ver,
+            revision_role=role_val,
             decision=decision,
             notes=notes,
             checklist=checklist or {},
@@ -481,7 +871,7 @@ class ProjectLifecycleService:
             project_id=project.id,
             actor_user_id=user.id,
             event_type="ARCHITECTURE_REVISION",
-            payload={"version": ver, "decision": decision.value},
+            payload={"version": ver, "decision": decision.value, "revision_role": role_val},
         )
         touch_project_updated_at(project)
         await self._session.flush()
@@ -524,7 +914,7 @@ class ProjectLifecycleService:
         wizard: bool = False,
     ) -> ProjectFile:
         project = await self._project_svc.get_project(user, project_uuid)
-        wf = WorkflowPhase(project.workflow_phase)
+        wf = self._domain_phase_for_project(project)
         if wf not in (
             WorkflowPhase.AWAITING_FILES,
             WorkflowPhase.ARCHITECTURE_REVIEW,
@@ -538,8 +928,12 @@ class ProjectLifecycleService:
                 detail="No se aceptan archivos en esta fase",
             )
         raw = await upload.read()
-        if len(raw) > 50 * 1024 * 1024:
-            raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Archivo demasiado grande")
+        max_bytes = self._settings.project_file_max_mb * 1024 * 1024
+        if len(raw) > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Archivo demasiado grande (máx. {self._settings.project_file_max_mb} MB)",
+            )
         fid = uuid.uuid4()
         root = Path(self._settings.upload_root)
         dest_dir = root / str(project.id)
@@ -1026,6 +1420,118 @@ class ProjectLifecycleService:
         n.read_at = datetime.now(timezone.utc)
         await self._session.flush()
 
+    async def _run_phase_automation(
+        self,
+        actor: User,
+        project: Project,
+        prev_phase_str: str,
+        target_phase: WorkflowPhase,
+    ) -> None:
+        meta = dict(project.workflow_meta or {})
+        auto = dict(meta.get("automation_tasks") or {})
+        tasks = TaskBoardService(self._session)
+        changed = False
+
+        if (
+            prev_phase_str == WorkflowPhase.AWAITING_FILES.value
+            and target_phase == WorkflowPhase.ARCHITECTURE_REVIEW
+            and not auto.get("enter_architecture_review")
+        ):
+            await tasks.create_automation_card_for_phase(
+                actor,
+                project_id=project.id,
+                title="Revisión técnica documental (entrada a revisión de arquitectura)",
+                description=(
+                    "Revise checklist, archivos e informe documental antes de registrar la revisión formal."
+                ),
+                preferred_roles=[UserRole.ARQUITECTURA, UserRole.CONTROL],
+            )
+            auto["enter_architecture_review"] = True
+            changed = True
+
+        if (
+            prev_phase_str == WorkflowPhase.BUDGETING_PIPELINE.value
+            and target_phase == WorkflowPhase.MANAGEMENT_APPROVAL
+            and not auto.get("enter_management_approval")
+        ):
+            await tasks.create_automation_card_for_phase(
+                actor,
+                project_id=project.id,
+                title="Revisión de Control — presupuesto",
+                description="Validar cantidades, costos y supuestos antes de la aprobación de Gerencia.",
+                preferred_roles=[UserRole.CONTROL],
+            )
+            auto["enter_management_approval"] = True
+            changed = True
+
+        if changed:
+            meta["automation_tasks"] = auto
+            project.workflow_meta = meta
+
+    async def maybe_automation_after_documentary_export(self, user: User, project_uuid: UUID) -> None:
+        project = await self._project_svc.get_project(user, project_uuid)
+        meta = dict(project.workflow_meta or {})
+        auto = dict(meta.get("automation_tasks") or {})
+        if auto.get("after_documentary_export"):
+            return
+        tasks = TaskBoardService(self._session)
+        await tasks.create_automation_card_for_phase(
+            user,
+            project_id=project.id,
+            title="Revisión informe documental generado",
+            description="Se generó el PDF de informe documental; validar coherencia con el checklist.",
+            preferred_roles=[UserRole.CONTROL, UserRole.ARQUITECTURA],
+        )
+        auto["after_documentary_export"] = True
+        meta["automation_tasks"] = auto
+        project.workflow_meta = meta
+        touch_project_updated_at(project)
+        await self._session.flush()
+
+    async def list_technical_findings(self, user: User, project_uuid: UUID) -> list[ProjectTechnicalFinding]:
+        project = await self._project_svc.get_project(user, project_uuid)
+        q = (
+            select(ProjectTechnicalFinding)
+            .where(ProjectTechnicalFinding.project_id == project.id)
+            .order_by(ProjectTechnicalFinding.created_at.desc())
+        )
+        return list((await self._session.execute(q)).scalars().all())
+
+    async def create_technical_finding(
+        self,
+        user: User,
+        project_uuid: UUID,
+        *,
+        discipline: str,
+        severity: str,
+        title: str,
+        description: str,
+        evidence_ref: Optional[str],
+    ) -> ProjectTechnicalFinding:
+        project = await self._project_svc.get_project(user, project_uuid)
+        row = ProjectTechnicalFinding(
+            id=uuid.uuid4(),
+            project_id=project.id,
+            discipline=discipline.strip(),
+            severity=severity.strip(),
+            title=title.strip(),
+            description=description.strip(),
+            evidence_ref=(evidence_ref.strip() if evidence_ref else None),
+            created_at=datetime.now(timezone.utc),
+            created_by=user.id,
+        )
+        self._session.add(row)
+        await self._projects.record_event(
+            project_id=project.id,
+            actor_user_id=user.id,
+            event_type="TECHNICAL_FINDING_CREATED",
+            payload={"finding_uuid": str(row.id), "title": row.title},
+        )
+        touch_project_updated_at(project)
+        await self._session.flush()
+        await self._session.refresh(row)
+        return row
+
 
 def _budget_pipeline_defaults() -> dict[str, Any]:
     return {
@@ -1033,6 +1539,7 @@ def _budget_pipeline_defaults() -> dict[str, Any]:
         "volumetry_done": False,
         "cost_analysis_done": False,
         "budget_marked_complete": False,
+        "control_review_done": False,
         "client_approved_version_label": None,
         "volumetry": {},
         "cost_analysis": {},

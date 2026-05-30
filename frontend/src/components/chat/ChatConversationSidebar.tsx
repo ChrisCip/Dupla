@@ -1,5 +1,5 @@
-import { Card } from '../Card'
-import { PrimaryButton } from '../PrimaryButton'
+import { Search } from 'lucide-react'
+
 import {
   chatKindLabel,
   formatGroupParticipantEmails,
@@ -13,6 +13,14 @@ type ChatConversationSidebarProps = {
   onSelect: (uuid: string) => void
   onNewChat: () => void
   onNewGroup: () => void
+  searchQuery: string
+  onSearchQueryChange: (q: string) => void
+}
+
+function conversationInitial(c: ChatConversationSummary): string {
+  const t = c.display_title.trim()
+  if (!t) return '?'
+  return t.charAt(0).toUpperCase()
 }
 
 export function ChatConversationSidebar({
@@ -21,80 +29,104 @@ export function ChatConversationSidebar({
   onSelect,
   onNewChat,
   onNewGroup,
+  searchQuery,
+  onSearchQueryChange,
 }: ChatConversationSidebarProps) {
   return (
-    <aside className="flex h-full min-h-0 w-full shrink-0 flex-col lg:w-80">
-      <Card className="flex h-full min-h-0 flex-col gap-4 overflow-hidden border-0 bg-transparent p-4 shadow-none">
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
-          <PrimaryButton type="button" className="w-full sm:flex-1" onClick={onNewChat}>
-            Nuevo chat
-          </PrimaryButton>
-          <button
-            type="button"
-            className="w-full rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink shadow-sm hover:border-primary/30 sm:w-auto sm:shrink-0"
-            onClick={onNewGroup}
-          >
-            Nuevo grupo
-          </button>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="du-label">Conversaciones</div>
-          <ul className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto pr-0.5">
-            {conversations.map((c) => {
-              const active = c.uuid === activeConversationUuid
-              const unread = (c.unread_count ?? 0) > 0
-              const preview = c.last_message_preview?.trim() || 'Sin mensajes aún'
-              const when = formatRelativeChatTime(c.last_message_at)
-              return (
-                <li key={c.uuid}>
-                  <button
-                    type="button"
-                    onClick={() => onSelect(c.uuid)}
-                    className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm transition ${
-                      active
-                        ? 'border-primary/40 bg-primary/5 text-ink shadow-sm'
-                        : 'border-black/10 bg-white hover:border-primary/25'
+    <aside className="flex h-full min-h-0 w-full shrink-0 flex-col bg-[#f8f9fb] lg:w-80 xl:w-[22rem]">
+      <div className="border-b border-black/8 px-3 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Consola de mensajes</p>
+        <label className="relative mt-2 block">
+          <span className="sr-only">Buscar conversaciones</span>
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted"
+            strokeWidth={2}
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChange(e.target.value)}
+            placeholder="Buscar conversaciones…"
+            className="du-input h-9 w-full rounded-lg border-black/10 bg-white py-0 pl-9 pr-3 text-sm"
+          />
+        </label>
+      </div>
+
+      <div className="flex shrink-0 gap-2 border-b border-black/8 px-3 py-2">
+        <button
+          type="button"
+          className="flex-1 rounded-lg bg-primary px-2 py-2 text-center text-[11px] font-bold uppercase tracking-wide text-white shadow-sm hover:opacity-95"
+          onClick={onNewChat}
+        >
+          Nuevo chat
+        </button>
+        <button
+          type="button"
+          className="flex-1 rounded-lg border border-black/12 bg-white px-2 py-2 text-[11px] font-bold uppercase tracking-wide text-ink shadow-sm hover:bg-black/[0.03]"
+          onClick={onNewGroup}
+        >
+          Grupo
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+        <ul className="space-y-1">
+          {conversations.map((c) => {
+            const active = c.uuid === activeConversationUuid
+            const unread = (c.unread_count ?? 0) > 0
+            const preview = c.last_message_preview?.trim() || 'Sin mensajes aún'
+            const when = formatRelativeChatTime(c.last_message_at)
+            return (
+              <li key={c.uuid}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(c.uuid)}
+                  className={`flex w-full gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
+                    active
+                      ? 'border-primary/35 bg-white shadow-md ring-1 ring-primary/15'
+                      : 'border-transparent bg-transparent hover:bg-white/80'
+                  }`}
+                >
+                  <span
+                    className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
+                      active ? 'bg-primary text-white' : 'bg-white text-primary ring-1 ring-black/8'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="min-w-0 flex-1 font-medium leading-snug">{c.display_title}</span>
+                    {conversationInitial(c)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="line-clamp-2 font-semibold leading-snug text-ink">{c.display_title}</span>
                       {unread ? (
-                        <span
-                          className="mt-0.5 inline-flex min-h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold leading-none text-white"
-                          aria-label={`${c.unread_count} sin leer`}
-                        >
+                        <span className="mt-0.5 inline-flex min-h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold leading-none text-white">
                           {c.unread_count! > 99 ? '99+' : c.unread_count}
                         </span>
                       ) : null}
-                    </div>
-                    <div className="du-meta mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span>{chatKindLabel(c.kind)}</span>
-                      {c.participant_count != null && c.kind !== 'DIRECT' && c.kind !== 'GROUP' ? (
-                        <span>· {c.participant_count} en el chat</span>
-                      ) : null}
-                      {when ? <span>· {when}</span> : null}
-                    </div>
+                    </span>
+                    <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-wide text-muted">
+                      {chatKindLabel(c.kind)}
+                      {when ? ` · ${when}` : ''}
+                    </span>
                     {c.kind === 'GROUP' && formatGroupParticipantEmails(c.participants) ? (
-                      <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-muted">
+                      <span className="mt-0.5 line-clamp-2 block text-[10px] text-muted">
                         {formatGroupParticipantEmails(c.participants)}
-                      </p>
-                    ) : c.kind === 'GROUP' && c.participant_count != null ? (
-                      <p className="mt-1 text-[11px] text-muted">{c.participant_count} personas</p>
+                      </span>
                     ) : null}
-                    <p
-                      className={`mt-1 line-clamp-2 text-xs leading-snug ${
+                    <span
+                      className={`mt-1 line-clamp-2 block text-xs leading-snug ${
                         unread ? 'font-medium text-ink' : 'text-muted'
                       }`}
                     >
                       {preview}
-                    </p>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      </Card>
+                    </span>
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
     </aside>
   )
 }

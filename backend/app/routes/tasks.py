@@ -47,8 +47,9 @@ async def list_task_assignees(
     response_model=TaskBoardResponse,
     summary="Tablero de tareas",
     description=(
-        "Listas activas (sin archivadas). Query `mine=1` filtra por asignado = usuario actual; "
-        "`assignee_uuid` filtra por otro usuario. `include_archived=1` añade `archived_cards`."
+        "Solo tareas visibles para el usuario actual (asignadas a él o sin asignar creadas por él). "
+        "`project_uuid` filtra por proyecto. `include_archived=1` añade `archived_cards`. "
+        "`assignee_uuid` distinto del usuario actual devuelve 403."
     ),
 )
 async def get_task_board(

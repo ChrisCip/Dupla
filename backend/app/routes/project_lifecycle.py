@@ -1,16 +1,18 @@
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.dependencies import get_current_user
+from app.domain.file_discipline import FileIngestStatus
 from app.domain.workflow_phase import WorkflowPhase
 from app.models.architecture_revision import ArchitectureRevisionDecision
 from app.models.user import User
 from app.schemas.chat import ChatConversationResponse
+from app.schemas.price_database import PriceDatabaseFileListResponse, PriceDatabaseFileResponse
 from app.schemas.project import ProjectResponse
 from app.schemas.project_lifecycle import (
     ArchitectureRevisionCreateRequest,
@@ -27,13 +29,19 @@ from app.schemas.project_lifecycle import (
     ProjectFileSearchResponse,
     ProjectPatchRequest,
     ProjectTransitionRequest,
+    PliegoGenerateRequest,
     SpecificationsReplaceRequest,
     SubcontractLineCreateRequest,
     SubcontractQuoteCreateRequest,
     SubcontractQuoteResponse,
+    TechnicalFindingCreateRequest,
+    TechnicalFindingResponse,
     WorkflowMetaPatchRequest,
 )
 from app.services.chat_service import ChatService
+from app.services.price_database_classification_task import run_price_database_classification_task
+from app.services.price_database_service import PriceDatabaseService
+from app.services.project_file_classification_service import run_file_classification_task
 from app.services.project_lifecycle_service import ProjectLifecycleService
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -67,12 +75,8 @@ async def patch_project(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectResponse:
     svc = ProjectLifecycleService(session)
-    p = await svc.update_project_meta(
-        current,
-        project_uuid,
-        name=body.name,
-        client_name=body.client_name,
-    )
+    raw = body.model_dump(exclude_unset=True, mode="json")
+    p = await svc.update_project_meta(current, project_uuid, raw)
     await session.commit()
     return ProjectResponse.from_project(p)
 
@@ -84,9 +88,14 @@ async def post_transition(
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectResponse:
-    target = _parse_target_phase(body.target_phase)
+    target = _parse_target_phase(body.target_phase) if body.target_phase else None
     svc = ProjectLifecycleService(session)
-    p = await svc.transition_phase(current, project_uuid, target)
+    p = await svc.transition_phase(
+        current,
+        project_uuid,
+        target,
+        target_step_uuid=body.target_step_uuid,
+    )
     await session.commit()
     return ProjectResponse.from_project(p)
 
@@ -117,6 +126,39 @@ async def put_specifications(
 ) -> ProjectResponse:
     svc = ProjectLifecycleService(session)
     p = await svc.put_specifications(current, project_uuid, body.document)
+    await session.commit()
+    return ProjectResponse.from_project(p)
+
+
+@router.post(
+    "/{project_uuid}/specifications/generate",
+    response_model=ProjectResponse,
+    summary="Generar borrador del pliego (autocompletado)",
+)
+async def post_specifications_generate(
+    project_uuid: UUID,
+    body: PliegoGenerateRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = ProjectLifecycleService(session)
+    p = await svc.generate_business_pliego(current, project_uuid, body.force)
+    await session.commit()
+    return ProjectResponse.from_project(p)
+
+
+@router.post(
+    "/{project_uuid}/specifications/approve",
+    response_model=ProjectResponse,
+    summary="Aprobar pliego de condiciones estructurado",
+)
+async def post_specifications_approve(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = ProjectLifecycleService(session)
+    p = await svc.approve_business_pliego(current, project_uuid)
     await session.commit()
     return ProjectResponse.from_project(p)
 
@@ -286,6 +328,7 @@ async def post_project_file(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     category: Annotated[Optional[str], Form()] = None,
     folder_uuid: Annotated[Optional[UUID], Form()] = None,
@@ -301,6 +344,8 @@ async def post_project_file(
         wizard=wizard,
     )
     await session.commit()
+    if row.ingest_status == FileIngestStatus.PUBLISHED.value:
+        background_tasks.add_task(run_file_classification_task, row.id)
     return ProjectFileResponse.from_row(row)
 
 
@@ -354,12 +399,16 @@ async def patch_project_file(
     body: ProjectFilePatchRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ) -> ProjectFileResponse:
     svc = ProjectLifecycleService(session)
     patch = body.model_dump(exclude_unset=True)
     row = await svc.patch_project_file(current, project_uuid, file_uuid, patch)
     await session.commit()
     await session.refresh(row)
+    ing = patch.get("ingest_status")
+    if ing is not None and str(ing).strip().upper() == FileIngestStatus.PUBLISHED.value:
+        background_tasks.add_task(run_file_classification_task, row.id)
     return ProjectFileResponse.from_row(row)
 
 
@@ -472,6 +521,47 @@ async def delete_subcontract_quote(
     await session.commit()
 
 
+@router.get(
+    "/{project_uuid}/technical-findings",
+    response_model=list[TechnicalFindingResponse],
+    summary="Hallazgos técnicos (registro manual / futuro pipeline IA)",
+)
+async def list_technical_findings(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[TechnicalFindingResponse]:
+    svc = ProjectLifecycleService(session)
+    rows = await svc.list_technical_findings(current, project_uuid)
+    return [TechnicalFindingResponse.from_row(r) for r in rows]
+
+
+@router.post(
+    "/{project_uuid}/technical-findings",
+    response_model=TechnicalFindingResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar hallazgo técnico",
+)
+async def create_technical_finding(
+    project_uuid: UUID,
+    body: TechnicalFindingCreateRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TechnicalFindingResponse:
+    svc = ProjectLifecycleService(session)
+    row = await svc.create_technical_finding(
+        current,
+        project_uuid,
+        discipline=body.discipline,
+        severity=body.severity,
+        title=body.title,
+        description=body.description,
+        evidence_ref=body.evidence_ref,
+    )
+    await session.commit()
+    return TechnicalFindingResponse.from_row(row)
+
+
 @router.post(
     "/{project_uuid}/chat/conversation",
     response_model=ChatConversationResponse,
@@ -486,3 +576,72 @@ async def post_project_chat_conversation(
     res = await chat.get_or_create_project_conversation(current, project_uuid)
     await session.commit()
     return res
+
+
+@router.get(
+    "/{project_uuid}/price-database/files",
+    response_model=PriceDatabaseFileListResponse,
+    summary="Listar archivos de base de precios del proyecto",
+)
+async def list_price_database_files(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> PriceDatabaseFileListResponse:
+    svc = PriceDatabaseService(session)
+    rows = await svc.list_files(current, project_uuid)
+    return PriceDatabaseFileListResponse(items=[PriceDatabaseFileResponse.from_row(r) for r in rows])
+
+
+@router.post(
+    "/{project_uuid}/price-database/files",
+    response_model=PriceDatabaseFileResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Subir archivo de base de precios (PDF / Excel / CSV)",
+)
+async def post_price_database_file(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
+    file: Annotated[UploadFile, File()],
+) -> PriceDatabaseFileResponse:
+    svc = PriceDatabaseService(session)
+    row = await svc.upload_file(current, project_uuid, file)
+    await session.commit()
+    background_tasks.add_task(run_price_database_classification_task, row.id)
+    return PriceDatabaseFileResponse.from_row(row)
+
+
+@router.delete(
+    "/{project_uuid}/price-database/files/{file_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar archivo de base de precios",
+)
+async def delete_price_database_file(
+    project_uuid: UUID,
+    file_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    svc = PriceDatabaseService(session)
+    await svc.delete_file(current, project_uuid, file_uuid)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{project_uuid}/price-database/apply",
+    response_model=ProjectResponse,
+    summary="Confirmar uso de la base de precios activa en presupuestos",
+)
+async def post_price_database_apply(
+    project_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectResponse:
+    svc = PriceDatabaseService(session)
+    project = await svc.confirm_apply(current, project_uuid)
+    await session.commit()
+    await session.refresh(project)
+    return ProjectResponse.from_project(project)

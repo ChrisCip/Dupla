@@ -17,11 +17,13 @@ import {
 import type { ProjectFileFolderRow, ProjectFileRow } from '../../types/projectWorkspace'
 import { ProjectWorkspaceFileIcon } from './ProjectWorkspaceFileIcon'
 
+const UPLOAD_CONCURRENCY = 5
+
 const STEP_META = [
   {
     title: 'Archivos',
     description:
-      'Solo .dwg, .dxf o .pdf. En el siguiente paso se sugiere descripción y disciplina (sin leer el binario de CAD).',
+      'Tipos admitidos: planos CAD, PDF, IFC y documentos técnicos .docx. En el siguiente paso se sugiere descripción y disciplina (sin leer el binario de CAD/BIM).',
     footerHint: 'Selección',
   },
   {
@@ -68,7 +70,9 @@ export function ProjectFilesUploadWizard({
   const [edits, setEdits] = useState<Record<string, DraftEdit>>({})
   const [uploadBusy, setUploadBusy] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null)
   const [publishBusy, setPublishBusy] = useState(false)
+  const [publishProgress, setPublishProgress] = useState<{ done: number; total: number } | null>(null)
 
   const [locFolder, setLocFolder] = useState<string | null>(null)
   const [locFolders, setLocFolders] = useState<ProjectFileFolderRow[]>([])
@@ -85,7 +89,9 @@ export function ProjectFilesUploadWizard({
     setEdits({})
     setUploadBusy(false)
     setUploadError(null)
+    setUploadProgress(null)
     setPublishBusy(false)
+    setPublishProgress(null)
     setLocFolder(defaultFolderUuid)
     setLocTrail([{ uuid: null, name: 'Raíz' }])
     setNewFolderName('')
@@ -156,24 +162,31 @@ export function ProjectFilesUploadWizard({
     if (!token || picked.length === 0) return
     setUploadBusy(true)
     setUploadError(null)
+    setUploadProgress({ done: 0, total: picked.length })
     const next: ProjectFileRow[] = []
     try {
-      for (const file of picked) {
-        const fd = new FormData()
-        fd.append('file', file)
-        fd.append('wizard', 'true')
-        if (defaultFolderUuid) fd.append('folder_uuid', defaultFolderUuid)
-        const res = await apiFetch(`/api/projects/${projectUuid}/files`, {
-          method: 'POST',
-          token,
-          body: fd,
-        })
-        const body = (await res.json().catch(() => ({}))) as ProjectFileRow & { detail?: string }
-        if (!res.ok) {
-          setUploadError(body.detail ?? 'Error al subir archivo')
-          return
-        }
-        next.push(body as ProjectFileRow)
+      for (let i = 0; i < picked.length; i += UPLOAD_CONCURRENCY) {
+        const chunk = picked.slice(i, i + UPLOAD_CONCURRENCY)
+        const batch = await Promise.all(
+          chunk.map(async (file) => {
+            const fd = new FormData()
+            fd.append('file', file)
+            fd.append('wizard', 'true')
+            if (defaultFolderUuid) fd.append('folder_uuid', defaultFolderUuid)
+            const res = await apiFetch(`/api/projects/${projectUuid}/files`, {
+              method: 'POST',
+              token,
+              body: fd,
+            })
+            const body = (await res.json().catch(() => ({}))) as ProjectFileRow & { detail?: string }
+            if (!res.ok) {
+              throw new Error(body.detail ?? 'Error al subir archivo')
+            }
+            return body as ProjectFileRow
+          }),
+        )
+        next.push(...batch)
+        setUploadProgress({ done: next.length, total: picked.length })
       }
       setUploaded(next)
       const ed: Record<string, DraftEdit> = {}
@@ -185,8 +198,11 @@ export function ProjectFilesUploadWizard({
       }
       setEdits(ed)
       setStep(2)
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Error al subir archivo')
     } finally {
       setUploadBusy(false)
+      setUploadProgress(null)
     }
   }
 
@@ -230,32 +246,42 @@ export function ProjectFilesUploadWizard({
   async function confirmPublish() {
     if (!token || uploaded.length === 0) return
     setPublishBusy(true)
+    setUploadError(null)
+    setPublishProgress({ done: 0, total: uploaded.length })
     try {
-      for (const r of uploaded) {
-        const e = edits[r.uuid] ?? { description: '', discipline: '' }
-        const body: Record<string, unknown> = {
-          ingest_status: 'PUBLISHED',
-          folder_uuid: locFolder,
-          description: e.description.trim() || null,
-        }
-        const d = e.discipline.trim()
-        body.discipline = d ? d : null
-        const res = await apiFetch(`/api/projects/${projectUuid}/files/${r.uuid}`, {
-          method: 'PATCH',
-          token,
-          body: JSON.stringify(body),
-        })
-        if (!res.ok) {
-          const err = (await res.json().catch(() => ({}))) as { detail?: string }
-          setUploadError(err.detail ?? 'Error al publicar')
-          return
-        }
+      for (let i = 0; i < uploaded.length; i += UPLOAD_CONCURRENCY) {
+        const chunk = uploaded.slice(i, i + UPLOAD_CONCURRENCY)
+        await Promise.all(
+          chunk.map(async (r) => {
+            const e = edits[r.uuid] ?? { description: '', discipline: '' }
+            const body: Record<string, unknown> = {
+              ingest_status: 'PUBLISHED',
+              folder_uuid: locFolder,
+              description: e.description.trim() || null,
+            }
+            const d = e.discipline.trim()
+            body.discipline = d ? d : null
+            const res = await apiFetch(`/api/projects/${projectUuid}/files/${r.uuid}`, {
+              method: 'PATCH',
+              token,
+              body: JSON.stringify(body),
+            })
+            if (!res.ok) {
+              const err = (await res.json().catch(() => ({}))) as { detail?: string }
+              throw new Error(err.detail ?? 'Error al publicar')
+            }
+          }),
+        )
+        setPublishProgress({ done: Math.min(i + chunk.length, uploaded.length), total: uploaded.length })
       }
       onCompleted()
       reset()
       onClose()
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Error al publicar')
     } finally {
       setPublishBusy(false)
+      setPublishProgress(null)
     }
   }
 
@@ -375,6 +401,11 @@ export function ProjectFilesUploadWizard({
                 ) : (
                   <p className="text-center text-xs text-muted">Ningún archivo seleccionado.</p>
                 )}
+                {uploadBusy && uploadProgress ? (
+                  <p className="text-center text-xs text-muted" aria-live="polite">
+                    Subiendo {uploadProgress.done} / {uploadProgress.total}…
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -441,6 +472,11 @@ export function ProjectFilesUploadWizard({
 
             {step === 3 ? (
               <div className="space-y-4">
+                {publishBusy && publishProgress ? (
+                  <p className="text-xs text-muted" aria-live="polite">
+                    Publicando {publishProgress.done} / {publishProgress.total}…
+                  </p>
+                ) : null}
                 <nav className="flex flex-wrap items-center gap-1 text-xs text-muted" aria-label="Ruta">
                   {locTrail.map((seg, i) => (
                     <span key={`${seg.uuid ?? 'root'}-${i}`} className="flex items-center gap-1">
@@ -514,7 +550,7 @@ export function ProjectFilesUploadWizard({
                   disabled={!canNextFrom1}
                   onClick={() => void runUploads()}
                 >
-                  {uploadBusy ? 'Subiendo…' : 'Siguiente'}
+                  {uploadBusy ? `Subiendo${uploadProgress ? ` (${uploadProgress.done}/${uploadProgress.total})` : ''}…` : 'Siguiente'}
                 </PrimaryButton>
               ) : null}
               {step === 2 ? (
@@ -528,7 +564,9 @@ export function ProjectFilesUploadWizard({
                   disabled={publishBusy}
                   onClick={() => void confirmPublish()}
                 >
-                  {publishBusy ? 'Publicando…' : 'Publicar'}
+                  {publishBusy
+                    ? `Publicando${publishProgress ? ` (${publishProgress.done}/${publishProgress.total})` : ''}…`
+                    : 'Publicar'}
                 </PrimaryButton>
               ) : null}
             </div>

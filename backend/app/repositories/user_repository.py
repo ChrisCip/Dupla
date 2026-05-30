@@ -6,6 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.project_member import ProjectMember
 from app.models.user import User, UserModule, UserRole
 
 
@@ -61,3 +62,19 @@ class UserRepository:
         )
         rows = (await self._session.execute(q)).scalars().all()
         return list(rows)
+
+    async def first_team_member_with_role(
+        self,
+        project_id: UUID,
+        role: UserRole,
+    ) -> Optional[UUID]:
+        q = (
+            select(User.id)
+            .join(ProjectMember, ProjectMember.user_id == User.id)
+            .where(
+                ProjectMember.project_id == project_id,
+                User.role == role,
+            )
+            .limit(1)
+        )
+        return (await self._session.execute(q)).scalar_one_or_none()

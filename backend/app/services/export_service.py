@@ -1,16 +1,19 @@
+from collections import Counter
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 from fpdf import FPDF
 from fpdf.enums import XPos
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.plan_delivery_request import PlanDeliveryRequest
+from app.models.project_file import ProjectFile
 from app.models.user import User
 from app.services.pliego_template_fill import (
     fill_pliego_workbook,
@@ -123,6 +126,105 @@ class ExportService:
         if isinstance(out, (bytes, bytearray)):
             return bytes(out)
         return str(out).encode("latin-1", errors="replace")
+
+    def build_documentary_report_pdf(
+        self,
+        *,
+        project_name: str,
+        project_code: Optional[str],
+        location_text: Optional[str],
+        client_name: Optional[str],
+        criteria: list[dict[str, Any]],
+        files: list[ProjectFile],
+    ) -> bytes:
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.multi_cell(0, 8, "Informe documental — checklist y archivos", new_x=XPos.LMARGIN)
+        pdf.set_font("Helvetica", size=10)
+        pdf.ln(2)
+        meta_lines = [
+            f"Proyecto: {project_name}",
+            f"Código: {project_code or '—'}",
+            f"Cliente: {client_name or '—'}",
+            f"Ubicación: {location_text or '—'}",
+        ]
+        for line in meta_lines:
+            pdf.multi_cell(0, 6, line, new_x=XPos.LMARGIN)
+
+        required = [c for c in criteria if isinstance(c, dict) and c.get("required")]
+        done_req = sum(1 for c in required if c.get("done"))
+        total_req = len(required)
+        pct = int(round(100 * done_req / total_req)) if total_req else 0
+        pdf.ln(3)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.multi_cell(0, 7, "Cumplimiento checklist (ítems requeridos)", new_x=XPos.LMARGIN)
+        pdf.set_font("Helvetica", size=9)
+        pdf.multi_cell(0, 6, f"{done_req} de {total_req} completados ({pct}%).", new_x=XPos.LMARGIN)
+        for item in criteria:
+            if not isinstance(item, dict):
+                continue
+            lab = str(item.get("label", "")).strip() or "Ítem"
+            req = "Sí" if item.get("required") else "No"
+            ok = "Listo" if item.get("done") else "Pendiente"
+            pdf.multi_cell(0, 5, f"- [{ok}] {lab} (obligatorio: {req})", new_x=XPos.LMARGIN)
+
+        names_norm = [f.original_name.strip().lower() for f in files]
+        dup_counts = Counter(names_norm)
+        duplicates = [n for n, k in dup_counts.items() if k > 1 and n]
+
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.multi_cell(0, 7, f"Archivos cargados ({len(files)})", new_x=XPos.LMARGIN)
+        pdf.set_font("Helvetica", size=9)
+        if duplicates:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.multi_cell(
+                0,
+                5,
+                "Posibles duplicados por nombre (misma denominación): "
+                + ", ".join(duplicates[:25])
+                + ("…" if len(duplicates) > 25 else ""),
+                new_x=XPos.LMARGIN,
+            )
+            pdf.set_font("Helvetica", size=9)
+        if not files:
+            pdf.multi_cell(0, 6, "No hay archivos registrados.", new_x=XPos.LMARGIN)
+        else:
+            for f in files:
+                disc = f.discipline or "—"
+                pdf.multi_cell(
+                    0,
+                    5,
+                    f"- {f.original_name} | disciplina: {disc} | estado ingestión: {f.ingest_status}",
+                    new_x=XPos.LMARGIN,
+                )
+
+        out = pdf.output()
+        if isinstance(out, (bytes, bytearray)):
+            return bytes(out)
+        return str(out).encode("latin-1", errors="replace")
+
+    async def export_documentary_pdf(self, user: User, project_uuid: UUID) -> bytes:
+        project = await self._project_service.get_project(user, project_uuid)
+        q = (
+            select(ProjectFile)
+            .where(ProjectFile.project_id == project.id)
+            .order_by(ProjectFile.created_at.asc())
+        )
+        rows = list((await self._session.execute(q)).scalars().all())
+        crit = project.project_bootstrap_criteria or []
+        if not isinstance(crit, list):
+            crit = []
+        return self.build_documentary_report_pdf(
+            project_name=project.name,
+            project_code=project.project_code,
+            location_text=project.location_text,
+            client_name=project.client_name,
+            criteria=crit,
+            files=rows,
+        )
 
     async def export_pliego_xlsx(self, user: User, project_uuid: UUID) -> tuple[bytes, str]:
         project = await self._project_service.get_project(user, project_uuid)

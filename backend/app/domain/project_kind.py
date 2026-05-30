@@ -6,5 +6,6 @@ from enum import StrEnum
 class ProjectKind(StrEnum):
     """Tipo de obra / contratación."""
 
-    RESIDENTIAL = "RESIDENTIAL"
     TENDER = "TENDER"
+    CLIENT = "CLIENT"
+    DEVELOPMENT = "DEVELOPMENT"

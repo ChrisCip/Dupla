@@ -67,7 +67,7 @@ export function startSidebarTour(role: string | null | undefined): void {
       popover: {
         title: 'Tablero',
         description:
-          'Todas las tareas del equipo en columnas. Desde una obra abierta también puedes llegar aquí ya filtrado solo a esa obra.',
+          'Tus tareas en columnas (asignadas a tu cuenta y borradores sin asignar que creaste). Desde una obra abierta puedes abrir el mismo tablero ya filtrado solo a esa obra.',
         side: 'right',
         align: 'start',
       },
@@ -145,9 +145,9 @@ export function startProjectsTour(navigate: NavigateFunction, role: string | nul
       {
         element: '[data-tour="projects-view-toggle"]',
         popover: {
-          title: 'Lista o tablero',
+          title: 'Resumen o tablero',
           description:
-            'Alterna entre ver filas o columnas por etapa del proceso. En columnas puedes arrastrar una tarjeta a la siguiente etapa cuando la aplicación lo permita.',
+            'En Resumen ves métricas, filtros y tarjetas de obra; en Tablero, columnas por fase o paso para arrastrar tarjetas cuando corresponda.',
           side: 'left',
           align: 'start',
         },
@@ -176,11 +176,21 @@ export function startProjectsTour(navigate: NavigateFunction, role: string | nul
       })
     }
     steps.push({
+      element: '[data-tour="projects-mi-trabajo"]',
+      popover: {
+        title: 'Mis tareas',
+        description:
+          'Atajo al tablero Kanban: la app solo muestra tus tarjetas (asignadas a ti o creadas por ti sin asignar), igual que el ítem Tablero del menú.',
+        side: 'bottom',
+        align: 'start',
+      },
+    })
+    steps.push({
       element: '[data-tour="projects-board"]',
       popover: {
         title: 'Contenido',
         description:
-          'En columnas verás cada etapa; en lista, filas con las obras. Pulsa una obra para abrirla y trabajar dentro.',
+          'En Resumen: tarjetas con progreso y estado; en Tablero: columnas por etapa. Pulsa una obra para abrirla.',
         side: 'top',
         align: 'start',
       },
@@ -221,9 +231,9 @@ export function startTasksTour(navigate: NavigateFunction): void {
         {
           element: '[data-tour="taskboard-toolbar"]',
           popover: {
-            title: 'Filtros y búsqueda',
+            title: 'Herramientas del tablero',
             description:
-              'Busca texto, limita por persona o deja solo lo tuyo; si hace falta, muestra también tareas archivadas.',
+              'Búsqueda en las tarjetas, alta de tarea si tienes permiso y opción para ver también archivadas. Solo ves tareas asignadas a tu cuenta o creadas por ti sin asignar.',
             side: 'bottom',
             align: 'start',
           },
@@ -316,9 +326,9 @@ export function startWorkspaceTour(navigate: NavigateFunction): void {
         {
           element: '[data-tour="workspace-tab-nav"]',
           popover: {
-            title: 'Secciones del workspace',
+            title: 'Accesos del workspace',
             description:
-              'Lista de secciones de la obra: datos, trámite, archivos, entregas, revisiones, especificaciones, presupuesto, historial, pliegos y materiales. En el móvil, el botón «Secciones» abre o cierra esta lista.',
+              'Desde el inicio eliges la tarjeta de cada área (detalles, flujo, presupuesto maestro, archivos, control de entregas, revisiones, hallazgos, pliego, eventos). El pipeline operativo sigue en Flujo; el presupuesto maestro (takeoff) tiene su propia pestaña. «Volver al inicio» te regresa a las tarjetas.',
             side: 'right',
             align: 'start',
           },
@@ -328,7 +338,7 @@ export function startWorkspaceTour(navigate: NavigateFunction): void {
           popover: {
             title: 'Contenido de la sección',
             description:
-              'Aquí cambia el contenido según la sección que elijas: documentos, historial, revisiones, presupuesto, etc. El ejemplo «Tutorial · Workspace Dupla» sirve para practicar sin tocar obras reales.',
+              'Aquí cambia el contenido según la sección que elijas: en Flujo verás el paso activo y el pipeline; en Presupuesto maestro, la cuadrilla takeoff demo; en Pliego, el checklist GA-FO-01 de documentos; en el resto, archivos, revisiones, hallazgos, etc. El ejemplo «Tutorial · Workspace Dupla» sirve para practicar sin tocar obras reales.',
             side: 'top',
             align: 'start',
           },
@@ -367,7 +377,7 @@ export function startWorkspaceDetallesShortcutsTour(navigate: NavigateFunction):
           popover: {
             title: 'Tareas solo de este proyecto',
             description:
-              'Te lleva al tablero de tareas ya filtrado para que solo veas lo de esta obra.',
+              'Te lleva al tablero de tareas filtrado por esta obra; solo verás las tareas que te correspondan.',
             side: 'bottom',
             align: 'start',
           },
@@ -406,7 +416,7 @@ export function startWorkspaceArchivosTour(navigate: NavigateFunction): void {
           popover: {
             title: 'Sección Archivos',
             description:
-              'Pulsa «Archivos» en la lista para trabajar con carpetas y documentos de esta obra. En este recorrido la sección Archivos ya está abierta.',
+              'Desde el inicio del proyecto abre la tarjeta «Archivos» para trabajar con carpetas y documentos. En este recorrido Archivos ya está abierta.',
             side: 'right',
             align: 'start',
           },

@@ -9,7 +9,7 @@ async def test_plan_delivery_crud(client: AsyncClient, master_auth_headers_async
     create = await client.post(
         "/api/projects",
         headers=master_auth_headers_async,
-        data={"name": "Obra control planos", "client_name": "Cliente", "project_kind": "RESIDENTIAL"},
+        data={"name": "Obra control planos", "client_name": "Cliente", "project_kind": "CLIENT"},
     )
     assert create.status_code == 201, create.text
     pid = create.json()["uuid"]
