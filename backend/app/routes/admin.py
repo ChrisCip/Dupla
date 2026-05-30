@@ -7,7 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.dependencies import require_gerencia
 from app.models.user import User
-from app.schemas.admin import AdminCreateUserRequest, AdminUpdateUserRequest
+from app.schemas.admin import (
+    AdminCreateUserRequest,
+    AdminImportUsersRequest,
+    AdminImportUsersResponse,
+    AdminUpdateUserRequest,
+)
 from app.schemas.auth import UserResponse
 from app.services.admin_service import AdminService
 
@@ -45,6 +50,23 @@ async def create_user_admin(
     user = await svc.create_user(body)
     await session.commit()
     return UserResponse.from_user(user)
+
+
+@router.post(
+    "/users/import",
+    response_model=AdminImportUsersResponse,
+    summary="Importar usuarios",
+    description="Crea usuarios en lote con contraseña temporal generada. Solo Gerencia.",
+)
+async def import_users_admin(
+    body: AdminImportUsersRequest,
+    _: Annotated[User, Depends(require_gerencia)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> AdminImportUsersResponse:
+    svc = AdminService(session)
+    result = await svc.import_users(body.users)
+    await session.commit()
+    return result
 
 
 @router.patch(

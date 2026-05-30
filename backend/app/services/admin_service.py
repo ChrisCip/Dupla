@@ -8,8 +8,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, UserModule
 from app.repositories.module_repository import ModuleRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.admin import AdminCreateUserRequest, AdminUpdateUserRequest
+from app.schemas.admin import (
+    AdminCreateUserRequest,
+    AdminImportCreatedUser,
+    AdminImportErrorRow,
+    AdminImportSkippedUser,
+    AdminImportUserRow,
+    AdminImportUsersResponse,
+    AdminUpdateUserRequest,
+)
 from app.security.password import hash_password
+from app.security.temporary_password import generate_temporary_password
 
 
 class AdminService:
@@ -58,6 +67,64 @@ class AdminService:
         await self._session.flush()
         await self._session.refresh(user, attribute_names=["modules"])
         return user
+
+    async def import_users(self, rows: list[AdminImportUserRow]) -> AdminImportUsersResponse:
+        created: list[AdminImportCreatedUser] = []
+        skipped: list[AdminImportSkippedUser] = []
+        errors: list[AdminImportErrorRow] = []
+        seen_emails: set[str] = set()
+
+        for row in rows:
+            email_key = row.email.lower()
+            if email_key in seen_emails:
+                errors.append(
+                    AdminImportErrorRow(
+                        email=row.email,
+                        detail="Correo duplicado en la importación",
+                    )
+                )
+                continue
+            seen_emails.add(email_key)
+
+            existing = await self._users.get_by_email(row.email)
+            if existing is not None:
+                skipped.append(
+                    AdminImportSkippedUser(
+                        email=row.email,
+                        reason="Ya existe un usuario con este correo",
+                    )
+                )
+                continue
+
+            password = generate_temporary_password()
+            try:
+                user = await self.create_user(
+                    AdminCreateUserRequest(
+                        email=row.email,
+                        first_name=row.first_name,
+                        last_name=row.last_name,
+                        password=password,
+                        role=row.role,
+                        module_ids=row.module_ids,
+                    )
+                )
+            except HTTPException as exc:
+                detail = exc.detail if isinstance(exc.detail, str) else "No se pudo crear el usuario"
+                errors.append(AdminImportErrorRow(email=row.email, detail=detail))
+                continue
+
+            created.append(
+                AdminImportCreatedUser(
+                    uuid=str(user.id),
+                    email=user.email,
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                    role=user.role,
+                    password=password,
+                )
+            )
+
+        return AdminImportUsersResponse(created=created, skipped=skipped, errors=errors)
 
     async def update_user(self, user_uuid: uuid.UUID, body: AdminUpdateUserRequest) -> User:
         user = await self._users.get_by_uuid(user_uuid)
