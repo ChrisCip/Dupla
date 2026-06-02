@@ -813,6 +813,7 @@ export function ProjectWorkspacePage() {
 
           {tab === 'hallazgos' ? (
             <WorkspaceHallazgosTab
+              project={project}
               projectUuid={projectUuid}
               token={token}
               findings={findings}

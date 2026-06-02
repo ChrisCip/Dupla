@@ -143,6 +143,58 @@ def _geometry_hint_record(
     }
 
 
+def _infer_global_scale(dimensions: list[dict[str, Any]], geometry_hints: list[dict[str, Any]]) -> float:
+    factors = []
+    for dim in dimensions:
+        meas = dim.get("measurement")
+        text = dim.get("text", "")
+        if meas is not None and text:
+            try:
+                # Direct regex extraction instead of _extract_numeric
+                match = _NUMERIC_UNIT_RE.search(text.replace(",", "."))
+                if match:
+                    text_num = float(match.group())
+                    if text_num > 0 and meas > 0:
+                        ratio = meas / text_num
+                        if 800 < ratio < 1200:
+                            factors.append(1000.0)
+                        elif 80 < ratio < 120:
+                            factors.append(100.0)
+                        elif 8 < ratio < 12:
+                            factors.append(10.0)
+            except Exception:
+                pass
+    if factors:
+        from collections import Counter
+        return Counter(factors).most_common(1)[0][0]
+        
+    # Failsafe: if dimensions are exploded/missing, analyze geometry lengths.
+    # If the top 100 longest lines average > 3000 units, it's virtually guaranteed to be millimeters
+    # since an architectural building isn't typically > 3 kilometers long.
+    if geometry_hints:
+        lengths = [g["length"] for g in geometry_hints if g.get("length") is not None]
+        if lengths:
+            total_len = sum(lengths)
+            lengths.sort(reverse=True)
+            top_lengths = lengths[:100]
+            avg_top = sum(top_lengths) / len(top_lengths)
+            
+            # Heurística 1: Por longitud total de líneas en el proyecto. 
+            # Si un edificio tiene > 300,000 unidades de líneas, lógicamente son milímetros.
+            if total_len > 300000.0:
+                return 1000.0
+            elif total_len > 40000.0:
+                return 100.0
+
+            # Heurística 2: Por promedio de líneas largas
+            if avg_top > 3000.0:
+                return 1000.0
+            elif avg_top > 300.0:
+                return 100.0
+                
+    return 1.0
+
+
 def process_autodesk_json(json_path: str) -> dict[str, Any]:
     """
     Convert Autodesk JSON into normalized CAD facts.
@@ -271,6 +323,53 @@ def process_autodesk_json(json_path: str) -> dict[str, Any]:
         for item in dimensions
         if isinstance(item.get("measurement"), (int, float))
     ][:25]
+
+    scale_factor = _infer_global_scale(dimensions, geometry_hints)
+    if scale_factor != 1.0:
+        for dim in dimensions:
+            if dim.get("measurement") is not None:
+                dim["measurement"] /= scale_factor
+            if dim.get("bbox"):
+                for k in ("min", "max"):
+                    for axis in ("x", "y", "z"):
+                        if dim["bbox"].get(k) and isinstance(dim["bbox"][k].get(axis), (int, float)):
+                            dim["bbox"][k][axis] /= scale_factor
+        
+        for g in geometry_hints:
+            if g.get("length") is not None:
+                g["length"] /= scale_factor
+            if g.get("area") is not None:
+                g["area"] /= (scale_factor * scale_factor)
+            if g.get("radius") is not None:
+                g["radius"] /= scale_factor
+            if g.get("bbox"):
+                for k in ("min", "max"):
+                    for axis in ("x", "y", "z"):
+                        if g["bbox"].get(k) and isinstance(g["bbox"][k].get(axis), (int, float)):
+                            g["bbox"][k][axis] /= scale_factor
+                            
+        for h in hatches:
+            if h.get("area") is not None:
+                h["area"] /= (scale_factor * scale_factor)
+            if h.get("bbox"):
+                for k in ("min", "max"):
+                    for axis in ("x", "y", "z"):
+                        if h["bbox"].get(k) and isinstance(h["bbox"][k].get(axis), (int, float)):
+                            h["bbox"][k][axis] /= scale_factor
+                            
+        for t in texts:
+            if t.get("bbox"):
+                for k in ("min", "max"):
+                    for axis in ("x", "y", "z"):
+                        if t["bbox"].get(k) and isinstance(t["bbox"][k].get(axis), (int, float)):
+                            t["bbox"][k][axis] /= scale_factor
+
+        for b in blocks:
+            if b.get("bbox"):
+                for k in ("min", "max"):
+                    for axis in ("x", "y", "z"):
+                        if b["bbox"].get(k) and isinstance(b["bbox"][k].get(axis), (int, float)):
+                            b["bbox"][k][axis] /= scale_factor
 
     return {
         "project": os.path.basename(json_path),

@@ -77,19 +77,28 @@ def _wall_entity_description(wall: Wall) -> str:
         or ""
     )
     typ = str(typ).strip()
-    if not typ:
-        wid = str(getattr(wall, "id", "") or "").strip()
-        if wid and not wid.lower().startswith("vis-wall-"):
-            typ = wid
+    
     thick = wall.thickness_m
     thick_cm = int(round(thick * 100)) if thick is not None else None
     mat_code = str(raw.get("original_material_code") or wall.material_hint or "")
     loc = str(raw.get("ubicacion") or "").strip()
+    
     parts: list[str] = []
     if typ:
         parts.append(f"Muro tipo {typ}")
     else:
-        parts.append("[Tipo no identificado en plano] — muro")
+        wid = str(getattr(wall, "id", "") or "").strip()
+        if wid:
+            if wid.lower().startswith("json-wall-"):
+                layer_name = wid[len("json-wall-"):]
+                parts.append(f"Muro de capa CAD '{layer_name}'")
+            elif not wid.lower().startswith("vis-wall-"):
+                parts.append(f"Muro tipo {wid}")
+            else:
+                parts.append("Muro (detectado por visión)")
+        else:
+            parts.append("[Tipo no identificado en plano] — muro")
+
     if mat_code.startswith("block_"):
         parts.append(f"bloque {mat_code.replace('block_', '').replace('in', '')}\"")
     elif mat_code:
@@ -1827,24 +1836,39 @@ def quantify_inventory(
     *,
     runner_source_discipline: str | None = None,
 ) -> list[QuantityTakeoff]:
+    levels_list = list(levels)
     takeoffs: list[QuantityTakeoff] = []
+    multi_level = len(levels_list) > 1
 
-    for level in levels:
-        takeoffs.extend(_level_surface_takeoffs(level))
-        takeoffs.extend(_wall_takeoffs(level))
-        takeoffs.extend(_door_takeoffs(level))
-        takeoffs.extend(_window_takeoffs(level))
-        takeoffs.extend(_area_group_takeoffs(level))
+    for level in levels_list:
+        level_takeoffs: list[QuantityTakeoff] = []
+        level_takeoffs.extend(_level_surface_takeoffs(level))
+        level_takeoffs.extend(_wall_takeoffs(level))
+        level_takeoffs.extend(_door_takeoffs(level))
+        level_takeoffs.extend(_window_takeoffs(level))
+        level_takeoffs.extend(_area_group_takeoffs(level))
         wet_area_fixtures = _wet_area_fixture_takeoffs(level)
-        takeoffs.extend(wet_area_fixtures)
-        takeoffs.extend(_stair_takeoffs(level))
-        takeoffs.extend(
+        level_takeoffs.extend(wet_area_fixtures)
+        level_takeoffs.extend(_stair_takeoffs(level))
+        level_takeoffs.extend(
             _fixture_takeoffs(
                 level,
                 skip_sanitary_fixture_dupes=bool(wet_area_fixtures),
             )
         )
-        takeoffs.extend(_structural_takeoffs(level))
+        level_takeoffs.extend(_structural_takeoffs(level))
+
+        if multi_level and level.level_id:
+            # Wall and structural IDs are layer-based (e.g. json-wall-muros) and
+            # repeat verbatim across levels, so the resulting item_keys collide
+            # and trip _assert_unique_takeoff_keys. Floor/ceiling already embed
+            # level_id; prefix the rest only when there is more than one level.
+            prefix = f"{level.level_id}:"
+            for takeoff in level_takeoffs:
+                if not takeoff.item_key.startswith(prefix):
+                    takeoff.item_key = f"{prefix}{takeoff.item_key}"
+
+        takeoffs.extend(level_takeoffs)
 
     if runner_source_discipline:
         for takeoff in takeoffs:

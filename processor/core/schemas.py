@@ -4,7 +4,7 @@ Shared typed models for the active APS/JSON inventory pipeline.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Literal, Mapping
 
 InventorySource = Literal["json", "vision", "hybrid"]
@@ -37,6 +37,8 @@ class ModelBase:
 class ProjectContext(ModelBase):
     project_id: str | None = None
     project_name: str | None = None
+    building_block: str | None = None
+    level_id: str | None = None
     source_json_path: str | None = None
     plan_image_paths: list[str] = field(default_factory=list)
     bc3_path: str | None = None
@@ -191,6 +193,7 @@ class StructuralElement(InventoryEntity):
 class LevelInventory(ModelBase):
     level_id: str
     level_name: str
+    building_block: str | None = None
     source: InventorySource = "hybrid"
     source_image: str | None = None
     source_view: str | None = None
@@ -266,6 +269,7 @@ class BudgetChapter(ModelBase):
     code: str
     title: str
     level: int = 1
+    building_block: str | None = None
     parent_id: str | None = None
     path: list[str] = field(default_factory=list)
     child_ids: list[str] = field(default_factory=list)
@@ -303,6 +307,7 @@ class BudgetRow(ModelBase):
     amount: Any = None
     chapter_id: str | None = None
     parent_chapter_id: str | None = None
+    building_block: str | None = None
     level: int = 0
     takeoff_key: str | None = None
     source_refs: list[str] = field(default_factory=list)
@@ -318,6 +323,8 @@ def project_context_from_dict(data: Mapping[str, Any]) -> ProjectContext:
     return ProjectContext(
         project_id=data.get("project_id"),
         project_name=data.get("project_name"),
+        building_block=data.get("building_block"),
+        level_id=data.get("level_id"),
         source_json_path=data.get("source_json_path"),
         plan_image_paths=list(data.get("plan_image_paths", [])),
         bc3_path=data.get("bc3_path"),
@@ -333,8 +340,9 @@ def _list_of(
     default_source: InventorySource,
 ) -> list[Any]:
     items: list[Any] = []
+    field_names = {field_def.name for field_def in fields(model_cls)}
     for value in values:
-        payload = dict(value)
+        payload = {key: item for key, item in dict(value).items() if key in field_names}
         payload.setdefault("level_id", level_id)
         payload.setdefault("source", default_source)
         items.append(model_cls(**payload))
@@ -351,6 +359,7 @@ def level_inventory_from_dict(
     return LevelInventory(
         level_id=level_id,
         level_name=str(data.get("level_name") or level_id),
+        building_block=data.get("building_block"),
         source=source,
         source_image=data.get("source_image"),
         source_view=data.get("source_view"),

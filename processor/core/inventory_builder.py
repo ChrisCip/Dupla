@@ -52,6 +52,39 @@ _MASONRY_TOKENS = ("masonry", "block", "brick", "cmu", "ladr", "mamp")
 _DRYWALL_TOKENS = ("drywall", "gypsum", "tablaroca", "yeso")
 _WOOD_TOKENS = ("wood", "madera", "timber")
 
+# Tokens that indicate a CAD layer is definitely NOT a wall.
+# Used by the geometry fallback to prevent misclassification.
+_NON_WALL_EXCLUDE_TOKENS = (
+    # Electrical / MEP
+    "cable", "cobre", "luces", "luz", "luminaria", "tomacorriente", "interruptor",
+    "monofasica", "trifasica", "electric", "circuito", "panel", "tablero",
+    "acometida", "telefono", "telefon", "data", "cctv", "sonido",
+    # Plumbing / sanitary
+    "agua", "sanitar", "plomer", "desague", "drenaje", "tuberia", "tubo",
+    "bomba", "cisterna", "glp", "gas",
+    # Annotations / text / symbols
+    "texto", "text", "anndtobj", "anndttext", "annobj", "simbologia",
+    "simbolo", "referencia", "tarjeta", "cartograf", "magenta",
+    "detalles", "titulo", "cajetin", "leyenda", "nota", "cota", "dim",
+    # Structural (already handled by structural builder)
+    "viga", "beam", "columna", "column", "losa", "slab", "zapata", "footing",
+    "cimiento", "fundacion", "foundation", "estribo", "acero",
+    "est_secciones", "estructura", "estructur",
+    # Furniture / fixtures / non-wall elements
+    "closet", "mueble", "furn", "cocina", "kitchen", "escaler",
+    "ascensor", "elevador", "elev-",
+    # Site / landscape
+    "solar", "solares", "vuelo", "relleno", "piso", "pisos",
+    "borde", "topograf", "curva", "terreno", "mverde",
+    # Fire / emergency
+    "incendio", "emergencia", "evacuacion", "extintor",
+    # Miscellaneous non-wall
+    "misc", "hath", "grdutiy", "layer5", "tornillo", "soporte",
+    "union", "cristal", "vidrio", "intermitente", "lineas tc",
+    "cable-cobre", "cascaron", "david", "mb3", "mb",
+    "din-sant", "_35", "w",
+)
+
 _SPACE_TYPE_TOKENS: dict[str, tuple[str, ...]] = {
     "bathroom": ("bath", "bano", "baño", "wc", "toilet"),
     "kitchen": ("kitchen", "cocina"),
@@ -566,6 +599,8 @@ def _layer_excludes_wall_geometry_fallback(role: str | None) -> bool:
         "plumbing",
         "door_window_symbol",
         "floor_ceiling",
+        "other_constructive",
+        "unknown",
     }
 
 
@@ -584,6 +619,17 @@ def _structural_or_opening_layer_tokens(layer: str) -> bool:
     )
 
 
+def _canon_layer(layer: str) -> str:
+    """Canonical bucket key for a CAD layer name.
+
+    Why: cad_facts can ship the same logical layer under multiple spellings
+    ("MUROS", "muros", "MUROS ") and downstream ids are formed as
+    f"json-wall-{layer.lower()}" — without canonical bucketing two entries
+    collide on the same id and crash `_assert_unique_takeoff_keys`.
+    """
+    return str(layer or "").strip().lower()
+
+
 def _build_json_walls(
     level_id: str,
     cad_facts: dict[str, Any],
@@ -595,103 +641,117 @@ def _build_json_walls(
     wall_lengths: dict[str, float] = {}
     wall_refs: dict[str, list[str]] = {}
     token_wall_layers: set[str] = set()
+    layer_display: dict[str, str] = {}
 
     for hint in geometry_hints:
         layer = str(hint.get("layer", ""))
+        canon = _canon_layer(layer)
+        if not canon:
+            continue
         if _contains_token(layer, _WALL_TOKENS):
             length = hint.get("length")
             if length is None:
                 continue
-            wall_lengths[layer] = wall_lengths.get(layer, 0.0) + float(length)
-            wall_refs.setdefault(layer, []).append(f"geometry:{hint.get('handle') or layer}")
-            token_wall_layers.add(layer)
+            wall_lengths[canon] = wall_lengths.get(canon, 0.0) + float(length)
+            wall_refs.setdefault(canon, []).append(f"geometry:{hint.get('handle') or layer}")
+            token_wall_layers.add(canon)
+            layer_display.setdefault(canon, layer)
 
     gpt_wall_lengths: dict[str, float] = {}
     gpt_wall_refs: dict[str, list[str]] = {}
     for hint in geometry_hints:
         layer = str(hint.get("layer", ""))
-        if layer in token_wall_layers:
+        canon = _canon_layer(layer)
+        if not canon or canon in token_wall_layers:
             continue
         if _structural_or_opening_layer_tokens(layer):
             continue
-        role = gpt_layer_roles.get(layer)
+        role = gpt_layer_roles.get(layer) or gpt_layer_roles.get(canon)
         if not _gpt_role_to_wall(role):
             continue
         length = hint.get("length")
         if length is None:
             continue
-        gpt_wall_lengths[layer] = gpt_wall_lengths.get(layer, 0.0) + float(length)
-        gpt_wall_refs.setdefault(layer, []).append(f"geometry:{hint.get('handle') or layer}")
+        gpt_wall_lengths[canon] = gpt_wall_lengths.get(canon, 0.0) + float(length)
+        gpt_wall_refs.setdefault(canon, []).append(f"geometry:{hint.get('handle') or layer}")
+        layer_display.setdefault(canon, layer)
 
     gpt_wall_layers: set[str] = set()
-    for layer, total in gpt_wall_lengths.items():
-        wall_lengths[layer] = wall_lengths.get(layer, 0.0) + total
-        wall_refs.setdefault(layer, []).extend(gpt_wall_refs.get(layer, []))
-        gpt_wall_layers.add(layer)
+    for canon, total in gpt_wall_lengths.items():
+        wall_lengths[canon] = wall_lengths.get(canon, 0.0) + total
+        wall_refs.setdefault(canon, []).extend(gpt_wall_refs.get(canon, []))
+        gpt_wall_layers.add(canon)
 
+    # -----------------------------------------------------------------------
+    # GEOMETRY FALLBACK — DISABLED
+    # Previously, any unclassified layer with linework >= 3m was treated as
+    # a wall.  This caused massive budget inflation because layers for cables,
+    # text, plumbing, structural elements, furniture, etc. were all counted
+    # as walls.  Now we trust ONLY token matching ("wall", "muro") and GPT
+    # classification to identify wall layers.
+    # -----------------------------------------------------------------------
     classified_for_fallback: set[str] = set(token_wall_layers) | set(gpt_wall_layers)
-    unclassified_lengths: dict[str, float] = {}
-    unclassified_refs: dict[str, list[str]] = {}
     for hint in geometry_hints:
         layer = str(hint.get("layer", ""))
-        if layer in classified_for_fallback:
+        canon = _canon_layer(layer)
+        if not canon or canon in classified_for_fallback:
             continue
         if _structural_or_opening_layer_tokens(layer):
             continue
-        role = gpt_layer_roles.get(layer)
+        role = gpt_layer_roles.get(layer) or gpt_layer_roles.get(canon)
         if _layer_excludes_wall_geometry_fallback(role):
             continue
-        if _is_probable_wall_geometry(hint):
-            length = float(hint.get("length", 0))
-            unclassified_lengths[layer] = unclassified_lengths.get(layer, 0.0) + length
-            unclassified_refs.setdefault(layer, []).append(
-                f"geometry:{hint.get('handle') or layer}"
+        length = hint.get("length")
+        if length is not None and _is_probable_wall_geometry(hint):
+            # Log only — do NOT add to wall inventory
+            logger.debug(
+                "Geometry fallback SKIPPED layer '%s' (length=%.2fm) — "
+                "not positively identified as wall by tokens or GPT.",
+                layer,
+                float(length),
             )
 
     geometry_fallback_layers: set[str] = set()
-    for layer, total_length in unclassified_lengths.items():
-        if total_length >= 3.0:
-            wall_lengths[layer] = wall_lengths.get(layer, 0.0) + total_length
-            wall_refs.setdefault(layer, []).extend(unclassified_refs.get(layer, []))
-            geometry_fallback_layers.add(layer)
+    # (No layers added by fallback — only token_wall_layers and gpt_wall_layers are used)
 
     walls: list[Wall] = []
-    for layer, length in wall_lengths.items():
-        material_hint = _infer_material_hint(layer)
-        wall_system = _infer_wall_system_hint(layer)
-        interior_exterior_hint = _infer_interior_exterior_hint(layer)
-        finish_required = _infer_finish_required(layer)
-        structural_hint = _infer_load_bearing_hint(layer)
-        gpt_role = gpt_layer_roles.get(layer)
-        if layer in token_wall_layers:
+    for canon, length in wall_lengths.items():
+        display_layer = layer_display.get(canon, canon)
+        material_hint = _infer_material_hint(display_layer)
+        wall_system = _infer_wall_system_hint(display_layer)
+        interior_exterior_hint = _infer_interior_exterior_hint(display_layer)
+        finish_required = _infer_finish_required(display_layer)
+        structural_hint = _infer_load_bearing_hint(display_layer)
+        gpt_role = gpt_layer_roles.get(display_layer) or gpt_layer_roles.get(canon)
+        if canon in token_wall_layers:
             detection = "layer_name_token"
             is_fallback = False
-        elif layer in gpt_wall_layers:
+        elif canon in gpt_wall_layers:
             detection = "gpt_layer_role"
             is_fallback = False
         else:
             detection = "geometry_heuristic"
             is_fallback = True
-        if gpt_role and layer in gpt_wall_layers:
+        if gpt_role and canon in gpt_wall_layers:
             if gpt_role == "wall_partition":
                 wall_system = wall_system or "drywall_partition"
             elif gpt_role == "wall_masonry":
                 wall_system = wall_system or "masonry_wall"
         walls.append(
             Wall(
-                id=f"json-wall-{layer.lower()}",
+                id=f"json-wall-{canon}",
                 level_id=level_id,
                 source="json",
-                source_layers=[layer],
+                source_layers=[display_layer],
                 length_m=length,
                 material_hint=material_hint,
                 wall_system=wall_system,
                 interior_exterior_hint=interior_exterior_hint,
                 finish_required=finish_required,
                 structural=structural_hint,
-                source_refs=_unique_strings(wall_refs.get(layer, [])),
+                source_refs=_unique_strings(wall_refs.get(canon, [])),
                 inputs={
-                    "json_layer": layer,
+                    "json_layer": display_layer,
                     "json_length_m": length,
                     "detected_by_geometry": is_fallback,
                     "wall_detection": detection,
@@ -699,42 +759,66 @@ def _build_json_walls(
                 },
                 assumptions=[
                     *(
-                        [f"Layer '{layer}' classified as wall by geometry heuristic (total linework >= 3m)."]
+                        [f"Layer '{display_layer}' classified as wall by geometry heuristic (total linework >= 3m)."]
                         if is_fallback
                         else []
                     ),
                     *(
-                        [f"Layer '{layer}' classified as wall by GPT-4o role '{gpt_role}'."]
-                        if layer in gpt_wall_layers and gpt_role
+                        [f"Layer '{display_layer}' classified as wall by GPT-4o role '{gpt_role}'."]
+                        if canon in gpt_wall_layers and gpt_role
                         else []
                     ),
                 ],
                 evidence=[
-                    f"Aggregated linework length from layer {layer}.",
+                    f"Aggregated linework length from layer {display_layer}.",
                     *(
-                        [f"Detected wall system hint '{wall_system}' from layer {layer}."]
+                        [f"Detected wall system hint '{wall_system}' from layer {display_layer}."]
                         if wall_system
                         else []
                     ),
                     *(
-                        [f"Detected wall material hint '{material_hint}' from layer {layer}."]
+                        [f"Detected wall material hint '{material_hint}' from layer {display_layer}."]
                         if material_hint
                         else []
                     ),
                     *(
-                        [f"Geometry fallback: layer '{layer}' had {length:.1f}m of linework matching wall-like geometry properties."]
+                        [f"Geometry fallback: layer '{display_layer}' had {length:.1f}m of linework matching wall-like geometry properties."]
                         if is_fallback
                         else []
                     ),
                     *(
                         [f"GPT layer classification: {gpt_role}."]
-                        if layer in gpt_wall_layers and gpt_role
+                        if canon in gpt_wall_layers and gpt_role
                         else []
                     ),
                 ],
             )
         )
-    return walls
+    return _dedupe_walls_by_id(walls)
+
+
+def _dedupe_walls_by_id(walls: list[Wall]) -> list[Wall]:
+    """Defense-in-depth: collapse same-id walls. Canonical bucketing should
+    prevent collisions upstream, but downstream merges (`_merge_entities`)
+    have no guard against duplicate ids inside the json list itself.
+    """
+    by_id: dict[str, Wall] = {}
+    for wall in walls:
+        existing = by_id.get(wall.id)
+        if existing is None:
+            by_id[wall.id] = wall
+            continue
+        if wall.length_m is not None:
+            existing.length_m = (existing.length_m or 0.0) + wall.length_m
+        existing.source_layers = _unique_strings(existing.source_layers, wall.source_layers)
+        existing.source_refs = _unique_strings(existing.source_refs, wall.source_refs)
+        existing.assumptions = _unique_strings(existing.assumptions, wall.assumptions)
+        existing.evidence = _unique_strings(existing.evidence, wall.evidence)
+        existing.conflict_notes = _unique_strings(
+            existing.conflict_notes, wall.conflict_notes,
+            [f"Merged duplicate wall id '{wall.id}' from layers {wall.source_layers}."],
+        )
+    return list(by_id.values())
 
 
 def _build_json_structural_elements(
@@ -751,12 +835,13 @@ def _build_json_structural_elements(
     grouped: dict[tuple[str, str], dict[str, Any]] = {}
 
     def ensure_group(element_type: str, layer: str, name_hint: str = "") -> dict[str, Any]:
-        key = (element_type, layer)
+        canon = _canon_layer(layer)
+        key = (element_type, canon)
         if key not in grouped:
             hint_text = _joined_hint_text(layer, name_hint)
             mat = _infer_material_hint(hint_text)
             grouped[key] = {
-                "id": f"json-{element_type}-{layer.lower()}",
+                "id": f"json-{element_type}-{canon}",
                 "level_id": level_id,
                 "source": "json",
                 "element_type": element_type,
@@ -790,9 +875,12 @@ def _build_json_structural_elements(
 
     for hint in geometry_hints:
         layer = str(hint.get("layer", ""))
+        canon = _canon_layer(layer)
+        if not canon:
+            continue
         name_hint = str(hint.get("name", ""))
         entity_type_from_tokens = _infer_structural_element_type(layer, name_hint)
-        gpt_role = gpt_layer_roles.get(layer)
+        gpt_role = gpt_layer_roles.get(layer) or gpt_layer_roles.get(canon)
         entity_type = entity_type_from_tokens or _gpt_role_to_structural_type(gpt_role or "")
         if not entity_type:
             continue
@@ -811,9 +899,12 @@ def _build_json_structural_elements(
 
     for block in blocks:
         layer = str(block.get("layer", ""))
+        canon = _canon_layer(layer)
+        if not canon:
+            continue
         block_name = str(block.get("block_name", ""))
         element_type_from_tokens = _infer_structural_element_type(layer, block_name)
-        gpt_role = gpt_layer_roles.get(layer)
+        gpt_role = gpt_layer_roles.get(layer) or gpt_layer_roles.get(canon)
         element_type = element_type_from_tokens or _gpt_role_to_structural_type(gpt_role or "")
         if not element_type:
             continue
@@ -831,9 +922,12 @@ def _build_json_structural_elements(
 
     for hatch in hatches:
         layer = str(hatch.get("layer", ""))
+        canon = _canon_layer(layer)
+        if not canon:
+            continue
         pattern_name = str(hatch.get("pattern_name", ""))
         entity_type_from_tokens = _infer_structural_element_type(layer, pattern_name)
-        gpt_role = gpt_layer_roles.get(layer)
+        gpt_role = gpt_layer_roles.get(layer) or gpt_layer_roles.get(canon)
         element_type = entity_type_from_tokens or _gpt_role_to_structural_type(gpt_role or "")
 
         if element_type is None:

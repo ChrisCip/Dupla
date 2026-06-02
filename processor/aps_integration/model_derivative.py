@@ -9,10 +9,14 @@ Everything stays REST-based. No COM or local Autodesk automation is used.
 
 from __future__ import annotations
 
+import asyncio
 import base64
+import os
+import random
 import time
 from collections.abc import Iterable
 
+import httpx
 import requests
 from dotenv import load_dotenv
 
@@ -25,11 +29,14 @@ MD_URL = f"{BASE_URL}/modelderivative/v2/designdata"
 
 DEFAULT_VIEWS = ("2d",)
 DEFAULT_TRANSLATION_TIMEOUT_SECONDS = 3600
-DEFAULT_POLL_INTERVAL_SECONDS = 10
+DEFAULT_POLL_INTERVAL_SECONDS = int(os.getenv("APS_POLL_INTERVAL_SECONDS", "3") or 3)
 DEFAULT_MAX_PROPERTY_WAIT_SECONDS = 3600
 DEFAULT_FAILED_MANIFEST_GRACE_POLLS = 3
 DEFAULT_FAILED_MANIFEST_GRACE_SLEEP_SECONDS = 20
 REQUEST_TIMEOUT_SECONDS = 60
+APS_PROPERTY_CONCURRENCY = 30
+APS_ASYNC_MAX_RETRIES = 4
+APS_RETRYABLE_STATUS_CODES = {408, 409, 429, 500, 502, 503, 504}
 
 
 def _get_headers(token: str) -> dict[str, str]:
@@ -86,6 +93,59 @@ def _request_with_token_refresh(
     else:
         print(
             f"[AUTH] Retry after token refresh succeeded with status "
+            f"{retry_response.status_code}."
+        )
+    return retry_response
+
+
+async def _async_request_with_token_refresh(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    token: str | dict[str, object],
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: int = REQUEST_TIMEOUT_SECONDS,
+    refresh_lock: asyncio.Lock | None = None,
+    **request_kwargs,
+) -> httpx.Response:
+    token_state = _coerce_token_state(token)
+
+    async def do_request() -> httpx.Response:
+        resolved_headers = dict(headers or {})
+        resolved_headers.update(_get_headers(str(token_state["access_token"])))
+        return await client.request(
+            method.upper(),
+            url,
+            headers=resolved_headers,
+            timeout=timeout,
+            **request_kwargs,
+        )
+
+    response = await do_request()
+    if response.status_code != 401:
+        return response
+
+    old_token = str(token_state["access_token"])
+    print(
+        f"[AUTH] APS token expired during async {method.upper()} request. "
+        "Refreshing token and retrying once."
+    )
+    if refresh_lock is None:
+        token_state["access_token"] = get_aps_token()
+        token_state["refresh_count"] = int(token_state.get("refresh_count", 0)) + 1
+    else:
+        async with refresh_lock:
+            if str(token_state["access_token"]) == old_token:
+                token_state["access_token"] = get_aps_token()
+                token_state["refresh_count"] = int(token_state.get("refresh_count", 0)) + 1
+
+    retry_response = await do_request()
+    if retry_response.status_code == 401:
+        print("[AUTH] Async retry after token refresh still returned 401.")
+    else:
+        print(
+            f"[AUTH] Async retry after token refresh succeeded with status "
             f"{retry_response.status_code}."
         )
     return retry_response
@@ -362,6 +422,163 @@ def _filter_requested_views(views_payload: list[dict], normalized_views: list[st
     return views_payload
 
 
+async def get_all_properties_async(
+    client: httpx.AsyncClient,
+    token: str | dict[str, object],
+    urn: str,
+    guid: str,
+    *,
+    max_wait_seconds: int = DEFAULT_MAX_PROPERTY_WAIT_SECONDS,
+    poll_interval_seconds: int = DEFAULT_POLL_INTERVAL_SECONDS,
+    refresh_lock: asyncio.Lock | None = None,
+) -> dict:
+    print(
+        f"\n[MODEL DERIVATIVE] Async fetching all properties | "
+        f"URN={_short_urn(urn)} | guid={guid[:8]}... | "
+        f"timeout={max_wait_seconds}s | poll={poll_interval_seconds}s"
+    )
+    url = f"{MD_URL}/{urn}/metadata/{guid}/properties"
+    start = time.monotonic()
+    sleep_seconds = max(int(poll_interval_seconds), 1)
+
+    while True:
+        elapsed = int(time.monotonic() - start)
+        try:
+            response = await _async_request_with_token_refresh(
+                client,
+                "get",
+                url,
+                token,
+                refresh_lock=refresh_lock,
+            )
+        except httpx.HTTPError as exc:
+            if elapsed >= max_wait_seconds:
+                raise TimeoutError(
+                    f"Timed out waiting for properties for URN={urn} guid={guid}; "
+                    f"last network error: {exc}"
+                ) from exc
+            delay = min(sleep_seconds + random.random(), max(max_wait_seconds - elapsed, 1))
+            print(
+                f"   APS async network retry | URN={_short_urn(urn)} | "
+                f"guid={guid[:8]}... | elapsed={elapsed}s | sleep={delay:.1f}s | error={exc}"
+            )
+            await asyncio.sleep(delay)
+            sleep_seconds = min(max(int(poll_interval_seconds), 1), sleep_seconds + 2, 30)
+            continue
+
+        if response.status_code == 200:
+            data = response.json()
+            collection = data.get("data", {}).get("collection", [])
+            print(
+                f"[OK] Async extracted properties for {len(collection)} objects | "
+                f"URN={_short_urn(urn)} | guid={guid[:8]}..."
+            )
+            return data
+
+        if response.status_code in {202, 404} | APS_RETRYABLE_STATUS_CODES:
+            print(
+                f"   Properties still processing/retrying | URN={_short_urn(urn)} | "
+                f"guid={guid[:8]}... | status={response.status_code} | elapsed={elapsed}s"
+            )
+            if elapsed >= max_wait_seconds:
+                raise TimeoutError(
+                    f"Timed out waiting for properties for URN={urn} guid={guid}. "
+                    f"Last APS status={response.status_code}. "
+                    "Property indexing may still be processing remotely in Autodesk."
+                )
+            retry_multiplier = 2 if response.status_code in APS_RETRYABLE_STATUS_CODES else 1
+            remaining = max(max_wait_seconds - elapsed, 1)
+            delay = min((sleep_seconds * retry_multiplier) + random.random(), remaining, 45)
+            await asyncio.sleep(delay)
+            sleep_seconds = min(max(int(poll_interval_seconds), 1), sleep_seconds + 2, 30)
+            continue
+
+        print(
+            f"[ERROR] Async property request failed | URN={_short_urn(urn)} | "
+            f"guid={guid[:8]}... | status={response.status_code}: {response.text}"
+        )
+        response.raise_for_status()
+
+
+async def _extract_single_view_result_async(
+    client: httpx.AsyncClient,
+    token: str | dict[str, object],
+    urn: str,
+    view: dict,
+    *,
+    semaphore: asyncio.Semaphore,
+    refresh_lock: asyncio.Lock,
+    max_property_wait_seconds: int,
+    poll_interval_seconds: int,
+) -> dict:
+    guid = view.get("guid", "")
+    view_name = view.get("name", "Unknown")
+    role = view.get("role", "")
+    print(f"\n--- Async processing view: {view_name} ({role}) | guid={guid[:8]}... ---")
+    async with semaphore:
+        try:
+            properties = await get_all_properties_async(
+                client,
+                token,
+                urn,
+                guid,
+                max_wait_seconds=max_property_wait_seconds,
+                poll_interval_seconds=poll_interval_seconds,
+                refresh_lock=refresh_lock,
+            )
+            collection = properties.get("data", {}).get("collection", [])
+            return {
+                "name": view_name,
+                "guid": guid,
+                "role": role,
+                "object_count": len(collection),
+                "objects": collection,
+            }
+        except Exception as exc:
+            print(f"[WARN] Failed async extracting view {view_name}: {exc}")
+            return {
+                "name": view_name,
+                "guid": guid,
+                "role": role,
+                "error": str(exc),
+            }
+
+
+async def _extract_view_results_async(
+    token: str | dict[str, object],
+    urn: str,
+    filtered_views: list[dict],
+    *,
+    max_property_wait_seconds: int,
+    poll_interval_seconds: int,
+) -> tuple[list[dict], int]:
+    limits = httpx.Limits(
+        max_connections=APS_PROPERTY_CONCURRENCY,
+        max_keepalive_connections=APS_PROPERTY_CONCURRENCY,
+    )
+    timeout = httpx.Timeout(REQUEST_TIMEOUT_SECONDS)
+    semaphore = asyncio.Semaphore(APS_PROPERTY_CONCURRENCY)
+    refresh_lock = asyncio.Lock()
+    async with httpx.AsyncClient(limits=limits, timeout=timeout) as client:
+        tasks = [
+            _extract_single_view_result_async(
+                client,
+                token,
+                urn,
+                view,
+                semaphore=semaphore,
+                refresh_lock=refresh_lock,
+                max_property_wait_seconds=max_property_wait_seconds,
+                poll_interval_seconds=poll_interval_seconds,
+            )
+            for view in filtered_views
+        ]
+        extracted_views = await asyncio.gather(*tasks)
+
+    successful_view_count = sum(1 for view in extracted_views if "error" not in view)
+    return list(extracted_views), successful_view_count
+
+
 def _extract_view_results(
     token: str | dict[str, object],
     urn: str,
@@ -371,46 +588,22 @@ def _extract_view_results(
     max_property_wait_seconds: int,
     poll_interval_seconds: int,
 ) -> tuple[list[dict], int]:
-    extracted_views: list[dict] = []
-    successful_view_count = 0
     filtered_views = _filter_requested_views(views_payload, normalized_views)
-
-    for view in filtered_views:
-        guid = view.get("guid", "")
-        view_name = view.get("name", "Unknown")
-        role = view.get("role", "")
-        print(f"\n--- Processing view: {view_name} ({role}) | guid={guid[:8]}... ---")
-        try:
-            properties = get_all_properties(
-                token,
-                urn,
-                guid,
-                max_wait_seconds=max_property_wait_seconds,
-                poll_interval_seconds=poll_interval_seconds,
-            )
-            collection = properties.get("data", {}).get("collection", [])
-            extracted_views.append(
-                {
-                    "name": view_name,
-                    "guid": guid,
-                    "role": role,
-                    "object_count": len(collection),
-                    "objects": collection,
-                }
-            )
-            successful_view_count += 1
-        except Exception as exc:
-            print(f"[WARN] Failed extracting view {view_name}: {exc}")
-            extracted_views.append(
-                {
-                    "name": view_name,
-                    "guid": guid,
-                    "role": role,
-                    "error": str(exc),
-                }
-            )
-
-    return extracted_views, successful_view_count
+    if not filtered_views:
+        return [], 0
+    print(
+        f"[MODEL DERIVATIVE] Fetching properties concurrently | "
+        f"views={len(filtered_views)} | concurrency={APS_PROPERTY_CONCURRENCY}"
+    )
+    return asyncio.run(
+        _extract_view_results_async(
+            token,
+            urn,
+            filtered_views,
+            max_property_wait_seconds=max_property_wait_seconds,
+            poll_interval_seconds=poll_interval_seconds,
+        )
+    )
 
 
 def _build_failed_translation_message(

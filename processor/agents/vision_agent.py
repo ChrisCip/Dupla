@@ -11,16 +11,22 @@ return mostly null/empty data. The simpler prompt produces useful counts.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import logging
 import os
+import random
+import re
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
 
+from core.api_key_manager import APIKeyManager
 from core.schemas import LevelInventory, level_inventory_from_dict
 
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -37,6 +43,9 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 _DEFAULT_VISION_MODEL = "gpt-5.1"
 
+# Bump when the system / user prompt structure changes; invalidates cache.
+VISION_PROMPT_VERSION = "v2-global-level"
+
 try:
     from openai import OpenAI
 
@@ -44,15 +53,32 @@ try:
 except ImportError:
     HAS_OPENAI = False
 
+_KEY_MANAGER: APIKeyManager | None = None
+_KEY_LOCK = threading.Lock()
+
+
+def _get_key_manager() -> APIKeyManager:
+    global _KEY_MANAGER
+    if _KEY_MANAGER is None:
+        with _KEY_LOCK:
+            if _KEY_MANAGER is None:
+                _KEY_MANAGER = APIKeyManager()
+    return _KEY_MANAGER
+
+
+def _get_client_with_key() -> tuple["OpenAI", str]:
+    if not HAS_OPENAI:
+        raise ImportError("openai is not installed.")
+    api_key = _get_key_manager().next_key()
+    return OpenAI(api_key=api_key), api_key
+
 
 def get_client() -> "OpenAI":
     if not HAS_OPENAI:
-        raise ImportError("openai is not installed. Run: pip install -r requirements.txt")
+        raise ImportError("openai is not installed.")
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY is not configured in the project .env file.")
-    return OpenAI(api_key=api_key)
+    client, _ = _get_client_with_key()
+    return client
 
 
 def vision_model_id(explicit: str | None = None) -> str:
@@ -74,7 +100,42 @@ def _vision_max_output_tokens() -> int:
 
 
 def _vision_reasoning_effort() -> str:
-    return (os.getenv("OPENAI_VISION_REASONING_EFFORT") or "none").strip() or "none"
+    return (os.getenv("OPENAI_VISION_REASONING_EFFORT") or "low").strip() or "low"
+
+
+def _vision_concurrency() -> int:
+    raw = (os.getenv("DUPLA_VISION_CONCURRENCY") or "30").strip()
+    try:
+        return max(1, min(int(raw), 60))
+    except ValueError:
+        return 30
+
+
+def _vision_max_retries() -> int:
+    raw = (os.getenv("OPENAI_VISION_MAX_RETRIES") or "4").strip()
+    try:
+        return max(1, int(raw or "4"))
+    except ValueError:
+        return 4
+
+
+def _vision_retry_base_seconds() -> float:
+    raw = (os.getenv("OPENAI_VISION_RETRY_BASE_SECONDS") or "0.75").strip()
+    try:
+        return max(0.0, float(raw or "0.75"))
+    except ValueError:
+        return 0.75
+
+
+def _exception_status_code(exc: Exception) -> int | None:
+    status_code = getattr(exc, "status_code", None)
+    response = getattr(exc, "response", None)
+    if status_code is None and response is not None:
+        status_code = getattr(response, "status_code", None)
+    try:
+        return int(status_code) if status_code is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _uses_gpt5_completion_params(model: str) -> bool:
@@ -1071,7 +1132,116 @@ def analyze_plan(
     office_methodology: str | None = None,
     upload_discipline_id: str | None = None,
 ) -> dict[str, Any]:
-    client = get_client()
+    """Cached wrapper around the vision call.
+
+    Cache key fingerprints the things that change the model output:
+    image bytes, model id, prompt version, discipline, and a short hash of the
+    methodology block. CAD summary is intentionally excluded because it only
+    feeds prompt context for cross-checks — those are rebuilt post-cache.
+    """
+    from core.stage_cache import cached_stage, compose_key, sha256_bytes, sha256_json
+
+    image_path = Path(image_path).resolve()
+    if not image_path.exists():
+        raise FileNotFoundError(f"Image not found: {image_path}")
+
+    image_bytes = image_path.read_bytes()
+    # All variable-length user data (level names, methodology blocks, free-form
+    # CAD-derived strings) MUST be hashed before being added to the cache key.
+    # The composed key is also hashed before becoming an on-disk filename, but
+    # callers should not rely on that — keep variable segments short here so the
+    # composed key stays diagnosable in logs.
+    cache_key = compose_key(
+        sha256_bytes(image_bytes),
+        vision_model_id(),
+        VISION_PROMPT_VERSION,
+        upload_discipline_id or "any",
+        sha256_json(office_methodology or "")[:16],
+        sha256_json(level_name or "")[:16],
+    )
+
+    def _compute() -> dict[str, Any]:
+        return _analyze_plan_uncached(
+            image_path,
+            cad_summary,
+            level_name,
+            office_methodology=office_methodology,
+            upload_discipline_id=upload_discipline_id,
+        )
+
+    return cached_stage("vision_analyze_plan", cache_key, _compute)
+
+
+def detect_level_marker(cad_summary: dict[str, Any]) -> str | None:
+    """Resolve the first real CAD level marker, when normalized CAD exposes one."""
+    markers = cad_summary.get("inventory_hints", {}).get("level_markers", [])
+    for marker in markers:
+        if isinstance(marker, dict):
+            value = marker.get("content") or marker.get("label") or marker.get("text")
+        else:
+            value = marker
+        text = str(value or "").strip()
+        if text:
+            return text
+    return None
+
+
+_LEVEL_LABEL_PATTERN = re.compile(
+    r"^(n[+\-]?\d|nivel|level|piso|planta|sotano|techo|cubierta)",
+    re.IGNORECASE,
+)
+
+
+def _is_acceptable_level_label(text: str) -> bool:
+    """True when text looks like a level label (e.g. "Nivel 1", "N+0.00"), not a
+    free-form CAD annotation that just happened to land in the level_markers
+    list. Annotations like "El nivel de desplante sera de 0.80m..." used to leak
+    in and blow past NAME_MAX once concatenated into the cache key."""
+    if not text or len(text) > 40:
+        return False
+    return _LEVEL_LABEL_PATTERN.match(text) is not None
+
+
+def _resolve_vision_level_name(cad_summary: dict[str, Any]) -> str:
+    markers = cad_summary.get("inventory_hints", {}).get("level_markers", [])
+    for marker in markers:
+        if isinstance(marker, dict):
+            value = marker.get("content") or marker.get("label") or marker.get("text")
+        else:
+            value = marker
+        text = str(value or "").strip()
+        if _is_acceptable_level_label(text):
+            return text
+    return "level_01"
+
+
+async def analyze_plan_async(
+    image_path: Path,
+    cad_summary: dict[str, Any],
+    level_name: str,
+    *,
+    office_methodology: str | None = None,
+    upload_discipline_id: str | None = None,
+) -> dict[str, Any]:
+    """Async wrapper for the sync OpenAI client path."""
+    return await asyncio.to_thread(
+        analyze_plan,
+        image_path,
+        cad_summary,
+        level_name,
+        office_methodology=office_methodology,
+        upload_discipline_id=upload_discipline_id,
+    )
+
+
+def _analyze_plan_uncached(
+    image_path: Path,
+    cad_summary: dict[str, Any],
+    level_name: str,
+    *,
+    office_methodology: str | None = None,
+    upload_discipline_id: str | None = None,
+) -> dict[str, Any]:
     image_path = Path(image_path).resolve()
     if not image_path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
@@ -1106,7 +1276,42 @@ def analyze_plan(
             ],
         },
     ]
-    response = _vision_chat_completion(client, model=model, messages=messages)
+    retryable_statuses = {408, 409, 429, 500, 502, 503, 504}
+    max_retries = _vision_max_retries()
+    last_exc: Exception | None = None
+    response = None
+
+    for attempt in range(1, max_retries + 1):
+        client, api_key = _get_client_with_key()
+        try:
+            response = _vision_chat_completion(client, model=model, messages=messages)
+            break
+        except Exception as exc:
+            last_exc = exc
+            status_code = _exception_status_code(exc)
+            if status_code == 429:
+                _get_key_manager().mark_rate_limited(api_key)
+
+            is_retryable = status_code in retryable_statuses or status_code is None
+            if attempt >= max_retries or not is_retryable:
+                raise
+
+            delay = min(
+                20.0,
+                _vision_retry_base_seconds() * (2 ** (attempt - 1)) + random.random(),
+            )
+            logger.warning(
+                "Vision retry %d/%d in %.2fs (image=%s status=%s)",
+                attempt,
+                max_retries,
+                delay,
+                image_path.name,
+                status_code or "unknown",
+            )
+            time.sleep(delay)
+
+    if response is None:
+        raise RuntimeError("Vision completion failed without a response") from last_exc
 
     raw_text = response.choices[0].message.content or ""
     simple_payload = _extract_json(raw_text)
@@ -1148,29 +1353,54 @@ def run_full_vision_analysis(
     office_methodology: str | None = None,
     upload_discipline_id: str | None = None,
 ) -> list[dict[str, Any]]:
+    return asyncio.run(
+        _run_full_vision_analysis_async(
+            pages_dir,
+            cad_summary,
+            office_methodology=office_methodology,
+            upload_discipline_id=upload_discipline_id,
+        )
+    )
+
+
+async def _run_full_vision_analysis_async(
+    pages_dir: str,
+    cad_summary: dict[str, Any],
+    *,
+    office_methodology: str | None = None,
+    upload_discipline_id: str | None = None,
+) -> list[dict[str, Any]]:
     pages_path = Path(pages_dir)
     images = sorted(
         path for path in pages_path.iterdir() if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
     )
+    level_name = _resolve_vision_level_name(cad_summary)
+    semaphore = asyncio.Semaphore(_vision_concurrency())
 
-    results: list[dict[str, Any]] = []
-    for image_path in images:
-        level_name = image_path.stem
-        try:
-            results.append(
-                analyze_plan(
-                    image_path,
-                    cad_summary,
-                    level_name,
-                    office_methodology=office_methodology,
-                    upload_discipline_id=upload_discipline_id,
-                )
+    async def analyze_image(image_path: Path) -> dict[str, Any]:
+        async with semaphore:
+            logger.info(
+                "Vision analyzing %s as level=%s discipline=%s",
+                image_path.name,
+                level_name,
+                upload_discipline_id or "any",
             )
+            return await analyze_plan_async(
+                image_path,
+                cad_summary,
+                level_name,
+                office_methodology=office_methodology,
+                upload_discipline_id=upload_discipline_id,
+            )
+
+    async def guarded(image_path: Path) -> dict[str, Any]:
+        try:
+            return await analyze_image(image_path)
         except Exception as exc:  # pragma: no cover - depends on external API/runtime
             logger.warning("Vision failed for %s: %s", image_path.name, exc, exc_info=True)
-            results.append({"error": str(exc), "file": image_path.name})
+            return {"error": str(exc), "file": image_path.name}
 
-    return results
+    return await asyncio.gather(*(guarded(image_path) for image_path in images))
 
 
 if __name__ == "__main__":
