@@ -60,15 +60,15 @@ interface EnqueueModalProps {
 }
 
 const DISCIPLINES = [
-  { value: '', label: 'Todas las disciplinas' },
-  { value: 'arquitectonica', label: 'Arquitectónica' },
-  { value: 'estructural', label: 'Estructural' },
-  { value: 'electrica', label: 'Eléctrica' },
-  { value: 'sanitaria', label: 'Sanitaria' },
+  { value: 'todas', label: 'Todas las disciplinas' },
+  { value: 'arquitectura', label: 'Arquitectura' },
+  { value: 'estructura', label: 'Estructura' },
+  { value: 'electrico', label: 'Electrica' },
+  { value: 'sanitario', label: 'Sanitaria' },
 ]
 
 function EnqueueModal({ onSubmit, onClose }: EnqueueModalProps) {
-  const [discipline, setDiscipline] = useState('')
+  const [discipline, setDiscipline] = useState('todas')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -106,7 +106,7 @@ function EnqueueModal({ onSubmit, onClose }: EnqueueModalProps) {
           <PrimaryButton
             type="button"
             id="enqueue-modal-submit"
-            onClick={() => onSubmit({ discipline: discipline || undefined })}
+            onClick={() => onSubmit({ discipline })}
           >
             Procesar
           </PrimaryButton>
@@ -185,6 +185,7 @@ export function WorkspacePresupuestoMaestroTab({ project, projectUuid, token }: 
   )
 
   const liq = useMemo(() => computeLiquidacion(direct), [direct])
+  const isBaseExtractionOnly = result?.output?.mode === 'base_extraction' || result?.extraction?.mode === 'base_extraction'
 
   const issueDate = useMemo(() => {
     const raw = project?.updated_at
@@ -289,6 +290,38 @@ export function WorkspacePresupuestoMaestroTab({ project, projectUuid, token }: 
         >
           <RefreshCw className="size-4" strokeWidth={2.5} aria-hidden />
           Re-procesar
+        </PrimaryButton>
+      </div>
+    )
+  }
+
+  if (isBaseExtractionOnly) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 py-20 text-center">
+        {modalOpen && (
+          <EnqueueModal
+            onSubmit={handleEnqueueSubmit}
+            onClose={() => setModalOpen(false)}
+          />
+        )}
+        <div className="flex size-20 items-center justify-center rounded-full bg-primary/10">
+          <Cpu className="size-10 text-primary" strokeWidth={1.5} />
+        </div>
+        <div className="max-w-md space-y-2">
+          <h2 className="text-xl font-bold text-ink">Extraccion base completada</h2>
+          <p className="text-sm leading-relaxed text-muted">
+            Esta corrida solo genero artefactos de extraccion y no contiene partidas de presupuesto.
+            Re-procesa seleccionando una disciplina o todas las disciplinas.
+          </p>
+        </div>
+        <PrimaryButton
+          id="base-extraction-reprocess-btn"
+          type="button"
+          className="gap-2 px-6 py-3 text-sm font-bold"
+          onClick={() => setModalOpen(true)}
+        >
+          <RefreshCw className="size-4" strokeWidth={2.5} aria-hidden />
+          Generar presupuesto
         </PrimaryButton>
       </div>
     )

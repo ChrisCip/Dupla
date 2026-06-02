@@ -23,8 +23,22 @@ export interface BudgetRow {
 
 export interface BudgetResult {
   rows: BudgetRow[]
-  chapters: unknown[]
-  hybrid_inventory: unknown[]
-  takeoffs: unknown[]
-  lines: unknown[]
+  chapters?: unknown[]
+  hybrid_inventory?: unknown[]
+  takeoffs?: unknown[]
+  lines?: unknown[]
+  extraction?: {
+    mode?: string
+    artifact_key?: string
+    artifact_cache_hit?: boolean
+    suggested_discipline?: string
+  }
+  output?: {
+    mode?: string
+    artifact_key?: string
+    run_dir?: string
+    disciplines?: string[]
+    archive?: string
+    artifacts?: Record<string, string>
+  }
 }

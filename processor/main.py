@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Form, Query
 from fastapi.responses import JSONResponse, FileResponse
 from redis import Redis
 from rq import Queue
@@ -7,6 +7,8 @@ from typing import List, Optional
 from dotenv import load_dotenv
 import os
 import logging
+
+from core.stage_cache import get_stats as cache_get_stats, invalidate as cache_invalidate
 
 load_dotenv()
 
@@ -17,14 +19,62 @@ redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
 redis_conn = Redis.from_url(redis_url)
 q = Queue("dupla_processing", connection=redis_conn)
 
+
+def _env_bool(name: str) -> bool:
+    return (os.getenv(name) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+@app.on_event("startup")
+def log_multi_discipline_mode() -> None:
+    if _env_bool("DUPLA_ALLOW_MULTI_DISCIPLINE"):
+        logger.warning(
+            "DUPLA_ALLOW_MULTI_DISCIPLINE is enabled; 'todas' runs process 4 disciplines "
+            "and should be expected to cost roughly 4x a single-discipline cold run."
+        )
+
+
+def _job_timeout_seconds() -> int:
+    raw = (os.getenv("DUPLA_JOB_TIMEOUT_SECONDS") or "").strip()
+    if not raw:
+        return 3600
+    try:
+        return max(300, int(raw))
+    except ValueError:
+        logger.warning("Invalid DUPLA_JOB_TIMEOUT_SECONDS=%r; using 3600", raw)
+        return 3600
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/cache/stats")
+def cache_stats():
+    """Return in-process cache hit/miss counters per stage."""
+    return cache_get_stats()
+
+
+@app.post("/cache/clear")
+def cache_clear(
+    stage: Optional[str] = Query(None, description="Stage name; omit to clear ALL"),
+    key: Optional[str] = Query(None, description="Specific entry key; requires stage"),
+):
+    """Invalidate cache entries.
+
+    - No params: wipe everything (use with care).
+    - stage only: wipe all entries for one stage.
+    - stage + key: wipe single entry.
+    """
+    if key and not stage:
+        raise HTTPException(status_code=400, detail="key requires stage")
+    removed = cache_invalidate(stage=stage, key=key)
+    return {"stage": stage, "key": key, "disk_removed": removed}
 
 @app.post("/jobs/process")
 async def process_project(
     files: List[UploadFile] = File(...),
     discipline: Optional[str] = Form(None),
+    project_name: Optional[str] = Form(None),
     x_correlation_id: Optional[str] = Header(None),
 ):
     """
@@ -33,37 +83,44 @@ async def process_project(
     unified cad_facts; the first .pdf file found is used for vision analysis.
 
     Optional ``discipline`` form field (arquitectura | estructura | electrico |
-    sanitario) overrides discipline detection; when omitted it is inferred
-    from the uploaded file names.
+    sanitario | todas) controls calculation. When omitted the worker performs
+    base extraction only and returns reusable artifacts without budget rows.
     """
     try:
         correlation_id = x_correlation_id or "unknown"
         logger.info(f"Received job processing request with correlation ID: {correlation_id}")
         dwg_files: List[tuple[str, bytes]] = []
-        pdf_content: Optional[bytes] = None
-        pdf_filename: Optional[str] = None
+        pdf_files: List[tuple[str, bytes]] = []
 
         for uf in files:
             name_lower = (uf.filename or "").lower()
             content = await uf.read()
             if name_lower.endswith(".dwg"):
                 dwg_files.append((uf.filename or "upload.dwg", content))
-            elif pdf_content is None and name_lower.endswith(".pdf"):
-                pdf_content = content
-                pdf_filename = uf.filename
+            elif name_lower.endswith(".pdf"):
+                pdf_files.append((uf.filename or "upload.pdf", content))
 
         if not dwg_files:
             raise HTTPException(status_code=422, detail="No .dwg file found in uploaded files")
 
         from tasks import run_dupla_pipeline
+        job_timeout = _job_timeout_seconds()
+        logger.info(
+            "Enqueuing processor job: discipline=%s project_name=%s dwgs=%d pdfs=%d timeout=%ss",
+            discipline or "(base_extraction)",
+            project_name or "(none)",
+            len(dwg_files),
+            len(pdf_files),
+            job_timeout,
+        )
         job = q.enqueue(
             run_dupla_pipeline,
             dwg_files,
-            pdf_content=pdf_content,
-            pdf_filename=pdf_filename,
+            pdf_files=pdf_files,
             discipline_id=discipline,
+            project_name=project_name,
             correlation_id=correlation_id,
-            job_timeout=3600,
+            job_timeout=job_timeout,
         )
         return {"job_id": job.id, "status": "queued"}
     except HTTPException:
