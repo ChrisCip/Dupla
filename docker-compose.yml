@@ -33,6 +33,7 @@ services:
     env_file:
       - ./backend/.env
     environment:
+      # Overrides .env local (127.0.0.1). Inside Compose the DB host is the service name.
       DATABASE_URL: postgresql+asyncpg://dupla:dupla@postgres:5432/dupla
       REDIS_URL: redis://redis:6379/0
       PROCESSOR_URL: http://processor:8000
