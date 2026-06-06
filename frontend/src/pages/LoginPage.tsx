@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { DuplaLogo } from '../components/DuplaLogo'
 import { PrimaryButton } from '../components/PrimaryButton'
@@ -20,7 +20,9 @@ const LOGIN_SIDE_BG = `${import.meta.env.BASE_URL}window-login-image.jpg`
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const login = useAuthStore((s) => s.login)
+  const passwordResetSuccess = (location.state as { passwordReset?: boolean } | null)?.passwordReset === true
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -41,7 +43,6 @@ export function LoginPage() {
     }
   }
 
-  const forgotHref = SUPPORT_EMAIL ? supportMailto('Restablecer contraseña — Dupla') : undefined
   const footerSupportHref = SUPPORT_EMAIL ? supportMailto('Alta de cuenta — Dupla') : undefined
 
   return (
@@ -100,6 +101,14 @@ export function LoginPage() {
           </header>
 
           <form onSubmit={onSubmit} className="space-y-5">
+            {passwordResetSuccess ? (
+              <p
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800"
+                role="status"
+              >
+                Contraseña actualizada. Inicia sesión con tu nueva contraseña.
+              </p>
+            ) : null}
             <div>
               <label
                 className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted"
@@ -170,15 +179,9 @@ export function LoginPage() {
             </div>
 
             <div className="text-right">
-              {forgotHref ? (
-                <a className="du-link text-sm font-medium" href={forgotHref}>
-                  ¿Olvidaste tu contraseña?
-                </a>
-              ) : (
-                <span className="text-sm text-muted" title="Pide ayuda a quien administra tu cuenta">
-                  ¿Olvidaste tu contraseña?
-                </span>
-              )}
+              <Link className="du-link text-sm font-medium" to="/forgot-password">
+                ¿Olvidaste tu contraseña?
+              </Link>
             </div>
 
             {error ? (

@@ -14,6 +14,7 @@ from app.models.project_price_database_file import ProjectPriceDatabaseFile
 from app.models.project_file_folder import ProjectFileFolder
 from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
 from app.models.task_board import TaskCard, TaskCardComment, TaskList
+from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User, UserModule
 from app.models.user_notification import UserNotification
 from app.models.workflow_template import WorkflowTemplate, WorkflowTemplateStep
@@ -40,6 +41,7 @@ __all__ = [
     "TaskCard",
     "TaskCardComment",
     "TaskList",
+    "PasswordResetToken",
     "User",
     "UserModule",
     "UserNotification",

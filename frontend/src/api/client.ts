@@ -12,9 +12,17 @@ export function apiUrl(path: string): string {
 function isAuthTokenRequest(path: string): boolean {
   try {
     const pathname = path.includes('://') ? new URL(path).pathname : path
-    return pathname.includes('/api/auth/token')
+    return (
+      pathname.includes('/api/auth/token')
+      || pathname.includes('/api/auth/forgot-password')
+      || pathname.includes('/api/auth/reset-password')
+    )
   } catch {
-    return path.includes('/api/auth/token')
+    return (
+      path.includes('/api/auth/token')
+      || path.includes('/api/auth/forgot-password')
+      || path.includes('/api/auth/reset-password')
+    )
   }
 }
 
@@ -31,7 +39,7 @@ function handleUnauthorizedSession(path: string): void {
 }
 
 // Status codes that should NOT emit a generic toast (callers handle them explicitly)
-const SILENT_STATUSES = new Set([401, 404])
+const SILENT_STATUSES = new Set([400, 401, 404])
 
 export async function apiFetch(
   path: string,

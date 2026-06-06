@@ -194,6 +194,50 @@ class Settings(BaseSettings):
         Field(default=32000, ge=4000, le=120000, description="Máximo de caracteres del resumen APS enviado a OpenAI."),
     ] = 32000
 
+    frontend_url: Annotated[
+        str,
+        Field(
+            default="http://localhost:5173",
+            description="URL pública del frontend (enlaces en correos de restablecimiento de contraseña).",
+        ),
+    ] = "http://localhost:5173"
+    password_reset_token_expire_minutes: Annotated[
+        int,
+        Field(default=60, ge=5, le=60 * 24, description="Validez del enlace de restablecimiento de contraseña."),
+    ] = 60
+    smtp_host: Annotated[
+        Optional[str],
+        Field(default=None, description="Host SMTP para envío de correos transaccionales."),
+    ] = None
+    smtp_port: Annotated[
+        int,
+        Field(default=587, ge=1, le=65535, description="Puerto SMTP (587 STARTTLS, 465 SSL)."),
+    ] = 587
+    smtp_user: Annotated[
+        Optional[str],
+        Field(default=None, description="Usuario SMTP (opcional si el relay no requiere auth)."),
+    ] = None
+    smtp_password: Annotated[
+        Optional[str],
+        Field(default=None, description="Contraseña SMTP."),
+    ] = None
+    smtp_use_tls: Annotated[
+        bool,
+        Field(default=True, description="Usar STARTTLS (típico en puerto 587)."),
+    ] = True
+    smtp_use_ssl: Annotated[
+        bool,
+        Field(default=False, description="Conexión SMTP directa por SSL (puerto 465)."),
+    ] = False
+    email_from: Annotated[
+        Optional[str],
+        Field(default=None, description="Remitente (From) de correos transaccionales."),
+    ] = None
+    email_from_name: Annotated[
+        str,
+        Field(default="Dupla", description="Nombre visible del remitente."),
+    ] = "Dupla"
+
     @field_validator("database_url")
     @classmethod
     def database_must_be_postgres_async(cls, v: str) -> str:
