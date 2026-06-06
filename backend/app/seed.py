@@ -108,6 +108,7 @@ async def _ensure_user(
             last_name=last_name,
             password_hash=hash_password(password_plain),
             role=role,
+            must_change_password=False,
         )
     )
     session.add(UserModule(user_id=uid, module_id=1))

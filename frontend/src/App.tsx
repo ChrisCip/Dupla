@@ -3,6 +3,7 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { MainLayout } from './components/MainLayout'
 import { AdminUsersPage } from './pages/AdminUsersPage'
 import { ChatPage } from './pages/ChatPage'
+import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { LoginPage } from './pages/LoginPage'
 import { ProjectsPage } from './pages/ProjectsPage'
@@ -21,6 +22,12 @@ function RequireAuth() {
   return <Outlet />
 }
 
+function RequirePasswordChanged() {
+  const mustChangePassword = useAuthStore((s) => s.mustChangePassword)
+  if (mustChangePassword) return <Navigate to="/change-password" replace />
+  return <Outlet />
+}
+
 function RequireGerencia() {
   const role = useAuthStore((s) => s.role)
   if (role !== 'GERENCIA') return <Navigate to="/app/projects" replace />
@@ -35,17 +42,20 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route element={<RequireAuth />}>
-        <Route element={<MainLayout />}>
-          <Route path="/app/projects" element={<ProjectsPage />} />
-          <Route path="/app/projects/:projectUuid" element={<ProjectWorkspacePage />} />
-          <Route path="/app/chat" element={<ChatPage />} />
-          <Route path="/app/tasks" element={<TaskboardPage />} />
-          <Route path="/app/tutoriales" element={<TutorialesPage />} />
-          <Route element={<RequireGerencia />}>
-            <Route path="/app/admin" element={<AdminUsersPage />} />
-            <Route path="/app/dashboard" element={<DashboardPage />} />
-            <Route path="/app/flows" element={<FlowsHubPage />} />
-            <Route path="/app/flows/:flowUuid" element={<FlowBoardPage />} />
+        <Route path="/change-password" element={<ChangePasswordPage />} />
+        <Route element={<RequirePasswordChanged />}>
+          <Route element={<MainLayout />}>
+            <Route path="/app/projects" element={<ProjectsPage />} />
+            <Route path="/app/projects/:projectUuid" element={<ProjectWorkspacePage />} />
+            <Route path="/app/chat" element={<ChatPage />} />
+            <Route path="/app/tasks" element={<TaskboardPage />} />
+            <Route path="/app/tutoriales" element={<TutorialesPage />} />
+            <Route element={<RequireGerencia />}>
+              <Route path="/app/admin" element={<AdminUsersPage />} />
+              <Route path="/app/dashboard" element={<DashboardPage />} />
+              <Route path="/app/flows" element={<FlowsHubPage />} />
+              <Route path="/app/flows/:flowUuid" element={<FlowBoardPage />} />
+            </Route>
           </Route>
         </Route>
       </Route>

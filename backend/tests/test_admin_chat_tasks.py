@@ -48,6 +48,46 @@ async def test_admin_create_user(client, master_auth_headers_async: dict[str, st
     )
     assert res.status_code == 201, res.text
     assert res.json()["email"] == "newuser@dupla.demo"
+    assert res.json()["must_change_password"] is True
+
+
+@pytest.mark.asyncio
+async def test_new_user_must_change_password_on_login(client, master_auth_headers_async: dict[str, str]):
+    create = await client.post(
+        "/api/admin/users",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "first_name": "Primer",
+            "last_name": "Login",
+            "email": "firstlogin@dupla.demo",
+            "password": "temppass123",
+            "role": "PRESUPUESTO",
+            "module_ids": [1],
+        },
+    )
+    assert create.status_code == 201, create.text
+
+    login = await client.post(
+        "/api/auth/token",
+        data={"username": "firstlogin@dupla.demo", "password": "temppass123"},
+    )
+    assert login.status_code == 200, login.text
+    body = login.json()
+    assert body["must_change_password"] is True
+
+    token = body["access_token"]
+    blocked = await client.get("/api/projects", headers={"Authorization": f"Bearer {token}"})
+    assert blocked.status_code == 403
+
+    change = await client.post(
+        "/api/auth/change-password",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json={"current_password": "temppass123", "new_password": "newsecure123"},
+    )
+    assert change.status_code == 200, change.text
+
+    allowed = await client.get("/api/projects", headers={"Authorization": f"Bearer {token}"})
+    assert allowed.status_code == 200
 
 
 @pytest.mark.asyncio

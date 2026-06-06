@@ -23,3 +23,23 @@ export async function resetPassword(token: string, password: string): Promise<st
   }
   return body.message ?? 'Contraseña actualizada.'
 }
+
+export async function changePassword(
+  token: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<string> {
+  const res = await apiFetch('/api/auth/change-password', {
+    method: 'POST',
+    token,
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  })
+  const body = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
+  if (!res.ok) {
+    throw new Error(body.detail ?? 'No se pudo cambiar la contraseña')
+  }
+  return body.message ?? 'Contraseña actualizada.'
+}

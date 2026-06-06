@@ -35,6 +35,7 @@ function handleUnauthorizedSession(path: string): void {
   }
   if (typeof window === 'undefined') return
   if (window.location.pathname.startsWith('/login')) return
+  if (window.location.pathname.startsWith('/change-password')) return
   window.location.assign('/login')
 }
 

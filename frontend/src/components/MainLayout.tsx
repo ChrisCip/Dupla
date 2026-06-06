@@ -14,6 +14,7 @@ export function MainLayout() {
   useChatSync()
   const token = useAuthStore((s) => s.token)
   const userUuid = useAuthStore((s) => s.userUuid)
+  const mustChangePassword = useAuthStore((s) => s.mustChangePassword)
   const setSession = useAuthStore((s) => s.setSession)
 
   useEffect(() => {
@@ -27,10 +28,19 @@ export function MainLayout() {
         first_name: string
         last_name: string
         role: MeRole
+        must_change_password?: boolean
       }
-      setSession(token, p.email, p.role, p.uuid, p.first_name, p.last_name)
+      setSession(
+        token,
+        p.email,
+        p.role,
+        p.uuid,
+        p.first_name,
+        p.last_name,
+        p.must_change_password ?? mustChangePassword,
+      )
     })()
-  }, [token, userUuid, setSession])
+  }, [token, userUuid, mustChangePassword, setSession])
 
   return (
     <div className="flex h-dvh min-h-0 overflow-hidden bg-surface text-ink">

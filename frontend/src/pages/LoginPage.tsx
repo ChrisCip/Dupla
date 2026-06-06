@@ -34,8 +34,8 @@ export function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      await login(email, password)
-      navigate('/app/projects', { replace: true })
+      const mustChangePassword = await login(email, password)
+      navigate(mustChangePassword ? '/change-password' : '/app/projects', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error')
     } finally {

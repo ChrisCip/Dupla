@@ -67,6 +67,7 @@ class PasswordResetService:
             )
 
         user.password_hash = hash_password(new_password)
+        user.must_change_password = False
         await self._tokens.mark_used(reset_row.id)
         await self._tokens.invalidate_unused_for_user(user.id)
         await self._session.commit()

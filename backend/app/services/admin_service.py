@@ -161,6 +161,7 @@ class AdminService:
         user.role = body.role
         if body.password:
             user.password_hash = hash_password(body.password)
+            user.must_change_password = True
 
         await self._users.delete_module_links_for_user(user.id)
         for mid in body.module_ids:

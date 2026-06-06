@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,17 +13,35 @@ oauth2_scheme = OAuth2PasswordBearer(
     scheme_name="JWT",
 )
 
+_PASSWORD_CHANGE_ALLOWED: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("GET", "/api/me"),
+        ("POST", "/api/auth/change-password"),
+    }
+)
+
+
+def _allows_password_change_pending(method: str, path: str) -> bool:
+    return (method.upper(), path) in _PASSWORD_CHANGE_ALLOWED
+
 
 async def get_auth_service(session: Annotated[AsyncSession, Depends(get_db)]) -> AuthService:
     return AuthService(session)
 
 
 async def get_current_user(
+    request: Request,
     token: Annotated[str, Depends(oauth2_scheme)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     auth = AuthService(session)
-    return await auth.get_user_for_token(token)
+    user = await auth.get_user_for_token(token)
+    if user.must_change_password and not _allows_password_change_pending(request.method, request.url.path):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Debes cambiar tu contraseña antes de continuar",
+        )
+    return user
 
 
 async def require_gerencia(current: Annotated[User, Depends(get_current_user)]) -> User:

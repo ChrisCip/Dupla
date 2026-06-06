@@ -5,7 +5,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.dependencies import get_current_user
+from app.models.user import User
 from app.schemas.auth import (
+    ChangePasswordRequest,
+    ChangePasswordResponse,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     ResetPasswordRequest,
@@ -44,8 +48,27 @@ async def login_for_access_token(
     Returns a JWT **access_token** valid for the configured expiry time.
     """
     auth = AuthService(session)
-    token = await auth.authenticate(form_data.username, form_data.password)
-    return TokenResponse(access_token=token, token_type="bearer")
+    return await auth.login(form_data.username, form_data.password)
+
+
+@router.post(
+    "/change-password",
+    response_model=ChangePasswordResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Cambiar contraseña (usuario autenticado)",
+    responses={
+        400: {"description": "Contraseña actual incorrecta o nueva inválida"},
+    },
+)
+async def change_password(
+    body: ChangePasswordRequest,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ChangePasswordResponse:
+    auth = AuthService(session)
+    await auth.change_password(current.id, body.current_password, body.new_password)
+    await session.commit()
+    return ChangePasswordResponse(message="Contraseña actualizada correctamente.")
 
 
 @router.post(

@@ -117,6 +117,7 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
                 last_name="López",
                 password_hash=hash_password("master123"),
                 role=UserRole.GERENCIA,
+                must_change_password=False,
             )
         )
         s.add(UserModule(user_id=master_id, module_id=MODULE_ID))
@@ -129,6 +130,7 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
                 last_name="Ruiz",
                 password_hash=hash_password("testpass123"),
                 role=UserRole.CONTROL,
+                must_change_password=False,
             )
         )
         s.add(UserModule(user_id=tester_id, module_id=MODULE_ID))
@@ -141,6 +143,7 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
                 last_name="Martín",
                 password_hash=hash_password("workerpass123"),
                 role=UserRole.PRESUPUESTO,
+                must_change_password=False,
             )
         )
         s.add(UserModule(user_id=worker_id, module_id=MODULE_ID))

@@ -11,6 +11,19 @@ from app.models.user import User, UserRole
 class TokenResponse(BaseModel):
     access_token: str = Field(..., description="JWT bearer token")
     token_type: str = Field(default="bearer", description="Always bearer for OAuth2 password flow")
+    must_change_password: bool = Field(
+        default=False,
+        description="Si true, el usuario debe cambiar la contraseña antes de usar la aplicación.",
+    )
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ChangePasswordResponse(BaseModel):
+    message: str
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -37,6 +50,7 @@ class UserResponse(BaseModel):
     last_name: str
     role: UserRole
     module_ids: list[int] = Field(default_factory=list, description="Módulos asignados")
+    must_change_password: bool = False
 
     @classmethod
     def from_user(cls, user: User) -> UserResponse:
@@ -52,4 +66,5 @@ class UserResponse(BaseModel):
             last_name=user.last_name,
             role=user.role,
             module_ids=mids,
+            must_change_password=user.must_change_password,
         )
