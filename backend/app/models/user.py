@@ -29,11 +29,15 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
-    modules: Mapped[list[UserModule]] = relationship(back_populates="user")
+    modules: Mapped[list[UserModule]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
     projects_created: Mapped[list["Project"]] = relationship(
         "Project",
         back_populates="creator",
         foreign_keys="Project.created_by",
+        passive_deletes=True,
     )
 
 

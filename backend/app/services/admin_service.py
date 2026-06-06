@@ -191,6 +191,5 @@ class AdminService:
                     detail="No se puede eliminar el último usuario con rol Gerencia",
                 )
 
-        await self._users.clear_blocking_references(user.id)
-        await self._users.delete(user)
+        await self._users.delete_by_uuid(user.id)
         await self._session.flush()

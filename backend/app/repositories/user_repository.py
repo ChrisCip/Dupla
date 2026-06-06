@@ -59,8 +59,10 @@ class UserRepository:
             .values(last_updated_by=None)
         )
 
-    async def delete(self, user: User) -> None:
-        await self._session.delete(user)
+    async def delete_by_uuid(self, user_id: UUID) -> None:
+        await self.clear_blocking_references(user_id)
+        await self.delete_module_links_for_user(user_id)
+        await self._session.execute(delete(User).where(User.id == user_id))
 
     def add(self, user: User) -> None:
         self._session.add(user)
