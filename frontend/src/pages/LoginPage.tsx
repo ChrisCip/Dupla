@@ -90,7 +90,6 @@ export function LoginPage() {
             <div className="rounded-lg bg-primary/8 p-1.5 ring-1 ring-primary/15">
               <DuplaLogo className="h-8 w-auto max-w-[160px] object-contain object-left" />
             </div>
-            <span className="text-lg font-semibold tracking-tight text-ink">dupla</span>
           </div>
 
           <header className="mb-8">
