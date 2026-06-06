@@ -66,7 +66,6 @@ export function LoginPage() {
           <div className="rounded-lg bg-white/95 p-2 shadow-md ring-1 ring-black/5">
             <DuplaLogo className="h-9 w-auto max-w-[200px] object-contain object-left sm:h-10" />
           </div>
-          <span className="text-xl font-semibold tracking-tight text-white sm:text-2xl">dupla</span>
         </div>
 
         <div className="relative z-10 flex flex-1 flex-col justify-center py-6 lg:py-12">
