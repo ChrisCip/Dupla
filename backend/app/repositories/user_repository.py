@@ -2,10 +2,11 @@ from collections.abc import Sequence
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.project import Project, ProjectArchitectureData
 from app.models.project_member import ProjectMember
 from app.models.user import User, UserModule, UserRole
 
@@ -41,6 +42,25 @@ class UserRepository:
 
     async def delete_module_links_for_user(self, user_id: UUID) -> None:
         await self._session.execute(delete(UserModule).where(UserModule.user_id == user_id))
+
+    async def count_by_role(self, role: UserRole) -> int:
+        result = await self._session.execute(
+            select(func.count()).select_from(User).where(User.role == role)
+        )
+        return int(result.scalar_one())
+
+    async def clear_blocking_references(self, user_id: UUID) -> None:
+        await self._session.execute(
+            update(Project).where(Project.created_by == user_id).values(created_by=None)
+        )
+        await self._session.execute(
+            update(ProjectArchitectureData)
+            .where(ProjectArchitectureData.last_updated_by == user_id)
+            .values(last_updated_by=None)
+        )
+
+    async def delete(self, user: User) -> None:
+        await self._session.delete(user)
 
     def add(self, user: User) -> None:
         self._session.add(user)

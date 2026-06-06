@@ -85,3 +85,23 @@ async def update_user_admin(
     user = await svc.update_user(user_uuid, body)
     await session.commit()
     return UserResponse.from_user(user)
+
+
+@router.delete(
+    "/users/{user_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar usuario",
+    description="Elimina credenciales y datos asociados en cascada. Solo Gerencia.",
+    responses={
+        400: {"description": "No se puede eliminar (cuenta propia o último Gerencia)"},
+        404: {"description": "Usuario no encontrado"},
+    },
+)
+async def delete_user_admin(
+    user_uuid: UUID,
+    actor: Annotated[User, Depends(require_gerencia)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    svc = AdminService(session)
+    await svc.delete_user(actor.id, user_uuid)
+    await session.commit()

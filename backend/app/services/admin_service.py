@@ -5,7 +5,7 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User, UserModule
+from app.models.user import User, UserModule, UserRole
 from app.repositories.module_repository import ModuleRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.admin import (
@@ -168,3 +168,29 @@ class AdminService:
         await self._session.flush()
         await self._session.refresh(user, attribute_names=["modules"])
         return user
+
+    async def delete_user(self, actor_uuid: uuid.UUID, user_uuid: uuid.UUID) -> None:
+        if actor_uuid == user_uuid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No puedes eliminar tu propia cuenta",
+            )
+
+        user = await self._users.get_by_uuid(user_uuid)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado",
+            )
+
+        if user.role == UserRole.GERENCIA:
+            gerencia_count = await self._users.count_by_role(UserRole.GERENCIA)
+            if gerencia_count <= 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No se puede eliminar el último usuario con rol Gerencia",
+                )
+
+        await self._users.clear_blocking_references(user.id)
+        await self._users.delete(user)
+        await self._session.flush()

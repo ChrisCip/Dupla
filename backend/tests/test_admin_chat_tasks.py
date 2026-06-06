@@ -51,6 +51,47 @@ async def test_admin_create_user(client, master_auth_headers_async: dict[str, st
 
 
 @pytest.mark.asyncio
+async def test_admin_delete_user(client, master_auth_headers_async: dict[str, str]):
+    create = await client.post(
+        "/api/admin/users",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "first_name": "Borrar",
+            "last_name": "Prueba",
+            "email": "delete-me@dupla.demo",
+            "password": "longpassword1",
+            "role": "PRESUPUESTO",
+            "module_ids": [1],
+        },
+    )
+    assert create.status_code == 201, create.text
+    user_uuid = create.json()["uuid"]
+
+    delete = await client.delete(
+        f"/api/admin/users/{user_uuid}",
+        headers=master_auth_headers_async,
+    )
+    assert delete.status_code == 204, delete.text
+
+    listing = await client.get("/api/admin/users", headers=master_auth_headers_async)
+    emails = {u["email"] for u in listing.json()}
+    assert "delete-me@dupla.demo" not in emails
+
+
+@pytest.mark.asyncio
+async def test_admin_cannot_delete_self(client, master_auth_headers_async: dict[str, str]):
+    listing = await client.get("/api/admin/users", headers=master_auth_headers_async)
+    master = next(u for u in listing.json() if u["email"] == "master@dupla.demo")
+
+    res = await client.delete(
+        f"/api/admin/users/{master['uuid']}",
+        headers=master_auth_headers_async,
+    )
+    assert res.status_code == 400
+    assert "propia" in res.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
 async def test_admin_import_users(client, master_auth_headers_async: dict[str, str]):
     res = await client.post(
         "/api/admin/users/import",
