@@ -12,7 +12,7 @@ from uuid import UUID
 
 import httpx
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -124,6 +124,11 @@ class ClashService:
         if row is None or row.project_id != project_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carpeta no encontrada")
         return row
+
+    async def count_all_project_files(self, user: User, project_uuid: UUID) -> int:
+        project = await self._project_svc.get_project(user, project_uuid)
+        q = select(func.count()).select_from(ProjectFile).where(ProjectFile.project_id == project.id)
+        return int((await self._session.execute(q)).scalar_one())
 
     async def list_coordination_folders(self, user: User, project_uuid: UUID) -> list[dict[str, Any]]:
         project = await self._project_svc.get_project(user, project_uuid)

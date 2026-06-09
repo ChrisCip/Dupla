@@ -979,6 +979,10 @@ class ProjectLifecycleService:
         await self._session.refresh(pf)
         return pf
 
+    async def count_all_project_files(self, user: User, project_uuid: UUID) -> int:
+        project = await self._project_svc.get_project(user, project_uuid)
+        return await self._projects.count_project_files(project.id)
+
     async def list_files(
         self,
         user: User,

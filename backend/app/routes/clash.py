@@ -46,9 +46,7 @@ async def get_project_files_count(
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectFilesCountResponse:
-    from app.services.project_lifecycle_service import ProjectLifecycleService
-
-    svc = ProjectLifecycleService(session)
+    svc = ClashService(session)
     total = await svc.count_all_project_files(current, project_uuid)
     return ProjectFilesCountResponse(total=total)
 
