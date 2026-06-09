@@ -86,8 +86,8 @@ export function Sidebar() {
           <DuplaLogo
             className={
               collapsed
-                ? 'mx-auto h-9 w-9 object-contain border-r border-black/10'
-                : 'h-10 w-auto max-w-[min(100%,320px)] object-contain object-left md:h-11 border-r border-black/10'
+                ? 'mx-auto h-9 w-9 object-contain bg-red-500/50'
+                : 'h-10 w-auto max-w-[min(100%,320px)] object-contain object-left md:h-11 bg-red-500/50'
             }
           />
         </div>
