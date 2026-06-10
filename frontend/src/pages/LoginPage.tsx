@@ -63,7 +63,7 @@ export function LoginPage() {
         />
 
         <div className="relative z-10 flex items-center gap-3">
-          <div className="rounded-lg p-2 shadow-md ring-1 ring-black/5">
+          <div className="rounded-lg p-2 ring-1 ring-black/5">
             <DuplaLogo className="h-9 w-auto max-w-[200px] object-contain object-left sm:h-10" />
           </div>
         </div>
