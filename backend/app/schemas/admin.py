@@ -88,6 +88,7 @@ class AdminUpdateUserRequest(BaseModel):
     role: UserRole
     module_ids: list[int] = Field(default_factory=lambda: [1])
     password: str | None = Field(None, min_length=8, max_length=128)
+    is_team_leader: bool | None = None
 
     @field_validator("first_name", "last_name")
     @classmethod

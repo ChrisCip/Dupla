@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { hasElevatedAccess } from '../../lib/accessPermissions'
+import { useAuthStore } from '../../store/authStore'
 import { apiFetch } from '../../api/client'
 import { getProjectFilesCount } from '../../api/structuralAnalysis'
 import { WORKFLOW_PHASE_LABELS, WORKFLOW_PHASE_ORDER } from '../../constants/workflowPhases'
@@ -102,6 +104,8 @@ export function ProjectWorkspaceDashboard({
   onOpenChat,
   onOpenTab,
 }: ProjectWorkspaceDashboardProps) {
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const elevated = hasElevatedAccess(role as import('../../constants/userRoles').UserRole | null, isTeamLeader)
   const [fileTotal, setFileTotal] = useState<number | null>(null)
   const [taskCount, setTaskCount] = useState<number | null>(null)
   const [recentEvents, setRecentEvents] = useState<ProjectEventRow[]>([])
@@ -591,9 +595,9 @@ export function ProjectWorkspaceDashboard({
             <span className="self-center text-xs text-muted">Última fase alcanzada.</span>
           )}
         </div>
-        {nextPhase === 'BUDGET_APPROVED' && role !== 'GERENCIA' ? (
+        {nextPhase === 'BUDGET_APPROVED' && !elevated ? (
           <p className="w-full text-xs text-primary sm:w-auto">
-            Solo Gerencia puede cerrar la aprobación final del presupuesto.
+            Solo Gerencia o Líder de equipo puede cerrar la aprobación final del presupuesto.
           </p>
         ) : null}
       </div>

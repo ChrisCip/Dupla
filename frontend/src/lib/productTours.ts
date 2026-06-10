@@ -13,6 +13,8 @@ const WORKSPACE_DETALLES_SHORTCUTS_DELAY_MS = 1600
 /** Pestaña Archivos: montaje del tab y listado. */
 const WORKSPACE_ARCHIVOS_TOUR_DELAY_MS = 1600
 
+import { hasElevatedAccess } from './accessPermissions'
+
 const driverTexts = {
   nextBtnText: 'Siguiente',
   prevBtnText: 'Anterior',
@@ -31,7 +33,10 @@ function afterRoute(fn: () => void): void {
   window.setTimeout(fn, ROUTE_DELAY_MS)
 }
 
-export function startSidebarTour(role: string | null | undefined): void {
+export function startSidebarTour(
+  role: string | null | undefined,
+  isTeamLeader = false,
+): void {
   destroyActive()
   const steps: DriveStep[] = [
     {
@@ -83,7 +88,7 @@ export function startSidebarTour(role: string | null | undefined): void {
       },
     },
   ]
-  if (role === 'GERENCIA') {
+  if (hasElevatedAccess(role as import('../constants/userRoles').UserRole | null, isTeamLeader)) {
     steps.push({
       element: '[data-tour="sidebar-admin"]',
       popover: {
@@ -116,7 +121,11 @@ export function startSidebarTour(role: string | null | undefined): void {
   active.drive()
 }
 
-export function startProjectsTour(navigate: NavigateFunction, role: string | null | undefined): void {
+export function startProjectsTour(
+  navigate: NavigateFunction,
+  role: string | null | undefined,
+  isTeamLeader = false,
+): void {
   destroyActive()
   navigate('/app/projects')
   afterRoute(() => {
@@ -126,7 +135,7 @@ export function startProjectsTour(navigate: NavigateFunction, role: string | nul
         popover: {
           title: 'Proyectos',
           description:
-            role === 'GERENCIA'
+            hasElevatedAccess(role as import('../constants/userRoles').UserRole | null, isTeamLeader)
               ? 'Aquí ves las obras a las que puedes entrar. Con perfil de dirección también puedes crear una obra nueva y mover tarjetas entre etapas en el tablero cuando toque.'
               : 'Aquí ves las obras a las que puedes entrar. Abre una para trabajar dentro.',
           side: 'bottom',
@@ -153,7 +162,7 @@ export function startProjectsTour(navigate: NavigateFunction, role: string | nul
         },
       },
     ]
-    if (role === 'GERENCIA') {
+    if (hasElevatedAccess(role as import('../constants/userRoles').UserRole | null, isTeamLeader)) {
       steps.push({
         element: '[data-tour="projects-new"]',
         popover: {

@@ -15,6 +15,7 @@ type AuthState = {
   role: Role | null
   userUuid: string | null
   mustChangePassword: boolean
+  isTeamLeader: boolean
   setSession: (
     token: string,
     email: string,
@@ -23,6 +24,7 @@ type AuthState = {
     firstName: string,
     lastName: string,
     mustChangePassword?: boolean,
+    isTeamLeader?: boolean,
   ) => void
   clearMustChangePassword: () => void
   logout: () => void
@@ -39,7 +41,17 @@ export const useAuthStore = create<AuthState>()(
       role: null,
       userUuid: null,
       mustChangePassword: false,
-      setSession: (token, email, role, userUuid, firstName, lastName, mustChangePassword = false) =>
+      isTeamLeader: false,
+      setSession: (
+        token,
+        email,
+        role,
+        userUuid,
+        firstName,
+        lastName,
+        mustChangePassword = false,
+        isTeamLeader = false,
+      ) =>
         set({
           token,
           email,
@@ -48,6 +60,7 @@ export const useAuthStore = create<AuthState>()(
           firstName,
           lastName,
           mustChangePassword,
+          isTeamLeader,
         }),
       clearMustChangePassword: () => set({ mustChangePassword: false }),
       logout: () =>
@@ -59,6 +72,7 @@ export const useAuthStore = create<AuthState>()(
           role: null,
           userUuid: null,
           mustChangePassword: false,
+          isTeamLeader: false,
         }),
       login: async (email, password) => {
         const body = new URLSearchParams()
@@ -83,6 +97,7 @@ export const useAuthStore = create<AuthState>()(
           last_name: string
           role: Role
           must_change_password?: boolean
+          is_team_leader?: boolean
         }
         const mustChangePassword = profile.must_change_password ?? data.must_change_password ?? false
         set({
@@ -93,6 +108,7 @@ export const useAuthStore = create<AuthState>()(
           role: profile.role,
           userUuid: profile.uuid,
           mustChangePassword,
+          isTeamLeader: profile.is_team_leader ?? false,
         })
         return mustChangePassword
       },

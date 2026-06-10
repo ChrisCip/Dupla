@@ -1,6 +1,8 @@
 import { Bell, CircleHelp, Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { hasElevatedAccess } from '../../lib/accessPermissions'
+import { useAuthStore } from '../../store/authStore'
 import { PrimaryButton } from '../PrimaryButton'
 import { ProjectWorkspaceExportMenu } from './ProjectWorkspaceExportMenu'
 
@@ -48,6 +50,8 @@ export function ProjectWorkspaceConsoleHeader({
   role,
   onGoPresupuesto,
 }: ProjectWorkspaceConsoleHeaderProps) {
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const elevated = hasElevatedAccess(role as import('../../constants/userRoles').UserRole | null, isTeamLeader)
   return (
     <header data-tour="workspace-header" className="shrink-0 space-y-3 border-b border-black/10 pb-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -82,7 +86,7 @@ export function ProjectWorkspaceConsoleHeader({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {role === 'GERENCIA' ? (
+          {elevated ? (
             <PrimaryButton
               type="button"
               className="hidden px-3 py-2 text-xs font-bold normal-case tracking-normal sm:inline-flex"

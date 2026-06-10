@@ -15,6 +15,7 @@ export function MainLayout() {
   const token = useAuthStore((s) => s.token)
   const userUuid = useAuthStore((s) => s.userUuid)
   const mustChangePassword = useAuthStore((s) => s.mustChangePassword)
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
   const setSession = useAuthStore((s) => s.setSession)
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export function MainLayout() {
         last_name: string
         role: MeRole
         must_change_password?: boolean
+        is_team_leader?: boolean
       }
       setSession(
         token,
@@ -38,9 +40,10 @@ export function MainLayout() {
         p.first_name,
         p.last_name,
         p.must_change_password ?? mustChangePassword,
+        p.is_team_leader ?? isTeamLeader,
       )
     })()
-  }, [token, userUuid, mustChangePassword, setSession])
+  }, [token, userUuid, mustChangePassword, isTeamLeader, setSession])
 
   return (
     <div className="flex h-dvh min-h-0 overflow-hidden bg-surface text-ink">

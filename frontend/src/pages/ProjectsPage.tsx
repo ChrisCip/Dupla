@@ -23,6 +23,7 @@ import type { WorkflowTemplateDetail } from '../types/workflowTemplate'
 const PROJECTS_VIEW_FLOW_STORAGE_KEY = 'dupla.projects.viewWorkflowTemplateUuid'
 import { projectDashboardBucket, type DashboardStatusFilter } from '../lib/projectDashboardBuckets'
 import { userDisplayInitials } from '../lib/taskboard'
+import { hasElevatedAccess } from '../lib/accessPermissions'
 import { useAuthStore } from '../store/authStore'
 import type { ProjectKindValue } from '../constants/projectKind'
 import type { DirectoryUserRow } from '../lib/directoryUsers'
@@ -43,6 +44,8 @@ export function ProjectsPage() {
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)
   const role = useAuthStore((s) => s.role)
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const elevated = hasElevatedAccess(role, isTeamLeader)
   const userUuid = useAuthStore((s) => s.userUuid)
   const email = useAuthStore((s) => s.email)
   const firstName = useAuthStore((s) => s.firstName)
@@ -204,7 +207,7 @@ export function ProjectsPage() {
   }, [token])
 
   useEffect(() => {
-    if (role !== 'GERENCIA' || !token) return
+    if (!elevated || !token) return
     let cancelled = false
     void (async () => {
       const rows = await loadAdminDirectoryUsers(token)
@@ -214,7 +217,7 @@ export function ProjectsPage() {
     return () => {
       cancelled = true
     }
-  }, [role, token])
+  }, [elevated, token])
 
   useEffect(() => {
     return () => {
@@ -271,7 +274,7 @@ export function ProjectsPage() {
       fd.append('client_name', client.trim())
       fd.append('project_kind', projectKind)
       fd.append('workflow_template_uuid', workflowTemplateUuid.trim())
-      if (role === 'GERENCIA' && createMembers.size > 0) {
+      if (elevated && createMembers.size > 0) {
         fd.append('member_user_uuids', JSON.stringify(Array.from(createMembers)))
       }
       if (createProjectCode.trim()) fd.append('project_code', createProjectCode.trim())
@@ -461,7 +464,7 @@ export function ProjectsPage() {
             </label>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {role === 'GERENCIA' ? (
+            {elevated ? (
               <button
                 type="button"
                 data-tour="projects-new"
@@ -544,7 +547,7 @@ export function ProjectsPage() {
           <p className="text-sm leading-relaxed text-muted">
             {boardTemplate
               ? `Proyectos del flujo «${boardTemplate.name}». Arrastra una tarjeta al paso anterior o siguiente.`
-              : role === 'GERENCIA'
+              : elevated
                 ? 'Columnas por fase. Arrastra una tarjeta a la columna de al lado cuando la aplicación lo permita.'
                 : 'Vista en columnas por fase del proceso.'}
           </p>
@@ -661,7 +664,7 @@ export function ProjectsPage() {
         </div>
       ) : null}
 
-      {createModalOpen && role === 'GERENCIA' ? (
+      {createModalOpen && elevated ? (
         <CreateProjectModal
           onClose={closeCreateModal}
           onSubmit={createProject}

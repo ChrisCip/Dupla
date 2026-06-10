@@ -4,7 +4,9 @@ import { useForm } from 'react-hook-form'
 
 import { apiFetch } from '../api/client'
 import { invalidateAdminUsersDirectoryCache } from '../lib/adminUsersDirectoryCache'
+import { canAssignTeamLeader } from '../lib/accessPermissions'
 import { ROLE_LABELS, USER_ROLES, type UserRole } from '../constants/userRoles'
+import { useAuthStore } from '../store/authStore'
 import { PrimaryButton } from './PrimaryButton'
 import {
   adminCreateUserSchema,
@@ -20,6 +22,7 @@ type ListedUser = {
   last_name: string
   role: string
   module_ids: number[]
+  is_team_leader?: boolean
 }
 
 type Props = {
@@ -32,6 +35,10 @@ type Props = {
 }
 
 export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Props) {
+  const actorRole = useAuthStore((s) => s.role)
+  const assignTeamLeader = canAssignTeamLeader(actorRole)
+  const editableRoles = assignTeamLeader ? USER_ROLES : USER_ROLES.filter((r) => r !== 'GERENCIA')
+
   const createForm = useForm<AdminCreateUserForm>({
     resolver: zodResolver(adminCreateUserSchema),
     defaultValues: {
@@ -53,6 +60,7 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
       password: '',
       role: 'ARQUITECTURA',
       architectureAccess: true,
+      isTeamLeader: false,
     },
   })
 
@@ -67,6 +75,7 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
         password: '',
         role: user.role as UserRole,
         architectureAccess: hasArch,
+        isTeamLeader: user.is_team_leader ?? false,
       })
     }
     if (mode === 'create') {
@@ -128,6 +137,9 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
     }
     if (values.password.trim().length > 0) {
       body.password = values.password
+    }
+    if (assignTeamLeader) {
+      body.is_team_leader = values.isTeamLeader ?? false
     }
     const res = await apiFetch(`/api/admin/users/${user.uuid}`, {
       method: 'PATCH',
@@ -233,7 +245,7 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
                 Rol
               </label>
               <select id="um-role" className="du-input mt-1" {...createForm.register('role')}>
-                {USER_ROLES.map((r) => (
+                {editableRoles.map((r) => (
                   <option key={r} value={r}>
                     {ROLE_LABELS[r]}
                   </option>
@@ -320,7 +332,7 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
                 Rol
               </label>
               <select id="ue-role" className="du-input mt-1" {...editForm.register('role')}>
-                {USER_ROLES.map((r) => (
+                {editableRoles.map((r) => (
                   <option key={r} value={r}>
                     {ROLE_LABELS[r]}
                   </option>
@@ -331,6 +343,12 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
               <input type="checkbox" className="rounded border-black/20" {...editForm.register('architectureAccess')} />
               Acceso a proyectos y workspace
             </label>
+            {assignTeamLeader ? (
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input type="checkbox" className="rounded border-black/20" {...editForm.register('isTeamLeader')} />
+                Líder de equipo (permisos elevados excepto crear usuarios)
+              </label>
+            ) : null}
             {editForm.formState.errors.root ? (
               <p className="text-sm text-primary">{editForm.formState.errors.root.message}</p>
             ) : null}

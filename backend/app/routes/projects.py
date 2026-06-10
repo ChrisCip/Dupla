@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, Upl
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user, require_gerencia
+from app.dependencies import get_current_user, require_elevated_access
 from app.domain.project_kind import ProjectKind
 from app.models.user import User
 from app.schemas.architecture import ArchitectureDataResponse, ArchitectureDocumentPayload
@@ -95,7 +95,7 @@ async def list_projects(
     ),
 )
 async def create_project(
-    current: Annotated[User, Depends(require_gerencia)],
+    current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
     name: str = Form(...),
     client_name: Optional[str] = Form(None),
@@ -205,7 +205,7 @@ async def list_project_members(
 async def put_project_members(
     project_uuid: UUID,
     body: ProjectMembersPutRequest,
-    current: Annotated[User, Depends(require_gerencia)],
+    current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     svc = ProjectService(session)

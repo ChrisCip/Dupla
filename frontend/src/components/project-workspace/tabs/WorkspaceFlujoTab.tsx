@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { apiFetch } from '../../../api/client'
+import { hasElevatedAccess, canMarkControlReview } from '../../../lib/accessPermissions'
+import { useAuthStore } from '../../../store/authStore'
 import { WORKFLOW_DOC_PHASE_HINTS } from '../../../constants/workflowDocMapping'
 import { WORKFLOW_PHASE_LABELS } from '../../../constants/workflowPhases'
 import { downloadBlob, filenameFromContentDisposition } from '../../../lib/download'
@@ -91,7 +93,9 @@ export function WorkspaceFlujoTab({
   const showBudgetPanel =
     !!project &&
     ['BUDGETING_PIPELINE', 'MANAGEMENT_APPROVAL', 'BUDGET_APPROVED', 'COMPLETE'].includes(project.workflow_phase)
-  const canMarkControl = role === 'CONTROL' || role === 'GERENCIA'
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const elevated = hasElevatedAccess(role as import('../../../constants/userRoles').UserRole | null, isTeamLeader)
+  const canMarkControl = canMarkControlReview(role as import('../../../constants/userRoles').UserRole | null, isTeamLeader)
   const awaitingBudgetApproval = project?.workflow_phase === 'MANAGEMENT_APPROVAL'
   const missingControlGate = awaitingBudgetApproval && !bpDraft.control_review_done
   const missingClientVersion = awaitingBudgetApproval && !clientVersion.trim()
@@ -178,9 +182,9 @@ export function WorkspaceFlujoTab({
           ) : (
             <p className="text-sm text-muted">El proyecto completó el flujo definido.</p>
           )}
-          {nextPhase === 'BUDGET_APPROVED' && role !== 'GERENCIA' ? (
+          {nextPhase === 'BUDGET_APPROVED' && !elevated ? (
             <p className="text-sm text-primary">
-              Solo un usuario de Gerencia puede marcar la aprobación final del presupuesto.
+              Solo Gerencia o Líder de equipo puede marcar la aprobación final del presupuesto.
             </p>
           ) : null}
 

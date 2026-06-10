@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import require_gerencia
+from app.dependencies import require_elevated_access, require_gerencia
 from app.models.user import User
 from app.schemas.admin import (
     AdminCreateUserRequest,
@@ -23,10 +23,10 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
     "/users",
     response_model=list[UserResponse],
     summary="Listar usuarios",
-    description="Solo rol Gerencia. Incluye módulos asignados.",
+    description="Gerencia o Líder de equipo. Incluye módulos asignados.",
 )
 async def list_users_admin(
-    _: Annotated[User, Depends(require_gerencia)],
+    _: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[UserResponse]:
     svc = AdminService(session)
@@ -73,16 +73,16 @@ async def import_users_admin(
     "/users/{user_uuid}",
     response_model=UserResponse,
     summary="Actualizar usuario",
-    description="Correo, rol, módulos y opcionalmente contraseña. Solo Gerencia.",
+    description="Correo, rol, módulos y opcionalmente contraseña. Gerencia o Líder de equipo.",
 )
 async def update_user_admin(
     user_uuid: UUID,
     body: AdminUpdateUserRequest,
-    _: Annotated[User, Depends(require_gerencia)],
+    actor: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserResponse:
     svc = AdminService(session)
-    user = await svc.update_user(user_uuid, body)
+    user = await svc.update_user(actor, user_uuid, body)
     await session.commit()
     return UserResponse.from_user(user)
 
@@ -91,7 +91,7 @@ async def update_user_admin(
     "/users/{user_uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar usuario",
-    description="Elimina credenciales y datos asociados en cascada. Solo Gerencia.",
+    description="Elimina credenciales y datos asociados en cascada. Gerencia o Líder de equipo.",
     responses={
         400: {"description": "No se puede eliminar (cuenta propia o último Gerencia)"},
         404: {"description": "Usuario no encontrado"},
@@ -99,7 +99,7 @@ async def update_user_admin(
 )
 async def delete_user_admin(
     user_uuid: UUID,
-    actor: Annotated[User, Depends(require_gerencia)],
+    actor: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     svc = AdminService(session)

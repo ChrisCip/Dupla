@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.domain.user_permissions import has_elevated_access, is_gerencia
 from app.models.user import User, UserRole
 from app.services.auth_service import AuthService
 
@@ -44,8 +45,17 @@ async def get_current_user(
     return user
 
 
+async def require_elevated_access(current: Annotated[User, Depends(get_current_user)]) -> User:
+    if not has_elevated_access(current):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requiere rol Gerencia o Líder de equipo",
+        )
+    return current
+
+
 async def require_gerencia(current: Annotated[User, Depends(get_current_user)]) -> User:
-    if current.role != UserRole.GERENCIA:
+    if not is_gerencia(current):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Se requiere rol Gerencia",

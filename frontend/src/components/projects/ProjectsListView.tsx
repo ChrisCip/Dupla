@@ -12,7 +12,7 @@ type ProjectsListViewProps = {
   projects: Project[]
   filteredProjects: Project[]
   projectSearch: string
-  role: string | null
+  elevated: boolean
   onNavigateProject: (uuid: string) => void
 }
 
@@ -21,7 +21,7 @@ export function ProjectsListView({
   projects,
   filteredProjects,
   projectSearch,
-  role,
+  elevated,
   onNavigateProject,
 }: ProjectsListViewProps) {
   return (
@@ -116,7 +116,7 @@ export function ProjectsListView({
                   <div className="mx-auto max-w-md rounded-lg border border-dashed border-black/15 bg-black/[0.02] px-6 py-8 text-center">
                     <p className="text-sm font-medium text-ink">Todavía no hay proyectos</p>
                     <p className="mt-2 text-sm text-muted">
-                      {role === 'GERENCIA'
+                      {elevated
                         ? 'Usa «Nuevo proyecto» para crear el primero. También puedes verlos en el tablero por fase.'
                         : 'Cuando un administrador te dé acceso, el proyecto aparecerá aquí.'}
                     </p>

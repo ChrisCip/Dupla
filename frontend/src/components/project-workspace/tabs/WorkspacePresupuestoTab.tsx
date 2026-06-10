@@ -1,3 +1,5 @@
+import { canMarkControlReview } from '../../../lib/accessPermissions'
+import { useAuthStore } from '../../../store/authStore'
 import { apiFetch } from '../../../api/client'
 import { Card } from '../../Card'
 import { PrimaryButton } from '../../PrimaryButton'
@@ -48,7 +50,8 @@ export function WorkspacePresupuestoTab({
   quotes,
   onLoadAuxLists,
 }: WorkspacePresupuestoTabProps) {
-  const canMarkControl = role === 'CONTROL' || role === 'GERENCIA'
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const canMarkControl = canMarkControlReview(role as import('../../../constants/userRoles').UserRole | null, isTeamLeader)
   const awaitingBudgetApproval = workflowPhase === 'MANAGEMENT_APPROVAL'
   const missingControlGate = awaitingBudgetApproval && !bpDraft.control_review_done
   const missingClientVersion = awaitingBudgetApproval && !clientVersion.trim()

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { hasElevatedAccess } from '../lib/accessPermissions'
+import { useAuthStore } from '../store/authStore'
 import { apiFetch } from '../api/client'
 import { Card } from './Card'
 import { PrimaryButton } from './PrimaryButton'
@@ -49,6 +51,8 @@ export function ProjectConfigModal({
   setMembersMsg,
   setMemberRows,
 }: ProjectConfigModalProps) {
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const elevated = hasElevatedAccess(role as import('../constants/userRoles').UserRole | null, isTeamLeader)
   const [name, setName] = useState('')
   const [clientName, setClientName] = useState('')
   const [projectCode, setProjectCode] = useState('')
@@ -300,7 +304,7 @@ export function ProjectConfigModal({
                 </dl>
               </Card>
 
-              {role === 'GERENCIA' ? (
+              {elevated ? (
                 <Card className="p-4">
                   <h3 className="text-sm font-semibold text-ink">Equipo con acceso</h3>
                   {membersMsg ? <p className="mt-2 text-sm text-primary">{membersMsg}</p> : null}

@@ -37,6 +37,7 @@ from app.domain.workflow_template_phase import (
     workflow_phase_from_template_step_index,
 )
 from app.domain.workflow_phase import LINEAR_NEXT, LINEAR_PREV, WorkflowPhase
+from app.domain.user_permissions import has_elevated_access
 from app.models.architecture_revision import ArchitectureRevision, ArchitectureRevisionDecision
 from app.models.project import Project
 from app.models.task_board import TaskCard
@@ -473,10 +474,7 @@ class ProjectLifecycleService:
         )
 
     async def _notify_budget_approved(self, project: Project) -> None:
-        mids = await self._users.list_ids_by_module_and_roles(
-            self._settings.architecture_module_id,
-            [UserRole.GERENCIA],
-        )
+        mids = await self._users.list_elevated_user_ids_by_module(self._settings.architecture_module_id)
         title = "Presupuesto aprobado por el cliente"
         body = f"El proyecto «{project.name}» tiene una versión de presupuesto aprobada."
         for uid in mids:
@@ -714,10 +712,10 @@ class ProjectLifecycleService:
         user: User,
         project_uuid: UUID,
     ) -> Project:
-        if user.role not in (UserRole.GERENCIA, UserRole.ARQUITECTURA):
+        if not (has_elevated_access(user) or user.role == UserRole.ARQUITECTURA):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo Gerencia o Arquitectura pueden aprobar el pliego de condiciones",
+                detail="Solo Gerencia, Líder de equipo o Arquitectura pueden aprobar el pliego de condiciones",
             )
         project = await self._project_svc.get_project(user, project_uuid)
         wf = self._domain_phase_for_project(project)
@@ -773,10 +771,10 @@ class ProjectLifecycleService:
             wants_true = bool(incoming.get("control_review_done"))
             had_true = bool(bp_old.get("control_review_done"))
             if wants_true and not had_true:
-                if user.role not in (UserRole.CONTROL, UserRole.GERENCIA):
+                if user.role != UserRole.CONTROL and not has_elevated_access(user):
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Solo Control o Gerencia pueden marcar la revisión de Control",
+                        detail="Solo Control, Gerencia o Líder de equipo pueden marcar la revisión de Control",
                     )
             bp = _budget_pipeline(meta)
             bp.update(incoming)

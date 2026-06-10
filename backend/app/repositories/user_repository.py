@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -48,6 +48,18 @@ class UserRepository:
             select(func.count()).select_from(User).where(User.role == role)
         )
         return int(result.scalar_one())
+
+    async def list_elevated_user_ids_by_module(self, module_id: int) -> list[UUID]:
+        q = (
+            select(User.id)
+            .join(UserModule, UserModule.user_id == User.id)
+            .where(
+                UserModule.module_id == module_id,
+                or_(User.role == UserRole.GERENCIA, User.is_team_leader.is_(True)),
+            )
+        )
+        rows = (await self._session.execute(q)).scalars().all()
+        return list(rows)
 
     async def clear_blocking_references(self, user_id: UUID) -> None:
         await self._session.execute(

@@ -1,6 +1,8 @@
 import { LayoutDashboard, MessageCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { hasElevatedAccess } from '../../lib/accessPermissions'
+import { useAuthStore } from '../../store/authStore'
 import { Card } from '../Card'
 import { PrimaryButton } from '../PrimaryButton'
 import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
@@ -31,6 +33,8 @@ export function ProjectWorkspaceFlowAside({
   onAdvancePhase,
   onOpenChat,
 }: ProjectWorkspaceFlowAsideProps) {
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const elevated = hasElevatedAccess(role as import('../../constants/userRoles').UserRole | null, isTeamLeader)
   return (
     <aside className="flex w-full shrink-0 flex-col gap-2 md:w-52 lg:w-56 xl:w-64">
       <Card className="p-3 md:p-4">
@@ -68,9 +72,9 @@ export function ProjectWorkspaceFlowAside({
         ) : (
           <p className="du-meta mt-2 text-sm">Última fase alcanzada.</p>
         )}
-        {nextPhase === 'BUDGET_APPROVED' && role !== 'GERENCIA' ? (
+        {nextPhase === 'BUDGET_APPROVED' && !elevated ? (
           <p className="mt-2 text-xs text-primary">
-            Solo Gerencia puede cerrar la aprobación final del presupuesto.
+            Solo Gerencia o Líder de equipo puede cerrar la aprobación final del presupuesto.
           </p>
         ) : null}
         {flowMsg ? <p className="mt-2 text-sm text-primary">{flowMsg}</p> : null}

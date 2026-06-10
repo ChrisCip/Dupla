@@ -15,7 +15,8 @@ import {
 } from 'lucide-react'
 
 import { apiFetch } from '../api/client'
-import { DuplaLogo } from './DuplaLogo'
+import { DuplaSidebarLogo } from './DuplaSidebarLogo'
+import { hasElevatedAccess } from '../lib/accessPermissions'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
 
@@ -32,6 +33,8 @@ function readStoredCollapsed(): boolean {
 export function Sidebar() {
   const email = useAuthStore((s) => s.email)
   const role = useAuthStore((s) => s.role)
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const elevated = hasElevatedAccess(role, isTeamLeader)
   const token = useAuthStore((s) => s.token)
   const logout = useAuthStore((s) => s.logout)
   const hasUnread = useChatStore((s) => s.hasUnread)
@@ -83,11 +86,11 @@ export function Sidebar() {
         }`}
       >
         <div className={collapsed ? 'flex justify-center' : 'flex flex-col gap-1'}>
-          <DuplaLogo
+          <DuplaSidebarLogo
             className={
               collapsed
-                ? 'mx-auto h-9 w-9 object-contain bg-red-500 p-2'
-                : 'h-10 w-auto max-w-[min(100%,320px)] object-contain object-left md:h-11 bg-red-500 p-2'
+                ? 'mx-auto h-9 w-9 object-contain'
+                : 'h-10 w-auto max-w-[min(100%,320px)] object-contain object-left md:h-11'
             }
           />
         </div>
@@ -105,7 +108,7 @@ export function Sidebar() {
           <FolderKanban className="h-5 w-5 shrink-0" aria-hidden />
           <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Proyectos</span>
         </NavLink>
-        {role === 'GERENCIA' ? (
+        {elevated ? (
           <NavLink
             to="/app/flows"
             title="Flujos"
@@ -161,7 +164,7 @@ export function Sidebar() {
           <BookOpen className="h-5 w-5 shrink-0" aria-hidden />
           <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1'}>Tutoriales</span>
         </NavLink>
-        {role === 'GERENCIA' ? (
+        {elevated ? (
           <>
             <NavLink
               data-tour="sidebar-dashboard"

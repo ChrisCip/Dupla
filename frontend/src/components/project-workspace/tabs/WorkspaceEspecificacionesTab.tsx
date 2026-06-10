@@ -1,3 +1,4 @@
+import { canApproveSpecifications } from '../../../lib/accessPermissions'
 import { useAuthStore } from '../../../store/authStore'
 import { PliegoCondicionesForm } from '../../PliegoCondicionesForm'
 import { PliegoSideRail } from '../PliegoSideRail'
@@ -39,7 +40,8 @@ export function WorkspaceEspecificacionesTab({
   onExportPliegoXlsx,
 }: WorkspaceEspecificacionesTabProps) {
   const userUuid = useAuthStore((s) => s.userUuid)
-  const canApprove = role === 'GERENCIA' || role === 'ARQUITECTURA'
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const canApprove = canApproveSpecifications(role as import('../../../constants/userRoles').UserRole | null, isTeamLeader)
 
   return (
     <div className="flex min-h-0 flex-col gap-6 lg:flex-row lg:items-start lg:gap-6">

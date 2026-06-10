@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import require_gerencia, get_current_user
+from app.dependencies import require_elevated_access, get_current_user
 from app.models.user import User
 from app.models.workflow_template import WorkflowTemplate
 from app.schemas.project import ProjectResponse
@@ -30,7 +30,7 @@ def _card_icon_for_template(t: WorkflowTemplate) -> str:
 
 @router.get("", response_model=list[WorkflowTemplateListItemResponse])
 async def list_workflow_templates(
-    current: Annotated[User, Depends(require_gerencia)],
+    current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
     q: Annotated[Optional[str], Query(description="Buscar por nombre de flujo o de proyecto")] = None,
 ) -> list[WorkflowTemplateListItemResponse]:
@@ -75,7 +75,7 @@ async def get_workflow_template(
 @router.post("", response_model=WorkflowTemplateDetailResponse, status_code=status.HTTP_201_CREATED)
 async def post_workflow_template(
     body: WorkflowTemplateCreateRequest,
-    current: Annotated[User, Depends(require_gerencia)],
+    current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> WorkflowTemplateDetailResponse:
     svc = WorkflowTemplateService(session)
@@ -89,7 +89,7 @@ async def post_workflow_template(
 async def patch_workflow_template(
     template_uuid: UUID,
     body: WorkflowTemplatePatchRequest,
-    current: Annotated[User, Depends(require_gerencia)],
+    current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> WorkflowTemplateDetailResponse:
     svc = WorkflowTemplateService(session)
@@ -109,7 +109,7 @@ async def patch_workflow_template(
 async def put_workflow_template_steps(
     template_uuid: UUID,
     body: WorkflowTemplateStepsPutRequest,
-    current: Annotated[User, Depends(require_gerencia)],
+    current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> WorkflowTemplateDetailResponse:
     svc = WorkflowTemplateService(session)

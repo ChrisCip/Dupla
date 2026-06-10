@@ -15,11 +15,14 @@ import {
 import { FlowTemplateIcon } from '../components/flows/FlowTemplateIcon'
 import { coerceFlowTemplateIconKey, DEFAULT_FLOW_TEMPLATE_ICON } from '../constants/flowTemplateIcons'
 import type { WorkflowTemplateDetail, WorkflowTemplateListItem } from '../types/workflowTemplate'
+import { hasElevatedAccess } from '../lib/accessPermissions'
 import { useAuthStore } from '../store/authStore'
 
 export function FlowsHubPage() {
   const token = useAuthStore((s) => s.token)
   const role = useAuthStore((s) => s.role)
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const elevated = hasElevatedAccess(role, isTeamLeader)
 
   const [q, setQ] = useState('')
   const [rows, setRows] = useState<WorkflowTemplateListItem[]>([])
@@ -191,10 +194,10 @@ export function FlowsHubPage() {
     setCfgOpen(true)
   }
 
-  if (role !== 'GERENCIA') {
+  if (!elevated) {
     return (
       <div className="p-6">
-        <p className="text-muted">Solo Gerencia puede gestionar flujos.</p>
+        <p className="text-muted">Solo Gerencia o Líder de equipo puede gestionar flujos.</p>
         <Link className="mt-2 inline-block text-primary underline" to="/app/projects">
           Volver
         </Link>

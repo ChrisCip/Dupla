@@ -183,6 +183,192 @@ async def test_admin_import_users(client, master_auth_headers_async: dict[str, s
     assert skipped[0]["email"] == "import1@dupla.demo"
 
 
+async def _team_leader_headers(client, master_auth_headers_async: dict[str, str]) -> dict[str, str]:
+    create = await client.post(
+        "/api/admin/users",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "first_name": "Team",
+            "last_name": "Leader",
+            "email": "tl@dupla.demo",
+            "password": "temppass123",
+            "role": "CONTROL",
+            "module_ids": [1],
+        },
+    )
+    assert create.status_code == 201, create.text
+    user_uuid = create.json()["uuid"]
+
+    promote = await client.patch(
+        f"/api/admin/users/{user_uuid}",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "first_name": "Team",
+            "last_name": "Leader",
+            "email": "tl@dupla.demo",
+            "role": "CONTROL",
+            "module_ids": [1],
+            "is_team_leader": True,
+        },
+    )
+    assert promote.status_code == 200, promote.text
+    assert promote.json()["is_team_leader"] is True
+
+    login = await client.post(
+        "/api/auth/token",
+        data={"username": "tl@dupla.demo", "password": "temppass123"},
+    )
+    assert login.status_code == 200, login.text
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    change = await client.post(
+        "/api/auth/change-password",
+        headers={**headers, "Content-Type": "application/json"},
+        json={"current_password": "temppass123", "new_password": "newsecure123"},
+    )
+    assert change.status_code == 200, change.text
+    return headers
+
+
+@pytest.mark.asyncio
+async def test_team_leader_elevated_admin_access(client, master_auth_headers_async: dict[str, str]):
+    tl_headers = await _team_leader_headers(client, master_auth_headers_async)
+
+    listing = await client.get("/api/admin/users", headers=tl_headers)
+    assert listing.status_code == 200, listing.text
+
+    me = await client.get("/api/me", headers=tl_headers)
+    assert me.status_code == 200, me.text
+    assert me.json()["is_team_leader"] is True
+
+
+@pytest.mark.asyncio
+async def test_team_leader_cannot_create_or_import_users(
+    client, master_auth_headers_async: dict[str, str]
+):
+    tl_headers = await _team_leader_headers(client, master_auth_headers_async)
+
+    create = await client.post(
+        "/api/admin/users",
+        headers={**tl_headers, "Content-Type": "application/json"},
+        json={
+            "first_name": "Blocked",
+            "last_name": "Create",
+            "email": "blocked-create@dupla.demo",
+            "password": "longpassword1",
+            "role": "PRESUPUESTO",
+            "module_ids": [1],
+        },
+    )
+    assert create.status_code == 403
+
+    import_res = await client.post(
+        "/api/admin/users/import",
+        headers={**tl_headers, "Content-Type": "application/json"},
+        json={
+            "users": [
+                {
+                    "first_name": "Blocked",
+                    "last_name": "Import",
+                    "email": "blocked-import@dupla.demo",
+                    "role": "PRESUPUESTO",
+                    "module_ids": [1],
+                },
+            ]
+        },
+    )
+    assert import_res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_team_leader_cannot_assign_team_leader_or_gerencia_role(
+    client, master_auth_headers_async: dict[str, str]
+):
+    tl_headers = await _team_leader_headers(client, master_auth_headers_async)
+
+    victim = await client.post(
+        "/api/admin/users",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "first_name": "Victim",
+            "last_name": "User",
+            "email": "victim@dupla.demo",
+            "password": "longpassword1",
+            "role": "PRESUPUESTO",
+            "module_ids": [1],
+        },
+    )
+    assert victim.status_code == 201, victim.text
+    victim_uuid = victim.json()["uuid"]
+
+    assign_tl = await client.patch(
+        f"/api/admin/users/{victim_uuid}",
+        headers={**tl_headers, "Content-Type": "application/json"},
+        json={
+            "first_name": "Victim",
+            "last_name": "User",
+            "email": "victim@dupla.demo",
+            "role": "PRESUPUESTO",
+            "module_ids": [1],
+            "is_team_leader": True,
+        },
+    )
+    assert assign_tl.status_code == 403
+
+    promote = await client.patch(
+        f"/api/admin/users/{victim_uuid}",
+        headers={**tl_headers, "Content-Type": "application/json"},
+        json={
+            "first_name": "Victim",
+            "last_name": "User",
+            "email": "victim@dupla.demo",
+            "role": "GERENCIA",
+            "module_ids": [1],
+        },
+    )
+    assert promote.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_team_leader_dashboard_and_projects(client, master_auth_headers_async: dict[str, str]):
+    template = await client.post(
+        "/api/workflow-templates",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"name": "Flujo TL test", "description": ""},
+    )
+    assert template.status_code == 201, template.text
+    template_uuid = template.json()["uuid"]
+    steps = await client.put(
+        f"/api/workflow-templates/{template_uuid}/steps",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "steps": [
+                {
+                    "stable_key": "inicio",
+                    "title": "Inicio",
+                    "behavior_kind": "CUSTOM_AUTOMATION",
+                },
+            ],
+        },
+    )
+    assert steps.status_code == 200, steps.text
+
+    tl_headers = await _team_leader_headers(client, master_auth_headers_async)
+
+    dashboard = await client.get("/api/dashboard/summary", headers=tl_headers)
+    assert dashboard.status_code == 200, dashboard.text
+
+    projects = await client.get("/api/projects", headers=tl_headers)
+    assert projects.status_code == 200, projects.text
+
+    create_project = await client.post(
+        "/api/projects",
+        headers=tl_headers,
+        data={"name": "TL Project", "client_name": "Test Client", "project_kind": "CLIENT"},
+    )
+    assert create_project.status_code == 201, create_project.text
+
+
 @pytest.mark.asyncio
 async def test_chat_flow(client, auth_headers_async: dict[str, str]):
     convs = await client.get("/api/chat/conversations", headers=auth_headers_async)

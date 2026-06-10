@@ -6,6 +6,7 @@ import { AdminUserModal } from '../components/AdminUserModal'
 import { Card } from '../components/Card'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { ROLE_LABELS, type UserRole } from '../constants/userRoles'
+import { canCreateUsers } from '../lib/accessPermissions'
 import { invalidateAdminUsersDirectoryCache } from '../lib/adminUsersDirectoryCache'
 import { formatPersonFullName } from '../lib/personDisplay'
 import { useAuthStore } from '../store/authStore'
@@ -17,11 +18,14 @@ type ListedUser = {
   last_name: string
   role: string
   module_ids: number[]
+  is_team_leader?: boolean
 }
 
 export function AdminUsersPage() {
   const token = useAuthStore((s) => s.token)
+  const role = useAuthStore((s) => s.role)
   const currentUserUuid = useAuthStore((s) => s.userUuid)
+  const canCreate = canCreateUsers(role)
   const [users, setUsers] = useState<ListedUser[]>([])
   const [listError, setListError] = useState<string | null>(null)
   const [loadingList, setLoadingList] = useState(true)
@@ -72,8 +76,9 @@ export function AdminUsersPage() {
     setEditingUser(null)
   }
 
-  function roleLabel(role: string): string {
-    return ROLE_LABELS[role as UserRole] ?? role
+  function roleLabel(u: ListedUser): string {
+    const base = ROLE_LABELS[u.role as UserRole] ?? u.role
+    return u.is_team_leader ? `${base} · TL` : base
   }
 
   async function deleteUser(u: ListedUser) {
@@ -114,21 +119,24 @@ export function AdminUsersPage() {
         <div>
           <h1 className="text-2xl font-semibold text-ink md:text-3xl">Usuarios</h1>
           <p className="mt-2 max-w-prose text-sm text-muted">
-            Alta y edición de credenciales, rol y acceso al workspace. Solo rol Gerencia.
+            Gestión de credenciales, rol y acceso al workspace. Gerencia puede crear cuentas; Líderes de equipo pueden
+            editar y eliminar.
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2 self-start">
-          <button
-            type="button"
-            className="rounded-md border border-black/15 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ink hover:bg-black/4"
-            onClick={() => setImportModalOpen(true)}
-          >
-            Importar usuarios
-          </button>
-          <PrimaryButton type="button" onClick={openCreate}>
-            Nuevo usuario
-          </PrimaryButton>
-        </div>
+        {canCreate ? (
+          <div className="flex shrink-0 flex-wrap gap-2 self-start">
+            <button
+              type="button"
+              className="rounded-md border border-black/15 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ink hover:bg-black/4"
+              onClick={() => setImportModalOpen(true)}
+            >
+              Importar usuarios
+            </button>
+            <PrimaryButton type="button" onClick={openCreate}>
+              Nuevo usuario
+            </PrimaryButton>
+          </div>
+        ) : null}
       </div>
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
@@ -171,7 +179,7 @@ export function AdminUsersPage() {
                         {formatPersonFullName(u.first_name, u.last_name, u.email)}
                       </td>
                       <td className="truncate px-4 py-3 text-muted">{u.email}</td>
-                      <td className="px-4 py-3 text-muted">{roleLabel(u.role)}</td>
+                      <td className="px-4 py-3 text-muted">{roleLabel(u)}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex flex-wrap items-center justify-end gap-3">
                           <button
@@ -200,7 +208,7 @@ export function AdminUsersPage() {
         </div>
       </Card>
 
-      {token ? (
+      {token && canCreate ? (
         <AdminUserImportModal
           token={token}
           open={importModalOpen}

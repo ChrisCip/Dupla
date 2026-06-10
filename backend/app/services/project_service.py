@@ -10,6 +10,7 @@ from app.config import get_settings
 from app.domain.project_kind import ProjectKind
 from app.domain.workflow_template_phase import effective_workflow_phase_for_step
 from app.domain.project_updated import touch_project_updated_at
+from app.domain.user_permissions import has_elevated_access
 from app.models.project import Project
 from app.models.user import User, UserRole
 from app.repositories.project_repository import ProjectRepository
@@ -36,7 +37,7 @@ class ProjectService:
 
     async def list_projects(self, user: User) -> list[Project]:
         await self.ensure_architecture_access(user)
-        is_master = user.role == UserRole.GERENCIA
+        is_master = has_elevated_access(user)
         return await self._projects.list_for_user(user.id, is_master=is_master)
 
     async def list_projects_for_template(self, user: User, template_uuid: UUID) -> list[Project]:
@@ -44,7 +45,7 @@ class ProjectService:
         tpl = await self._workflow_templates.get_template_by_uuid(template_uuid)
         if tpl is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plantilla no encontrada")
-        is_master = user.role == UserRole.GERENCIA
+        is_master = has_elevated_access(user)
         return await self._projects.list_for_template(
             tpl.id,
             is_master=is_master,
@@ -71,10 +72,10 @@ class ProjectService:
         workflow_template_uuid: Optional[UUID] = None,
     ) -> Project:
         await self.ensure_architecture_access(user)
-        if user.role != UserRole.GERENCIA:
+        if not has_elevated_access(user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo Gerencia puede crear proyectos",
+                detail="Solo Gerencia o Líder de equipo puede crear proyectos",
             )
         name_clean = name.strip()
         if not name_clean:
@@ -188,10 +189,10 @@ class ProjectService:
         return await self._projects.list_project_member_profiles(project.id)
 
     async def set_project_members(self, master: User, project_uuid: UUID, member_user_uuids: list[UUID]) -> None:
-        if master.role != UserRole.GERENCIA:
+        if not has_elevated_access(master):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo Gerencia puede configurar quién ve el proyecto",
+                detail="Solo Gerencia o Líder de equipo puede configurar quién ve el proyecto",
             )
         project = await self.get_project(master, project_uuid)
         ids = set(member_user_uuids)

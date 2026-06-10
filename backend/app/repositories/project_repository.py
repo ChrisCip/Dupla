@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.domain.bootstrap_defaults import default_bootstrap_criteria
 from app.domain.project_updated import touch_project_updated_at
+from app.domain.user_permissions import has_elevated_access
 from app.models.project import Project, ProjectArchitectureData
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
@@ -57,7 +58,7 @@ class ProjectRepository:
         return (await self._session.execute(q)).scalar_one_or_none() is not None
 
     async def user_has_access_to_project(self, user: User, project: Project) -> bool:
-        if user.role == UserRole.GERENCIA:
+        if has_elevated_access(user):
             return True
         if project.created_by is not None and project.created_by == user.id:
             return True

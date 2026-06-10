@@ -28,6 +28,7 @@ export const adminEditUserSchema = z
   .object({
     ...baseFields,
     password: z.string().max(128),
+    isTeamLeader: z.boolean().optional(),
   })
   .refine((d) => d.architectureAccess, {
     message: 'Debe concederse acceso a la plataforma (módulos asignados).',

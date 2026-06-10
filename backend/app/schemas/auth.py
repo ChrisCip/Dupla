@@ -51,6 +51,7 @@ class UserResponse(BaseModel):
     role: UserRole
     module_ids: list[int] = Field(default_factory=list, description="Módulos asignados")
     must_change_password: bool = False
+    is_team_leader: bool = False
 
     @classmethod
     def from_user(cls, user: User) -> UserResponse:
@@ -67,4 +68,5 @@ class UserResponse(BaseModel):
             role=user.role,
             module_ids=mids,
             must_change_password=user.must_change_password,
+            is_team_leader=user.is_team_leader,
         )

@@ -46,6 +46,7 @@ import {
   stablePliegoItemStatesSignature,
 } from '../lib/pliegoFormState'
 import { userDisplayInitials } from '../lib/taskboard'
+import { hasElevatedAccess } from '../lib/accessPermissions'
 import { useAuthStore } from '../store/authStore'
 import type { PlanDeliveryRow } from '../types/planDelivery'
 import type { PliegoItemState } from '../types/pliegoForm'
@@ -58,6 +59,8 @@ export function ProjectWorkspacePage() {
   const [searchParams] = useSearchParams()
   const token = useAuthStore((s) => s.token)
   const role = useAuthStore((s) => s.role)
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const elevated = hasElevatedAccess(role, isTeamLeader)
   const email = useAuthStore((s) => s.email)
   const firstName = useAuthStore((s) => s.firstName)
   const lastName = useAuthStore((s) => s.lastName)
@@ -369,7 +372,7 @@ export function ProjectWorkspacePage() {
   }, [token, projectUuid, project])
 
   useEffect(() => {
-    if (!token || role !== 'GERENCIA' || !projectUuid) return
+    if (!token || !elevated || !projectUuid) return
     let cancelled = false
     void (async () => {
       const adminRows = await loadAdminDirectoryUsers(token, { forceRefresh: true })

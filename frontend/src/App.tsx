@@ -14,6 +14,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { TutorialesPage } from './pages/TutorialesPage'
 import { FlowsHubPage } from './pages/FlowsHubPage'
 import { FlowBoardPage } from './pages/FlowBoardPage'
+import { hasElevatedAccess } from './lib/accessPermissions'
 import { useAuthStore } from './store/authStore'
 
 function RequireAuth() {
@@ -28,9 +29,10 @@ function RequirePasswordChanged() {
   return <Outlet />
 }
 
-function RequireGerencia() {
+function RequireElevatedAccess() {
   const role = useAuthStore((s) => s.role)
-  if (role !== 'GERENCIA') return <Navigate to="/app/projects" replace />
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  if (!hasElevatedAccess(role, isTeamLeader)) return <Navigate to="/app/projects" replace />
   return <Outlet />
 }
 
@@ -50,7 +52,7 @@ export default function App() {
             <Route path="/app/chat" element={<ChatPage />} />
             <Route path="/app/tasks" element={<TaskboardPage />} />
             <Route path="/app/tutoriales" element={<TutorialesPage />} />
-            <Route element={<RequireGerencia />}>
+            <Route element={<RequireElevatedAccess />}>
               <Route path="/app/admin" element={<AdminUsersPage />} />
               <Route path="/app/dashboard" element={<DashboardPage />} />
               <Route path="/app/flows" element={<FlowsHubPage />} />

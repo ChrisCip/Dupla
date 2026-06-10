@@ -5,6 +5,7 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.user_permissions import can_assign_team_leader, has_elevated_access, is_gerencia
 from app.models.user import User, UserModule, UserRole
 from app.repositories.module_repository import ModuleRepository
 from app.repositories.user_repository import UserRepository
@@ -126,12 +127,22 @@ class AdminService:
 
         return AdminImportUsersResponse(created=created, skipped=skipped, errors=errors)
 
-    async def update_user(self, user_uuid: uuid.UUID, body: AdminUpdateUserRequest) -> User:
+    async def update_user(self, actor: User, user_uuid: uuid.UUID, body: AdminUpdateUserRequest) -> User:
         user = await self._users.get_by_uuid(user_uuid)
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Usuario no encontrado",
+            )
+        if not is_gerencia(actor) and body.role == UserRole.GERENCIA:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo Gerencia puede asignar el rol Gerencia",
+            )
+        if body.is_team_leader is not None and not can_assign_team_leader(actor):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo Gerencia puede asignar Líder de equipo",
             )
         if body.email != user.email:
             existing = await self._users.get_by_email(body.email)
@@ -162,6 +173,8 @@ class AdminService:
         if body.password:
             user.password_hash = hash_password(body.password)
             user.must_change_password = True
+        if body.is_team_leader is not None and can_assign_team_leader(actor):
+            user.is_team_leader = body.is_team_leader
 
         await self._users.delete_module_links_for_user(user.id)
         for mid in body.module_ids:
