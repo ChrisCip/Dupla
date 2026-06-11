@@ -1,3 +1,6 @@
+import { canViewBudget, isBudgetWorkflowPhase } from '../lib/accessPermissions'
+import type { UserRole } from './userRoles'
+
 export type PhaseHint = {
   title: string
   body: string
@@ -20,13 +23,13 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
   },
   ARCHITECTURE_REVIEW: {
     title: 'Revisión de arquitectura',
-    body: 'Registra la decisión (aprobado / rechazo / parcial) y las notas en Revisiones. Con aprobación, el siguiente paso formal es el pliego de condiciones antes del presupuesto.',
+    body: 'Registra la decisión (aprobado / rechazo / parcial) y las notas en Revisiones. Con aprobación, continúa con el pliego de condiciones.',
     tabId: 'revisiones',
     cta: 'Ir a Revisiones',
   },
   SPECIFICATIONS: {
     title: 'Pliego de condiciones',
-    body: 'Cuadrícula por capítulos de obra (preliminares, cimentación, estructura, instalaciones, acabados, carpintería, aparatos y cierre): unidad, cantidad y precio unitario por partida. Guarda, revisa la lista lateral y pide aprobación antes de avanzar a Presupuesto.',
+    body: 'Completa el checklist GA-FO-01 por sección, adjunta documentos y solicita aprobación cuando esté listo.',
     tabId: 'pliego',
     cta: 'Ir al Pliego',
   },
@@ -54,4 +57,12 @@ export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
     tabId: 'flujo',
     cta: 'Ir a Flujo',
   },
+}
+
+export function phaseWorkspaceHintForRole(
+  phase: string,
+  role: UserRole | null,
+): PhaseHint | undefined {
+  if (!canViewBudget(role) && isBudgetWorkflowPhase(phase)) return undefined
+  return PHASE_WORKSPACE_HINTS[phase]
 }

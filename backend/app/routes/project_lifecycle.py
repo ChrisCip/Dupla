@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_budget_access
 from app.domain.file_discipline import FileIngestStatus
 from app.domain.workflow_phase import WorkflowPhase
 from app.models.architecture_revision import ArchitectureRevisionDecision
@@ -167,7 +167,7 @@ async def post_specifications_approve(
 async def patch_workflow_meta(
     project_uuid: UUID,
     body: WorkflowMetaPatchRequest,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectResponse:
     svc = ProjectLifecycleService(session)
@@ -454,7 +454,7 @@ async def download_project_file(
 )
 async def get_subcontracts(
     project_uuid: UUID,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[SubcontractQuoteResponse]:
     svc = ProjectLifecycleService(session)
@@ -471,7 +471,7 @@ async def get_subcontracts(
 async def post_subcontract_quote(
     project_uuid: UUID,
     body: SubcontractQuoteCreateRequest,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> SubcontractQuoteResponse:
     svc = ProjectLifecycleService(session)
@@ -490,7 +490,7 @@ async def post_subcontract_line(
     project_uuid: UUID,
     quote_uuid: UUID,
     body: SubcontractLineCreateRequest,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> SubcontractQuoteResponse:
     svc = ProjectLifecycleService(session)
@@ -513,7 +513,7 @@ async def post_subcontract_line(
 async def delete_subcontract_quote(
     project_uuid: UUID,
     quote_uuid: UUID,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     svc = ProjectLifecycleService(session)
@@ -585,7 +585,7 @@ async def post_project_chat_conversation(
 )
 async def list_price_database_files(
     project_uuid: UUID,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> PriceDatabaseFileListResponse:
     svc = PriceDatabaseService(session)
@@ -601,7 +601,7 @@ async def list_price_database_files(
 )
 async def post_price_database_file(
     project_uuid: UUID,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
     background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
@@ -621,7 +621,7 @@ async def post_price_database_file(
 async def delete_price_database_file(
     project_uuid: UUID,
     file_uuid: UUID,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     svc = PriceDatabaseService(session)
@@ -637,7 +637,7 @@ async def delete_price_database_file(
 )
 async def post_price_database_apply(
     project_uuid: UUID,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectResponse:
     svc = PriceDatabaseService(session)

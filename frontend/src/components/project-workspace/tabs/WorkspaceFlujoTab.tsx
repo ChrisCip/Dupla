@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { apiFetch } from '../../../api/client'
-import { hasElevatedAccess, canMarkControlReview } from '../../../lib/accessPermissions'
+import { hasElevatedAccess, canMarkControlReview, canViewBudget, isBudgetWorkflowPhase, workflowPhaseLabelForRole } from '../../../lib/accessPermissions'
 import { useAuthStore } from '../../../store/authStore'
 import { WORKFLOW_DOC_PHASE_HINTS } from '../../../constants/workflowDocMapping'
-import { WORKFLOW_PHASE_LABELS } from '../../../constants/workflowPhases'
 import { downloadBlob, filenameFromContentDisposition } from '../../../lib/download'
 import type { SubcontractQuoteRow } from '../../../types/projectWorkspace'
 import type { BootstrapCriterion, Project } from '../../../types/project'
@@ -89,8 +88,13 @@ export function WorkspaceFlujoTab({
   const [docBusy, setDocBusy] = useState(false)
 
   const bootstrapStats = useMemo(() => bootstrapRequiredPercent(bootstrapDraft), [bootstrapDraft])
-  const docHint = project ? WORKFLOW_DOC_PHASE_HINTS[project.workflow_phase] ?? null : null
+  const roleTyped = role as import('../../../constants/userRoles').UserRole | null
+  const viewBudget = canViewBudget(roleTyped)
+  const docHintRaw = project ? WORKFLOW_DOC_PHASE_HINTS[project.workflow_phase] : undefined
+  const docHint =
+    viewBudget && docHintRaw && !isBudgetWorkflowPhase(project?.workflow_phase ?? '') ? docHintRaw : null
   const showBudgetPanel =
+    viewBudget &&
     !!project &&
     ['BUDGETING_PIPELINE', 'MANAGEMENT_APPROVAL', 'BUDGET_APPROVED', 'COMPLETE'].includes(project.workflow_phase)
   const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
@@ -147,6 +151,8 @@ export function WorkspaceFlujoTab({
             stepTitle={phaseLabel}
             templateSteps={orderedTemplateSteps}
             currentWorkflowStepUuid={project.current_workflow_step_uuid}
+            viewBudget={viewBudget}
+            role={roleTyped}
           />
           {docHint ? (
             <p className="rounded-md border border-black/10 bg-black/[0.02] px-3 py-2 text-xs text-muted">{docHint}</p>
@@ -177,12 +183,12 @@ export function WorkspaceFlujoTab({
             <PrimaryButton type="button" disabled={flowBusy} onClick={onAdvancePhase}>
               {flowBusy
                 ? 'Procesando…'
-                : `Avanzar a: ${WORKFLOW_PHASE_LABELS[nextPhase] ?? nextPhase}`}
+                : `Avanzar a: ${workflowPhaseLabelForRole(nextPhase, roleTyped)}`}
             </PrimaryButton>
           ) : (
             <p className="text-sm text-muted">El proyecto completó el flujo definido.</p>
           )}
-          {nextPhase === 'BUDGET_APPROVED' && !elevated ? (
+          {nextPhase === 'BUDGET_APPROVED' && viewBudget && !elevated ? (
             <p className="text-sm text-primary">
               Solo Gerencia o Líder de equipo puede marcar la aprobación final del presupuesto.
             </p>

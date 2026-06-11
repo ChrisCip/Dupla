@@ -14,11 +14,12 @@ import { hasElevatedAccess } from '../../lib/accessPermissions'
 import { useAuthStore } from '../../store/authStore'
 import { apiFetch } from '../../api/client'
 import { getProjectFilesCount } from '../../api/structuralAnalysis'
-import { WORKFLOW_PHASE_LABELS, WORKFLOW_PHASE_ORDER } from '../../constants/workflowPhases'
-import { PHASE_WORKSPACE_HINTS } from '../../constants/projectWorkspaceHints'
+import { WORKFLOW_PHASE_ORDER } from '../../constants/workflowPhases'
+import { phaseWorkspaceHintForRole } from '../../constants/projectWorkspaceHints'
 import type { DirectoryUserRow } from '../../lib/directoryUsers'
 import { formatPersonFullName } from '../../lib/personDisplay'
 import { userDisplayInitials } from '../../lib/taskboard'
+import { workflowPhaseLabelForRole, workflowStepTitleForRole } from '../../lib/accessPermissions'
 import { workflowPhaseProgressPct } from '../../lib/projectDashboardBuckets'
 import type { TechnicalFindingRow } from '../../types/projectWorkspace'
 import type { Project } from '../../types/project'
@@ -55,6 +56,7 @@ type ProjectWorkspaceDashboardProps = {
   flowBusy: boolean
   nextPhase: string | undefined
   role: string | null
+  viewBudget: boolean
   memberRows: DirectoryUserRow[]
   quotesCount: number
   onAdvancePhase: () => void
@@ -98,6 +100,7 @@ export function ProjectWorkspaceDashboard({
   flowBusy,
   nextPhase,
   role,
+  viewBudget,
   memberRows,
   quotesCount,
   onAdvancePhase,
@@ -113,7 +116,7 @@ export function ProjectWorkspaceDashboard({
   const [findings, setFindings] = useState<TechnicalFindingRow[]>([])
   const [teamMenu, setTeamMenu] = useState<string | null>(null)
 
-  const hint = PHASE_WORKSPACE_HINTS[project.workflow_phase]
+  const hint = phaseWorkspaceHintForRole(project.workflow_phase, role as import('../../constants/userRoles').UserRole | null)
 
   const avancePct = useMemo(() => {
     if (templateStepProgress && templateStepProgress.total > 0) {
@@ -177,11 +180,14 @@ export function ProjectWorkspaceDashboard({
 
   const phaseSteps = useMemo(() => {
     if (orderedTemplateSteps?.length && project.current_workflow_step_uuid) {
-      return orderedTemplateSteps.map((s) => ({ key: s.uuid, label: s.title }))
+      return orderedTemplateSteps.map((s) => ({
+        key: s.uuid,
+        label: workflowStepTitleForRole(s.title, role as import('../../constants/userRoles').UserRole | null),
+      }))
     }
     return WORKFLOW_PHASE_ORDER.map((key) => ({
       key,
-      label: WORKFLOW_PHASE_LABELS[key] ?? key,
+      label: workflowPhaseLabelForRole(key, role as import('../../constants/userRoles').UserRole | null),
     }))
   }, [orderedTemplateSteps, project.current_workflow_step_uuid])
 
@@ -257,13 +263,15 @@ export function ProjectWorkspaceDashboard({
       >
         Archivos
       </button>
-      <button
-        type="button"
-        className="rounded-full border border-black/12 bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-sm hover:border-primary/25"
-        onClick={() => onOpenTab('basePrecios')}
-      >
-        Base de precios
-      </button>
+      {viewBudget ? (
+        <button
+          type="button"
+          className="rounded-full border border-black/12 bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-sm hover:border-primary/25"
+          onClick={() => onOpenTab('basePrecios')}
+        >
+          Base de precios
+        </button>
+      ) : null}
       <button
         type="button"
         className="rounded-full border border-black/12 bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-sm hover:border-primary/25"
@@ -285,13 +293,15 @@ export function ProjectWorkspaceDashboard({
       >
         Control de entregas
       </button>
-      <button
-        type="button"
-        className="rounded-full border border-primary/25 bg-primary/[0.06] px-3 py-1.5 text-xs font-semibold text-primary shadow-sm hover:border-primary/40"
-        onClick={() => onOpenTab('presupuestoMaestro')}
-      >
-        Presupuesto maestro
-      </button>
+      {viewBudget ? (
+        <button
+          type="button"
+          className="rounded-full border border-primary/25 bg-primary/[0.06] px-3 py-1.5 text-xs font-semibold text-primary shadow-sm hover:border-primary/40"
+          onClick={() => onOpenTab('presupuestoMaestro')}
+        >
+          Presupuesto maestro
+        </button>
+      ) : null}
       <button
         type="button"
         className="rounded-full border border-black/12 bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-sm hover:border-primary/25"
@@ -329,11 +339,19 @@ export function ProjectWorkspaceDashboard({
             <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Avance %</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-primary">{avancePct}%</p>
           </div>
-          <div className={kpiClass}>
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Presupuesto</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-ink">{formatBudgetPipelineSummary(bpDraft)}</p>
-            <p className="text-[10px] text-muted">Hitos</p>
-          </div>
+          {viewBudget ? (
+            <div className={kpiClass}>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Presupuesto</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums text-ink">{formatBudgetPipelineSummary(bpDraft)}</p>
+              <p className="text-[10px] text-muted">Hitos</p>
+            </div>
+          ) : null}
+          {viewBudget ? (
+            <div className={kpiClass}>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Cotizaciones</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums text-ink">{quotesCount}</p>
+            </div>
+          ) : null}
           <div className={kpiClass}>
             <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Plazo</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-ink">
@@ -349,10 +367,6 @@ export function ProjectWorkspaceDashboard({
           <div className={kpiClass}>
             <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Hallazgos</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-primary">{criticalFindings.length}</p>
-          </div>
-          <div className={kpiClass}>
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Cotizaciones</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-ink">{quotesCount}</p>
           </div>
           <div className={kpiClass}>
             <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Tareas</p>
@@ -595,7 +609,7 @@ export function ProjectWorkspaceDashboard({
             <span className="self-center text-xs text-muted">Última fase alcanzada.</span>
           )}
         </div>
-        {nextPhase === 'BUDGET_APPROVED' && !elevated ? (
+        {nextPhase === 'BUDGET_APPROVED' && viewBudget && !elevated ? (
           <p className="w-full text-xs text-primary sm:w-auto">
             Solo Gerencia o Líder de equipo puede cerrar la aprobación final del presupuesto.
           </p>

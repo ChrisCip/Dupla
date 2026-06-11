@@ -15,6 +15,7 @@ type PliegoSideRailProps = {
   approved: boolean
   generatedAt: string | null
   canApprove: boolean
+  viewBudget: boolean
   approveBusy: boolean
   onApprove: () => Promise<void>
 }
@@ -27,6 +28,7 @@ export function PliegoSideRail({
   approved,
   generatedAt,
   canApprove,
+  viewBudget,
   approveBusy,
   onApprove,
 }: PliegoSideRailProps) {
@@ -124,14 +126,16 @@ export function PliegoSideRail({
           <Share2 className="size-4 text-primary" strokeWidth={2} aria-hidden />
           Solicitar cambios
         </button>
-        <button
-          type="button"
-          className="mt-2 flex w-full items-center justify-center gap-2 text-xs font-semibold text-primary underline-offset-2 hover:underline"
-          onClick={() => navigate(`/app/projects/${projectUuid}?tab=presupuestoMaestro`)}
-        >
-          <GitBranch className="size-3.5" strokeWidth={2} aria-hidden />
-          Ver presupuesto maestro
-        </button>
+        {viewBudget ? (
+          <button
+            type="button"
+            className="mt-2 flex w-full items-center justify-center gap-2 text-xs font-semibold text-primary underline-offset-2 hover:underline"
+            onClick={() => navigate(`/app/projects/${projectUuid}?tab=presupuestoMaestro`)}
+          >
+            <GitBranch className="size-3.5" strokeWidth={2} aria-hidden />
+            Ver presupuesto maestro
+          </button>
+        ) : null}
       </div>
     </aside>
   )

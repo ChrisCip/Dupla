@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import { apiFetch } from '../api/client'
+import { generateUuid } from '../lib/uuid'
 import { debounce } from '../lib/debounce'
 import { materialCantidadTotal } from '../lib/materialTotals'
 import { architecturePayloadSchema, type ArchitecturePayload } from '../schemas/architecture'
@@ -80,7 +81,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       groups: [
         ...data.groups,
         {
-          id: crypto.randomUUID(),
+          id: generateUuid(),
           kind,
           title,
           order,
@@ -101,7 +102,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
               items: [
                 ...g.items,
                 {
-                  id: crypto.randomUUID(),
+                  id: generateUuid(),
                   descripcion: 'Nuevo ítem',
                   cantidad: 0,
                   precio_unitario: 0,
@@ -139,7 +140,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   addMaterial: () => {
     const data = get().data
     const row: MaterialRow = {
-      id: crypto.randomUUID(),
+      id: generateUuid(),
       descripcion: 'Nuevo material',
       cantidad_estimada: 0,
       desperdicio_porcentaje: 0,

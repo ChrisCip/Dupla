@@ -22,6 +22,7 @@ import {
   flowTemplateIconLabelEs,
   type FlowTemplateIconKey,
 } from '../../constants/flowTemplateIcons'
+import { generateUuid } from '../../lib/uuid'
 import { ROLE_LABELS, USER_ROLES, type UserRole } from '../../constants/userRoles'
 
 export type EnterActionType = 'notify_role' | 'create_task' | 'project_chat_message'
@@ -44,7 +45,7 @@ type FlowStepsEditorProps = {
 }
 
 function newDraftId(): string {
-  return crypto.randomUUID()
+  return generateUuid()
 }
 
 function emptyActionForType(t: EnterActionType): Record<string, unknown> {

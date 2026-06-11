@@ -1,4 +1,4 @@
-import { canApproveSpecifications } from '../../../lib/accessPermissions'
+import { canApproveSpecifications, canViewBudget } from '../../../lib/accessPermissions'
 import { useAuthStore } from '../../../store/authStore'
 import { PliegoCondicionesForm } from '../../PliegoCondicionesForm'
 import { PliegoSideRail } from '../PliegoSideRail'
@@ -42,6 +42,7 @@ export function WorkspaceEspecificacionesTab({
   const userUuid = useAuthStore((s) => s.userUuid)
   const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
   const canApprove = canApproveSpecifications(role as import('../../../constants/userRoles').UserRole | null, isTeamLeader)
+  const viewBudget = canViewBudget(role as import('../../../constants/userRoles').UserRole | null)
 
   return (
     <div className="flex min-h-0 flex-col gap-6 lg:flex-row lg:items-start lg:gap-6">
@@ -68,6 +69,7 @@ export function WorkspaceEspecificacionesTab({
         approved={pliegoApproved}
         generatedAt={pliegoGeneratedAt}
         canApprove={canApprove}
+        viewBudget={viewBudget}
         approveBusy={pliegoApproveBusy}
         onApprove={onApprovePliego}
       />

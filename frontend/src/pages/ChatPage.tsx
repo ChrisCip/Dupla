@@ -3,6 +3,7 @@ import { Bell, CircleHelp, PanelLeft, Settings } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
+import { generateUuid } from '../lib/uuid'
 import { ChatComposer } from '../components/chat/ChatComposer'
 import { ChatConversationSidebar } from '../components/chat/ChatConversationSidebar'
 import { ChatProjectContextPanel } from '../components/chat/ChatProjectContextPanel'
@@ -200,7 +201,7 @@ export function ChatPage() {
     const text = draft.trim()
     if (!token || !text || !activeConversationUuid || !userUuid) return
     setError(null)
-    const optimisticUuid = `optimistic-${crypto.randomUUID()}`
+    const optimisticUuid = `optimistic-${generateUuid()}`
     const optimistic: ChatMessage = {
       uuid: optimisticUuid,
       conversation_uuid: activeConversationUuid,

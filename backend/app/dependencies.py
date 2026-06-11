@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.domain.user_permissions import has_elevated_access, is_gerencia
+from app.domain.user_permissions import can_view_budget, has_elevated_access, is_gerencia
 from app.models.user import User, UserRole
 from app.services.auth_service import AuthService
 
@@ -59,6 +59,15 @@ async def require_gerencia(current: Annotated[User, Depends(get_current_user)]) 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Se requiere rol Gerencia",
+        )
+    return current
+
+
+async def require_budget_access(current: Annotated[User, Depends(get_current_user)]) -> User:
+    if not can_view_budget(current):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="El rol Arquitectura no tiene acceso a presupuesto",
         )
     return current
 

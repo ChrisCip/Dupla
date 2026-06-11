@@ -37,7 +37,7 @@ from app.domain.workflow_template_phase import (
     workflow_phase_from_template_step_index,
 )
 from app.domain.workflow_phase import LINEAR_NEXT, LINEAR_PREV, WorkflowPhase
-from app.domain.user_permissions import has_elevated_access
+from app.domain.user_permissions import can_view_budget, has_elevated_access
 from app.models.architecture_revision import ArchitectureRevision, ArchitectureRevisionDecision
 from app.models.project import Project
 from app.models.task_board import TaskCard
@@ -766,6 +766,11 @@ class ProjectLifecycleService:
         project = await self._project_svc.get_project(user, project_uuid)
         meta = dict(project.workflow_meta or {})
         if "budget_pipeline" in patch and isinstance(patch["budget_pipeline"], dict):
+            if not can_view_budget(user):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="El rol Arquitectura no tiene acceso a presupuesto",
+                )
             bp_old = _budget_pipeline(meta)
             incoming = patch["budget_pipeline"]
             wants_true = bool(incoming.get("control_review_done"))

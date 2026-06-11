@@ -29,8 +29,8 @@ import { defaultBootstrapCriteria } from '../constants/defaultBootstrapCriteria'
 import { TUTORIAL_PROJECT_UUID } from '../constants/tutorialProject'
 import { loadAdminDirectoryUsers } from '../lib/adminUsersDirectoryCache'
 import { isValidUuidString, normalizeDirectoryUsers, type DirectoryUserRow } from '../lib/directoryUsers'
-import { projectWorkspaceTabs } from '../constants/projectWorkspaceTabs'
-import { NEXT_WORKFLOW_PHASE, WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
+import { projectWorkspaceTabsForRole } from '../constants/projectWorkspaceTabs'
+import { NEXT_WORKFLOW_PHASE } from '../constants/workflowPhases'
 import { downloadBlob, filenameFromContentDisposition } from '../lib/download'
 import { budgetPipeline } from '../lib/budgetPipeline'
 import {
@@ -46,7 +46,7 @@ import {
   stablePliegoItemStatesSignature,
 } from '../lib/pliegoFormState'
 import { userDisplayInitials } from '../lib/taskboard'
-import { hasElevatedAccess } from '../lib/accessPermissions'
+import { hasElevatedAccess, canViewBudget, isBudgetWorkspaceTab, workflowPhaseLabelForRole, workflowStepTitleForRole } from '../lib/accessPermissions'
 import { useAuthStore } from '../store/authStore'
 import type { PlanDeliveryRow } from '../types/planDelivery'
 import type { PliegoItemState } from '../types/pliegoForm'
@@ -61,6 +61,7 @@ export function ProjectWorkspacePage() {
   const role = useAuthStore((s) => s.role)
   const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
   const elevated = hasElevatedAccess(role, isTeamLeader)
+  const viewBudget = canViewBudget(role)
   const email = useAuthStore((s) => s.email)
   const firstName = useAuthStore((s) => s.firstName)
   const lastName = useAuthStore((s) => s.lastName)
@@ -105,7 +106,21 @@ export function ProjectWorkspacePage() {
   const [configOpen, setConfigOpen] = useState(false)
   const [headerUnread, setHeaderUnread] = useState(0)
 
-  const workspaceTabs = useMemo(() => projectWorkspaceTabs(), [])
+  const workspaceTabs = useMemo(() => projectWorkspaceTabsForRole(role), [role])
+
+  const selectTab = useCallback(
+    (id: string) => {
+      if (!canViewBudget(role) && isBudgetWorkspaceTab(id)) return
+      setTab(id)
+    },
+    [role],
+  )
+
+  useEffect(() => {
+    if (!canViewBudget(role) && isBudgetWorkspaceTab(tab)) {
+      setTab('hub')
+    }
+  }, [role, tab])
 
   useEffect(() => {
     if (!token || !project?.workflow_template_uuid) {
@@ -195,14 +210,14 @@ export function ProjectWorkspacePage() {
       setTab(candidate)
       return
     }
-    if (raw) {
+    if (raw || (!canViewBudget(role) && (tab === 'presupuestoMaestro' || tab === 'basePrecios'))) {
       setTab('hub')
       return
     }
     if (projectUuid !== TUTORIAL_PROJECT_UUID) {
       setTab('hub')
     }
-  }, [projectUuid, searchParams, workspaceTabs])
+  }, [projectUuid, searchParams, workspaceTabs, role, tab])
 
   useEffect(() => {
     let cancelled = false
@@ -692,8 +707,8 @@ export function ProjectWorkspacePage() {
 
   const phaseLabel = project
     ? project.current_step_title?.trim()
-      ? project.current_step_title
-      : (WORKFLOW_PHASE_LABELS[project.workflow_phase] ?? project.workflow_phase)
+      ? workflowStepTitleForRole(project.current_step_title.trim(), role)
+      : workflowPhaseLabelForRole(project.workflow_phase, role)
     : ''
   const nextPhase = project ? NEXT_WORKFLOW_PHASE[project.workflow_phase] : undefined
 
@@ -704,13 +719,14 @@ export function ProjectWorkspacePage() {
         projectUuid={projectUuid}
         token={token}
         tab={tab}
-        onSelectTab={(id: WorkspaceConsoleTabId) => setTab(id)}
+        onSelectTab={(id: WorkspaceConsoleTabId) => selectTab(id)}
         onOpenConfig={() => setConfigOpen(true)}
         unreadAlerts={headerUnread}
         userInitials={userDisplayInitials(firstName, lastName, email ?? '?')}
         userEmail={email}
         role={role}
-        onGoPresupuesto={() => setTab('presupuestoMaestro')}
+        viewBudget={viewBudget}
+        onGoPresupuesto={() => selectTab('presupuestoMaestro')}
       />
 
       {tab === 'hub' && project ? (
@@ -726,17 +742,18 @@ export function ProjectWorkspacePage() {
           flowBusy={flowBusy}
           nextPhase={nextPhase}
           role={role}
+          viewBudget={viewBudget}
           memberRows={memberRows}
           quotesCount={quotes.length}
           onAdvancePhase={() => void advancePhase()}
           onOpenChat={() => void openProjectChat()}
-          onOpenTab={(id) => setTab(id)}
+          onOpenTab={selectTab}
         />
       ) : null}
 
       {tab !== 'hub' ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <WorkspaceTabsLayout tabs={workspaceTabs} activeId={tab} onSelect={setTab} labelledBy="workspace-heading">
+          <WorkspaceTabsLayout tabs={workspaceTabs} activeId={tab} onSelect={selectTab} labelledBy="workspace-heading">
           {tab === 'detalles' ? (
             <WorkspaceDetallesTab
               project={project}
@@ -785,7 +802,7 @@ export function ProjectWorkspacePage() {
             <WorkspaceArchivosTab projectUuid={projectUuid} token={token} flowMsg={flowMsg} />
           ) : null}
 
-          {tab === 'basePrecios' ? (
+          {viewBudget && tab === 'basePrecios' ? (
             <WorkspacePriceDatabaseTab projectUuid={projectUuid} token={token} flowMsg={flowMsg} />
           ) : null}
 
@@ -825,7 +842,7 @@ export function ProjectWorkspacePage() {
             />
           ) : null}
 
-          {tab === 'presupuestoMaestro' ? (
+          {viewBudget && tab === 'presupuestoMaestro' ? (
             <WorkspacePresupuestoMaestroTab
               project={project}
               projectUuid={projectUuid}

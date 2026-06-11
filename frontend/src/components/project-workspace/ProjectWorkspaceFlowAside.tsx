@@ -17,6 +17,7 @@ type ProjectWorkspaceFlowAsideProps = {
   flowBusy: boolean
   flowMsg: string | null
   role: string | null
+  viewBudget: boolean
   onAdvancePhase: () => void
   onOpenChat: () => void
 }
@@ -30,6 +31,7 @@ export function ProjectWorkspaceFlowAside({
   flowBusy,
   flowMsg,
   role,
+  viewBudget,
   onAdvancePhase,
   onOpenChat,
 }: ProjectWorkspaceFlowAsideProps) {
@@ -46,6 +48,8 @@ export function ProjectWorkspaceFlowAside({
               compact
               templateStepProgress={templateStepProgress}
               stepTitle={phaseLabel}
+              viewBudget={viewBudget}
+              role={role as import('../../constants/userRoles').UserRole | null}
             />
           </div>
         ) : (
@@ -72,7 +76,7 @@ export function ProjectWorkspaceFlowAside({
         ) : (
           <p className="du-meta mt-2 text-sm">Última fase alcanzada.</p>
         )}
-        {nextPhase === 'BUDGET_APPROVED' && !elevated ? (
+        {nextPhase === 'BUDGET_APPROVED' && viewBudget && !elevated ? (
           <p className="mt-2 text-xs text-primary">
             Solo Gerencia o Líder de equipo puede cerrar la aprobación final del presupuesto.
           </p>

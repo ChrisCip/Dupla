@@ -34,6 +34,7 @@ type ProjectWorkspaceConsoleHeaderProps = {
   userInitials: string
   userEmail: string | null
   role: string | null
+  viewBudget: boolean
   onGoPresupuesto: () => void
 }
 
@@ -48,10 +49,12 @@ export function ProjectWorkspaceConsoleHeader({
   userInitials,
   userEmail,
   role,
+  viewBudget,
   onGoPresupuesto,
 }: ProjectWorkspaceConsoleHeaderProps) {
   const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
   const elevated = hasElevatedAccess(role as import('../../constants/userRoles').UserRole | null, isTeamLeader)
+  const consoleTabs = CONSOLE_TABS.filter((t) => viewBudget || t.id !== 'presupuestoMaestro')
   return (
     <header data-tour="workspace-header" className="shrink-0 space-y-3 border-b border-black/10 pb-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -65,7 +68,7 @@ export function ProjectWorkspaceConsoleHeader({
             className="flex flex-wrap gap-1"
             aria-label="Secciones principales"
           >
-            {CONSOLE_TABS.map((t) => {
+            {consoleTabs.map((t) => {
               const active = tab === t.id
               return (
                 <button
@@ -86,7 +89,7 @@ export function ProjectWorkspaceConsoleHeader({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {elevated ? (
+          {viewBudget && elevated ? (
             <PrimaryButton
               type="button"
               className="hidden px-3 py-2 text-xs font-bold normal-case tracking-normal sm:inline-flex"

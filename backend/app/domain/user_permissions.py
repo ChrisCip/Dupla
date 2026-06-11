@@ -15,3 +15,7 @@ def can_create_users(user: User) -> bool:
 
 def can_assign_team_leader(user: User) -> bool:
     return is_gerencia(user)
+
+
+def can_view_budget(user: User) -> bool:
+    return user.role != UserRole.ARQUITECTURA

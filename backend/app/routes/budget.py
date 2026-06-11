@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user
+from app.dependencies import require_budget_access
 from app.models.user import User
 from app.services.budget_service import BudgetService
 
@@ -39,7 +39,7 @@ class BudgetJobResponse(BaseModel):
 async def enqueue_budget_job(
     project_uuid: UUID,
     body: EnqueueBudgetJobRequest,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> BudgetJobResponse:
     svc = BudgetService(session)
@@ -68,7 +68,7 @@ async def enqueue_budget_job(
 )
 async def get_latest_budget_job(
     project_uuid: UUID,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> BudgetJobResponse:
     svc = BudgetService(session)
@@ -96,7 +96,7 @@ async def get_latest_budget_job(
 )
 async def get_budget_result(
     project_uuid: UUID,
-    current: Annotated[User, Depends(get_current_user)],
+    current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, Any]:
     svc = BudgetService(session)

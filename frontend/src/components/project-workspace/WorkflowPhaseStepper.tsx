@@ -1,4 +1,6 @@
-import { WORKFLOW_PHASE_LABELS, WORKFLOW_PHASE_ORDER } from '../../constants/workflowPhases'
+import { WORKFLOW_PHASE_ORDER } from '../../constants/workflowPhases'
+import { workflowPhaseLabelForRole, workflowStepTitleForRole } from '../../lib/accessPermissions'
+import type { UserRole } from '../../constants/userRoles'
 
 export type TemplateStepProgress = {
   /** 1-based índice del paso actual en la plantilla */
@@ -27,6 +29,8 @@ type WorkflowPhaseStepperProps = {
   stepTitle?: string | null
   templateSteps?: { uuid: string; title: string }[] | null
   currentWorkflowStepUuid?: string | null
+  viewBudget?: boolean
+  role?: UserRole | null
 }
 
 export function WorkflowPhaseStepper({
@@ -36,12 +40,15 @@ export function WorkflowPhaseStepper({
   stepTitle,
   templateSteps,
   currentWorkflowStepUuid,
+  viewBudget = true,
+  role = null,
 }: WorkflowPhaseStepperProps) {
   const totalLegacy = WORKFLOW_PHASE_ORDER.length
   const activeLegacyIdx = phaseStepIndex(workflowPhase)
-  const phaseFallbackLabel = WORKFLOW_PHASE_LABELS[workflowPhase] ?? workflowPhase
-  const titleLine =
-    stepTitle?.trim() ? stepTitle.trim() : phaseFallbackLabel
+  const phaseFallbackLabel = workflowPhaseLabelForRole(workflowPhase, role)
+  const titleLine = stepTitle?.trim()
+    ? workflowStepTitleForRole(stepTitle.trim(), role)
+    : phaseFallbackLabel
 
   if (compact) {
     if (templateStepProgress && templateStepProgress.total > 0) {
@@ -98,7 +105,7 @@ export function WorkflowPhaseStepper({
             {stepsForStrip.map((s, i) => {
               const isDone = i < activeIdx
               const isActive = i === activeIdx
-              const stepLabel = s.title.trim() || `Paso ${i + 1}`
+              const stepLabel = workflowStepTitleForRole(s.title.trim() || `Paso ${i + 1}`, role)
               return (
                 <div key={s.uuid} className="flex items-start">
                   {i > 0 ? (
@@ -151,6 +158,17 @@ export function WorkflowPhaseStepper({
     )
   }
 
+  if (!viewBudget) {
+    return (
+      <div data-tour="workspace-flujo-stepper" className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Estado del flujo</p>
+        <p className="text-sm font-medium text-ink">
+          Paso actual: <span className="text-primary">{titleLine}</span>
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div data-tour="workspace-flujo-stepper" className="space-y-2">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">Progreso por fase (ISO)</p>
@@ -159,7 +177,7 @@ export function WorkflowPhaseStepper({
           {WORKFLOW_PHASE_ORDER.map((key, i) => {
             const isDone = i < activeLegacyIdx
             const isActive = i === activeLegacyIdx
-            const stepLabel = WORKFLOW_PHASE_LABELS[key] ?? key
+            const stepLabel = workflowPhaseLabelForRole(key, role)
             return (
               <div key={key} className="flex items-start">
                 {i > 0 ? (
