@@ -467,8 +467,19 @@ class ClashService:
                     job.result = {"report": report, "artifacts": artifacts if isinstance(artifacts, dict) else {}}
                 else:
                     job.result = raw_result
+                if isinstance(artifacts, dict):
+                    paths = artifacts.get("paths")
+                    if isinstance(paths, dict) and paths.get("output_dir"):
+                        job.output_dir = str(paths["output_dir"])
             else:
                 job.result = raw_result
+            try:
+                from app.services.clash_workflow_service import ClashWorkflowService
+
+                wf = ClashWorkflowService(self._session)
+                await wf.ensure_ingested(job, actor="system")
+            except Exception as exc:
+                logger.warning("Clash workflow ingest after job complete failed: %s", exc)
         elif remote_status == "failed":
             job.status = "failed"
             job.error = str(data.get("error") or "Unknown error")
