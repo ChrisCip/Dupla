@@ -65,12 +65,18 @@ def _description_from_incident(incident: dict[str, Any]) -> str:
 
 
 def _summary_from_clashes(clashes: list[dict[str, Any]], doc_count: int) -> dict[str, int]:
-    errors = sum(1 for c in clashes if c.get("priority") == "critical")
-    warnings = sum(1 for c in clashes if c.get("priority") in ("high", "warning"))
-    ok = max(doc_count - errors - warnings, 0)
-    if not clashes and doc_count:
-        ok = doc_count
-    return {"errors": errors, "warnings": warnings, "ok": ok}
+    total = len(clashes)
+    critical = sum(1 for c in clashes if c.get("priority") == "critical")
+    non_critical = max(total - critical, 0)
+    # Legacy keys kept for backward compatibility; Hallazgos maps them to Total/Críticos/No críticos.
+    return {
+        "errors": total,
+        "warnings": critical,
+        "ok": non_critical,
+        "total_clashes": total,
+        "critical": critical,
+        "non_critical": non_critical,
+    }
 
 
 def _ai_insight_from_context(context: dict[str, Any] | None, incident_count: int) -> str:
