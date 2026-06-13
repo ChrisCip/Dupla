@@ -27,6 +27,17 @@ class ReviewerDecision(str, Enum):
     KEEP_PENDING = "keep_pending"
 
 
+class CorrectionTarget(str, Enum):
+    DWG_A = "dwg_a"
+    DWG_B = "dwg_b"
+    BOTH = "both"
+
+
+class CorrectionResult(str, Enum):
+    RESOLVED = "resolved"
+    STILL_PRESENT = "still_present"
+
+
 class Priority(str, Enum):
     P1 = "P1"
     P2 = "P2"
@@ -98,6 +109,23 @@ STATUS_LABELS_ES: dict[ClashStatus, str] = {
     ClashStatus.STILL_PRESENT: "Persiste tras reanálisis",
     ClashStatus.FALSE_POSITIVE: "Falso positivo",
     ClashStatus.CLOSED: "Cerrado",
+}
+
+DECISION_TO_CORRECTION_TARGET: dict[ReviewerDecision, CorrectionTarget] = {
+    ReviewerDecision.CORRECT_DWG_A: CorrectionTarget.DWG_A,
+    ReviewerDecision.CORRECT_DWG_B: CorrectionTarget.DWG_B,
+    ReviewerDecision.CORRECT_BOTH: CorrectionTarget.BOTH,
+}
+
+CORRECTION_TARGET_LABELS_ES: dict[CorrectionTarget, str] = {
+    CorrectionTarget.DWG_A: "DWG A",
+    CorrectionTarget.DWG_B: "DWG B",
+    CorrectionTarget.BOTH: "Ambos DWG",
+}
+
+CORRECTION_RESULT_LABELS_ES: dict[CorrectionResult, str] = {
+    CorrectionResult.RESOLVED: "Resuelto",
+    CorrectionResult.STILL_PRESENT: "Persiste tras reanálisis",
 }
 
 DECISION_LABELS_ES: dict[ReviewerDecision, str] = {

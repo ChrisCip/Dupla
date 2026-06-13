@@ -70,6 +70,19 @@ def extract_clash_artifacts(result: dict[str, Any] | None) -> dict[str, Any]:
     return artifacts if isinstance(artifacts, dict) else {}
 
 
+def extract_output_dir(artifacts: dict[str, Any] | None) -> str | None:
+    """Resolve coordination output path from job artifacts."""
+    if not isinstance(artifacts, dict):
+        return None
+    direct = artifacts.get("output_dir")
+    if direct:
+        return str(direct)
+    paths = artifacts.get("paths")
+    if isinstance(paths, dict) and paths.get("output_dir"):
+        return str(paths["output_dir"])
+    return None
+
+
 def _is_cad_filename(name: str) -> bool:
     lower = (name or "").lower()
     return lower.endswith(".dwg") or lower.endswith(".dxf")
@@ -468,9 +481,9 @@ class ClashService:
                 else:
                     job.result = raw_result
                 if isinstance(artifacts, dict):
-                    paths = artifacts.get("paths")
-                    if isinstance(paths, dict) and paths.get("output_dir"):
-                        job.output_dir = str(paths["output_dir"])
+                    output_dir = extract_output_dir(artifacts)
+                    if output_dir:
+                        job.output_dir = output_dir
             else:
                 job.result = raw_result
             try:

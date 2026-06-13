@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.project_clash_correction import ProjectClashCorrection
     from app.models.project_clash_event import ProjectClashEvent
     from app.models.project_clash_job import ProjectClashJob
 
@@ -62,5 +63,8 @@ class ProjectClashItem(Base):
 
     job: Mapped["ProjectClashJob"] = relationship(back_populates="clash_items")
     events: Mapped[list["ProjectClashEvent"]] = relationship(
+        back_populates="clash_item", cascade="all, delete-orphan"
+    )
+    corrections: Mapped[list["ProjectClashCorrection"]] = relationship(
         back_populates="clash_item", cascade="all, delete-orphan"
     )

@@ -32,6 +32,7 @@ class ProjectClashEvent(Base):
     decision: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     comment: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
     related_run_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    correction_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     clash_item: Mapped["ProjectClashItem"] = relationship(back_populates="events")

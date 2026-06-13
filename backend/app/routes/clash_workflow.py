@@ -1,7 +1,7 @@
 from typing import Annotated, Any, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +32,10 @@ class AssignBody(BaseModel):
 
 class CommentBody(BaseModel):
     comment: str
+
+
+class ReanalysisBody(BaseModel):
+    outcome: Optional[str] = None
 
 
 def _query_filters(**kwargs: str | None) -> dict[str, str]:
@@ -177,6 +181,45 @@ async def clash_workflow_comment(
 ) -> dict[str, Any]:
     svc = ClashWorkflowService(session)
     data = await svc.add_comment(current, project_uuid, item_id, body.comment)
+    await session.commit()
+    return data
+
+
+@router.post("/{project_uuid}/clash-workflow/clashes/{item_id}/corrections")
+async def clash_workflow_upload_correction(
+    project_uuid: UUID,
+    item_id: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    target: Annotated[str, Form()],
+    revision_name: Annotated[str, Form()],
+    file: Annotated[UploadFile, File()],
+) -> dict[str, Any]:
+    content = await file.read()
+    svc = ClashWorkflowService(session)
+    data = await svc.upload_correction(
+        current,
+        project_uuid,
+        item_id,
+        target=target,
+        revision_name=revision_name,
+        filename=file.filename or "correccion.dwg",
+        content=content,
+    )
+    await session.commit()
+    return data
+
+
+@router.post("/{project_uuid}/clash-workflow/clashes/{item_id}/reanalysis")
+async def clash_workflow_reanalysis(
+    project_uuid: UUID,
+    item_id: UUID,
+    body: ReanalysisBody,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, Any]:
+    svc = ClashWorkflowService(session)
+    data = await svc.request_reanalysis(current, project_uuid, item_id, outcome=body.outcome)
     await session.commit()
     return data
 

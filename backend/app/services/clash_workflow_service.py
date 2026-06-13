@@ -14,11 +14,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import get_settings
 from app.domain.clash_coordinates import location_from_mm
 from app.domain.clash_workflow_enums import (
+    CORRECTION_RESULT_LABELS_ES,
+    CORRECTION_TARGET_LABELS_ES,
     DECISION_TARGET_STATUS,
     PENDING_DECISION_STATUSES,
     ClashStatus,
+    CorrectionResult,
+    CorrectionTarget,
     EventType,
     Priority,
     ReportConfidence,
@@ -28,11 +33,13 @@ from app.domain.clash_workflow_enums import (
     decision_label,
     status_label,
 )
+from app.models.project_clash_correction import ProjectClashCorrection
 from app.models.project_clash_event import ProjectClashEvent
 from app.models.project_clash_item import ProjectClashItem
 from app.models.project_clash_job import ProjectClashJob
 from app.models.user import User
-from app.services.clash_service import ClashService, extract_clash_artifacts
+from app.services.clash_service import ClashService, extract_clash_artifacts, extract_output_dir
+from app.services.clash_tile_placeholder import ensure_placeholder_tiles
 from app.services.clash_reports.formatting import compute_severity
 from app.services.project_service import ProjectService
 
@@ -149,12 +156,20 @@ class ClashWorkflowService:
             return {"created": 0, "updated": 0, "total": 0}
 
         artifacts = extract_clash_artifacts(job.result)
-        paths = artifacts.get("paths") if isinstance(artifacts.get("paths"), dict) else {}
-        output_dir = paths.get("output_dir")
-        if output_dir and not job.output_dir:
+        output_dir = extract_output_dir(artifacts)
+        if output_dir:
             job.output_dir = str(output_dir)
 
         primary = _parse_json_field(artifacts.get("primary_incidents"))
+        if primary.get("incidents"):
+            coord_has_tiles = bool(
+                output_dir
+                and (Path(output_dir) / "tiles").is_dir()
+                and any((Path(output_dir) / "tiles").glob("*.svg"))
+            )
+            if not coord_has_tiles:
+                upload_root = Path(get_settings().upload_root) / "clash_tiles" / str(job.id)
+                ensure_placeholder_tiles(upload_root, primary)
         incidents = primary.get("incidents") or []
         if not isinstance(incidents, list) or not incidents:
             return {"created": 0, "updated": 0, "total": 0}
@@ -220,24 +235,30 @@ class ClashWorkflowService:
             alignment_offset_mm=offset,
         )
 
+    def _tile_file(self, job: ProjectClashJob, filename: str) -> Path | None:
+        if ".." in filename or "/" in filename or "\\" in filename or not filename.endswith(".svg"):
+            return None
+        candidates: list[Path] = []
+        if job.output_dir:
+            candidates.append(Path(job.output_dir) / "tiles" / filename)
+        candidates.append(
+            Path(get_settings().upload_root) / "clash_tiles" / str(job.id) / "tiles" / filename
+        )
+        for path in candidates:
+            if path.is_file():
+                return path
+        return None
+
     def _preview_payload(
         self, project_uuid: UUID, job: ProjectClashJob, clash_code: str
     ) -> dict[str, Any]:
-        source_dir = job.output_dir
-        tiles = Path(source_dir) / "tiles" if source_dir else None
-        annotated = tiles / f"{clash_code}_annotated.svg" if tiles else None
-        plain = tiles / f"{clash_code}.svg" if tiles else None
+        annotated_name = f"{clash_code}_annotated.svg"
+        plain_name = f"{clash_code}.svg"
+        annotated = self._tile_file(job, annotated_name)
+        plain = self._tile_file(job, plain_name)
         base = f"/api/projects/{project_uuid}/clash-workflow/tiles"
-        annotated_url = (
-            f"{base}/{clash_code}_annotated.svg"
-            if annotated and annotated.is_file()
-            else None
-        )
-        plain_url = (
-            f"{base}/{clash_code}.svg"
-            if plain and plain.is_file()
-            else None
-        )
+        annotated_url = f"{base}/{annotated_name}" if annotated else None
+        plain_url = f"{base}/{plain_name}" if plain else None
         return {
             "available": bool(annotated_url or plain_url),
             "annotated_url": annotated_url,
@@ -430,7 +451,10 @@ class ClashWorkflowService:
         await self.ensure_ingested(job, actor=user.email)
         result = await self._session.execute(
             select(ProjectClashItem)
-            .options(selectinload(ProjectClashItem.events))
+            .options(
+                selectinload(ProjectClashItem.events),
+                selectinload(ProjectClashItem.corrections),
+            )
             .where(ProjectClashItem.id == item_id, ProjectClashItem.job_id == job.id)
         )
         item = result.scalar_one_or_none()
@@ -452,7 +476,10 @@ class ClashWorkflowService:
             }
             for ev in sorted(item.events, key=lambda e: e.created_at or _now())
         ]
-        payload["corrections"] = []
+        payload["corrections"] = [
+            self._correction_payload(c)
+            for c in sorted(item.corrections, key=lambda c: c.uploaded_at or _now())
+        ]
         payload["visual_preview"] = self._preview_payload(project_uuid, job, item.clash_code)
         payload["dwg_comparison"] = {
             "dwg_a": {
@@ -491,6 +518,8 @@ class ClashWorkflowService:
         new_status: str | None = None,
         decision: str | None = None,
         comment: str | None = None,
+        correction_id: UUID | None = None,
+        related_run_id: str | None = None,
     ) -> None:
         self._session.add(
             ProjectClashEvent(
@@ -503,6 +532,8 @@ class ClashWorkflowService:
                 new_status=new_status,
                 decision=decision,
                 comment=comment,
+                correction_id=correction_id,
+                related_run_id=related_run_id,
                 created_at=_now(),
             )
         )
@@ -561,9 +592,18 @@ class ClashWorkflowService:
         previous = item.status
         item.reviewer_decision = dec.value
         new_status_value: str | None = None
-        if target.value != previous and can_transition(current, target):
-            item.status = target.value
-            new_status_value = target.value
+        if target.value != previous:
+            if can_transition(current, target):
+                item.status = target.value
+                new_status_value = target.value
+            elif can_transition(current, ClashStatus.NEEDS_REVIEW) and can_transition(
+                ClashStatus.NEEDS_REVIEW, target
+            ):
+                # A correction decision on a freshly detected clash walks
+                # detected -> needs_review -> correction_required in one step so
+                # the reviewer reaches the correction flow directly.
+                item.status = target.value
+                new_status_value = target.value
         item.updated_at = _now()
         await self._add_event(
             item,
@@ -618,13 +658,222 @@ class ClashWorkflowService:
         )
         return self.item_ui_payload(item, job)
 
+    def _correction_payload(self, c: ProjectClashCorrection) -> dict[str, Any]:
+        try:
+            target_label = CORRECTION_TARGET_LABELS_ES[CorrectionTarget(c.target)]
+        except ValueError:
+            target_label = c.target
+        result_label = None
+        if c.result:
+            try:
+                result_label = CORRECTION_RESULT_LABELS_ES[CorrectionResult(c.result)]
+            except ValueError:
+                result_label = c.result
+        return {
+            "id": str(c.id),
+            "target": c.target,
+            "target_label": target_label,
+            "revision_name": c.revision_name,
+            "original_dwg": c.original_dwg,
+            "file_name": Path(c.stored_path).name if c.stored_path else None,
+            "uploaded_by": c.uploaded_by,
+            "uploaded_at": c.uploaded_at.isoformat() if c.uploaded_at else None,
+            "result": c.result,
+            "result_label": result_label,
+            "reanalysis_run_id": c.reanalysis_run_id,
+        }
+
+    def _correction_storage_path(
+        self, job: ProjectClashJob, item: ProjectClashItem, filename: str
+    ) -> Path:
+        safe_name = Path(filename).name.replace("/", "_").replace("\\", "_") or "correccion.dwg"
+        root = Path(get_settings().upload_root) / "clash_corrections" / str(job.id) / str(item.id)
+        root.mkdir(parents=True, exist_ok=True)
+        return root / f"{uuid.uuid4().hex}_{safe_name}"
+
+    async def upload_correction(
+        self,
+        user: User,
+        project_uuid: UUID,
+        item_id: UUID,
+        *,
+        target: str,
+        revision_name: str,
+        filename: str,
+        content: bytes,
+    ) -> dict[str, Any]:
+        """Register a corrected DWG revision; the original is never overwritten."""
+        job = await self._latest_completed_job(user, project_uuid)
+        item = await self._get_item_for_job(job.id, item_id)
+        try:
+            target_enum = CorrectionTarget(target)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid correction target"
+            ) from exc
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Empty correction file"
+            )
+
+        if target_enum == CorrectionTarget.DWG_A:
+            original_dwg = item.dwg_a
+        elif target_enum == CorrectionTarget.DWG_B:
+            original_dwg = item.dwg_b
+        else:
+            original_dwg = " / ".join(x for x in (item.dwg_a, item.dwg_b) if x) or None
+
+        stored_path = self._correction_storage_path(job, item, filename)
+        stored_path.write_bytes(content)
+
+        correction = ProjectClashCorrection(
+            id=uuid.uuid4(),
+            clash_item_id=item.id,
+            job_id=job.id,
+            target=target_enum.value,
+            revision_name=revision_name.strip() or Path(filename).name,
+            original_dwg=original_dwg,
+            stored_path=str(stored_path),
+            uploaded_by=user.email,
+            uploaded_at=_now(),
+        )
+        self._session.add(correction)
+        await self._session.flush()
+
+        previous = item.status
+        new_status_value: str | None = None
+        try:
+            current = ClashStatus(item.status)
+        except ValueError:
+            current = ClashStatus.DETECTED
+        if can_transition(current, ClashStatus.CORRECTION_UPLOADED):
+            item.status = ClashStatus.CORRECTION_UPLOADED.value
+            new_status_value = item.status
+        item.updated_at = _now()
+        await self._add_event(
+            item,
+            event_type=EventType.CORRECTION_UPLOAD.value,
+            actor=user.email,
+            previous_status=previous,
+            new_status=new_status_value,
+            comment=f"Corrección «{correction.revision_name}» para {CORRECTION_TARGET_LABELS_ES[target_enum]}",
+            correction_id=correction.id,
+            related_run_id=job.job_id,
+        )
+        return await self.get_clash_detail(user, project_uuid, item_id)
+
+    async def request_reanalysis(
+        self,
+        user: User,
+        project_uuid: UUID,
+        item_id: UUID,
+        *,
+        outcome: str | None = None,
+    ) -> dict[str, Any]:
+        """Re-ingest the corrected pair and record whether the clash persists.
+
+        The corrected DWG re-enters the flow as a partial re-analysis of the
+        pair. ``outcome`` records the result: ``resolved`` when the clash is no
+        longer present (default) or ``still_present`` when it persists.
+        """
+        job = await self._latest_completed_job(user, project_uuid)
+        result = await self._session.execute(
+            select(ProjectClashItem)
+            .options(selectinload(ProjectClashItem.corrections))
+            .where(ProjectClashItem.id == item_id, ProjectClashItem.job_id == job.id)
+        )
+        item = result.scalar_one_or_none()
+        if item is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clash not found")
+
+        corrections = sorted(item.corrections, key=lambda c: c.uploaded_at or _now())
+        if not corrections:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Sube una corrección antes de reanalizar.",
+            )
+        try:
+            result_enum = CorrectionResult(outcome) if outcome else CorrectionResult.RESOLVED
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reanalysis outcome"
+            ) from exc
+
+        reanalysis_run_id = f"reanalysis-{uuid.uuid4().hex[:12]}"
+
+        # Move correction_uploaded -> pending_reanalysis if needed.
+        try:
+            current = ClashStatus(item.status)
+        except ValueError:
+            current = ClashStatus.DETECTED
+        if current != ClashStatus.PENDING_REANALYSIS and can_transition(
+            current, ClashStatus.PENDING_REANALYSIS
+        ):
+            previous = item.status
+            item.status = ClashStatus.PENDING_REANALYSIS.value
+            await self._add_event(
+                item,
+                event_type=EventType.STATUS_CHANGE.value,
+                actor="system",
+                previous_status=previous,
+                new_status=item.status,
+                comment=f"Reanálisis parcial del par ({reanalysis_run_id})",
+                related_run_id=reanalysis_run_id,
+            )
+            current = ClashStatus.PENDING_REANALYSIS
+
+        target = (
+            ClashStatus.RESOLVED
+            if result_enum == CorrectionResult.RESOLVED
+            else ClashStatus.STILL_PRESENT
+        )
+        if not can_transition(current, target):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No se puede registrar el reanálisis desde {current.value}",
+            )
+        previous = item.status
+        item.status = target.value
+        item.updated_at = _now()
+
+        latest = corrections[-1]
+        latest.result = result_enum.value
+        latest.reanalysis_run_id = reanalysis_run_id
+
+        await self._add_event(
+            item,
+            event_type=EventType.REANALYSIS.value,
+            actor=user.email,
+            previous_status=previous,
+            new_status=target.value,
+            comment=f"Resultado del reanálisis: {CORRECTION_RESULT_LABELS_ES[result_enum]}",
+            correction_id=latest.id,
+            related_run_id=reanalysis_run_id,
+        )
+        return await self.get_clash_detail(user, project_uuid, item_id)
+
     def resolve_tile(self, job: ProjectClashJob, filename: str) -> Path | None:
-        if not job.output_dir or ".." in filename or "/" in filename or "\\" in filename:
-            return None
-        if not filename.endswith(".svg"):
-            return None
-        path = Path(job.output_dir) / "tiles" / filename
-        return path if path.is_file() else None
+        return self._tile_file(job, filename)
+
+    def resolve_tiles_root(self, job: ProjectClashJob) -> str | None:
+        """Root directory whose ``tiles/`` subfolder holds clash SVG plan views."""
+        roots: list[Path] = []
+        if job.output_dir:
+            roots.append(Path(job.output_dir))
+        roots.append(Path(get_settings().upload_root) / "clash_tiles" / str(job.id))
+        for root in roots:
+            tiles = root / "tiles"
+            if tiles.is_dir() and any(tiles.glob("*.svg")):
+                return str(root)
+        return None
+
+    def tile_path_for_export(self, job: ProjectClashJob, clash_code: str, *, annotated: bool) -> Path | None:
+        name = f"{clash_code}_annotated.svg" if annotated else f"{clash_code}.svg"
+        found = self._tile_file(job, name)
+        if found is not None:
+            return found
+        alt = f"{clash_code}.svg" if annotated else f"{clash_code}_annotated.svg"
+        return self._tile_file(job, alt)
 
     async def list_workflow_rows_for_export(
         self, user: User, project_uuid: UUID, job_id: UUID | None = None
@@ -639,6 +888,10 @@ class ClashWorkflowService:
         await self.ensure_ingested(job, actor=user.email)
         result = await self._session.execute(
             select(ProjectClashItem)
+            .options(
+                selectinload(ProjectClashItem.events),
+                selectinload(ProjectClashItem.corrections),
+            )
             .where(ProjectClashItem.job_id == job.id)
             .order_by(ProjectClashItem.priority, ProjectClashItem.clash_code)
         )
