@@ -14,10 +14,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.project import Project
 from app.models.project_clash_job import ProjectClashJob
 from app.models.user import User
+from app.services.clash_excel_export import build_corrida_technical_excel, build_final_technical_excel
 from app.services.clash_reports.data import build_report_bundle
+from app.services.clash_reports.final_pdf import build_final_human_pdf, build_final_technical_pdf
 from app.services.clash_reports.human_pdf import build_human_pdf
 from app.services.clash_reports.technical_pdf import build_technical_pdf
 from app.services.clash_service import ClashService, extract_clash_artifacts
+from app.services.clash_workflow_service import ClashWorkflowService
 from app.services.project_service import ProjectService
 
 _INVALID_FILENAME_CHARS = re.compile(r'[/\\:*?"<>|]')
@@ -45,6 +48,26 @@ def build_export_filename(kind: str, meta: dict[str, Any]) -> str:
     if kind == "technical":
         return (
             f"Reporte Tecnico de Clashes de la {folder} del {project} "
+            f"con {date_str} por el {user} numero {number}.pdf"
+        )
+    if kind == "technical_excel":
+        return (
+            f"Reporte Tecnico de Clashes de la {folder} del {project} "
+            f"con {date_str} por el {user} numero {number}.xlsx"
+        )
+    if kind == "final_technical":
+        return (
+            f"Informe Tecnico Final de la {folder} del {project} "
+            f"con {date_str} por el {user} numero {number}.pdf"
+        )
+    if kind == "final_technical_excel":
+        return (
+            f"Informe Tecnico Final de la {folder} del {project} "
+            f"con {date_str} por el {user} numero {number}.xlsx"
+        )
+    if kind == "final_human":
+        return (
+            f"Informe Final de la {folder} del {project} "
             f"con {date_str} por el {user} numero {number}.pdf"
         )
     return f"Reporte de la {folder} del {project} con {date_str} por el {user} numero {number}.pdf"
@@ -126,4 +149,65 @@ class ClashExportService:
         meta = await self._export_meta(user, project, job)
         pdf_bytes = self.build_clash_human_pdf(meta=meta, artifacts=artifacts)
         filename = build_export_filename("human", meta)
+        return pdf_bytes, filename
+
+    async def export_technical_excel(
+        self,
+        user: User,
+        project_uuid: UUID,
+        job_id: UUID | None = None,
+    ) -> tuple[bytes, str]:
+        project = await self._project_svc.get_project(user, project_uuid)
+        job = await self._clash_svc.get_job_for_export(user, project_uuid, job_id=job_id)
+        artifacts = extract_clash_artifacts(job.result if isinstance(job.result, dict) else None)
+        meta = await self._export_meta(user, project, job)
+        bundle = build_report_bundle(meta=meta, artifacts=artifacts)
+        xlsx = build_corrida_technical_excel(bundle)
+        filename = build_export_filename("technical_excel", meta)
+        return xlsx, filename
+
+    async def export_final_technical_pdf(
+        self,
+        user: User,
+        project_uuid: UUID,
+        job_id: UUID | None = None,
+    ) -> tuple[bytes, str]:
+        project = await self._project_svc.get_project(user, project_uuid)
+        workflow = ClashWorkflowService(self._session)
+        job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
+        artifacts = extract_clash_artifacts(job.result if isinstance(job.result, dict) else None)
+        meta = await self._export_meta(user, project, job)
+        bundle = build_report_bundle(meta=meta, artifacts=artifacts)
+        pdf_bytes = build_final_technical_pdf(bundle, items)
+        filename = build_export_filename("final_technical", meta)
+        return pdf_bytes, filename
+
+    async def export_final_technical_excel(
+        self,
+        user: User,
+        project_uuid: UUID,
+        job_id: UUID | None = None,
+    ) -> tuple[bytes, str]:
+        project = await self._project_svc.get_project(user, project_uuid)
+        workflow = ClashWorkflowService(self._session)
+        job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
+        meta = await self._export_meta(user, project, job)
+        xlsx = build_final_technical_excel(meta=meta, items=items)
+        filename = build_export_filename("final_technical_excel", meta)
+        return xlsx, filename
+
+    async def export_final_human_pdf(
+        self,
+        user: User,
+        project_uuid: UUID,
+        job_id: UUID | None = None,
+    ) -> tuple[bytes, str]:
+        project = await self._project_svc.get_project(user, project_uuid)
+        workflow = ClashWorkflowService(self._session)
+        job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
+        artifacts = extract_clash_artifacts(job.result if isinstance(job.result, dict) else None)
+        meta = await self._export_meta(user, project, job)
+        bundle = build_report_bundle(meta=meta, artifacts=artifacts)
+        pdf_bytes = build_final_human_pdf(bundle, items)
+        filename = build_export_filename("final_human", meta)
         return pdf_bytes, filename
