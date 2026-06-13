@@ -12,6 +12,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.project import Project
+    from app.models.project_clash_item import ProjectClashItem
 
 
 class ProjectClashJob(Base):
@@ -33,6 +34,7 @@ class ProjectClashJob(Base):
     run_sequence: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     triggered_by_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
     result: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    output_dir: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -40,3 +42,6 @@ class ProjectClashJob(Base):
     )
 
     project: Mapped["Project"] = relationship(back_populates="clash_jobs")
+    clash_items: Mapped[list["ProjectClashItem"]] = relationship(
+        back_populates="job", cascade="all, delete-orphan"
+    )
