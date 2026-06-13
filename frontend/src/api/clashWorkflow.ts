@@ -4,6 +4,8 @@ import type {
   ClashDetail,
   ClashFilters,
   ClashRow,
+  CorrectionResult,
+  CorrectionTarget,
   DashboardMetrics,
   FilterOptions,
   ReviewerDecision,
@@ -100,6 +102,44 @@ export async function addClashWorkflowComment(
     body: JSON.stringify({ comment }),
   })
   return res.ok
+}
+
+export async function uploadClashCorrection(
+  projectUuid: string,
+  token: string | null,
+  itemId: string,
+  params: { target: CorrectionTarget; revisionName: string; file: File },
+): Promise<ClashDetail | null> {
+  const form = new FormData()
+  form.set('target', params.target)
+  form.set('revision_name', params.revisionName)
+  form.set('file', params.file)
+  const res = await apiFetch(
+    `/api/projects/${projectUuid}/clash-workflow/clashes/${itemId}/corrections`,
+    { method: 'POST', token, body: form },
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? 'No se pudo subir la corrección')
+  }
+  return (await res.json()) as ClashDetail
+}
+
+export async function requestClashReanalysis(
+  projectUuid: string,
+  token: string | null,
+  itemId: string,
+  outcome?: CorrectionResult,
+): Promise<ClashDetail | null> {
+  const res = await apiFetch(
+    `/api/projects/${projectUuid}/clash-workflow/clashes/${itemId}/reanalysis`,
+    { method: 'POST', token, body: JSON.stringify({ outcome: outcome ?? null }) },
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail ?? 'No se pudo reanalizar')
+  }
+  return (await res.json()) as ClashDetail
 }
 
 async function downloadExport(

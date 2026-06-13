@@ -72,9 +72,26 @@ export type ClashEvent = {
   created_at: string | null
 }
 
+export type CorrectionTarget = 'dwg_a' | 'dwg_b' | 'both'
+export type CorrectionResult = 'resolved' | 'still_present'
+
+export type ClashCorrection = {
+  id: string
+  target: CorrectionTarget
+  target_label: string
+  revision_name: string
+  original_dwg: string | null
+  file_name: string | null
+  uploaded_by: string
+  uploaded_at: string | null
+  result: CorrectionResult | null
+  result_label: string | null
+  reanalysis_run_id: string | null
+}
+
 export type ClashDetail = ClashRow & {
   audit_trail: ClashEvent[]
-  corrections: unknown[]
+  corrections: ClashCorrection[]
   visual_preview?: {
     available: boolean
     annotated_url: string | null

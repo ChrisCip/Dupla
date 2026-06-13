@@ -14,12 +14,10 @@ import { apiFetch } from '../../../api/client'
 import {
   downloadFinalHumanPdf,
   downloadFinalTechnicalExcel,
-  downloadFinalTechnicalPdf,
   downloadClashTechnicalExcel,
 } from '../../../api/clashWorkflow'
 import {
   downloadClashHumanPdf,
-  downloadClashTechnicalPdf,
   getCoordinationFolders,
   getCoordinationInventory,
   type CoordinationInventory,
@@ -217,7 +215,7 @@ export function WorkspaceHallazgosTab({
   const { report, job, isPolling, error: jobError, enqueue } = useStructuralAnalysisJob(projectUuid, token)
   const [expandedClashIds, setExpandedClashIds] = useState<Set<string>>(() => new Set())
   const [pdfBusy, setPdfBusy] = useState<
-    'technical' | 'technical_excel' | 'human' | 'final_technical' | 'final_technical_excel' | 'final_human' | null
+    'technical_excel' | 'human' | 'final_technical_excel' | 'final_human' | null
   >(null)
   const [pdfError, setPdfError] = useState<string | null>(null)
   const [folderOptions, setFolderOptions] = useState<Array<{ uuid: string; path: string }>>([])
@@ -270,33 +268,21 @@ export function WorkspaceHallazgosTab({
   const showWorkflow = report.run_status === 'completed' && Boolean(job)
 
   function handleDownload(
-    kind:
-      | 'technical'
-      | 'technical_excel'
-      | 'human'
-      | 'final_technical'
-      | 'final_technical_excel'
-      | 'final_human',
+    kind: 'technical_excel' | 'human' | 'final_technical_excel' | 'final_human',
   ) {
     if (!token) return
-    if ((kind === 'technical' || kind === 'technical_excel' || kind === 'human') && !canDownloadPdf) return
+    if ((kind === 'technical_excel' || kind === 'human') && !canDownloadPdf) return
     if (kind.startsWith('final') && report.run_status !== 'completed') return
     void (async () => {
       setPdfError(null)
       setPdfBusy(kind)
       try {
         switch (kind) {
-          case 'technical':
-            await downloadClashTechnicalPdf(projectUuid, token, job?.id)
-            break
           case 'technical_excel':
             await downloadClashTechnicalExcel(projectUuid, token, job?.id)
             break
           case 'human':
             await downloadClashHumanPdf(projectUuid, token, job?.id)
-            break
-          case 'final_technical':
-            await downloadFinalTechnicalPdf(projectUuid, token)
             break
           case 'final_technical_excel':
             await downloadFinalTechnicalExcel(projectUuid, token)
@@ -471,6 +457,10 @@ export function WorkspaceHallazgosTab({
             </div>
           </div>
         </header>
+
+      {showWorkflow ? (
+        <ClashWorkflowPanel projectUuid={projectUuid} token={token} visible={showWorkflow} />
+      ) : null}
 
         {report.run_status === 'pending' && report.clashes.length === 0 && !job ? (
           <Card className="border-dashed p-6 text-center">
@@ -663,15 +653,6 @@ export function WorkspaceHallazgosTab({
               type="button"
               className="du-pill-action disabled:opacity-50"
               disabled={!canDownloadPdf || pdfBusy !== null}
-              onClick={() => handleDownload('technical')}
-            >
-              <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
-              {pdfBusy === 'technical' ? 'Descargando…' : 'Reporte técnico de corrida (PDF)'}
-            </button>
-            <button
-              type="button"
-              className="du-pill-action disabled:opacity-50"
-              disabled={!canDownloadPdf || pdfBusy !== null}
               onClick={() => handleDownload('technical_excel')}
             >
               <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
@@ -684,13 +665,11 @@ export function WorkspaceHallazgosTab({
               onClick={() => handleDownload('human')}
             >
               <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
-              {pdfBusy === 'human' ? 'Descargando…' : 'Reporte de corrida (PDF)'}
+              {pdfBusy === 'human' ? 'Descargando…' : 'Reporte de coordinación (PDF)'}
             </button>
           </div>
         </section>
       ) : null}
-
-      <ClashWorkflowPanel projectUuid={projectUuid} token={token} visible={showWorkflow} />
 
       {showWorkflow ? (
         <section className="space-y-4 border-t border-black/10 pt-6" aria-label="Informes finales">
@@ -699,14 +678,6 @@ export function WorkspaceHallazgosTab({
             Incluye las decisiones registradas o el estado inicial detectado por el motor si aún no se revisó.
           </p>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="du-pill-action disabled:opacity-50"
-              disabled={pdfBusy !== null}
-              onClick={() => handleDownload('final_technical')}
-            >
-              {pdfBusy === 'final_technical' ? 'Descargando…' : 'Exportar informe técnico final (PDF)'}
-            </button>
             <button
               type="button"
               className="du-pill-action disabled:opacity-50"
@@ -721,7 +692,7 @@ export function WorkspaceHallazgosTab({
               disabled={pdfBusy !== null}
               onClick={() => handleDownload('final_human')}
             >
-              {pdfBusy === 'final_human' ? 'Descargando…' : 'Exportar informe final (PDF)'}
+              {pdfBusy === 'final_human' ? 'Descargando…' : 'Informe final de coordinación (PDF)'}
             </button>
           </div>
         </section>

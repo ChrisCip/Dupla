@@ -8,7 +8,9 @@ import {
   getClashWorkflowFilters,
   listClashWorkflowRows,
   recordClashWorkflowDecision,
+  requestClashReanalysis,
   updateClashWorkflowStatus,
+  uploadClashCorrection,
 } from '../../api/clashWorkflow'
 import { apiFetch } from '../../api/client'
 import {
@@ -25,12 +27,39 @@ import type {
   ClashFilters,
   ClashRow,
   ClashStatus,
+  CorrectionTarget,
   DashboardMetrics,
   FilterOptions,
   Priority,
   Severity,
 } from '../../types/clashWorkflow'
 import { Card } from '../Card'
+
+const CORRECTION_TARGET_OPTIONS: { value: CorrectionTarget; label: string }[] = [
+  { value: 'dwg_a', label: 'DWG A' },
+  { value: 'dwg_b', label: 'DWG B' },
+  { value: 'both', label: 'Ambos DWG' },
+]
+
+const CORRECTION_STATUSES: ClashStatus[] = [
+  'correction_required',
+  'correction_uploaded',
+  'pending_reanalysis',
+  'still_present',
+]
+
+function defaultCorrectionTarget(clash: ClashDetail): CorrectionTarget {
+  switch (clash.reviewer_decision) {
+    case 'correct_dwg_a':
+      return 'dwg_a'
+    case 'correct_dwg_b':
+      return 'dwg_b'
+    case 'correct_both':
+      return 'both'
+    default:
+      return 'dwg_a'
+  }
+}
 
 type Props = {
   projectUuid: string
@@ -174,6 +203,153 @@ function DwgComparisonView({ clash, token }: { clash: ClashDetail; token: string
   )
 }
 
+function CorrectionSection({
+  projectUuid,
+  token,
+  clash,
+  onChanged,
+}: {
+  projectUuid: string
+  token: string | null
+  clash: ClashDetail
+  onChanged: () => void
+}) {
+  const [target, setTarget] = useState<CorrectionTarget>(() => defaultCorrectionTarget(clash))
+  const [revision, setRevision] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const hasUnresolvedCorrection = clash.corrections.some((c) => !c.result)
+  const canReanalyze =
+    hasUnresolvedCorrection &&
+    (clash.status === 'correction_uploaded' || clash.status === 'pending_reanalysis')
+
+  const upload = async () => {
+    if (!token || !file) return
+    setBusy(true)
+    setError(null)
+    try {
+      await uploadClashCorrection(projectUuid, token, clash.id, {
+        target,
+        revisionName: revision.trim() || file.name,
+        file,
+      })
+      setFile(null)
+      setRevision('')
+      onChanged()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo subir la corrección')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const reanalyze = async (outcome: 'resolved' | 'still_present') => {
+    if (!token) return
+    setBusy(true)
+    setError(null)
+    try {
+      await requestClashReanalysis(projectUuid, token, clash.id, outcome)
+      onChanged()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo reanalizar')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-orange-500/25 bg-orange-500/[0.05] p-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-orange-900">
+        Resubida de corrección
+      </h4>
+      <p className="mt-1 text-xs text-muted">
+        El DWG corregido se guarda como revisión nueva; el original nunca se sobrescribe.
+      </p>
+      {error ? <p className="mt-2 text-xs text-primary">{error}</p> : null}
+
+      {clash.corrections.length > 0 ? (
+        <ul className="mt-2 space-y-1">
+          {clash.corrections.map((c) => (
+            <li key={c.id} className="rounded border border-black/10 bg-white px-2 py-1 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-ink">{c.revision_name}</span>
+                <span className="text-muted">{c.target_label}</span>
+              </div>
+              <div className="text-muted">
+                {c.file_name} · {c.uploaded_by}
+                {c.result_label ? ` · ${c.result_label}` : ' · sin reanalizar'}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <div className="mt-3 space-y-2">
+        <select
+          className="du-input w-full text-sm"
+          value={target}
+          onChange={(e) => setTarget(e.target.value as CorrectionTarget)}
+          disabled={busy}
+        >
+          {CORRECTION_TARGET_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              Corregir {o.label}
+            </option>
+          ))}
+        </select>
+        <input
+          className="du-input w-full text-sm"
+          placeholder="Nombre de revisión (ej. R02)"
+          value={revision}
+          onChange={(e) => setRevision(e.target.value)}
+          disabled={busy}
+        />
+        <input
+          type="file"
+          accept=".dwg,.dxf"
+          className="block w-full text-xs text-muted file:mr-2 file:rounded file:border-0 file:bg-primary/10 file:px-2 file:py-1 file:text-primary"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          disabled={busy}
+        />
+        <button
+          type="button"
+          disabled={busy || !file || !token}
+          onClick={() => void upload()}
+          className="du-pill-action w-full justify-center text-xs disabled:opacity-50"
+        >
+          {busy ? 'Procesando…' : 'Subir DWG corregido'}
+        </button>
+      </div>
+
+      {canReanalyze ? (
+        <div className="mt-3 border-t border-orange-500/20 pt-3">
+          <p className="text-xs font-medium text-ink">Reanalizar el par corregido</p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              disabled={busy || !token}
+              onClick={() => void reanalyze('resolved')}
+              className="flex-1 rounded-md border border-emerald-600/30 bg-emerald-600/10 px-2 py-1.5 text-xs font-medium text-emerald-900 disabled:opacity-50"
+            >
+              Clash resuelto
+            </button>
+            <button
+              type="button"
+              disabled={busy || !token}
+              onClick={() => void reanalyze('still_present')}
+              className="flex-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
+            >
+              Persiste
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function ClashDetailPanel({
   projectUuid,
   token,
@@ -285,6 +461,17 @@ function ClashDetailPanel({
             ))}
           </div>
         </div>
+        {CORRECTION_STATUSES.includes(clash.status) ? (
+          <CorrectionSection
+            projectUuid={projectUuid}
+            token={token}
+            clash={clash}
+            onChanged={() => {
+              load()
+              onChanged()
+            }}
+          />
+        ) : null}
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">Comando AutoCAD</h4>
           <div className="mt-1 rounded-md bg-ink px-3 py-2 font-mono text-xs text-white">
