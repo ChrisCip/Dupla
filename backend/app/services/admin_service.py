@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,7 @@ from app.domain.user_permissions import can_assign_team_leader, has_elevated_acc
 from app.models.user import User, UserModule, UserRole
 from app.repositories.module_repository import ModuleRepository
 from app.repositories.user_repository import UserRepository
+from app.repositories.workspace_repository import WorkspaceRepository
 from app.schemas.admin import (
     AdminCreateUserRequest,
     AdminImportCreatedUser,
@@ -23,13 +25,17 @@ from app.security.temporary_password import generate_temporary_password
 
 
 class AdminService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
+        self._workspace_id = workspace_id
         self._users = UserRepository(session)
         self._modules = ModuleRepository(session)
+        self._workspaces = WorkspaceRepository(session)
 
     async def list_users(self) -> list[User]:
-        return list(await self._users.list_all_ordered())
+        member_ids = set(await self._workspaces.list_member_user_ids(self._workspace_id))
+        rows = list(await self._users.list_all_ordered())
+        return [u for u in rows if u.id in member_ids]
 
     async def create_user(self, body: AdminCreateUserRequest) -> User:
         existing = await self._users.get_by_email(body.email)
@@ -65,6 +71,9 @@ class AdminService:
         self._users.add(user)
         for mid in body.module_ids:
             self._users.add_module_link(UserModule(user_id=uid, module_id=mid))
+        await self._workspaces.add_member(self._workspace_id, uid)
+        if user.role != UserRole.GERENCIA:
+            user.active_workspace_id = self._workspace_id
         await self._session.flush()
         await self._session.refresh(user, attribute_names=["modules"])
         return user

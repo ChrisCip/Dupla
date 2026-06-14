@@ -16,6 +16,7 @@ from app.models.subcontract_quote import SubcontractQuote, SubcontractQuoteLine
 from app.models.task_board import TaskCard, TaskCardComment, TaskList
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User, UserModule
+from app.models.workspace import Workspace, WorkspaceMember
 from app.models.user_notification import UserNotification
 from app.models.workflow_template import WorkflowTemplate, WorkflowTemplateStep
 
@@ -45,6 +46,8 @@ __all__ = [
     "User",
     "UserModule",
     "UserNotification",
+    "Workspace",
+    "WorkspaceMember",
     "WorkflowTemplate",
     "WorkflowTemplateStep",
 ]

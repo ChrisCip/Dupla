@@ -37,9 +37,9 @@ def _control_days_display(row: PlanDeliveryRequest) -> str:
 
 
 class ExportService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
-        self._project_service = ProjectService(session)
+        self._project_service = ProjectService(session, workspace_id)
 
     async def _load_payload(self, user: User, project_uuid: UUID) -> dict:
         payload, _ = await self._project_service.get_architecture(user, project_uuid)

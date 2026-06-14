@@ -19,7 +19,7 @@ from app.domain.file_discipline import FileIngestStatus, parse_discipline
 from app.domain.project_kind import ProjectKind
 from app.domain.project_updated import touch_project_updated_at
 from app.domain.project_uploads import sanitize_project_original_filename, validate_project_file_extension
-from app.domain.task_board_constants import TASK_LIST_DONE_UUID
+from app.services.workspace_bootstrap_service import task_list_uuid_for_workspace
 from app.domain.business_pliego import (
     BUSINESS_PLIEGO_KEY,
     apply_approval,
@@ -61,11 +61,12 @@ from app.services.task_board_service import TaskBoardService
 
 
 class ProjectLifecycleService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
+        self._workspace_id = workspace_id
         self._projects = ProjectRepository(session)
         self._users = UserRepository(session)
-        self._project_svc = ProjectService(session)
+        self._project_svc = ProjectService(session, workspace_id)
         self._workflow_templates = WorkflowTemplateRepository(session)
         self._settings = get_settings()
 
@@ -213,7 +214,7 @@ class ProjectLifecycleService:
             .where(
                 TaskCard.project_id == project_id,
                 TaskCard.archived.is_(False),
-                TaskCard.list_id != TASK_LIST_DONE_UUID,
+                TaskCard.list_id != task_list_uuid_for_workspace(self._workspace_id, 2),
             )
         )
         return int((await self._session.execute(q)).scalar_one())
@@ -247,8 +248,8 @@ class ProjectLifecycleService:
         raw_actions = to_step.on_enter_actions or []
         if not isinstance(raw_actions, list):
             return
-        tasks_svc = TaskBoardService(self._session)
-        chat_svc = ChatService(self._session)
+        tasks_svc = TaskBoardService(self._session, self._workspace_id)
+        chat_svc = ChatService(self._session, self._workspace_id)
         for raw in raw_actions:
             if not isinstance(raw, dict):
                 continue
@@ -511,7 +512,7 @@ class ProjectLifecycleService:
             pc = str(patch["project_code"]).strip() if patch["project_code"] is not None else ""
             pc = pc or None
             if pc is not None:
-                other = await self._projects.get_by_project_code(pc)
+                other = await self._projects.get_by_project_code(pc, self._workspace_id)
                 if other is not None and other.id != project.id:
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
@@ -941,7 +942,7 @@ class ProjectLifecycleService:
             )
         fid = uuid.uuid4()
         root = Path(self._settings.upload_root)
-        dest_dir = root / str(project.id)
+        dest_dir = root / str(self._workspace_id) / str(project.id)
         dest_dir.mkdir(parents=True, exist_ok=True)
         safe_name = sanitize_project_original_filename(upload.filename or "file")
         validate_project_file_extension(safe_name)
@@ -1438,7 +1439,7 @@ class ProjectLifecycleService:
     ) -> None:
         meta = dict(project.workflow_meta or {})
         auto = dict(meta.get("automation_tasks") or {})
-        tasks = TaskBoardService(self._session)
+        tasks = TaskBoardService(self._session, self._workspace_id)
         changed = False
 
         if (
@@ -1483,7 +1484,7 @@ class ProjectLifecycleService:
         auto = dict(meta.get("automation_tasks") or {})
         if auto.get("after_documentary_export"):
             return
-        tasks = TaskBoardService(self._session)
+        tasks = TaskBoardService(self._session, self._workspace_id)
         await tasks.create_automation_card_for_phase(
             user,
             project_id=project.id,

@@ -13,6 +13,7 @@ import { apiFetch } from '../api/client'
 import { Card } from '../components/Card'
 import { CreateProjectModal } from '../components/projects/CreateProjectModal'
 import { NotificationsBell } from '../components/NotificationsBell'
+import { WorkspaceContextSelect } from '../components/WorkspaceContextSelect'
 import { ProjectsBoardView } from '../components/projects/ProjectsBoardView'
 import { ProjectsDashboardOverview } from '../components/projects/ProjectsDashboardOverview'
 import { PROJECT_CARD_MIME } from '../constants/projectsPage'
@@ -449,6 +450,7 @@ export function ProjectsPage() {
             </label>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <WorkspaceContextSelect />
             {elevated ? (
               <button
                 type="button"

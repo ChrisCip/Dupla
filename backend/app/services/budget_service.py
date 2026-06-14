@@ -131,9 +131,9 @@ def _normalize_budget_discipline(raw: str | None, files: list[ProjectFile]) -> s
 
 
 class BudgetService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
-        self._project_svc = ProjectService(session)
+        self._project_svc = ProjectService(session, workspace_id)
 
     async def _get_project_file(self, project_id: UUID, file_uuid: UUID) -> Optional[ProjectFile]:
         result = await self._session.execute(

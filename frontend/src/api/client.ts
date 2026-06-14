@@ -1,5 +1,6 @@
 import { AUTH_PERSIST_KEY } from '../store/authConstants'
 import { emitToast } from '../components/ToastProvider'
+import { getActiveWorkspaceUuidFromStorage } from '../lib/workspaceSession'
 
 const base = import.meta.env.VITE_API_BASE ?? ''
 
@@ -50,6 +51,10 @@ export async function apiFetch(
   const h = new Headers(headers)
   if (token) {
     h.set('Authorization', `Bearer ${token}`)
+  }
+  const wsUuid = getActiveWorkspaceUuidFromStorage()
+  if (wsUuid && !path.includes('/api/auth/')) {
+    h.set('X-Workspace-Uuid', wsUuid)
   }
   if (!h.has('Content-Type') && rest.body && !(rest.body instanceof FormData)) {
     h.set('Content-Type', 'application/json')

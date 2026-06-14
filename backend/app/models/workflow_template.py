@@ -19,6 +19,12 @@ class WorkflowTemplate(Base):
     __tablename__ = "workflow_templates"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text(), nullable=False, default="")
     # Lucide icon export name (e.g. GitBranch); allowed values enforced in API.

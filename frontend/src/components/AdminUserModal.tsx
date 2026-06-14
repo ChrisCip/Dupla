@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { apiFetch } from '../api/client'
@@ -25,6 +25,11 @@ type ListedUser = {
   is_team_leader?: boolean
 }
 
+type WorkspaceRow = {
+  uuid: string
+  name: string
+}
+
 type Props = {
   token: string
   open: boolean
@@ -36,8 +41,12 @@ type Props = {
 
 export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Props) {
   const actorRole = useAuthStore((s) => s.role)
+  const activeWorkspaceUuid = useAuthStore((s) => s.activeWorkspaceUuid)
   const assignTeamLeader = canAssignTeamLeader(actorRole)
+  const canAssignWorkspaces = actorRole === 'GERENCIA'
   const editableRoles = assignTeamLeader ? USER_ROLES : USER_ROLES.filter((r) => r !== 'GERENCIA')
+  const [allWorkspaces, setAllWorkspaces] = useState<WorkspaceRow[]>([])
+  const [selectedWorkspaceUuids, setSelectedWorkspaceUuids] = useState<string[]>([])
 
   const createForm = useForm<AdminCreateUserForm>({
     resolver: zodResolver(adminCreateUserSchema),
@@ -63,6 +72,30 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
       isTeamLeader: false,
     },
   })
+
+  useEffect(() => {
+    if (!open || !canAssignWorkspaces) return
+    void (async () => {
+      const res = await apiFetch('/api/admin/workspaces', { token })
+      if (!res.ok) return
+      const rows = (await res.json()) as WorkspaceRow[]
+      setAllWorkspaces(rows)
+      if (mode === 'create') {
+        const defaultUuid = activeWorkspaceUuid ?? rows[0]?.uuid
+        setSelectedWorkspaceUuids(defaultUuid ? [defaultUuid] : [])
+      }
+    })()
+  }, [open, canAssignWorkspaces, token, mode, activeWorkspaceUuid])
+
+  useEffect(() => {
+    if (!open || !canAssignWorkspaces || mode !== 'edit' || !user) return
+    void (async () => {
+      const res = await apiFetch(`/api/admin/users/${user.uuid}/workspaces`, { token })
+      if (!res.ok) return
+      const j = (await res.json()) as { workspace_uuids?: string[] }
+      setSelectedWorkspaceUuids(j.workspace_uuids ?? [])
+    })()
+  }, [open, canAssignWorkspaces, mode, user, token])
 
   useEffect(() => {
     if (!open) return
@@ -99,6 +132,15 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  async function saveUserWorkspaces(userUuid: string, role: string) {
+    if (!canAssignWorkspaces || role === 'GERENCIA' || selectedWorkspaceUuids.length === 0) return
+    await apiFetch(`/api/admin/users/${userUuid}/workspaces`, {
+      method: 'PUT',
+      token,
+      body: JSON.stringify({ workspace_uuids: selectedWorkspaceUuids }),
+    })
+  }
+
   async function submitCreate(values: AdminCreateUserForm) {
     const module_ids = values.architectureAccess ? [1] : []
     const res = await apiFetch('/api/admin/users', {
@@ -120,6 +162,8 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
       })
       return
     }
+    const created = (await res.json()) as { uuid: string; role: string }
+    await saveUserWorkspaces(created.uuid, created.role)
     invalidateAdminUsersDirectoryCache()
     onSaved()
     onClose()
@@ -153,9 +197,44 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
       })
       return
     }
+    await saveUserWorkspaces(user.uuid, values.role)
     invalidateAdminUsersDirectoryCache()
     onSaved()
     onClose()
+  }
+
+  function toggleWorkspace(uuid: string) {
+    setSelectedWorkspaceUuids((prev) => {
+      if (prev.includes(uuid)) {
+        const next = prev.filter((id) => id !== uuid)
+        return next.length > 0 ? next : prev
+      }
+      return [...prev, uuid]
+    })
+  }
+
+  function workspaceAssignmentBlock(role: string) {
+    if (!canAssignWorkspaces || role === 'GERENCIA' || allWorkspaces.length === 0) return null
+    return (
+      <div>
+        <p className="du-label">Workspaces</p>
+        <ul className="mt-2 space-y-2 rounded-lg border border-black/10 p-3">
+          {allWorkspaces.map((w) => (
+            <li key={w.uuid}>
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  className="rounded border-black/20"
+                  checked={selectedWorkspaceUuids.includes(w.uuid)}
+                  onChange={() => toggleWorkspace(w.uuid)}
+                />
+                {w.name}
+              </label>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
   }
 
   if (!open) return null
@@ -256,6 +335,7 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
               <input type="checkbox" className="rounded border-black/20" {...createForm.register('architectureAccess')} />
               Acceso a proyectos y workspace
             </label>
+            {workspaceAssignmentBlock(createForm.watch('role'))}
             {createForm.formState.errors.root ? (
               <p className="text-sm text-primary">{createForm.formState.errors.root.message}</p>
             ) : null}
@@ -349,6 +429,7 @@ export function AdminUserModal({ token, open, mode, user, onClose, onSaved }: Pr
                 Líder de equipo (permisos elevados excepto crear usuarios)
               </label>
             ) : null}
+            {workspaceAssignmentBlock(editForm.watch('role'))}
             {editForm.formState.errors.root ? (
               <p className="text-sm text-primary">{editForm.formState.errors.root.message}</p>
             ) : null}

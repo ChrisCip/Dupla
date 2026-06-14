@@ -76,9 +76,9 @@ def _is_cad_filename(name: str) -> bool:
 
 
 class ClashService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
-        self._project_svc = ProjectService(session)
+        self._project_svc = ProjectService(session, workspace_id)
 
     async def _all_folders(self, project_id: UUID) -> list[ProjectFileFolder]:
         result = await self._session.execute(

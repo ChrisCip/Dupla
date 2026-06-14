@@ -52,6 +52,9 @@ class UserResponse(BaseModel):
     module_ids: list[int] = Field(default_factory=list, description="Módulos asignados")
     must_change_password: bool = False
     is_team_leader: bool = False
+    active_workspace_uuid: UUID | None = None
+    active_workspace_name: str | None = None
+    available_workspaces: list[dict] = Field(default_factory=list)
 
     @classmethod
     def from_user(cls, user: User) -> UserResponse:

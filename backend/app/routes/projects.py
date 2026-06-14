@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, Upl
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user, require_elevated_access
+from app.dependencies import get_current_user, get_workspace_context, require_elevated_access
+from app.domain.workspace_context import WorkspaceContext
 from app.domain.project_kind import ProjectKind
 from app.models.user import User
 from app.schemas.architecture import ArchitectureDataResponse, ArchitectureDocumentPayload
@@ -75,8 +76,9 @@ def _opt_uuid(raw: Optional[str]) -> Optional[UUID]:
 async def list_projects(
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[ProjectResponse]:
-    svc = ProjectService(session)
+    svc = ProjectService(session, ws_ctx.workspace_id)
     rows = await svc.list_projects(current)
     return [ProjectResponse.from_project(p) for p in rows]
 
@@ -97,6 +99,7 @@ async def list_projects(
 async def create_project(
     current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     name: str = Form(...),
     client_name: Optional[str] = Form(None),
     project_kind: str = Form("CLIENT"),
@@ -135,8 +138,8 @@ async def create_project(
                 detail="member_user_uuids debe ser un JSON array de UUIDs",
             ) from e
     file_list = files if files is not None else []
-    svc = ProjectService(session)
-    lifecycle = ProjectLifecycleService(session)
+    svc = ProjectService(session, ws_ctx.workspace_id)
+    lifecycle = ProjectLifecycleService(session, ws_ctx.workspace_id)
     project = await svc.create_project(
         current,
         name=name,
@@ -174,8 +177,9 @@ async def get_project(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectResponse:
-    svc = ProjectService(session)
+    svc = ProjectService(session, ws_ctx.workspace_id)
     project = await svc.get_project(current, project_uuid)
     return ProjectResponse.from_project(project)
 
@@ -190,8 +194,9 @@ async def list_project_members(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[ProjectMemberEntry]:
-    svc = ProjectService(session)
+    svc = ProjectService(session, ws_ctx.workspace_id)
     rows = await svc.list_project_members(current, project_uuid)
     return [ProjectMemberEntry(uuid=u, email=e, first_name=fn, last_name=ln) for u, e, fn, ln in rows]
 
@@ -207,8 +212,9 @@ async def put_project_members(
     body: ProjectMembersPutRequest,
     current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ProjectService(session)
+    svc = ProjectService(session, ws_ctx.workspace_id)
     await svc.set_project_members(current, project_uuid, body.member_user_uuids)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -225,8 +231,9 @@ async def get_architecture(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ArchitectureDataResponse:
-    svc = ProjectService(session)
+    svc = ProjectService(session, ws_ctx.workspace_id)
     raw, updated = await svc.get_architecture(current, project_uuid)
     doc = ArchitectureDocumentPayload.model_validate(raw)
     updated_str = updated.isoformat() if isinstance(updated, datetime) else None
@@ -249,8 +256,9 @@ async def put_architecture(
     body: ArchitectureDocumentPayload,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ProjectService(session)
+    svc = ProjectService(session, ws_ctx.workspace_id)
     await svc.put_architecture(current, project_uuid, body)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -265,8 +273,9 @@ async def list_plan_delivery_requests(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[PlanDeliveryRequestResponse]:
-    svc = PlanDeliveryService(session)
+    svc = PlanDeliveryService(session, ws_ctx.workspace_id)
     return await svc.list_rows(current, project_uuid)
 
 
@@ -281,8 +290,9 @@ async def create_plan_delivery_request(
     body: PlanDeliveryRequestCreate,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> PlanDeliveryRequestResponse:
-    svc = PlanDeliveryService(session)
+    svc = PlanDeliveryService(session, ws_ctx.workspace_id)
     return await svc.create_row(current, project_uuid, body)
 
 
@@ -297,8 +307,9 @@ async def patch_plan_delivery_request(
     body: PlanDeliveryRequestPatch,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> PlanDeliveryRequestResponse:
-    svc = PlanDeliveryService(session)
+    svc = PlanDeliveryService(session, ws_ctx.workspace_id)
     return await svc.patch_row(current, project_uuid, row_uuid, body)
 
 
@@ -312,8 +323,9 @@ async def delete_plan_delivery_request(
     row_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = PlanDeliveryService(session)
+    svc = PlanDeliveryService(session, ws_ctx.workspace_id)
     await svc.delete_row(current, project_uuid, row_uuid)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -327,9 +339,10 @@ async def export_documentary_pdf(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ExportService(session)
-    lifecycle = ProjectLifecycleService(session)
+    svc = ExportService(session, ws_ctx.workspace_id)
+    lifecycle = ProjectLifecycleService(session, ws_ctx.workspace_id)
     data = await svc.export_documentary_pdf(current, project_uuid)
     await lifecycle.maybe_automation_after_documentary_export(current, project_uuid)
     await session.commit()
@@ -350,8 +363,9 @@ async def export_pliego_xlsx(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ExportService(session)
+    svc = ExportService(session, ws_ctx.workspace_id)
     data, filename = await svc.export_pliego_xlsx(current, project_uuid)
     return Response(
         content=data,
@@ -370,8 +384,9 @@ async def export_control_xlsx(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ExportService(session)
+    svc = ExportService(session, ws_ctx.workspace_id)
     data = await svc.export_control_xlsx(current, project_uuid)
     return Response(
         content=data,
@@ -388,8 +403,9 @@ async def export_pliego_pdf(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ExportService(session)
+    svc = ExportService(session, ws_ctx.workspace_id)
     data = await svc.export_pliego_pdf(current, project_uuid)
     return Response(
         content=data,
@@ -406,8 +422,9 @@ async def export_control_pdf(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ExportService(session)
+    svc = ExportService(session, ws_ctx.workspace_id)
     data = await svc.export_control_pdf(current, project_uuid)
     return Response(
         content=data,

@@ -38,10 +38,17 @@ class ProjectRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def list_for_user(self, user_uuid: UUID, *, is_master: bool) -> list[Project]:
+    async def list_for_user(
+        self,
+        user_uuid: UUID,
+        *,
+        is_master: bool,
+        workspace_id: UUID,
+    ) -> list[Project]:
         stmt = (
             select(Project)
             .options(selectinload(Project.current_workflow_step))
+            .where(Project.workspace_id == workspace_id)
             .order_by(Project.updated_at.desc())
         )
         if not is_master:
@@ -57,7 +64,9 @@ class ProjectRepository:
         )
         return (await self._session.execute(q)).scalar_one_or_none() is not None
 
-    async def user_has_access_to_project(self, user: User, project: Project) -> bool:
+    async def user_has_access_to_project(self, user: User, project: Project, workspace_id: UUID) -> bool:
+        if project.workspace_id != workspace_id:
+            return False
         if has_elevated_access(user):
             return True
         if project.created_by is not None and project.created_by == user.id:
@@ -123,11 +132,19 @@ class ProjectRepository:
         )
         return result.scalar_one_or_none()
 
-    async def list_for_template(self, template_id: UUID, *, is_master: bool, user_uuid: UUID) -> list[Project]:
+    async def list_for_template(
+        self,
+        template_id: UUID,
+        *,
+        is_master: bool,
+        user_uuid: UUID,
+        workspace_id: UUID,
+    ) -> list[Project]:
         stmt = (
             select(Project)
             .options(selectinload(Project.current_workflow_step))
             .where(Project.workflow_template_id == template_id)
+            .where(Project.workspace_id == workspace_id)
             .order_by(Project.updated_at.desc())
         )
         if not is_master:
@@ -136,11 +153,11 @@ class ProjectRepository:
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_by_project_code(self, code: str) -> Optional[Project]:
+    async def get_by_project_code(self, code: str, workspace_id: UUID) -> Optional[Project]:
         c = code.strip()
         if not c:
             return None
-        q = select(Project).where(Project.project_code == c)
+        q = select(Project).where(Project.project_code == c, Project.workspace_id == workspace_id)
         return (await self._session.execute(q)).scalar_one_or_none()
 
     async def create_with_architecture(
@@ -149,6 +166,7 @@ class ProjectRepository:
         name: str,
         client_name: Optional[str],
         created_by: UUID,
+        workspace_id: UUID,
         project_kind: str,
         workflow_phase: str,
         workflow_template_id: UUID,
@@ -173,6 +191,7 @@ class ProjectRepository:
             client_name=client_name,
             project_kind=project_kind,
             created_by=created_by,
+            workspace_id=workspace_id,
             workflow_phase=workflow_phase,
             workflow_template_id=workflow_template_id,
             current_workflow_step_id=current_workflow_step_id,

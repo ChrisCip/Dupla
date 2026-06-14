@@ -22,7 +22,8 @@ settings = get_settings()
 
 
 class ProjectService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
+        self._workspace_id = workspace_id
         self._projects = ProjectRepository(session)
         self._users = UserRepository(session)
         self._workflow_templates = WorkflowTemplateRepository(session)
@@ -38,18 +39,23 @@ class ProjectService:
     async def list_projects(self, user: User) -> list[Project]:
         await self.ensure_architecture_access(user)
         is_master = has_elevated_access(user)
-        return await self._projects.list_for_user(user.id, is_master=is_master)
+        return await self._projects.list_for_user(
+            user.id,
+            is_master=is_master,
+            workspace_id=self._workspace_id,
+        )
 
     async def list_projects_for_template(self, user: User, template_uuid: UUID) -> list[Project]:
         await self.ensure_architecture_access(user)
         tpl = await self._workflow_templates.get_template_by_uuid(template_uuid)
-        if tpl is None:
+        if tpl is None or tpl.workspace_id != self._workspace_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plantilla no encontrada")
         is_master = has_elevated_access(user)
         return await self._projects.list_for_template(
             tpl.id,
             is_master=is_master,
             user_uuid=user.id,
+            workspace_id=self._workspace_id,
         )
 
     async def create_project(
@@ -91,13 +97,13 @@ class ProjectService:
             )
         if workflow_template_uuid is not None:
             tpl = await self._workflow_templates.get_template_by_uuid(workflow_template_uuid)
-            if tpl is None:
+            if tpl is None or tpl.workspace_id != self._workspace_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="La plantilla de flujo no existe",
                 )
         else:
-            tpl = await self._workflow_templates.get_default_active_template()
+            tpl = await self._workflow_templates.get_default_active_template(self._workspace_id)
             if tpl is None:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -121,7 +127,7 @@ class ProjectService:
         pc = project_code.strip() if project_code else None
         pc = pc or None
         if pc is not None:
-            existing = await self._projects.get_by_project_code(pc)
+            existing = await self._projects.get_by_project_code(pc, self._workspace_id)
             if existing is not None:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
@@ -148,6 +154,7 @@ class ProjectService:
             name=name_clean,
             client_name=cn,
             created_by=user.id,
+            workspace_id=self._workspace_id,
             project_kind=project_kind.value,
             workflow_phase=wf,
             workflow_template_id=tpl.id,
@@ -180,7 +187,7 @@ class ProjectService:
         project = await self._projects.get_by_uuid(project_uuid)
         if project is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-        if not await self._projects.user_has_access_to_project(user, project):
+        if not await self._projects.user_has_access_to_project(user, project, self._workspace_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
         return project
 

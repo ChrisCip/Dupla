@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { apiFetch } from '../api/client'
+import { AdminWorkspacesPanel } from '../components/admin/AdminWorkspacesPanel'
 import { AdminUserImportModal } from '../components/AdminUserImportModal'
 import { AdminUserModal } from '../components/AdminUserModal'
 import { Card } from '../components/Card'
@@ -138,6 +139,8 @@ export function AdminUsersPage() {
           </div>
         ) : null}
       </div>
+
+      {token && canCreate ? <AdminWorkspacesPanel token={token} /> : null}
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
         <div className="shrink-0 border-b border-black/10 px-4 py-3 text-sm font-semibold text-ink">

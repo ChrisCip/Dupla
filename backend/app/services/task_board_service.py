@@ -16,6 +16,7 @@ from app.domain.tutorial_project import TASK_LIST_TODO_UUID
 from app.models.user import User, UserModule, UserRole
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
+from app.repositories.workspace_repository import WorkspaceRepository
 from app.schemas.task_board import (
     TaskAssigneeOption,
     TaskBoardResponse,
@@ -27,10 +28,12 @@ from app.schemas.task_board import (
 
 
 class TaskBoardService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: uuid.UUID) -> None:
         self._session = session
+        self._workspace_id = workspace_id
         self._users = UserRepository(session)
         self._projects = ProjectRepository(session)
+        self._workspaces = WorkspaceRepository(session)
 
     async def _require_project_access_for_card(self, actor: User, project_id: Optional[uuid.UUID]) -> None:
         if project_id is None:
@@ -41,7 +44,7 @@ class TaskBoardService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Proyecto no encontrado",
             )
-        if not await self._projects.user_has_access_to_project(actor, project):
+        if not await self._projects.user_has_access_to_project(actor, project, self._workspace_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Sin acceso a este proyecto",
@@ -53,12 +56,14 @@ class TaskBoardService:
         project_uuid: Optional[uuid.UUID] = None,
     ) -> list[TaskAssigneeOption]:
         if project_uuid is None:
-            settings = get_settings()
-            mid = settings.architecture_module_id
+            member_ids = await self._workspaces.list_member_user_ids(self._workspace_id)
+            if not member_ids:
+                return []
             q = (
                 select(User)
                 .join(UserModule, UserModule.user_id == User.id)
-                .where(UserModule.module_id == mid)
+                .where(UserModule.module_id == get_settings().architecture_module_id)
+                .where(User.id.in_(member_ids))
                 .order_by(User.email)
             )
             rows = list((await self._session.execute(q)).scalars().all())
@@ -78,7 +83,7 @@ class TaskBoardService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Proyecto no encontrado",
             )
-        if not await self._projects.user_has_access_to_project(viewer, project):
+        if not await self._projects.user_has_access_to_project(viewer, project, self._workspace_id):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Proyecto no encontrado",
@@ -150,6 +155,7 @@ class TaskBoardService:
                 selectinload(TaskList.cards).selectinload(TaskCard.assignee),
                 selectinload(TaskList.cards).selectinload(TaskCard.project),
             )
+            .where(TaskList.workspace_id == self._workspace_id)
             .order_by(TaskList.position)
         )
         lists = list(result.scalars().all())

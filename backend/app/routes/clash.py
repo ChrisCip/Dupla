@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_workspace_context
+from app.domain.workspace_context import WorkspaceContext
 from app.models.user import User
 from app.services.clash_export_service import ClashExportService, content_disposition_header
 from app.services.clash_service import ClashService
@@ -45,8 +46,9 @@ async def get_project_files_count(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectFilesCountResponse:
-    svc = ClashService(session)
+    svc = ClashService(session, ws_ctx.workspace_id)
     total = await svc.count_all_project_files(current, project_uuid)
     return ProjectFilesCountResponse(total=total)
 
@@ -60,8 +62,9 @@ async def list_coordination_folders(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[dict[str, Any]]:
-    svc = ClashService(session)
+    svc = ClashService(session, ws_ctx.workspace_id)
     return await svc.list_coordination_folders(current, project_uuid)
 
 
@@ -74,9 +77,10 @@ async def get_coordination_inventory(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     folder_uuid: Annotated[Optional[UUID], Query()] = None,
 ) -> dict[str, Any]:
-    svc = ClashService(session)
+    svc = ClashService(session, ws_ctx.workspace_id)
     return await svc.get_coordination_inventory(current, project_uuid, folder_uuid=folder_uuid)
 
 
@@ -91,8 +95,9 @@ async def enqueue_clash_job(
     body: EnqueueClashJobRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ClashJobResponse:
-    svc = ClashService(session)
+    svc = ClashService(session, ws_ctx.workspace_id)
     job = await svc.enqueue_clash_job(
         current,
         project_uuid,
@@ -121,8 +126,9 @@ async def get_latest_clash_job(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ClashJobResponse:
-    svc = ClashService(session)
+    svc = ClashService(session, ws_ctx.workspace_id)
     job = await svc.get_latest_job(current, project_uuid)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No clash job found for this project")
@@ -149,8 +155,9 @@ async def get_structural_analysis_report(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> dict[str, Any]:
-    svc = ClashService(session)
+    svc = ClashService(session, ws_ctx.workspace_id)
     report = await svc.get_structural_analysis_report(current, project_uuid)
     await session.commit()
     return report
@@ -164,8 +171,9 @@ async def export_latest_clash_technical_pdf(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ClashExportService(session)
+    svc = ClashExportService(session, ws_ctx.workspace_id)
     data, filename = await svc.export_technical_pdf(current, project_uuid)
     await session.commit()
     return Response(
@@ -183,8 +191,9 @@ async def export_latest_clash_human_pdf(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ClashExportService(session)
+    svc = ClashExportService(session, ws_ctx.workspace_id)
     data, filename = await svc.export_human_pdf(current, project_uuid)
     await session.commit()
     return Response(
@@ -203,8 +212,9 @@ async def export_clash_technical_pdf(
     job_id: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ClashExportService(session)
+    svc = ClashExportService(session, ws_ctx.workspace_id)
     data, filename = await svc.export_technical_pdf(current, project_uuid, job_id=job_id)
     await session.commit()
     return Response(
@@ -223,8 +233,9 @@ async def export_clash_human_pdf(
     job_id: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ClashExportService(session)
+    svc = ClashExportService(session, ws_ctx.workspace_id)
     data, filename = await svc.export_human_pdf(current, project_uuid, job_id=job_id)
     await session.commit()
     return Response(

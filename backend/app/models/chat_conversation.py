@@ -43,6 +43,12 @@ class ChatConversation(Base):
         nullable=True,
         unique=True,
     )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
 
     members: Mapped[list["ChatConversationMember"]] = relationship(
         back_populates="conversation",

@@ -59,10 +59,10 @@ def content_disposition_header(filename: str) -> dict[str, str]:
 
 
 class ClashExportService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
-        self._clash_svc = ClashService(session)
-        self._project_svc = ProjectService(session)
+        self._clash_svc = ClashService(session, workspace_id)
+        self._project_svc = ProjectService(session, workspace_id)
 
     async def _export_meta(
         self,

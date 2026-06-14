@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user, require_task_creator, require_task_operator
+from app.dependencies import get_current_user, get_workspace_context, require_task_creator, require_task_operator
+from app.domain.workspace_context import WorkspaceContext
 from app.models.user import User
 from app.schemas.task_board import (
     TaskAssigneeOption,
@@ -33,12 +34,13 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 async def list_task_assignees(
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     project_uuid: Annotated[
         Optional[UUID],
         Query(description="Limitar al equipo de este proyecto"),
     ] = None,
 ) -> list[TaskAssigneeOption]:
-    svc = TaskBoardService(session)
+    svc = TaskBoardService(session, ws_ctx.workspace_id)
     return await svc.list_assignees(current, project_uuid)
 
 
@@ -55,6 +57,7 @@ async def list_task_assignees(
 async def get_task_board(
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     include_archived: Annotated[bool, Query(description="Incluir lista de tarjetas archivadas")] = False,
     mine: Annotated[bool, Query(description="Solo tareas asignadas a mí")] = False,
     assignee_uuid: Annotated[
@@ -66,7 +69,7 @@ async def get_task_board(
         Query(description="Filtrar tarjetas vinculadas a un proyecto"),
     ] = None,
 ) -> TaskBoardResponse:
-    svc = TaskBoardService(session)
+    svc = TaskBoardService(session, ws_ctx.workspace_id)
     return await svc.get_board(
         viewer=current,
         include_archived=include_archived,
@@ -87,8 +90,9 @@ async def create_task_card(
     body: TaskCardCreateRequest,
     current: Annotated[User, Depends(require_task_creator)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> TaskCardResponse:
-    svc = TaskBoardService(session)
+    svc = TaskBoardService(session, ws_ctx.workspace_id)
     card = await svc.create_card(current, body)
     await session.commit()
     loaded = await svc.get_card_for_response(card.id)
@@ -104,8 +108,9 @@ async def list_task_card_comments(
     card_uuid: UUID,
     current: Annotated[User, Depends(require_task_operator)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[TaskCardCommentResponse]:
-    svc = TaskBoardService(session)
+    svc = TaskBoardService(session, ws_ctx.workspace_id)
     rows = await svc.list_card_comments(current, card_uuid)
     return [TaskCardCommentResponse.from_row(r) for r in rows]
 
@@ -121,8 +126,9 @@ async def create_task_card_comment(
     body: TaskCardCommentCreateRequest,
     current: Annotated[User, Depends(require_task_operator)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> TaskCardCommentResponse:
-    svc = TaskBoardService(session)
+    svc = TaskBoardService(session, ws_ctx.workspace_id)
     row = await svc.add_card_comment(current, card_uuid, body.body)
     await session.commit()
     return TaskCardCommentResponse.from_row(row)
@@ -139,8 +145,9 @@ async def patch_task_card(
     body: TaskCardPatchRequest,
     current: Annotated[User, Depends(require_task_operator)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> TaskCardResponse:
-    svc = TaskBoardService(session)
+    svc = TaskBoardService(session, ws_ctx.workspace_id)
     await svc.patch_card(current, card_uuid, body)
     await session.commit()
     loaded = await svc.get_card_for_response(card_uuid)
@@ -156,8 +163,9 @@ async def delete_task_card(
     card_uuid: UUID,
     current: Annotated[User, Depends(require_task_operator)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = TaskBoardService(session)
+    svc = TaskBoardService(session, ws_ctx.workspace_id)
     await svc.delete_card(current, card_uuid)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

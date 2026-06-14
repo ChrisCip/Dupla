@@ -3,12 +3,16 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.workspace import WorkspaceMember
 
 
 class UserRole(str, enum.Enum):
@@ -29,6 +33,11 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
     must_change_password: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True)
     is_team_leader: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
+    active_workspace_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     modules: Mapped[list[UserModule]] = relationship(
@@ -40,6 +49,10 @@ class User(Base):
         back_populates="creator",
         foreign_keys="Project.created_by",
         passive_deletes=True,
+    )
+    workspace_memberships: Mapped[list["WorkspaceMember"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
 

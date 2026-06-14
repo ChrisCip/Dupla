@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.workflow_template import WorkflowTemplate, WorkflowTemplateStep
+from app.models.workspace import DEFAULT_WORKSPACE_UUID
 
 _LEGACY_PHASE_TITLE: list[tuple[str, str]] = [
     ("BOOTSTRAPPING", "Criterios de arranque"),
@@ -52,6 +53,7 @@ async def ensure_default_workflow_template_if_missing(session: AsyncSession) -> 
     session.add(
         WorkflowTemplate(
             id=tid,
+            workspace_id=DEFAULT_WORKSPACE_UUID,
             name="Flujo estándar Dupla",
             description="Plantilla por defecto con los pasos del proceso operativo.",
             icon_key="GitBranch",

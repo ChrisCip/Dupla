@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import require_elevated_access, get_current_user
+from app.dependencies import require_elevated_access, get_current_user, get_workspace_context
+from app.domain.workspace_context import WorkspaceContext
 from app.models.user import User
 from app.models.workflow_template import WorkflowTemplate
 from app.schemas.project import ProjectResponse
@@ -124,7 +125,8 @@ async def list_projects_for_template(
     template_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[ProjectResponse]:
-    ps = ProjectService(session)
+    ps = ProjectService(session, ws_ctx.workspace_id)
     projects = await ps.list_projects_for_template(current, template_uuid)
     return [ProjectResponse.from_project(p) for p in projects]

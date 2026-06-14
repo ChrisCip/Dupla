@@ -25,14 +25,24 @@ class AiAssistantService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    async def _workspace_id(self, user: User) -> UUID:
+        if user.active_workspace_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Sin workspace activo",
+            )
+        return user.active_workspace_id
+
     async def history(self, user: User, project_uuid: Optional[UUID] = None) -> AiAssistantHistoryResponse:
-        turns = await ai_assistant_context_load(user.id, project_uuid)
+        workspace_id = await self._workspace_id(user)
+        turns = await ai_assistant_context_load(user.id, workspace_id, project_uuid)
         return AiAssistantHistoryResponse(
             messages=[AiAssistantHistoryMessage(role=m["role"], content=m["content"]) for m in turns],
         )
 
     async def _project_snapshot_block(self, user: User, project_uuid: UUID) -> str:
-        project_svc = ProjectService(self._session)
+        workspace_id = await self._workspace_id(user)
+        project_svc = ProjectService(self._session, workspace_id)
         project = await project_svc.get_project(user, project_uuid)
         repo = ProjectRepository(self._session)
         file_count = await repo.count_project_files(project.id)
@@ -68,7 +78,8 @@ class AiAssistantService:
                 f"{snapshot}"
             )
 
-        prior = await ai_assistant_context_load(user.id, project_uuid)
+        workspace_id = await self._workspace_id(user)
+        prior = await ai_assistant_context_load(user.id, workspace_id, project_uuid)
         max_msgs = settings.ai_assistant_max_context_messages
         trimmed = prior[-max_msgs:] if len(prior) > max_msgs else prior
 
@@ -96,6 +107,7 @@ class AiAssistantService:
             updated = updated[-max_msgs:]
         await ai_assistant_context_save(
             user.id,
+            workspace_id,
             updated,
             settings.ai_assistant_context_ttl_seconds,
             project_uuid=project_uuid,

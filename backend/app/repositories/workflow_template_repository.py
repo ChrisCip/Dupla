@@ -15,28 +15,31 @@ class WorkflowTemplateRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def list_active_templates(self) -> list[WorkflowTemplate]:
+    async def list_active_templates(self, workspace_id: UUID) -> list[WorkflowTemplate]:
         q = (
             select(WorkflowTemplate)
             .options(selectinload(WorkflowTemplate.steps))
             .where(WorkflowTemplate.archived_at.is_(None))
+            .where(WorkflowTemplate.workspace_id == workspace_id)
             .order_by(WorkflowTemplate.name.asc())
         )
         return list((await self._session.execute(q)).scalars().all())
 
-    async def get_template_by_uuid(self, template_uuid: UUID) -> Optional[WorkflowTemplate]:
+    async def get_template_by_uuid(self, template_uuid: UUID, workspace_id: UUID | None = None) -> Optional[WorkflowTemplate]:
         q = (
             select(WorkflowTemplate)
             .options(selectinload(WorkflowTemplate.steps))
             .where(WorkflowTemplate.id == template_uuid)
         )
+        if workspace_id is not None:
+            q = q.where(WorkflowTemplate.workspace_id == workspace_id)
         return (await self._session.execute(q)).scalar_one_or_none()
 
-    async def get_default_active_template(self) -> Optional[WorkflowTemplate]:
-        """Primera plantilla no archivada por nombre (mismo criterio que el listado del selector)."""
+    async def get_default_active_template(self, workspace_id: UUID) -> Optional[WorkflowTemplate]:
         q = (
             select(WorkflowTemplate)
             .where(WorkflowTemplate.archived_at.is_(None))
+            .where(WorkflowTemplate.workspace_id == workspace_id)
             .order_by(WorkflowTemplate.name.asc())
             .limit(1)
         )
@@ -58,6 +61,7 @@ class WorkflowTemplateRepository:
     async def search_templates_and_projects(
         self,
         *,
+        workspace_id: UUID,
         query: Optional[str],
         preview_project_limit: int = 5,
     ) -> list[tuple[WorkflowTemplate, list[tuple[UUID, str]]]]:
@@ -67,11 +71,13 @@ class WorkflowTemplateRepository:
             select(WorkflowTemplate)
             .options(selectinload(WorkflowTemplate.steps))
             .where(WorkflowTemplate.archived_at.is_(None))
+            .where(WorkflowTemplate.workspace_id == workspace_id)
         )
         if qtxt:
             sub_proj = (
                 select(Project.workflow_template_id)
                 .where(func.lower(Project.name).contains(qtxt))
+                .where(Project.workspace_id == workspace_id)
                 .distinct()
             )
             base = base.where(
@@ -84,6 +90,7 @@ class WorkflowTemplateRepository:
             pq = (
                 select(Project.id, Project.name)
                 .where(Project.workflow_template_id == t.id)
+                .where(Project.workspace_id == workspace_id)
                 .order_by(Project.updated_at.desc())
                 .limit(preview_project_limit)
             )

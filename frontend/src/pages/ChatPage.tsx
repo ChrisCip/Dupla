@@ -10,6 +10,7 @@ import { ChatProjectContextPanel } from '../components/chat/ChatProjectContextPa
 import { ChatDirectModal } from '../components/chat/ChatDirectModal'
 import { ChatGroupModal } from '../components/chat/ChatGroupModal'
 import { ChatMessageList } from '../components/chat/ChatMessageList'
+import { WorkspaceContextSelect } from '../components/WorkspaceContextSelect'
 import { formatGroupParticipantEmails } from '../lib/chatUi'
 import { userDisplayInitials } from '../lib/taskboard'
 import { useAuthStore } from '../store/authStore'
@@ -280,6 +281,7 @@ export function ChatPage() {
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <WorkspaceContextSelect />
           <button
             type="button"
             className="relative rounded-lg border border-black/10 bg-white p-2 text-muted shadow-sm hover:bg-black/[0.03]"

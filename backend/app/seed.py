@@ -11,7 +11,6 @@ from app.db.session import AsyncSessionLocal
 from app.domain.bootstrap_defaults import default_bootstrap_criteria
 from app.domain.project_kind import ProjectKind
 from app.domain.tutorial_project import (
-    TASK_LIST_TODO_UUID,
     TUTORIAL_PROJECT_NAME,
     TUTORIAL_PROJECT_UUID,
     TUTORIAL_TASK_CARD_UUID,
@@ -19,16 +18,14 @@ from app.domain.tutorial_project import (
 )
 from app.domain.workflow_phase import WorkflowPhase
 from app.domain.workflow_template_phase import effective_workflow_phase_for_step
-from app.models.chat_conversation import (
-    GENERAL_CONVERSATION_UUID,
-    ChatConversation,
-    ChatConversationKind,
-)
+from app.models.workspace import DEFAULT_WORKSPACE_UUID
+from app.services.workspace_bootstrap_service import bootstrap_workspace_resources, task_list_uuid_for_workspace
 from app.models.module import Module
 from app.models.project import Project, ProjectArchitectureData
 from app.models.task_board import TaskCard, TaskList
 from app.models.user import User, UserModule, UserRole
 from app.repositories.project_repository import ProjectRepository
+from app.repositories.workspace_repository import WorkspaceRepository
 from app.repositories.workflow_template_repository import WorkflowTemplateRepository
 from app.security.password import hash_password
 from app.seed_default_workflow_template import ensure_default_workflow_template_if_missing
@@ -66,19 +63,24 @@ async def _ensure_module(session) -> None:
         session.add(Module(id=1, name="Arquitectura"))
 
 
+async def _ensure_workspace_members(session) -> None:
+    await bootstrap_workspace_resources(session, DEFAULT_WORKSPACE_UUID)
+    repo = WorkspaceRepository(session)
+    for email, _, _, _, role in SEED_USERS:
+        uid = await _user_id_by_email(session, email)
+        if uid is None:
+            continue
+        if role == UserRole.GERENCIA:
+            continue
+        if not await repo.user_is_member(uid, DEFAULT_WORKSPACE_UUID):
+            await repo.add_member(DEFAULT_WORKSPACE_UUID, uid)
+        user = (await session.execute(select(User).where(User.id == uid))).scalar_one()
+        if user.active_workspace_id is None:
+            user.active_workspace_id = DEFAULT_WORKSPACE_UUID
+
+
 async def _ensure_general_conversation(session) -> None:
-    existing = await session.get(ChatConversation, GENERAL_CONVERSATION_UUID)
-    if existing is not None:
-        return
-    session.add(
-        ChatConversation(
-            id=GENERAL_CONVERSATION_UUID,
-            kind=ChatConversationKind.GENERAL,
-            title=None,
-            created_at=datetime.now(timezone.utc),
-            last_message_at=None,
-        )
-    )
+    await bootstrap_workspace_resources(session, DEFAULT_WORKSPACE_UUID)
 
 
 async def _ensure_user(
@@ -149,7 +151,7 @@ async def _ensure_tutorial_project_and_task(session) -> None:
         )
 
     wtr = WorkflowTemplateRepository(session)
-    tpl = await wtr.get_default_active_template()
+    tpl = await wtr.get_default_active_template(DEFAULT_WORKSPACE_UUID)
     if tpl is None:
         print(
             "[seed] Sin plantilla de flujo activa; se omite el proyecto tutorial.",
@@ -176,6 +178,7 @@ async def _ensure_tutorial_project_and_task(session) -> None:
             client_name="Dupla (demo)",
             project_kind=ProjectKind.CLIENT.value,
             created_by=master_id,
+            workspace_id=DEFAULT_WORKSPACE_UUID,
             workflow_phase=initial_phase,
             workflow_meta=_seed_workflow_meta(),
             project_bootstrap_criteria=default_bootstrap_criteria(),
@@ -217,19 +220,20 @@ async def _ensure_tutorial_project_and_task(session) -> None:
     if await session.get(TaskCard, TUTORIAL_TASK_CARD_UUID) is not None:
         return
 
+    todo_list_uuid = task_list_uuid_for_workspace(DEFAULT_WORKSPACE_UUID, 0)
     max_pos_row = await session.execute(
         select(func.coalesce(func.max(TaskCard.position), -1)).where(
-            TaskCard.list_id == TASK_LIST_TODO_UUID,
+            TaskCard.list_id == todo_list_uuid,
             TaskCard.archived.is_(False),
         )
     )
     next_pos = int(max_pos_row.scalar_one()) + 1
     now = datetime.now(timezone.utc)
-    tl = await session.get(TaskList, TASK_LIST_TODO_UUID)
+    tl = await session.get(TaskList, todo_list_uuid)
     list_title = tl.title if tl is not None else "Por hacer"
     card = TaskCard(
         id=TUTORIAL_TASK_CARD_UUID,
-        list_id=TASK_LIST_TODO_UUID,
+        list_id=todo_list_uuid,
         title=TUTORIAL_TASK_TITLE,
         description="Tarjeta de práctica para el tablero global vinculada al proyecto tutorial.",
         position=next_pos,
@@ -250,7 +254,7 @@ async def _ensure_tutorial_project_and_task(session) -> None:
         payload={
             "task_uuid": str(TUTORIAL_TASK_CARD_UUID),
             "title": TUTORIAL_TASK_TITLE,
-            "list_uuid": str(TASK_LIST_TODO_UUID),
+            "list_uuid": str(todo_list_uuid),
             "list_title": list_title,
             "assignee_uuid": None,
             "created_in_phase": WorkflowPhase.BOOTSTRAPPING.value,
@@ -267,6 +271,10 @@ async def _seed_impl() -> None:
     async with AsyncSessionLocal() as session:
         for email, first_name, last_name, password_plain, role in SEED_USERS:
             await _ensure_user(session, email, first_name, last_name, password_plain, role)
+        await session.commit()
+
+    async with AsyncSessionLocal() as session:
+        await _ensure_workspace_members(session)
         await session.commit()
 
     async with AsyncSessionLocal() as session:

@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_client import chat_message_epoch_bump
 from app.db.session import get_db
-from app.dependencies import get_current_user
-from app.models.chat_conversation import GENERAL_CONVERSATION_UUID
+from app.dependencies import get_current_user, get_workspace_context
+from app.domain.workspace_context import WorkspaceContext
 from app.models.user import User
 from app.schemas.chat import (
     ChatConversationResponse,
@@ -18,6 +18,7 @@ from app.schemas.chat import (
     ChatUserDirectoryItem,
 )
 from app.services.chat_service import ChatService
+from app.services.workspace_bootstrap_service import general_conversation_uuid_for_workspace
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -31,8 +32,9 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 async def list_conversations(
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[ChatConversationResponse]:
-    svc = ChatService(session)
+    svc = ChatService(session, ws_ctx.workspace_id)
     return await svc.list_conversations(current)
 
 
@@ -45,8 +47,9 @@ async def open_direct_conversation(
     body: ChatDirectCreateRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ChatConversationResponse:
-    svc = ChatService(session)
+    svc = ChatService(session, ws_ctx.workspace_id)
     res = await svc.get_or_create_direct(current, body.user_uuid)
     await session.commit()
     return res
@@ -62,8 +65,9 @@ async def create_group_conversation(
     body: ChatGroupCreateRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ChatConversationResponse:
-    svc = ChatService(session)
+    svc = ChatService(session, ws_ctx.workspace_id)
     res = await svc.create_group(current, body.title, body.member_uuids)
     await session.commit()
     return res
@@ -78,8 +82,9 @@ async def create_group_conversation(
 async def chat_directory(
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[ChatUserDirectoryItem]:
-    svc = ChatService(session)
+    svc = ChatService(session, ws_ctx.workspace_id)
     return await svc.list_directory(current)
 
 
@@ -92,10 +97,11 @@ async def list_conversation_messages(
     conversation_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     after_uuid: Annotated[Optional[UUID], Query(description="UUID del último mensaje conocido")] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> list[ChatMessageResponse]:
-    svc = ChatService(session)
+    svc = ChatService(session, ws_ctx.workspace_id)
     return await svc.list_conversation_messages(current, conversation_uuid, after_uuid, limit)
 
 
@@ -110,11 +116,12 @@ async def post_conversation_message(
     body: ChatPostRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ChatMessageResponse:
-    svc = ChatService(session)
+    svc = ChatService(session, ws_ctx.workspace_id)
     msg = await svc.post_conversation_message(current, conversation_uuid, body)
     await session.commit()
-    await chat_message_epoch_bump(conversation_uuid)
+    await chat_message_epoch_bump(conversation_uuid, ws_ctx.workspace_id)
     return msg
 
 
@@ -127,10 +134,11 @@ async def post_conversation_message(
 async def list_chat_messages(
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     after_uuid: Annotated[Optional[UUID], Query(description="UUID del último mensaje conocido")] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> list[ChatMessageResponse]:
-    svc = ChatService(session)
+    svc = ChatService(session, ws_ctx.workspace_id)
     return await svc.list_messages(current, after_uuid, limit)
 
 
@@ -144,9 +152,13 @@ async def post_chat_message(
     body: ChatPostRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ChatMessageResponse:
-    svc = ChatService(session)
+    svc = ChatService(session, ws_ctx.workspace_id)
     msg = await svc.post_message(current, body)
     await session.commit()
-    await chat_message_epoch_bump(GENERAL_CONVERSATION_UUID)
+    await chat_message_epoch_bump(
+        general_conversation_uuid_for_workspace(ws_ctx.workspace_id),
+        ws_ctx.workspace_id,
+    )
     return msg

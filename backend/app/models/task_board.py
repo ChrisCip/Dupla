@@ -19,6 +19,12 @@ class TaskList(Base):
     __tablename__ = "task_lists"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     title: Mapped[str] = mapped_column(String(120), nullable=False)
     position: Mapped[int] = mapped_column(Integer(), nullable=False)
 

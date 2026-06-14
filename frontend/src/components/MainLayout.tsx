@@ -2,48 +2,26 @@ import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
-import type { UserRole } from '../constants/userRoles'
 import { useChatSync } from '../hooks/useChatSync'
-import { useAuthStore } from '../store/authStore'
+import { useAuthStore, type MeProfile } from '../store/authStore'
 import { DuplaAssistantChat } from './DuplaAssistantChat'
 import { Sidebar } from './Sidebar'
-
-type MeRole = UserRole
 
 export function MainLayout() {
   useChatSync()
   const token = useAuthStore((s) => s.token)
   const userUuid = useAuthStore((s) => s.userUuid)
-  const mustChangePassword = useAuthStore((s) => s.mustChangePassword)
-  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
-  const setSession = useAuthStore((s) => s.setSession)
+  const applyProfile = useAuthStore((s) => s.applyProfile)
 
   useEffect(() => {
     if (!token || userUuid) return
     void (async () => {
       const res = await apiFetch('/api/me', { token })
       if (!res.ok) return
-      const p = (await res.json()) as {
-        uuid: string
-        email: string
-        first_name: string
-        last_name: string
-        role: MeRole
-        must_change_password?: boolean
-        is_team_leader?: boolean
-      }
-      setSession(
-        token,
-        p.email,
-        p.role,
-        p.uuid,
-        p.first_name,
-        p.last_name,
-        p.must_change_password ?? mustChangePassword,
-        p.is_team_leader ?? isTeamLeader,
-      )
+      const p = (await res.json()) as MeProfile
+      applyProfile(p, token)
     })()
-  }, [token, userUuid, mustChangePassword, isTeamLeader, setSession])
+  }, [token, userUuid, applyProfile])
 
   return (
     <div className="flex h-dvh min-h-0 overflow-hidden bg-surface text-ink">

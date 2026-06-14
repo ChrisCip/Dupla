@@ -230,6 +230,12 @@ export function Sidebar() {
               <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
               Salir
             </button>
+            <NavLink
+              to="/app/settings"
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-black/12 py-2.5 text-sm font-medium text-muted transition hover:bg-black/[0.04] hover:text-ink"
+            >
+              Configuración
+            </NavLink>
           </div>
         )}
       </div>

@@ -39,7 +39,13 @@ class Project(Base):
     workflow_meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     project_bootstrap_criteria: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     specifications_document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    project_code: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, unique=True)
+    project_code: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     coordination_profile: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     location_text: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
     estimated_area_sqm: Mapped[Optional[float]] = mapped_column(Numeric(14, 2), nullable=True)

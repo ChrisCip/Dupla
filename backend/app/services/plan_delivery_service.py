@@ -21,10 +21,10 @@ from app.services.project_service import ProjectService
 
 
 class PlanDeliveryService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
         self._repo = PlanDeliveryRepository(session)
-        self._projects = ProjectService(session)
+        self._projects = ProjectService(session, workspace_id)
         self._project_repo = ProjectRepository(session)
 
     async def list_rows(self, user: User, project_uuid: UUID) -> list[PlanDeliveryRequestResponse]:

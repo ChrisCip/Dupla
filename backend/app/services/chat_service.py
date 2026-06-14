@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.models.chat_conversation import (
-    GENERAL_CONVERSATION_UUID,
     ChatConversation,
     ChatConversationKind,
     ChatConversationMember,
@@ -19,12 +18,15 @@ from app.cache.redis_client import (
     cache_get_json,
     cache_set_json,
     chat_message_epoch_get,
+    scoped_redis_key,
 )
 from app.config import get_settings
 from app.models.chat_message import ChatMessage
 from app.models.project import Project
 from app.models.user import User
+from app.repositories.workspace_repository import WorkspaceRepository
 from app.services.project_service import ProjectService
+from app.services.workspace_bootstrap_service import general_conversation_uuid_for_workspace
 from app.schemas.chat import (
     ChatAuthorResponse,
     ChatConversationResponse,
@@ -35,21 +37,29 @@ from app.schemas.chat import (
 
 
 def _chat_messages_cache_key(
+    workspace_id: uuid.UUID,
     conversation_uuid: uuid.UUID,
     epoch: int,
     after_uuid: Optional[uuid.UUID],
     limit: int,
 ) -> str:
     after_part = str(after_uuid) if after_uuid is not None else "none"
-    return f"chat:messages:{conversation_uuid}:{epoch}:{after_part}:{limit}"
+    inner = f"chat:messages:{conversation_uuid}:{epoch}:{after_part}:{limit}"
+    return scoped_redis_key(workspace_id, inner)
 
 
 class ChatService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: uuid.UUID) -> None:
         self._session = session
+        self._workspace_id = workspace_id
+        self._workspaces = WorkspaceRepository(session)
+
+    def _general_conversation_id(self) -> uuid.UUID:
+        return general_conversation_uuid_for_workspace(self._workspace_id)
 
     async def _get_general_conversation(self) -> ChatConversation:
-        conv = await self._session.get(ChatConversation, GENERAL_CONVERSATION_UUID)
+        conv_id = self._general_conversation_id()
+        conv = await self._session.get(ChatConversation, conv_id)
         if conv is None:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -64,6 +74,8 @@ class ChatService:
         return conv
 
     async def _assert_can_access(self, user: User, conv: ChatConversation) -> None:
+        if conv.workspace_id != self._workspace_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversación no encontrada")
         if conv.kind == ChatConversationKind.GENERAL:
             return
         if conv.kind == ChatConversationKind.PROJECT:
@@ -84,14 +96,15 @@ class ChatService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversación no encontrada")
 
     async def _ensure_general_membership(self, user: User) -> None:
+        conv_id = self._general_conversation_id()
         stmt = select(ChatConversationMember).where(
-            ChatConversationMember.conversation_id == GENERAL_CONVERSATION_UUID,
+            ChatConversationMember.conversation_id == conv_id,
             ChatConversationMember.user_id == user.id,
         )
         if (await self._session.execute(stmt)).scalar_one_or_none() is None:
             self._session.add(
                 ChatConversationMember(
-                    conversation_id=GENERAL_CONVERSATION_UUID,
+                    conversation_id=conv_id,
                     user_id=user.id,
                 )
             )
@@ -264,8 +277,11 @@ class ChatService:
             ChatConversationMember.user_id == user.id
         )
         q = select(ChatConversation).where(
-            (ChatConversation.kind == ChatConversationKind.GENERAL)
-            | (ChatConversation.id.in_(member_subq))
+            ChatConversation.workspace_id == self._workspace_id,
+            (
+                (ChatConversation.kind == ChatConversationKind.GENERAL)
+                | (ChatConversation.id.in_(member_subq))
+            ),
         )
         rows = list((await self._session.execute(q)).scalars().all())
 
@@ -296,7 +312,14 @@ class ChatService:
         return out
 
     async def list_directory(self, user: User) -> list[ChatUserDirectoryItem]:
-        q = select(User).where(User.id != user.id).order_by(User.email.asc())
+        member_ids = await self._workspaces.list_member_user_ids(self._workspace_id)
+        if not member_ids:
+            return []
+        q = (
+            select(User)
+            .where(User.id.in_(member_ids), User.id != user.id)
+            .order_by(User.email.asc())
+        )
         users = list((await self._session.execute(q)).scalars().all())
         return [
             ChatUserDirectoryItem(
@@ -337,6 +360,7 @@ class ChatService:
             title=None,
             created_at=now,
             last_message_at=None,
+            workspace_id=self._workspace_id,
         )
         self._session.add(conv)
         self._session.add(ChatConversationMember(conversation_id=conv.id, user_id=user.id))
@@ -369,6 +393,7 @@ class ChatService:
             title=title.strip(),
             created_at=now,
             last_message_at=None,
+            workspace_id=self._workspace_id,
         )
         self._session.add(conv)
         for uid in ids_set:
@@ -395,8 +420,8 @@ class ChatService:
         await self._assert_can_access(user, conv)
         cap = min(max(limit, 1), 200)
         settings = get_settings()
-        epoch = await chat_message_epoch_get(conv.id)
-        cache_key = _chat_messages_cache_key(conv.id, epoch, after_uuid, cap)
+        epoch = await chat_message_epoch_get(conv.id, self._workspace_id)
+        cache_key = _chat_messages_cache_key(self._workspace_id, conv.id, epoch, after_uuid, cap)
         cached = await cache_get_json(cache_key)
         if isinstance(cached, list):
             out = [ChatMessageResponse.model_validate(x) for x in cached]
@@ -479,11 +504,12 @@ class ChatService:
         user: User,
         project_uuid: uuid.UUID,
     ) -> ChatConversationResponse:
-        ps = ProjectService(self._session)
+        ps = ProjectService(self._session, self._workspace_id)
         project = await ps.get_project(user, project_uuid)
         stmt = select(ChatConversation).where(
             ChatConversation.kind == ChatConversationKind.PROJECT,
             ChatConversation.project_id == project.id,
+            ChatConversation.workspace_id == self._workspace_id,
         )
         conv = (await self._session.execute(stmt)).scalar_one_or_none()
         now = datetime.now(timezone.utc)
@@ -495,6 +521,7 @@ class ChatService:
                 created_at=now,
                 last_message_at=None,
                 project_id=project.id,
+                workspace_id=self._workspace_id,
             )
             self._session.add(conv)
             self._session.add(ChatConversationMember(conversation_id=conv.id, user_id=user.id))

@@ -7,12 +7,12 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import require_budget_access
+from app.dependencies import get_workspace_context, require_budget_access
+from app.domain.workspace_context import WorkspaceContext
 from app.models.user import User
 from app.services.budget_service import BudgetService
 
 router = APIRouter(prefix="/api/projects", tags=["budget"])
-
 
 
 class EnqueueBudgetJobRequest(BaseModel):
@@ -41,8 +41,9 @@ async def enqueue_budget_job(
     body: EnqueueBudgetJobRequest,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> BudgetJobResponse:
-    svc = BudgetService(session)
+    svc = BudgetService(session, ws_ctx.workspace_id)
     job = await svc.enqueue_budget_job(
         current,
         project_uuid,
@@ -70,8 +71,9 @@ async def get_latest_budget_job(
     project_uuid: UUID,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> BudgetJobResponse:
-    svc = BudgetService(session)
+    svc = BudgetService(session, ws_ctx.workspace_id)
     job = await svc.get_latest_job(current, project_uuid)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No budget job found for this project")
@@ -98,6 +100,7 @@ async def get_budget_result(
     project_uuid: UUID,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> dict[str, Any]:
-    svc = BudgetService(session)
+    svc = BudgetService(session, ws_ctx.workspace_id)
     return await svc.get_budget_result(current, project_uuid)

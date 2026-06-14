@@ -28,10 +28,15 @@ CONFIDENCE_MIN = 0.42
 
 
 class PriceDatabaseService:
-    def __init__(self, session: AsyncSession, settings: Optional[Settings] = None) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        workspace_id: UUID,
+        settings: Optional[Settings] = None,
+    ) -> None:
         self._session = session
         self._settings = settings or get_settings()
-        self._projects = ProjectService(session)
+        self._projects = ProjectService(session, workspace_id)
 
     async def _get_project(self, user: User, project_uuid: UUID) -> Project:
         return await self._projects.get_project(user, project_uuid)

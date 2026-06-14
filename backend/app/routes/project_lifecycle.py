@@ -6,7 +6,8 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user, require_budget_access
+from app.dependencies import get_current_user, get_workspace_context, require_budget_access
+from app.domain.workspace_context import WorkspaceContext
 from app.domain.file_discipline import FileIngestStatus
 from app.domain.workflow_phase import WorkflowPhase
 from app.models.architecture_revision import ArchitectureRevisionDecision
@@ -73,8 +74,9 @@ async def patch_project(
     body: ProjectPatchRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     raw = body.model_dump(exclude_unset=True, mode="json")
     p = await svc.update_project_meta(current, project_uuid, raw)
     await session.commit()
@@ -87,9 +89,10 @@ async def post_transition(
     body: ProjectTransitionRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectResponse:
     target = _parse_target_phase(body.target_phase) if body.target_phase else None
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     p = await svc.transition_phase(
         current,
         project_uuid,
@@ -106,8 +109,9 @@ async def put_bootstrap(
     body: BootstrapCriteriaReplaceRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     p = await svc.put_bootstrap_criteria(current, project_uuid, body.criteria)
     await session.commit()
     return ProjectResponse.from_project(p)
@@ -123,8 +127,9 @@ async def put_specifications(
     body: SpecificationsReplaceRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     p = await svc.put_specifications(current, project_uuid, body.document)
     await session.commit()
     return ProjectResponse.from_project(p)
@@ -140,8 +145,9 @@ async def post_specifications_generate(
     body: PliegoGenerateRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     p = await svc.generate_business_pliego(current, project_uuid, body.force)
     await session.commit()
     return ProjectResponse.from_project(p)
@@ -156,8 +162,9 @@ async def post_specifications_approve(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     p = await svc.approve_business_pliego(current, project_uuid)
     await session.commit()
     return ProjectResponse.from_project(p)
@@ -169,8 +176,9 @@ async def patch_workflow_meta(
     body: WorkflowMetaPatchRequest,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     patch: dict = {}
     if body.budget_pipeline is not None:
         patch["budget_pipeline"] = body.budget_pipeline
@@ -184,12 +192,13 @@ async def get_project_events(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     limit: int = Query(20, ge=1, le=100, description="Tamaño de página (por defecto 20)"),
     offset: int = Query(0, ge=0, description="Desplazamiento para paginación"),
     event_type: Optional[str] = Query(None, max_length=80, description="Filtrar por tipo de evento"),
     q: Optional[str] = Query(None, max_length=500, description="Buscar en el payload (JSON) o correo del autor"),
 ) -> ProjectEventsPageResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     rows, total = await svc.list_events_page(
         current,
         project_uuid,
@@ -217,9 +226,10 @@ async def post_architecture_revision(
     body: ArchitectureRevisionCreateRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ArchitectureRevisionResponse:
     decision = _parse_revision_decision(body.decision)
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     rev = await svc.create_architecture_revision(
         current,
         project_uuid,
@@ -240,8 +250,9 @@ async def get_architecture_revisions(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[ArchitectureRevisionResponse]:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     rows = await svc.list_architecture_revisions(current, project_uuid)
     return [ArchitectureRevisionResponse.from_row(r) for r in rows]
 
@@ -255,9 +266,10 @@ async def get_project_file_folders(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     parent_uuid: Annotated[Optional[UUID], Query(description="Omitir para raíz")] = None,
 ) -> list[ProjectFileFolderResponse]:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     rows = await svc.list_file_folders(current, project_uuid, parent_uuid)
     return [ProjectFileFolderResponse.from_row(r) for r in rows]
 
@@ -273,8 +285,9 @@ async def post_project_file_folder(
     body: ProjectFileFolderCreateRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectFileFolderResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     row = await svc.create_file_folder(current, project_uuid, body.name, body.parent_uuid)
     await session.commit()
     await session.refresh(row)
@@ -292,8 +305,9 @@ async def patch_project_file_folder(
     body: ProjectFileFolderPatchRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectFileFolderResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     patch = body.model_dump(exclude_unset=True)
     row = await svc.patch_file_folder(current, project_uuid, folder_uuid, patch)
     await session.commit()
@@ -311,8 +325,9 @@ async def delete_project_file_folder(
     folder_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     await svc.delete_file_folder(current, project_uuid, folder_uuid)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -328,13 +343,14 @@ async def post_project_file(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     category: Annotated[Optional[str], Form()] = None,
     folder_uuid: Annotated[Optional[UUID], Form()] = None,
     wizard: Annotated[bool, Form()] = False,
 ) -> ProjectFileResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     row = await svc.upload_file(
         current,
         project_uuid,
@@ -354,11 +370,12 @@ async def get_project_files(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     folder_uuid: Annotated[Optional[UUID], Query(description="Omitir para raíz del proyecto")] = None,
     limit: Annotated[int, Query(le=50, ge=1, description="Máximo 50 por página")] = 50,
     offset: Annotated[int, Query(ge=0, description="Desplazamiento")] = 0,
 ) -> ProjectFilesListResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     rows, total = await svc.list_files(
         current, project_uuid, folder_uuid, limit=limit, offset=offset
     )
@@ -380,10 +397,11 @@ async def search_project_files(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     q: Annotated[Optional[str], Query(description="Texto en nombre o descripción")] = None,
     discipline: Annotated[Optional[str], Query(description="Disciplina (slug)")] = None,
 ) -> list[ProjectFileSearchResponse]:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     pairs = await svc.search_project_files(current, project_uuid, q, discipline)
     return [ProjectFileSearchResponse.from_row_with_path(pf, path) for pf, path in pairs]
 
@@ -399,9 +417,10 @@ async def patch_project_file(
     body: ProjectFilePatchRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     background_tasks: BackgroundTasks,
 ) -> ProjectFileResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     patch = body.model_dump(exclude_unset=True)
     row = await svc.patch_project_file(current, project_uuid, file_uuid, patch)
     await session.commit()
@@ -422,8 +441,9 @@ async def delete_project_file(
     file_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     await svc.delete_project_file(current, project_uuid, file_uuid)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -435,8 +455,9 @@ async def download_project_file(
     file_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> FileResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     pf, path = await svc.get_file_path(current, project_uuid, file_uuid)
     if not path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado en disco")
@@ -456,8 +477,9 @@ async def get_subcontracts(
     project_uuid: UUID,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[SubcontractQuoteResponse]:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     rows = await svc.list_subcontract_quotes(current, project_uuid)
     return [SubcontractQuoteResponse.from_row(r) for r in rows]
 
@@ -473,8 +495,9 @@ async def post_subcontract_quote(
     body: SubcontractQuoteCreateRequest,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> SubcontractQuoteResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     q = await svc.create_subcontract_quote(current, project_uuid, body.title)
     await session.commit()
     await session.refresh(q, ["lines"])
@@ -492,8 +515,9 @@ async def post_subcontract_line(
     body: SubcontractLineCreateRequest,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> SubcontractQuoteResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     await svc.add_subcontract_line(
         current,
         project_uuid,
@@ -515,8 +539,9 @@ async def delete_subcontract_quote(
     quote_uuid: UUID,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> None:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     await svc.delete_subcontract_quote(current, project_uuid, quote_uuid)
     await session.commit()
 
@@ -530,8 +555,9 @@ async def list_technical_findings(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[TechnicalFindingResponse]:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     rows = await svc.list_technical_findings(current, project_uuid)
     return [TechnicalFindingResponse.from_row(r) for r in rows]
 
@@ -547,8 +573,9 @@ async def create_technical_finding(
     body: TechnicalFindingCreateRequest,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> TechnicalFindingResponse:
-    svc = ProjectLifecycleService(session)
+    svc = ProjectLifecycleService(session, ws_ctx.workspace_id)
     row = await svc.create_technical_finding(
         current,
         project_uuid,
@@ -571,8 +598,9 @@ async def post_project_chat_conversation(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ChatConversationResponse:
-    chat = ChatService(session)
+    chat = ChatService(session, ws_ctx.workspace_id)
     res = await chat.get_or_create_project_conversation(current, project_uuid)
     await session.commit()
     return res
@@ -587,8 +615,9 @@ async def list_price_database_files(
     project_uuid: UUID,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> PriceDatabaseFileListResponse:
-    svc = PriceDatabaseService(session)
+    svc = PriceDatabaseService(session, ws_ctx.workspace_id)
     rows = await svc.list_files(current, project_uuid)
     return PriceDatabaseFileListResponse(items=[PriceDatabaseFileResponse.from_row(r) for r in rows])
 
@@ -603,10 +632,11 @@ async def post_price_database_file(
     project_uuid: UUID,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
 ) -> PriceDatabaseFileResponse:
-    svc = PriceDatabaseService(session)
+    svc = PriceDatabaseService(session, ws_ctx.workspace_id)
     row = await svc.upload_file(current, project_uuid, file)
     await session.commit()
     background_tasks.add_task(run_price_database_classification_task, row.id)
@@ -623,8 +653,9 @@ async def delete_price_database_file(
     file_uuid: UUID,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = PriceDatabaseService(session)
+    svc = PriceDatabaseService(session, ws_ctx.workspace_id)
     await svc.delete_file(current, project_uuid, file_uuid)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -639,8 +670,9 @@ async def post_price_database_apply(
     project_uuid: UUID,
     current: Annotated[User, Depends(require_budget_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> ProjectResponse:
-    svc = PriceDatabaseService(session)
+    svc = PriceDatabaseService(session, ws_ctx.workspace_id)
     project = await svc.confirm_apply(current, project_uuid)
     await session.commit()
     await session.refresh(project)

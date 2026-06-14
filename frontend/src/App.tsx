@@ -9,8 +9,9 @@ import { LoginPage } from './pages/LoginPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { ProjectWorkspacePage } from './pages/ProjectWorkspacePage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
-import { TaskboardPage } from './pages/TaskboardPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { TaskboardPage } from './pages/TaskboardPage'
 import { TutorialesPage } from './pages/TutorialesPage'
 import { FlowsHubPage } from './pages/FlowsHubPage'
 import { FlowBoardPage } from './pages/FlowBoardPage'
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/app/projects/:projectUuid" element={<ProjectWorkspacePage />} />
             <Route path="/app/chat" element={<ChatPage />} />
             <Route path="/app/tasks" element={<TaskboardPage />} />
+            <Route path="/app/settings" element={<SettingsPage />} />
             <Route path="/app/tutoriales" element={<TutorialesPage />} />
             <Route element={<RequireElevatedAccess />}>
               <Route path="/app/admin" element={<AdminUsersPage />} />
