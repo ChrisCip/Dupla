@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
-  Bell,
   ChevronRight,
   ClipboardList,
   Plus,
@@ -13,6 +12,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { apiFetch } from '../api/client'
 import { Card } from '../components/Card'
 import { CreateProjectModal } from '../components/projects/CreateProjectModal'
+import { NotificationsBell } from '../components/NotificationsBell'
 import { ProjectsBoardView } from '../components/projects/ProjectsBoardView'
 import { ProjectsDashboardOverview } from '../components/projects/ProjectsDashboardOverview'
 import { PROJECT_CARD_MIME } from '../constants/projectsPage'
@@ -63,7 +63,6 @@ export function ProjectsPage() {
   const feedbackClearRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [viewMode, setViewMode] = useState<'resumen' | 'tablero'>('resumen')
   const [statusFilter, setStatusFilter] = useState<DashboardStatusFilter>('todos')
-  const [headerUnread, setHeaderUnread] = useState(0)
   const [boardMsg, setBoardMsg] = useState<string | null>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [projectKind, setProjectKind] = useState<ProjectKindValue>('CLIENT')
@@ -172,20 +171,6 @@ export function ProjectsPage() {
       cancelled = true
     }
   }, [refresh])
-
-  useEffect(() => {
-    if (!token) return
-    let cancelled = false
-    void (async () => {
-      const res = await apiFetch('/api/me/notifications?unread_only=true', { token })
-      if (!res.ok || cancelled) return
-      const rows = (await res.json()) as unknown[]
-      if (!cancelled) setHeaderUnread(rows.length)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [token])
 
   useEffect(() => {
     if (!token) return
@@ -479,19 +464,7 @@ export function ProjectsPage() {
                 <span className="hidden sm:inline">Nuevo proyecto</span>
               </button>
             ) : null}
-            <button
-              type="button"
-              className="relative rounded-lg border border-black/10 bg-white p-2 text-muted shadow-sm transition hover:bg-black/[0.03] hover:text-ink"
-              title={headerUnread > 0 ? `${headerUnread} avisos sin leer` : 'Sin avisos nuevos'}
-              aria-label="Avisos"
-            >
-              <Bell className="size-5" strokeWidth={2} aria-hidden />
-              {headerUnread > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-0.5 text-[10px] font-bold text-white">
-                  {headerUnread > 9 ? '9+' : headerUnread}
-                </span>
-              ) : null}
-            </button>
+            <NotificationsBell token={token} />
             <button
               type="button"
               className="rounded-lg border border-black/10 bg-white p-2 text-ink shadow-sm transition-colors hover:bg-black/[0.03]"

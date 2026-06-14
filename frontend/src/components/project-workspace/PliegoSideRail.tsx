@@ -18,6 +18,7 @@ type PliegoSideRailProps = {
   viewBudget: boolean
   approveBusy: boolean
   onApprove: () => Promise<void>
+  onGoPresupuesto?: () => void
 }
 
 export function PliegoSideRail({
@@ -31,6 +32,7 @@ export function PliegoSideRail({
   viewBudget,
   approveBusy,
   onApprove,
+  onGoPresupuesto,
 }: PliegoSideRailProps) {
   const navigate = useNavigate()
   const rows = gaFoSectionProgressRows(itemStates)
@@ -130,7 +132,7 @@ export function PliegoSideRail({
           <button
             type="button"
             className="mt-2 flex w-full items-center justify-center gap-2 text-xs font-semibold text-primary underline-offset-2 hover:underline"
-            onClick={() => navigate(`/app/projects/${projectUuid}?tab=presupuestoMaestro`)}
+            onClick={() => onGoPresupuesto?.()}
           >
             <GitBranch className="size-3.5" strokeWidth={2} aria-hidden />
             Ver presupuesto maestro

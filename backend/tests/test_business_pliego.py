@@ -144,6 +144,22 @@ def test_transition_ga_fo_ok():
     assert transition_blockers_for_business_pliego(spec) is None
 
 
+def test_transition_ga_fo_ok_with_stale_business_pliego_unapproved():
+    spec = {
+        "ga_fo_01_arquitectura": {
+            "schema_version": 1,
+            "item_states": _ga_fo_terminal_item_states(),
+            "approved": True,
+        },
+        BUSINESS_PLIEGO_KEY: {
+            "schema_version": 1,
+            "sections": default_empty_sections(),
+            "approved": False,
+        },
+    }
+    assert transition_blockers_for_business_pliego(spec) is None
+
+
 def test_pliego_sections_incomplete_message_ga_fo_incomplete():
     spec = {
         "ga_fo_01_arquitectura": {

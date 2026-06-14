@@ -46,7 +46,7 @@ import {
   stablePliegoItemStatesSignature,
 } from '../lib/pliegoFormState'
 import { userDisplayInitials } from '../lib/taskboard'
-import { hasElevatedAccess, canViewBudget, isBudgetWorkspaceTab, workflowPhaseLabelForRole, workflowStepTitleForRole } from '../lib/accessPermissions'
+import { hasElevatedAccess, canViewBudget, isBudgetWorkspaceTab, workflowPhaseLabelForRole, workflowStepTitleForRole, canApproveSpecifications } from '../lib/accessPermissions'
 import { useAuthStore } from '../store/authStore'
 import type { PlanDeliveryRow } from '../types/planDelivery'
 import type { PliegoItemState } from '../types/pliegoForm'
@@ -56,12 +56,13 @@ import type { WorkflowTemplateDetail } from '../types/workflowTemplate'
 
 export function ProjectWorkspacePage() {
   const { projectUuid = '' } = useParams()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const token = useAuthStore((s) => s.token)
   const role = useAuthStore((s) => s.role)
   const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
   const elevated = hasElevatedAccess(role, isTeamLeader)
   const viewBudget = canViewBudget(role)
+  const canApprovePliego = canApproveSpecifications(role, isTeamLeader)
   const email = useAuthStore((s) => s.email)
   const firstName = useAuthStore((s) => s.firstName)
   const lastName = useAuthStore((s) => s.lastName)
@@ -104,7 +105,6 @@ export function ProjectWorkspacePage() {
   const [planDeliveryMsg, setPlanDeliveryMsg] = useState<string | null>(null)
   const [findings, setFindings] = useState<TechnicalFindingRow[]>([])
   const [configOpen, setConfigOpen] = useState(false)
-  const [headerUnread, setHeaderUnread] = useState(0)
 
   const workspaceTabs = useMemo(() => projectWorkspaceTabsForRole(role), [role])
 
@@ -112,8 +112,20 @@ export function ProjectWorkspacePage() {
     (id: string) => {
       if (!canViewBudget(role) && isBudgetWorkspaceTab(id)) return
       setTab(id)
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (id === 'hub') {
+            next.delete('tab')
+          } else {
+            next.set('tab', id)
+          }
+          return next
+        },
+        { replace: true },
+      )
     },
-    [role],
+    [role, setSearchParams],
   )
 
   useEffect(() => {
@@ -207,17 +219,25 @@ export function ProjectWorkspacePage() {
     }
     const candidate = raw ? aliases[raw] ?? raw : null
     if (candidate && workspaceTabs.some((t) => t.id === candidate)) {
+      if (!canViewBudget(role) && isBudgetWorkspaceTab(candidate)) {
+        setTab('hub')
+        return
+      }
       setTab(candidate)
       return
     }
-    if (raw || (!canViewBudget(role) && (tab === 'presupuestoMaestro' || tab === 'basePrecios'))) {
+    if (raw) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('tab')
+          return next
+        },
+        { replace: true },
+      )
       setTab('hub')
-      return
     }
-    if (projectUuid !== TUTORIAL_PROJECT_UUID) {
-      setTab('hub')
-    }
-  }, [projectUuid, searchParams, workspaceTabs, role, tab])
+  }, [projectUuid, searchParams, workspaceTabs, role, setSearchParams])
 
   useEffect(() => {
     let cancelled = false
@@ -356,20 +376,6 @@ export function ProjectWorkspacePage() {
   }, [workspaceTabs, tab])
 
   useEffect(() => {
-    if (!token) return
-    let cancelled = false
-    void (async () => {
-      const res = await apiFetch('/api/me/notifications?unread_only=true', { token })
-      if (!res.ok || cancelled) return
-      const rows = (await res.json()) as unknown[]
-      if (!cancelled) setHeaderUnread(rows.length)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [token])
-
-  useEffect(() => {
     if (!token || !projectUuid) return
     if (!project || project.uuid !== projectUuid) {
       setMemberRows([])
@@ -422,6 +428,8 @@ export function ProjectWorkspacePage() {
       const specObj = spec && typeof spec === 'object' ? (spec as Record<string, unknown>) : undefined
       const parsed = parseBusinessPliegoFromSpec(specObj)
       const cpActive = isConstructionPliegoSchemaActive(specObj)
+      const ga = specObj?.ga_fo_01_arquitectura
+      const gaIsV1 = ga && typeof ga === 'object' && (ga as Record<string, unknown>).schema_version === 1
       const hasLegacyBusiness = Boolean(
         specObj?.business_pliego && typeof specObj.business_pliego === 'object',
       )
@@ -440,6 +448,17 @@ export function ProjectWorkspacePage() {
           setFlowMsg('El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto.')
           return
         }
+      } else if (gaIsV1) {
+        if (!isGaFoChecklistFullyTerminal(pliegoItemStates)) {
+          setFlowMsg(
+            'Completa el checklist GA-FO-01 (cada documento en Completo o No aplica) y guarda en la pestaña Pliego.',
+          )
+          return
+        }
+        if (!parsed.approved) {
+          setFlowMsg('El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto.')
+          return
+        }
       } else if (hasLegacyBusiness) {
         if (!isBusinessPliegoReady(parsed.sections, parsed.approved)) {
           setFlowMsg(
@@ -447,25 +466,9 @@ export function ProjectWorkspacePage() {
           )
           return
         }
-      } else {
-        const ga = specObj?.ga_fo_01_arquitectura
-        const gaIsV1 =
-          ga && typeof ga === 'object' && (ga as Record<string, unknown>).schema_version === 1
-        if (gaIsV1) {
-          if (!isGaFoChecklistFullyTerminal(pliegoItemStates)) {
-            setFlowMsg(
-              'Completa el checklist GA-FO-01 (cada documento en Completo o No aplica) y guarda en la pestaña Pliego.',
-            )
-            return
-          }
-          if (!parsed.approved) {
-            setFlowMsg('El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto.')
-            return
-          }
-        } else if (specSummary.trim().length < 10) {
-          setFlowMsg('Completa el pliego: resumen mínimo 10 caracteres o genera el pliego estructurado.')
-          return
-        }
+      } else if (specSummary.trim().length < 10) {
+        setFlowMsg('Completa el pliego: resumen mínimo 10 caracteres o genera el pliego estructurado.')
+        return
       }
     }
     if (next === 'BUDGET_APPROVED') {
@@ -539,7 +542,7 @@ export function ProjectWorkspacePage() {
         ? synthesizeBusinessSectionsFromConstruction(constructionLines)
         : businessPliegoSections
       const includeBusinessPliego =
-        pbd != null || pliegoMeta.generatedAt != null || hasSectionText || useConstruction
+        useConstruction || (pbd != null && (pliegoMeta.generatedAt != null || hasSectionText))
       const prevGaRaw = prevRec?.ga_fo_01_arquitectura
       const prevGa =
         prevGaRaw && typeof prevGaRaw === 'object' ? (prevGaRaw as Record<string, unknown>) : null
@@ -577,14 +580,24 @@ export function ProjectWorkspacePage() {
         }
       }
       if (includeBusinessPliego) {
+        const gaApproved = Boolean(prevGa?.approved)
         doc.business_pliego = {
           schema_version: 1,
           sections: sectionsForSave,
           generated_at: typeof pbd?.generated_at === 'string' ? pbd.generated_at : null,
-          approved: Boolean(pbd?.approved),
-          approved_at: typeof pbd?.approved_at === 'string' ? pbd.approved_at : null,
+          approved: Boolean(pbd?.approved) || (keepGaApproval && gaApproved),
+          approved_at:
+            typeof pbd?.approved_at === 'string'
+              ? pbd.approved_at
+              : keepGaApproval && gaApproved && typeof prevGa?.approved_at === 'string'
+                ? prevGa.approved_at
+                : null,
           approved_by_user_uuid:
-            typeof pbd?.approved_by_user_uuid === 'string' ? pbd.approved_by_user_uuid : null,
+            typeof pbd?.approved_by_user_uuid === 'string'
+              ? pbd.approved_by_user_uuid
+              : keepGaApproval && gaApproved && typeof prevGa?.approved_by_user_uuid === 'string'
+                ? prevGa.approved_by_user_uuid
+                : null,
         }
       }
       const res = await apiFetch(`/api/projects/${projectUuid}/specifications`, {
@@ -721,7 +734,6 @@ export function ProjectWorkspacePage() {
         tab={tab}
         onSelectTab={(id: WorkspaceConsoleTabId) => selectTab(id)}
         onOpenConfig={() => setConfigOpen(true)}
-        unreadAlerts={headerUnread}
         userInitials={userDisplayInitials(firstName, lastName, email ?? '?')}
         userEmail={email}
         role={role}
@@ -748,6 +760,10 @@ export function ProjectWorkspacePage() {
           onAdvancePhase={() => void advancePhase()}
           onOpenChat={() => void openProjectChat()}
           onOpenTab={selectTab}
+          pliegoApproved={pliegoMeta.approved}
+          canApprovePliego={canApprovePliego}
+          pliegoApproveBusy={pliegoApproveBusy}
+          onApprovePliego={() => void approvePliego()}
         />
       ) : null}
 
@@ -780,6 +796,11 @@ export function ProjectWorkspacePage() {
               role={role}
               onSaveBootstrap={() => void saveBootstrap()}
               onAdvancePhase={() => void advancePhase()}
+              pliegoApproved={pliegoMeta.approved}
+              canApprovePliego={canApprovePliego}
+              pliegoApproveBusy={pliegoApproveBusy}
+              onApprovePliego={() => void approvePliego()}
+              onOpenPliego={() => selectTab('pliego')}
               bpDraft={bpDraft}
               setBpDraft={setBpDraft}
               clientVersion={clientVersion}
@@ -838,7 +859,7 @@ export function ProjectWorkspacePage() {
               token={token}
               findings={findings}
               onRefresh={() => loadFindings()}
-              onContinueToPliego={() => setTab('pliego')}
+              onContinueToPliego={() => selectTab('pliego')}
             />
           ) : null}
 
@@ -871,6 +892,7 @@ export function ProjectWorkspacePage() {
               pliegoGeneratedAt={pliegoMeta.generatedAt}
               onExportPliegoPdf={() => void exportPliegoPdf()}
               onExportPliegoXlsx={() => void exportPliegoXlsx()}
+              onGoPresupuesto={() => selectTab('presupuestoMaestro')}
             />
           ) : null}
 

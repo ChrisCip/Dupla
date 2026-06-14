@@ -20,6 +20,7 @@ type WorkspaceEspecificacionesTabProps = {
   pliegoGeneratedAt: string | null
   onExportPliegoPdf?: () => void
   onExportPliegoXlsx?: () => void
+  onGoPresupuesto?: () => void
 }
 
 export function WorkspaceEspecificacionesTab({
@@ -38,6 +39,7 @@ export function WorkspaceEspecificacionesTab({
   pliegoGeneratedAt,
   onExportPliegoPdf,
   onExportPliegoXlsx,
+  onGoPresupuesto,
 }: WorkspaceEspecificacionesTabProps) {
   const userUuid = useAuthStore((s) => s.userUuid)
   const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
@@ -72,6 +74,7 @@ export function WorkspaceEspecificacionesTab({
         viewBudget={viewBudget}
         approveBusy={pliegoApproveBusy}
         onApprove={onApprovePliego}
+        onGoPresupuesto={onGoPresupuesto}
       />
     </div>
   )

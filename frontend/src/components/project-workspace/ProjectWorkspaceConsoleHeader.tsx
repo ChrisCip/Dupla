@@ -1,8 +1,9 @@
-import { Bell, CircleHelp, Settings } from 'lucide-react'
+import { CircleHelp, Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { hasElevatedAccess } from '../../lib/accessPermissions'
 import { useAuthStore } from '../../store/authStore'
+import { NotificationsBell } from '../NotificationsBell'
 import { PrimaryButton } from '../PrimaryButton'
 import { ProjectWorkspaceExportMenu } from './ProjectWorkspaceExportMenu'
 
@@ -30,7 +31,6 @@ type ProjectWorkspaceConsoleHeaderProps = {
   tab: string
   onSelectTab: (id: WorkspaceConsoleTabId) => void
   onOpenConfig: () => void
-  unreadAlerts: number
   userInitials: string
   userEmail: string | null
   role: string | null
@@ -45,7 +45,6 @@ export function ProjectWorkspaceConsoleHeader({
   tab,
   onSelectTab,
   onOpenConfig,
-  unreadAlerts,
   userInitials,
   userEmail,
   role,
@@ -99,19 +98,7 @@ export function ProjectWorkspaceConsoleHeader({
             </PrimaryButton>
           ) : null}
           <ProjectWorkspaceExportMenu projectUuid={projectUuid} token={token} />
-          <button
-            type="button"
-            className="relative rounded-lg border border-black/10 bg-white p-2 text-muted shadow-sm transition hover:bg-black/[0.03] hover:text-ink"
-            title={unreadAlerts > 0 ? `${unreadAlerts} avisos sin leer` : 'Sin avisos nuevos'}
-            aria-label="Avisos"
-          >
-            <Bell className="size-5" strokeWidth={2} aria-hidden />
-            {unreadAlerts > 0 ? (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-0.5 text-[10px] font-bold text-white">
-                {unreadAlerts > 9 ? '9+' : unreadAlerts}
-              </span>
-            ) : null}
-          </button>
+          <NotificationsBell token={token} />
           <button
             type="button"
             className="rounded-lg border border-black/10 bg-white p-2 text-ink shadow-sm transition-colors hover:bg-black/[0.03]"

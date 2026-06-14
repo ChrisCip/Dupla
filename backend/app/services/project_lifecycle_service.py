@@ -733,19 +733,21 @@ class ProjectLifecycleService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=msg,
             )
+        ga = spec.get(GA_FO_SPEC_KEY)
+        has_ga = isinstance(ga, dict) and ga.get("schema_version") == 1
         block = get_business_pliego_block(spec)
-        if block:
-            apply_approval(block, user.id)
-            spec[BUSINESS_PLIEGO_KEY] = block
-        else:
-            ga = spec.get(GA_FO_SPEC_KEY)
-            if not isinstance(ga, dict) or ga.get("schema_version") != 1:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Falta el pliego estructurado; genere el borrador o guarde las secciones.",
-                )
+        has_block = bool(block)
+        if not has_ga and not has_block:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Falta el pliego estructurado; genere el borrador o guarde las secciones.",
+            )
+        if has_ga:
             apply_ga_fo_approval(ga, user.id)
             spec[GA_FO_SPEC_KEY] = ga
+        if has_block:
+            apply_approval(block, user.id)
+            spec[BUSINESS_PLIEGO_KEY] = block
         project.specifications_document = spec
         await self._projects.record_event(
             project_id=project.id,

@@ -72,24 +72,28 @@ def transition_blockers_for_business_pliego(spec: dict[str, Any] | None) -> Opti
                 "Completa todas las partidas del pliego de obra: cada ítem debe tener unidad, "
                 "cantidad mayor a cero y precio unitario (guardá el documento en la pestaña Pliego)."
             )
+        if ga_fo_block_approved(spec):
+            return None
         block = get_business_pliego_block(spec)
         if not bool(block.get("approved")):
             return "El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto."
         return None
+
+    ga = spec.get("ga_fo_01_arquitectura")
+    if isinstance(ga, dict) and ga.get("schema_version") == 1:
+        st = ga.get("item_states")
+        st_dict = st if isinstance(st, dict) else {}
+        if not ga_fo_item_states_terminal_complete(st_dict):
+            return (
+                "Completa el checklist GA-FO-01 (cada documento en Completo o No aplica) "
+                "y guardá en la pestaña Pliego."
+            )
+        if not ga_fo_block_approved(spec):
+            return "El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto."
+        return None
+
     block = get_business_pliego_block(spec)
     if not block:
-        ga = spec.get("ga_fo_01_arquitectura")
-        if isinstance(ga, dict) and ga.get("schema_version") == 1:
-            st = ga.get("item_states")
-            st_dict = st if isinstance(st, dict) else {}
-            if not ga_fo_item_states_terminal_complete(st_dict):
-                return (
-                    "Completa el checklist GA-FO-01 (cada documento en Completo o No aplica) "
-                    "y guardá en la pestaña Pliego."
-                )
-            if not ga_fo_block_approved(spec):
-                return "El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto."
-            return None
         summary = str(spec.get("summary") or "").strip()
         if len(summary) >= MIN_SECTION_LEN:
             return None

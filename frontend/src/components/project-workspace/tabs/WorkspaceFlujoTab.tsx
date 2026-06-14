@@ -26,6 +26,11 @@ type WorkspaceFlujoTabProps = {
   role: string | null
   onSaveBootstrap: () => void
   onAdvancePhase: () => void
+  pliegoApproved: boolean
+  canApprovePliego: boolean
+  pliegoApproveBusy: boolean
+  onApprovePliego: () => void
+  onOpenPliego: () => void
   bpDraft: Record<string, unknown>
   setBpDraft: React.Dispatch<React.SetStateAction<Record<string, unknown>>>
   clientVersion: string
@@ -68,6 +73,11 @@ export function WorkspaceFlujoTab({
   role,
   onSaveBootstrap,
   onAdvancePhase,
+  pliegoApproved,
+  canApprovePliego,
+  pliegoApproveBusy,
+  onApprovePliego,
+  onOpenPliego,
   bpDraft,
   setBpDraft,
   clientVersion,
@@ -87,6 +97,11 @@ export function WorkspaceFlujoTab({
   const [fileTotal, setFileTotal] = useState<number | null>(null)
   const [docBusy, setDocBusy] = useState(false)
 
+  const showPliegoApproveCta =
+    project?.workflow_phase === 'SPECIFICATIONS' &&
+    nextPhase === 'BUDGETING_PIPELINE' &&
+    canApprovePliego &&
+    !pliegoApproved
   const bootstrapStats = useMemo(() => bootstrapRequiredPercent(bootstrapDraft), [bootstrapDraft])
   const roleTyped = role as import('../../../constants/userRoles').UserRole | null
   const viewBudget = canViewBudget(roleTyped)
@@ -179,6 +194,28 @@ export function WorkspaceFlujoTab({
             esta etapa esté hecho; si el botón falla, el mensaje de arriba indica el motivo.
           </p>
           {flowMsg ? <p className="text-sm text-primary">{flowMsg}</p> : null}
+          {showPliegoApproveCta ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/25 bg-primary/[0.06] px-3 py-2.5">
+              <p className="min-w-0 flex-1 text-sm text-ink">
+                Aprueba el pliego de condiciones (GA-FO-01) para poder avanzar al presupuesto.
+              </p>
+              <button
+                type="button"
+                className="rounded-lg border border-black/15 bg-white px-3 py-2 text-xs font-semibold text-ink shadow-sm hover:bg-black/[0.03]"
+                onClick={onOpenPliego}
+              >
+                Ir al pliego
+              </button>
+              <PrimaryButton
+                type="button"
+                className="px-3 py-2 text-xs font-semibold normal-case tracking-normal"
+                disabled={pliegoApproveBusy}
+                onClick={onApprovePliego}
+              >
+                {pliegoApproveBusy ? 'Aprobando…' : 'Aprobar pliego'}
+              </PrimaryButton>
+            </div>
+          ) : null}
           {nextPhase ? (
             <PrimaryButton type="button" disabled={flowBusy} onClick={onAdvancePhase}>
               {flowBusy
