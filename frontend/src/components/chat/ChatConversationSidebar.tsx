@@ -2,8 +2,9 @@ import { Search } from 'lucide-react'
 
 import {
   chatKindLabel,
-  formatGroupParticipantEmails,
+  formatChatParticipantsLabel,
   formatRelativeChatTime,
+  isGroupChatKind,
 } from '../../lib/chatUi'
 import type { ChatConversationSummary } from '../../types/chat'
 
@@ -108,9 +109,9 @@ export function ChatConversationSidebar({
                       {chatKindLabel(c.kind)}
                       {when ? ` · ${when}` : ''}
                     </span>
-                    {c.kind === 'GROUP' && formatGroupParticipantEmails(c.participants) ? (
+                    {isGroupChatKind(c.kind) && formatChatParticipantsLabel(c.participants) ? (
                       <span className="mt-0.5 line-clamp-2 block text-[10px] text-muted">
-                        {formatGroupParticipantEmails(c.participants)}
+                        {formatChatParticipantsLabel(c.participants)}
                       </span>
                     ) : null}
                     <span

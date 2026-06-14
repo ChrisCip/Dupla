@@ -120,6 +120,7 @@ export function ProjectWorkspacePage() {
           } else {
             next.set('tab', id)
           }
+          next.delete('focus')
           return next
         },
         { replace: true },
@@ -127,6 +128,19 @@ export function ProjectWorkspacePage() {
     },
     [role, setSearchParams],
   )
+
+  const openBootstrapChecklist = useCallback(() => {
+    setTab('flujo')
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('tab', 'flujo')
+        next.set('focus', 'bootstrap')
+        return next
+      },
+      { replace: true },
+    )
+  }, [setSearchParams])
 
   useEffect(() => {
     if (!canViewBudget(role) && isBudgetWorkspaceTab(tab)) {
@@ -760,6 +774,8 @@ export function ProjectWorkspacePage() {
           onAdvancePhase={() => void advancePhase()}
           onOpenChat={() => void openProjectChat()}
           onOpenTab={selectTab}
+          onOpenBootstrapChecklist={openBootstrapChecklist}
+          bootstrapCriteria={bootstrapDraft}
           pliegoApproved={pliegoMeta.approved}
           canApprovePliego={canApprovePliego}
           pliegoApproveBusy={pliegoApproveBusy}
@@ -820,7 +836,12 @@ export function ProjectWorkspacePage() {
           ) : null}
 
           {tab === 'archivos' ? (
-            <WorkspaceArchivosTab projectUuid={projectUuid} token={token} flowMsg={flowMsg} />
+            <WorkspaceArchivosTab
+              projectUuid={projectUuid}
+              token={token}
+              workflowPhase={project?.workflow_phase ?? 'BOOTSTRAPPING'}
+              flowMsg={flowMsg}
+            />
           ) : null}
 
           {viewBudget && tab === 'basePrecios' ? (

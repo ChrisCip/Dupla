@@ -23,6 +23,7 @@ from app.cache.redis_client import (
 from app.config import get_settings
 from app.models.chat_message import ChatMessage
 from app.models.project import Project
+from app.models.project_member import ProjectMember
 from app.models.user import User
 from app.repositories.workspace_repository import WorkspaceRepository
 from app.services.project_service import ProjectService
@@ -169,6 +170,31 @@ class ChatService:
             )
         return out
 
+    async def _participants_by_project(
+        self, project_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, list[ChatAuthorResponse]]:
+        if not project_ids:
+            return {}
+        q = (
+            select(
+                ProjectMember.project_id,
+                User.id,
+                User.email,
+                User.first_name,
+                User.last_name,
+            )
+            .join(User, User.id == ProjectMember.user_id)
+            .where(ProjectMember.project_id.in_(project_ids))
+            .order_by(User.email.asc())
+        )
+        rows = list((await self._session.execute(q)).all())
+        out: dict[uuid.UUID, list[ChatAuthorResponse]] = {}
+        for project_id, uid, email, fn, ln in rows:
+            out.setdefault(project_id, []).append(
+                ChatAuthorResponse(uuid=uid, email=email, first_name=fn, last_name=ln)
+            )
+        return out
+
     async def _unread_count(self, user: User, conv: ChatConversation) -> int:
         await self._ensure_member(user, conv)
         stmt = select(ChatConversationMember).where(
@@ -247,7 +273,7 @@ class ChatService:
                 last_message_preview=last_message_preview,
                 unread_count=unread_count,
                 participant_count=participant_count,
-                participants=None,
+                participants=participants,
                 project_uuid=proj_uuid,
             )
         stmt = (
@@ -292,13 +318,21 @@ class ChatService:
 
         rows.sort(key=sort_key)
         group_ids = [c.id for c in rows if c.kind == ChatConversationKind.GROUP]
+        project_ids = [c.project_id for c in rows if c.kind == ChatConversationKind.PROJECT and c.project_id]
         participants_map = await self._participants_by_conversation(group_ids)
+        project_participants_map = await self._participants_by_project(project_ids)
         out: list[ChatConversationResponse] = []
         for conv in rows:
             preview = await self._last_message_preview(conv.id)
             unread = await self._unread_count(user, conv)
             pcount = await self._participant_count(conv.id)
-            parts = participants_map.get(conv.id) if conv.kind == ChatConversationKind.GROUP else None
+            parts: Optional[list[ChatAuthorResponse]] = None
+            if conv.kind == ChatConversationKind.GROUP:
+                parts = participants_map.get(conv.id)
+            elif conv.kind == ChatConversationKind.PROJECT and conv.project_id is not None:
+                parts = project_participants_map.get(conv.project_id)
+                if parts is not None:
+                    pcount = len(parts)
             out.append(
                 await self._conversation_to_response(
                     conv,
@@ -535,4 +569,16 @@ class ChatService:
             if existing_m is None:
                 self._session.add(ChatConversationMember(conversation_id=conv.id, user_id=user.id))
                 await self._session.flush()
-        return await self._conversation_to_response(conv, user)
+        parts: Optional[list[ChatAuthorResponse]] = None
+        pcount: Optional[int] = None
+        if conv.project_id is not None:
+            project_parts_map = await self._participants_by_project([conv.project_id])
+            parts = project_parts_map.get(conv.project_id)
+            if parts is not None:
+                pcount = len(parts)
+        return await self._conversation_to_response(
+            conv,
+            user,
+            participant_count=pcount,
+            participants=parts,
+        )

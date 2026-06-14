@@ -10,10 +10,10 @@ export type PhaseHint = {
 
 export const PHASE_WORKSPACE_HINTS: Record<string, PhaseHint> = {
   BOOTSTRAPPING: {
-    title: 'Arranque del proyecto',
-    body: 'Completa el checklist de documentos y guárdalo. Luego avanza la fase cuando esté listo.',
+    title: 'Checklist de arranque',
+    body: 'Marca los documentos obligatorios del checklist y guarda. Solo podrás avanzar cuando estén cumplidos.',
     tabId: 'flujo',
-    cta: 'Ir a Flujo',
+    cta: 'Abrir checklist de arranque',
   },
   AWAITING_FILES: {
     title: 'Subir archivos',

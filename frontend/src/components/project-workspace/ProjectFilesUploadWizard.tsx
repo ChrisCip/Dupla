@@ -15,6 +15,10 @@ import {
   type ProjectFileDisciplineValue,
 } from '../../constants/projectFileDisciplines'
 import type { ProjectFileFolderRow, ProjectFileRow } from '../../types/projectWorkspace'
+import {
+  BUDGET_EXCLUDED_UPLOAD_NOTICE,
+  uploadsExcludedFromBudget,
+} from '../../lib/projectFileBudget'
 import { ProjectWorkspaceFileIcon } from './ProjectWorkspaceFileIcon'
 
 const UPLOAD_CONCURRENCY = 5
@@ -47,6 +51,7 @@ type ProjectFilesUploadWizardProps = {
   onClose: () => void
   projectUuid: string
   token: string | null
+  workflowPhase: string
   /** Carpeta actual del workspace al abrir; los borradores se suben aquí; en el paso 3 puedes cambiar destino. */
   defaultFolderUuid: string | null
   defaultFolderLabel?: string | null
@@ -59,6 +64,7 @@ export function ProjectFilesUploadWizard({
   onClose,
   projectUuid,
   token,
+  workflowPhase,
   defaultFolderUuid,
   defaultFolderLabel,
   initialFiles,
@@ -299,6 +305,8 @@ export function ProjectFilesUploadWizard({
 
   const maxStep = 3
 
+  const showBudgetExcludedNotice = uploadsExcludedFromBudget(workflowPhase)
+
   if (!open) return null
 
   return (
@@ -352,17 +360,26 @@ export function ProjectFilesUploadWizard({
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 md:px-8">
+          <div
+            className={`min-h-0 flex-1 px-6 py-5 md:px-8 ${
+              step === 1 ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'
+            }`}
+          >
             {uploadError ? (
-              <p className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+              <p className="mb-3 shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
                 {uploadError}
+              </p>
+            ) : null}
+            {showBudgetExcludedNotice ? (
+              <p className="mb-3 shrink-0 rounded-md border border-amber-200/80 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                {BUDGET_EXCLUDED_UPLOAD_NOTICE}
               </p>
             ) : null}
 
             {step === 1 ? (
-              <div className="space-y-4">
+              <div className="flex min-h-0 flex-1 flex-col gap-3">
                 <label
-                  className="flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-black/15 bg-black/[0.02] px-4 py-8 transition-colors hover:border-primary/30 hover:bg-primary/[0.03]"
+                  className="flex min-h-0 flex-1 cursor-pointer flex-col rounded-xl border-2 border-dashed border-black/15 bg-black/[0.02] transition-colors hover:border-primary/30 hover:bg-primary/[0.03]"
                   onDragOver={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
@@ -373,10 +390,24 @@ export function ProjectFilesUploadWizard({
                     if (e.dataTransfer.files?.length) addPickedFiles(Array.from(e.dataTransfer.files))
                   }}
                 >
-                  <Upload className="h-10 w-10 text-primary/80" strokeWidth={1.25} aria-hidden />
-                  <span className="text-center text-sm font-medium text-ink">
-                    Arrastra archivos aquí o elige desde tu equipo
-                  </span>
+                  <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-6">
+                    <Upload className="h-10 w-10 text-primary/80" strokeWidth={1.25} aria-hidden />
+                    <span className="text-center text-sm font-medium text-ink">
+                      Arrastra archivos aquí o elige desde tu equipo
+                    </span>
+                  </div>
+                  {picked.length > 0 ? (
+                    <ul className="max-h-[min(40%,12rem)] shrink-0 space-y-1 overflow-y-auto border-t border-black/5 px-4 py-3 text-sm text-muted">
+                      {picked.map((f) => (
+                        <li key={`${f.name}-${f.size}`} className="flex items-center gap-2">
+                          <ProjectWorkspaceFileIcon name={f.name} className="h-4 w-4 shrink-0 text-primary" />
+                          {f.name}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="shrink-0 pb-4 text-center text-xs text-muted">Ningún archivo seleccionado.</p>
+                  )}
                   <input
                     type="file"
                     className="sr-only"
@@ -389,20 +420,8 @@ export function ProjectFilesUploadWizard({
                     }}
                   />
                 </label>
-                {picked.length > 0 ? (
-                  <ul className="max-h-40 space-y-1 overflow-y-auto text-sm text-muted">
-                    {picked.map((f) => (
-                      <li key={`${f.name}-${f.size}`} className="flex items-center gap-2">
-                        <ProjectWorkspaceFileIcon name={f.name} className="h-4 w-4 shrink-0 text-primary" />
-                        {f.name}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-center text-xs text-muted">Ningún archivo seleccionado.</p>
-                )}
                 {uploadBusy && uploadProgress ? (
-                  <p className="text-center text-xs text-muted" aria-live="polite">
+                  <p className="shrink-0 text-center text-xs text-muted" aria-live="polite">
                     Subiendo {uploadProgress.done} / {uploadProgress.total}…
                   </p>
                 ) : null}

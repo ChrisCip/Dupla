@@ -36,7 +36,7 @@ from app.domain.workflow_template_phase import (
     effective_workflow_phase_for_step,
     workflow_phase_from_template_step_index,
 )
-from app.domain.workflow_phase import LINEAR_NEXT, LINEAR_PREV, WorkflowPhase
+from app.domain.workflow_phase import LINEAR_NEXT, LINEAR_PREV, WorkflowPhase, upload_counts_for_budget
 from app.domain.user_permissions import can_view_budget, has_elevated_access
 from app.models.architecture_revision import ArchitectureRevision, ArchitectureRevisionDecision
 from app.models.project import Project
@@ -921,18 +921,7 @@ class ProjectLifecycleService:
     ) -> ProjectFile:
         project = await self._project_svc.get_project(user, project_uuid)
         wf = self._domain_phase_for_project(project)
-        if wf not in (
-            WorkflowPhase.AWAITING_FILES,
-            WorkflowPhase.ARCHITECTURE_REVIEW,
-            WorkflowPhase.SPECIFICATIONS,
-            WorkflowPhase.BUDGETING_PIPELINE,
-            WorkflowPhase.MANAGEMENT_APPROVAL,
-            WorkflowPhase.BUDGET_APPROVED,
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="No se aceptan archivos en esta fase",
-            )
+        counts_for_budget = upload_counts_for_budget(wf)
         raw = await upload.read()
         max_bytes = self._settings.project_file_max_mb * 1024 * 1024
         if len(raw) > max_bytes:
@@ -961,6 +950,7 @@ class ProjectLifecycleService:
             mime=upload.content_type,
             category=category,
             folder_id=resolved_folder_id,
+            counts_for_budget=counts_for_budget,
             created_by=user.id,
             created_at=datetime.now(timezone.utc),
         )

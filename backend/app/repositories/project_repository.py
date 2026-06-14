@@ -8,11 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.domain.bootstrap_defaults import default_bootstrap_criteria
+from app.domain.project_default_areas import default_area_names_for_project_kind
 from app.domain.project_updated import touch_project_updated_at
 from app.domain.user_permissions import has_elevated_access
 from app.models.project import Project, ProjectArchitectureData
 from app.models.project_event import ProjectEvent
 from app.models.project_file import ProjectFile
+from app.models.project_file_folder import ProjectFileFolder
 from app.models.project_member import ProjectMember
 from app.models.user import User, UserRole
 
@@ -209,13 +211,37 @@ class ProjectRepository:
         )
         self._session.add(project)
         await self._session.flush()
+        area_names = default_area_names_for_project_kind(project_kind)
+        arch_groups = [
+            {
+                "id": str(uuid.uuid4()),
+                "kind": "fase",
+                "title": title,
+                "order": idx,
+                "items": [],
+            }
+            for idx, title in enumerate(area_names)
+        ]
         arch = ProjectArchitectureData(
             project_id=project.id,
-            document={"groups": []},
+            document={"groups": arch_groups},
             materiales=[],
             last_updated_by=created_by,
         )
         self._session.add(arch)
+        await self._session.flush()
+        now = datetime.now(timezone.utc)
+        for name in area_names:
+            self._session.add(
+                ProjectFileFolder(
+                    id=uuid.uuid4(),
+                    project_id=project.id,
+                    parent_id=None,
+                    name=name,
+                    created_by=created_by,
+                    created_at=now,
+                )
+            )
         await self._session.flush()
         project.updated_at = project.created_at
         await self._session.flush()

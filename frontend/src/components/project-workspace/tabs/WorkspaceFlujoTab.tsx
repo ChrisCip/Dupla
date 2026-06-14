@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../../../api/client'
 import { hasElevatedAccess, canMarkControlReview, canViewBudget, isBudgetWorkflowPhase, workflowPhaseLabelForRole } from '../../../lib/accessPermissions'
+import { bootstrapRequiredPercent } from '../../../lib/bootstrapCriteria'
 import { useAuthStore } from '../../../store/authStore'
 import { WORKFLOW_DOC_PHASE_HINTS } from '../../../constants/workflowDocMapping'
 import { downloadBlob, filenameFromContentDisposition } from '../../../lib/download'
 import type { SubcontractQuoteRow } from '../../../types/projectWorkspace'
 import type { BootstrapCriterion, Project } from '../../../types/project'
+import { BootstrapChecklistCard } from '../BootstrapChecklistCard'
 import { Card } from '../../Card'
 import { PrimaryButton } from '../../PrimaryButton'
 import { WorkflowPhaseStepper, type TemplateStepProgress } from '../WorkflowPhaseStepper'
@@ -48,16 +51,6 @@ type WorkspaceFlujoTabProps = {
   onLoadAuxLists: () => Promise<void>
 }
 
-function bootstrapRequiredPercent(criteria: BootstrapCriterion[]): { pct: number | null; label: string } {
-  const required = criteria.filter((c) => c.required)
-  if (required.length === 0) return { pct: null, label: 'Sin ítems obligatorios en el checklist.' }
-  const done = required.filter((c) => c.done).length
-  return {
-    pct: Math.round((done / required.length) * 100),
-    label: `${done} de ${required.length} ítems obligatorios cumplidos`,
-  }
-}
-
 export function WorkspaceFlujoTab({
   project,
   projectUuid,
@@ -94,6 +87,7 @@ export function WorkspaceFlujoTab({
   quotes,
   onLoadAuxLists,
 }: WorkspaceFlujoTabProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [fileTotal, setFileTotal] = useState<number | null>(null)
   const [docBusy, setDocBusy] = useState(false)
 
@@ -103,6 +97,23 @@ export function WorkspaceFlujoTab({
     canApprovePliego &&
     !pliegoApproved
   const bootstrapStats = useMemo(() => bootstrapRequiredPercent(bootstrapDraft), [bootstrapDraft])
+  const showBootstrapProminent =
+    project?.workflow_phase === 'BOOTSTRAPPING' ||
+    (bootstrapStats.required > 0 && bootstrapStats.done < bootstrapStats.required)
+
+  useEffect(() => {
+    if (searchParams.get('focus') !== 'bootstrap') return
+    const el = document.getElementById('bootstrap-checklist')
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('focus')
+        return next
+      },
+      { replace: true },
+    )
+  }, [searchParams, setSearchParams])
   const roleTyped = role as import('../../../constants/userRoles').UserRole | null
   const viewBudget = canViewBudget(roleTyped)
   const docHintRaw = project ? WORKFLOW_DOC_PHASE_HINTS[project.workflow_phase] : undefined
@@ -157,6 +168,13 @@ export function WorkspaceFlujoTab({
 
   return (
     <div className="flex w-full flex-col gap-4">
+      <BootstrapChecklistCard
+        criteria={bootstrapDraft}
+        onChange={setBootstrapDraft}
+        onSave={onSaveBootstrap}
+        prominent={showBootstrapProminent}
+      />
+
       <Card className="space-y-4 p-6">
         <h2 className="text-lg font-semibold text-ink">Flujo de trabajo</h2>
         <>
@@ -391,47 +409,6 @@ export function WorkspaceFlujoTab({
             </div>
           ) : null}
         </>
-      </Card>
-
-      <Card className="space-y-4 p-6">
-        <h2 className="text-lg font-semibold text-ink">Checklist de documentos requeridos</h2>
-        <p className="text-sm text-muted">
-          Marca los ítems obligatorios antes de seguir desde la etapa «Arranque». La aplicación solo permite avanzar
-          cuando esos requisitos estén cumplidos; el siguiente paso es «Esperando archivos».
-        </p>
-        <p className="text-sm text-muted">
-          {bootstrapStats.pct != null ? (
-            <>
-              Progreso (obligatorios): <strong className="text-ink">{bootstrapStats.pct}%</strong> —{' '}
-              {bootstrapStats.label}
-            </>
-          ) : (
-            bootstrapStats.label
-          )}
-        </p>
-        <ul className="space-y-2">
-          {bootstrapDraft.map((c, i) => (
-            <li key={c.id} className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="mt-1"
-                checked={!!c.done}
-                onChange={(e) => {
-                  const next = [...bootstrapDraft]
-                  next[i] = { ...next[i], done: e.target.checked }
-                  setBootstrapDraft(next)
-                }}
-              />
-              <span>
-                {c.label}
-                {c.required ? <span className="text-primary"> *</span> : null}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <PrimaryButton type="button" onClick={onSaveBootstrap}>
-          Guardar checklist
-        </PrimaryButton>
       </Card>
     </div>
   )

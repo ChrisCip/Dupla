@@ -3,6 +3,8 @@ import uuid
 
 import pytest
 
+from app.domain.project_default_areas import ESTIMATED_CONSTRUCTION_AREA_NAME
+
 
 @pytest.mark.asyncio
 async def test_login_ok(client):
@@ -72,12 +74,23 @@ async def test_project_architecture_flow(client, master_auth_headers_async: dict
     pid = created["uuid"]
     project_uuid = uuid.UUID(pid)
 
-    get_empty = await client.get(
+    get_arch = await client.get(
         f"/api/projects/{project_uuid}/architecture",
         headers=master_auth_headers_async,
     )
-    assert get_empty.status_code == 200
-    assert get_empty.json()["document"]["groups"] == []
+    assert get_arch.status_code == 200
+    groups = get_arch.json()["document"]["groups"]
+    assert len(groups) == 1
+    assert groups[0]["title"] == ESTIMATED_CONSTRUCTION_AREA_NAME
+    assert groups[0]["kind"] == "fase"
+
+    folders = await client.get(
+        f"/api/projects/{project_uuid}/file-folders",
+        headers=master_auth_headers_async,
+    )
+    assert folders.status_code == 200
+    folder_names = [f["name"] for f in folders.json()]
+    assert folder_names == [ESTIMATED_CONSTRUCTION_AREA_NAME]
 
     payload = {
         "groups": [
@@ -114,6 +127,37 @@ async def test_project_architecture_flow(client, master_auth_headers_async: dict
     )
     assert get_full.status_code == 200
     assert len(get_full.json()["document"]["groups"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_development_project_seeds_construction_and_sales_areas(
+    client, master_auth_headers_async: dict[str, str],
+):
+    from app.domain.project_default_areas import ESTIMATED_SALES_AREA_NAME
+
+    create = await client.post(
+        "/api/projects",
+        headers=master_auth_headers_async,
+        data={"name": "Desarrollo demo", "project_kind": "DEVELOPMENT"},
+    )
+    assert create.status_code == 201, create.text
+    project_uuid = create.json()["uuid"]
+
+    folders = await client.get(
+        f"/api/projects/{project_uuid}/file-folders",
+        headers=master_auth_headers_async,
+    )
+    assert folders.status_code == 200
+    names = [f["name"] for f in folders.json()]
+    assert names == [ESTIMATED_CONSTRUCTION_AREA_NAME, ESTIMATED_SALES_AREA_NAME]
+
+    arch = await client.get(
+        f"/api/projects/{project_uuid}/architecture",
+        headers=master_auth_headers_async,
+    )
+    assert arch.status_code == 200
+    titles = [g["title"] for g in arch.json()["document"]["groups"]]
+    assert titles == [ESTIMATED_CONSTRUCTION_AREA_NAME, ESTIMATED_SALES_AREA_NAME]
 
 
 @pytest.mark.asyncio
@@ -253,3 +297,33 @@ async def test_pliego_generate_approve_and_transition_to_budget(
     )
     assert tb.status_code == 200, tb.text
     assert tb.json()["workflow_phase"] == "BUDGETING_PIPELINE"
+
+
+@pytest.mark.asyncio
+async def test_upload_allowed_in_bootstrapping(client, master_auth_headers_async: dict[str, str]):
+    create = await client.post(
+        "/api/projects",
+        headers=master_auth_headers_async,
+        data={"name": "Upload bootstrap", "client_name": "C", "project_kind": "CLIENT"},
+    )
+    assert create.status_code == 201, create.text
+    pid = create.json()["uuid"]
+
+    up = await client.post(
+        f"/api/projects/{pid}/files",
+        headers=master_auth_headers_async,
+        files=[("file", ("arranque.pdf", io.BytesIO(b"%PDF-1.4\n"), "application/pdf"))],
+    )
+    assert up.status_code == 201, up.text
+    body = up.json()
+    assert body["counts_for_budget"] is True
+
+
+def test_upload_counts_for_budget_by_phase():
+    from app.domain.workflow_phase import WorkflowPhase, upload_counts_for_budget
+
+    assert upload_counts_for_budget(WorkflowPhase.BOOTSTRAPPING) is True
+    assert upload_counts_for_budget(WorkflowPhase.BUDGETING_PIPELINE) is True
+    assert upload_counts_for_budget(WorkflowPhase.MANAGEMENT_APPROVAL) is False
+    assert upload_counts_for_budget(WorkflowPhase.COMPLETE) is False
+

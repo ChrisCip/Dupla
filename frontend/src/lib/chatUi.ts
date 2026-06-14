@@ -17,6 +17,18 @@ export function formatGroupParticipantEmails(
   return participants.map((p) => formatPersonFullName(p.first_name, p.last_name, p.email)).join(', ')
 }
 
+export function isGroupChatKind(kind: ChatConversationKind): boolean {
+  return kind === 'GROUP' || kind === 'PROJECT'
+}
+
+export function formatChatParticipantsLabel(
+  participants: ChatParticipantRef[] | null | undefined,
+): string {
+  const names = formatGroupParticipantEmails(participants)
+  if (!names) return ''
+  return `Integrantes: ${names}`
+}
+
 export function chatKindLabel(kind: ChatConversationKind): string {
   switch (kind) {
     case 'GENERAL':

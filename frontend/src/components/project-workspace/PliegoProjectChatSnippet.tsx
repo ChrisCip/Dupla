@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Send } from 'lucide-react'
 
 import { apiFetch } from '../../api/client'
+import { formatChatParticipantsLabel } from '../../lib/chatUi'
 import { formatPersonFullName } from '../../lib/personDisplay'
-import type { ChatMessage } from '../../types/chat'
+import type { ChatMessage, ChatParticipantRef } from '../../types/chat'
 
 type PliegoProjectChatSnippetProps = {
   projectUuid: string
@@ -13,6 +14,7 @@ type PliegoProjectChatSnippetProps = {
 
 export function PliegoProjectChatSnippet({ projectUuid, token, userUuid }: PliegoProjectChatSnippetProps) {
   const [conversationUuid, setConversationUuid] = useState<string | null>(null)
+  const [participants, setParticipants] = useState<ChatParticipantRef[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -26,8 +28,14 @@ export function PliegoProjectChatSnippet({ projectUuid, token, userUuid }: Plieg
         token,
       })
       if (!res.ok || cancelled) return
-      const j = (await res.json()) as { uuid?: string }
-      if (j.uuid && !cancelled) setConversationUuid(j.uuid)
+      const j = (await res.json()) as {
+        uuid?: string
+        participants?: ChatParticipantRef[]
+      }
+      if (j.uuid && !cancelled) {
+        setConversationUuid(j.uuid)
+        setParticipants(j.participants ?? [])
+      }
     })()
     return () => {
       cancelled = true
@@ -68,7 +76,9 @@ export function PliegoProjectChatSnippet({ projectUuid, token, userUuid }: Plieg
     <div className="flex flex-col rounded-xl border border-black/10 bg-white">
       <div className="border-b border-black/8 px-3 py-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-primary">Comentarios del equipo</h4>
-        <p className="mt-0.5 text-[11px] text-muted">Canal grupal de esta obra</p>
+        <p className="mt-0.5 text-[11px] text-muted">
+          {formatChatParticipantsLabel(participants) || 'Canal grupal de esta obra'}
+        </p>
       </div>
       <div className="max-h-52 space-y-3 overflow-y-auto px-3 py-3">
         {messages.length === 0 ? (

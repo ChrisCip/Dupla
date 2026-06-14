@@ -8,7 +8,7 @@ import type { UserRole } from './userRoles'
 const TAB_DEFS: { id: string; label: string }[] = [
   { id: 'hub', label: 'Inicio' },
   { id: 'detalles', label: 'Detalles' },
-  { id: 'flujo', label: 'Flujo' },
+  { id: 'flujo', label: 'Arranque y flujo' },
   { id: 'archivos', label: 'Archivos' },
   { id: 'basePrecios', label: 'Base de precios' },
   { id: 'entregaPlanos', label: 'Control de entregas' },

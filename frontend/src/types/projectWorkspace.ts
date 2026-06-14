@@ -7,6 +7,7 @@ export type ProjectFileRow = {
   description: string | null
   discipline: string | null
   ingest_status: string
+  counts_for_budget: boolean
   created_at: string
 }
 

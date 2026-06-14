@@ -11,7 +11,7 @@ import { ChatDirectModal } from '../components/chat/ChatDirectModal'
 import { ChatGroupModal } from '../components/chat/ChatGroupModal'
 import { ChatMessageList } from '../components/chat/ChatMessageList'
 import { WorkspaceContextSelect } from '../components/WorkspaceContextSelect'
-import { formatGroupParticipantEmails } from '../lib/chatUi'
+import { formatChatParticipantsLabel, isGroupChatKind } from '../lib/chatUi'
 import { userDisplayInitials } from '../lib/taskboard'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
@@ -369,19 +369,22 @@ export function ChatPage() {
               <h2 className="truncate text-lg font-bold text-ink">{activeMeta?.display_title ?? 'Chat'}</h2>
               {activeMeta ? (
                 <p
-                  className={`mt-0.5 text-xs text-muted ${activeMeta.kind === 'GROUP' && activeMeta.participants?.length ? 'line-clamp-2' : ''}`}
+                  className={`mt-0.5 text-xs text-muted ${
+                    isGroupChatKind(activeMeta.kind) && activeMeta.participants?.length ? 'line-clamp-2' : ''
+                  }`}
                 >
                   {activeMeta.kind === 'GENERAL' && 'Canal visible para todo el equipo.'}
                   {activeMeta.kind === 'DIRECT' && 'Mensaje directo.'}
-                  {activeMeta.kind === 'GROUP' &&
-                    (formatGroupParticipantEmails(activeMeta.participants) ||
+                  {isGroupChatKind(activeMeta.kind) &&
+                    (formatChatParticipantsLabel(activeMeta.participants) ||
                       (activeMeta.participant_count != null
-                        ? `${activeMeta.participant_count} personas`
-                        : 'Grupo'))}
-                  {activeMeta.kind === 'PROJECT' && 'Chat grupal de la obra.'}
+                        ? `${activeMeta.participant_count} integrantes`
+                        : activeMeta.kind === 'GROUP'
+                          ? 'Grupo'
+                          : 'Chat grupal de la obra'))}
                   {activeMeta.participant_count != null &&
                   activeMeta.kind !== 'DIRECT' &&
-                  activeMeta.kind !== 'GROUP' ? (
+                  !isGroupChatKind(activeMeta.kind) ? (
                     <span className="ml-1">· {activeMeta.participant_count} en línea (aprox.)</span>
                   ) : null}
                 </p>

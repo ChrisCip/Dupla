@@ -95,6 +95,7 @@ class ProjectFileResponse(BaseModel):
     description: Optional[str]
     discipline: Optional[str]
     ingest_status: str
+    counts_for_budget: bool
     created_by_uuid: Optional[UUID]
     created_at: datetime
 
@@ -109,6 +110,7 @@ class ProjectFileResponse(BaseModel):
             description=row.description,
             discipline=row.discipline,
             ingest_status=row.ingest_status,
+            counts_for_budget=row.counts_for_budget,
             created_by_uuid=row.created_by,
             created_at=row.created_at,
         )

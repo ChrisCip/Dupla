@@ -13,6 +13,11 @@ import {
   type ProjectFileDisciplineValue,
 } from '../../../constants/projectFileDisciplines'
 import { downloadBlob } from '../../../lib/download'
+import {
+  BUDGET_EXCLUDED_FILE_BADGE,
+  BUDGET_EXCLUDED_UPLOAD_NOTICE,
+  uploadsExcludedFromBudget,
+} from '../../../lib/projectFileBudget'
 import type { ProjectFileFolderRow, ProjectFileRow, ProjectFileSearchRow } from '../../../types/projectWorkspace'
 import { Card } from '../../Card'
 import { PrimaryButton } from '../../PrimaryButton'
@@ -33,6 +38,7 @@ type FilesListPayload = {
 type WorkspaceArchivosTabProps = {
   projectUuid: string
   token: string | null
+  workflowPhase: string
   flowMsg: string | null
 }
 
@@ -65,7 +71,7 @@ function formatUploadedAt(iso: string) {
   }
 }
 
-export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceArchivosTabProps) {
+export function WorkspaceArchivosTab({ projectUuid, token, workflowPhase, flowMsg }: WorkspaceArchivosTabProps) {
   const [folderUuid, setFolderUuid] = useState<string | null>(null)
   const [trail, setTrail] = useState<TrailSeg[]>([{ uuid: null, name: 'Raíz' }])
   const [folders, setFolders] = useState<ProjectFileFolderRow[]>([])
@@ -276,6 +282,18 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
     }
   }
 
+  const showBudgetExcludedNotice = uploadsExcludedFromBudget(workflowPhase)
+
+  const budgetExcludedBadge = (countsForBudget: boolean | undefined) =>
+    countsForBudget === false ? (
+      <span
+        className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase text-amber-900"
+        title={BUDGET_EXCLUDED_UPLOAD_NOTICE}
+      >
+        {BUDGET_EXCLUDED_FILE_BADGE}
+      </span>
+    ) : null
+
   const currentFolderLabel = trail[trail.length - 1]?.name ?? 'Raíz'
 
   const fileHasPrevPage = filePageOffset > 0
@@ -291,6 +309,11 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
           Formatos de subida: {formatAllowedProjectExtensionsHint()}. Explorador por carpetas; puedes editar nombre y
           descripción tras subir. Los cambios quedan en el historial del proyecto.
         </p>
+        {showBudgetExcludedNotice ? (
+          <p className="mt-2 rounded-md border border-amber-200/80 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            {BUDGET_EXCLUDED_UPLOAD_NOTICE}
+          </p>
+        ) : null}
         {fileNotice ? (
           <p className="mt-2 text-sm font-medium text-primary" role="status">
             {fileNotice}{' '}
@@ -541,6 +564,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                             Borrador
                           </span>
                         ) : null}
+                        {budgetExcludedBadge(f.counts_for_budget)}
                         {disciplineLabel(f.discipline) ? (
                           <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                             {disciplineLabel(f.discipline)}
@@ -615,6 +639,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                             Borrador
                           </span>
                         ) : null}
+                        <span className="mt-1 inline-block">{budgetExcludedBadge(f.counts_for_budget)}</span>
                         {disciplineLabel(f.discipline) ? (
                           <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                             {disciplineLabel(f.discipline)}
@@ -732,6 +757,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                           Borrador
                         </span>
                       ) : null}
+                      {budgetExcludedBadge(f.counts_for_budget)}
                       {disciplineLabel(f.discipline) ? (
                         <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                           {disciplineLabel(f.discipline)}
@@ -859,6 +885,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
                           Borrador
                         </span>
                       ) : null}
+                      <span className="mt-1 inline-block">{budgetExcludedBadge(f.counts_for_budget)}</span>
                       {disciplineLabel(f.discipline) ? (
                         <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                           {disciplineLabel(f.discipline)}
@@ -921,6 +948,7 @@ export function WorkspaceArchivosTab({ projectUuid, token, flowMsg }: WorkspaceA
         }}
         projectUuid={projectUuid}
         token={token}
+        workflowPhase={workflowPhase}
         defaultFolderUuid={folderUuid}
         defaultFolderLabel={currentFolderLabel}
         initialFiles={pendingDropFiles}

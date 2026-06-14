@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -39,6 +39,7 @@ class ProjectFile(Base):
     description: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
     discipline: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     ingest_status: Mapped[str] = mapped_column(String(20), nullable=False, default="PUBLISHED")
+    counts_for_budget: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),

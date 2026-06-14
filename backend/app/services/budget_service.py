@@ -158,15 +158,27 @@ class BudgetService:
             .order_by(ProjectFile.created_at.asc())
         )
         all_files = list(result.scalars().all())
+        budget_files = [pf for pf in all_files if pf.counts_for_budget]
 
-        if not all_files:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="El proyecto no tiene archivos adjuntos")
+        if not budget_files:
+            if all_files:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "No hay archivos válidos para presupuesto. Los subidos tras la fase de presupuesto "
+                        "no se incluyen en el cálculo."
+                    ),
+                )
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El proyecto no tiene archivos adjuntos",
+            )
 
-        budget_discipline = _normalize_budget_discipline(discipline, all_files)
+        budget_discipline = _normalize_budget_discipline(discipline, budget_files)
 
         upload_root = Path(settings.upload_root)
         multipart_files: list[tuple[str, tuple[str, bytes, str]]] = []
-        for pf in all_files:
+        for pf in budget_files:
             disk_path = Path(pf.storage_key)
             if not disk_path.exists():
                 continue

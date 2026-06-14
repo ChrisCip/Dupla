@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Check,
   Circle,
+  ClipboardCheck,
   LayoutDashboard,
   MessageCircle,
   MoreVertical,
@@ -21,8 +22,9 @@ import { formatPersonFullName } from '../../lib/personDisplay'
 import { userDisplayInitials } from '../../lib/taskboard'
 import { workflowPhaseLabelForRole, workflowStepTitleForRole } from '../../lib/accessPermissions'
 import { workflowPhaseProgressPct } from '../../lib/projectDashboardBuckets'
+import { bootstrapRequiredPercent, isBootstrapComplete } from '../../lib/bootstrapCriteria'
 import type { TechnicalFindingRow } from '../../types/projectWorkspace'
-import type { Project } from '../../types/project'
+import type { BootstrapCriterion, Project } from '../../types/project'
 import type { TaskBoardDto } from '../../types/taskBoard'
 import { PrimaryButton } from '../PrimaryButton'
 import { Card } from '../Card'
@@ -62,6 +64,8 @@ type ProjectWorkspaceDashboardProps = {
   onAdvancePhase: () => void
   onOpenChat: () => void
   onOpenTab: (tab: string) => void
+  onOpenBootstrapChecklist: () => void
+  bootstrapCriteria: BootstrapCriterion[]
   pliegoApproved: boolean
   canApprovePliego: boolean
   pliegoApproveBusy: boolean
@@ -110,6 +114,8 @@ export function ProjectWorkspaceDashboard({
   onAdvancePhase,
   onOpenChat,
   onOpenTab,
+  onOpenBootstrapChecklist,
+  bootstrapCriteria,
   pliegoApproved,
   canApprovePliego,
   pliegoApproveBusy,
@@ -125,6 +131,10 @@ export function ProjectWorkspaceDashboard({
   const [teamMenu, setTeamMenu] = useState<string | null>(null)
 
   const hint = phaseWorkspaceHintForRole(project.workflow_phase, role as import('../../constants/userRoles').UserRole | null)
+  const bootstrapStats = useMemo(() => bootstrapRequiredPercent(bootstrapCriteria), [bootstrapCriteria])
+  const bootstrapIncomplete = !isBootstrapComplete(bootstrapCriteria)
+  const showBootstrapBanner =
+    project.workflow_phase === 'BOOTSTRAPPING' || (bootstrapStats.required > 0 && bootstrapIncomplete)
   const showPliegoApproveCta =
     project.workflow_phase === 'SPECIFICATIONS' && canApprovePliego && !pliegoApproved
 
@@ -259,6 +269,15 @@ export function ProjectWorkspaceDashboard({
 
   const quickLinks = (
     <div className="flex flex-wrap gap-2">
+      {showBootstrapBanner ? (
+        <button
+          type="button"
+          className="rounded-full border border-primary/35 bg-primary px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-95"
+          onClick={onOpenBootstrapChecklist}
+        >
+          Checklist de arranque
+        </button>
+      ) : null}
       <button
         type="button"
         className="rounded-full border border-black/12 bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-sm hover:border-primary/25"
@@ -342,6 +361,33 @@ export function ProjectWorkspaceDashboard({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="flex flex-col gap-5 pb-4">
+      {showBootstrapBanner ? (
+        <Card className="border-primary/30 bg-primary/[0.06] p-4 shadow-[var(--shadow-card)] ring-1 ring-primary/15 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-white">
+                <ClipboardCheck className="size-5" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-ink">Checklist de arranque pendiente</h3>
+                <p className="mt-1 text-sm text-muted">
+                  {bootstrapStats.pct != null
+                    ? `${bootstrapStats.label}. Guarda el checklist antes de avanzar a «Esperando archivos».`
+                    : 'Completa y guarda el checklist de documentos requeridos.'}
+                </p>
+              </div>
+            </div>
+            <PrimaryButton
+              type="button"
+              className="shrink-0 gap-2 px-4 py-2.5 text-sm font-semibold normal-case tracking-normal"
+              onClick={onOpenBootstrapChecklist}
+            >
+              Abrir checklist
+              <ArrowRight className="size-4" aria-hidden />
+            </PrimaryButton>
+          </div>
+        </Card>
+      ) : null}
       <div className="flex flex-col gap-3">
         {quickLinks}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
@@ -454,8 +500,14 @@ export function ProjectWorkspaceDashboard({
                                       ? 'hub'
                                       : hint.tabId === 'historial'
                                         ? 'eventos'
-                                        : hint.tabId
-                                onOpenTab(targetTab)
+                                        : hint.tabId === 'flujo' && project.workflow_phase === 'BOOTSTRAPPING'
+                                          ? 'flujo-bootstrap'
+                                          : hint.tabId
+                                if (targetTab === 'flujo-bootstrap') {
+                                  onOpenBootstrapChecklist()
+                                } else {
+                                  onOpenTab(targetTab)
+                                }
                               }}
                             >
                               {hint.cta}

@@ -29,3 +29,16 @@ LINEAR_NEXT: dict[WorkflowPhase, WorkflowPhase] = {
 
 # Paso inverso (una fase atrás); no incluye BOOTSTRAPPING como destino implícito en el mapa de "desde"
 LINEAR_PREV: dict[WorkflowPhase, WorkflowPhase] = {v: k for k, v in LINEAR_NEXT.items()}
+
+PHASES_AFTER_BUDGET: frozenset[WorkflowPhase] = frozenset(
+    {
+        WorkflowPhase.MANAGEMENT_APPROVAL,
+        WorkflowPhase.BUDGET_APPROVED,
+        WorkflowPhase.COMPLETE,
+    }
+)
+
+
+def upload_counts_for_budget(phase: WorkflowPhase) -> bool:
+    """Archivos subidos tras la fase de presupuesto no entran al pipeline de presupuesto."""
+    return phase not in PHASES_AFTER_BUDGET
