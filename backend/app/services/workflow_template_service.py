@@ -7,7 +7,6 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.domain.workflow_step_behavior import VALID_WORKFLOW_STEP_BEHAVIORS
 from app.models.project import Project
@@ -90,13 +89,15 @@ def _detect_cycle_stable_keys(steps: list[WorkflowTemplateStepInput]) -> None:
 
 
 class WorkflowTemplateService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
+        self._workspace_id = workspace_id
         self._repo = WorkflowTemplateRepository(session)
 
     async def create_template(self, user_id: UUID, *, name: str, description: str) -> WorkflowTemplate:
         now = datetime.now(timezone.utc)
         row = WorkflowTemplate(
+            workspace_id=self._workspace_id,
             name=name.strip(),
             description=(description or "").strip(),
             created_by_user_id=user_id,
@@ -118,7 +119,7 @@ class WorkflowTemplateService:
         archived: Optional[bool] = None,
         icon_key: Optional[str] = None,
     ) -> WorkflowTemplate:
-        t = await self._repo.get_template_by_uuid(template_uuid)
+        t = await self._repo.get_template_by_uuid(template_uuid, self._workspace_id)
         if t is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plantilla no encontrada")
         if name is not None:
@@ -144,7 +145,10 @@ class WorkflowTemplateService:
         Sustitución total por SQL: filas nuevas desde el body; proyectos al primer paso nuevo;
         borrado masivo de ids viejos (sin depender de la colección ORM `template.steps`).
         """
-        tq = select(WorkflowTemplate).where(WorkflowTemplate.id == template_uuid)
+        tq = select(WorkflowTemplate).where(
+            WorkflowTemplate.id == template_uuid,
+            WorkflowTemplate.workspace_id == self._workspace_id,
+        )
         t = (await self._session.execute(tq)).scalar_one_or_none()
         if t is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plantilla no encontrada")
@@ -223,7 +227,10 @@ class WorkflowTemplateService:
         await self._session.flush()
 
         first_new_id = new_rows[0].id
-        proj_q = select(Project).where(Project.workflow_template_id == t.id)
+        proj_q = select(Project).where(
+            Project.workflow_template_id == t.id,
+            Project.workspace_id == self._workspace_id,
+        )
         projects = list((await self._session.execute(proj_q)).scalars().all())
         for p in projects:
             p.current_workflow_step_id = first_new_id
@@ -238,18 +245,13 @@ class WorkflowTemplateService:
         t.updated_at = now
         await self._session.flush()
 
-        out = await self._repo.get_template_by_uuid(template_uuid)
+        out = await self._repo.get_template_by_uuid(template_uuid, self._workspace_id)
         assert out is not None
         await self._session.refresh(out, ["steps"])
         return out
 
     async def get_detail(self, template_uuid: UUID) -> WorkflowTemplate:
-        q = (
-            select(WorkflowTemplate)
-            .options(selectinload(WorkflowTemplate.steps))
-            .where(WorkflowTemplate.id == template_uuid)
-        )
-        t = (await self._session.execute(q)).scalar_one_or_none()
+        t = await self._repo.get_template_by_uuid(template_uuid, self._workspace_id)
         if t is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plantilla no encontrada")
         return t

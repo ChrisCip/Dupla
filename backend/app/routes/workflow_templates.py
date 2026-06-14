@@ -33,10 +33,15 @@ def _card_icon_for_template(t: WorkflowTemplate) -> str:
 async def list_workflow_templates(
     current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     q: Annotated[Optional[str], Query(description="Buscar por nombre de flujo o de proyecto")] = None,
 ) -> list[WorkflowTemplateListItemResponse]:
     repo = WorkflowTemplateRepository(session)
-    rows = await repo.search_templates_and_projects(query=q, preview_project_limit=5)
+    rows = await repo.search_templates_and_projects(
+        workspace_id=ws_ctx.workspace_id,
+        query=q,
+        preview_project_limit=5,
+    )
     out: list[WorkflowTemplateListItemResponse] = []
     for t, previews in rows:
         out.append(
@@ -56,10 +61,11 @@ async def list_workflow_templates(
 async def list_active_templates_short(
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> list[WorkflowTemplateDetailResponse]:
     """Selector de plantilla al crear proyecto (todos los autenticados con módulo arquitectura)."""
     repo = WorkflowTemplateRepository(session)
-    rows = await repo.list_active_templates()
+    rows = await repo.list_active_templates(ws_ctx.workspace_id)
     return [WorkflowTemplateDetailResponse.from_template(t) for t in rows]
 
 
@@ -68,8 +74,9 @@ async def get_workflow_template(
     template_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> WorkflowTemplateDetailResponse:
-    t = await WorkflowTemplateService(session).get_detail(template_uuid)
+    t = await WorkflowTemplateService(session, ws_ctx.workspace_id).get_detail(template_uuid)
     return WorkflowTemplateDetailResponse.from_template(t)
 
 
@@ -78,8 +85,9 @@ async def post_workflow_template(
     body: WorkflowTemplateCreateRequest,
     current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> WorkflowTemplateDetailResponse:
-    svc = WorkflowTemplateService(session)
+    svc = WorkflowTemplateService(session, ws_ctx.workspace_id)
     t = await svc.create_template(current.id, name=body.name, description=body.description)
     await session.commit()
     full = await svc.get_detail(t.id)
@@ -92,8 +100,9 @@ async def patch_workflow_template(
     body: WorkflowTemplatePatchRequest,
     current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> WorkflowTemplateDetailResponse:
-    svc = WorkflowTemplateService(session)
+    svc = WorkflowTemplateService(session, ws_ctx.workspace_id)
     t = await svc.patch_template(
         template_uuid,
         name=body.name,
@@ -112,8 +121,9 @@ async def put_workflow_template_steps(
     body: WorkflowTemplateStepsPutRequest,
     current: Annotated[User, Depends(require_elevated_access)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> WorkflowTemplateDetailResponse:
-    svc = WorkflowTemplateService(session)
+    svc = WorkflowTemplateService(session, ws_ctx.workspace_id)
     t = await svc.replace_steps(template_uuid, body.steps)
     await session.commit()
     full = await svc.get_detail(t.id)

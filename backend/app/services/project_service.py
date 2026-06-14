@@ -47,8 +47,8 @@ class ProjectService:
 
     async def list_projects_for_template(self, user: User, template_uuid: UUID) -> list[Project]:
         await self.ensure_architecture_access(user)
-        tpl = await self._workflow_templates.get_template_by_uuid(template_uuid)
-        if tpl is None or tpl.workspace_id != self._workspace_id:
+        tpl = await self._workflow_templates.get_template_by_uuid(template_uuid, self._workspace_id)
+        if tpl is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plantilla no encontrada")
         is_master = has_elevated_access(user)
         return await self._projects.list_for_template(
@@ -96,8 +96,8 @@ class ProjectService:
                 detail="Los proyectos de licitación requieren al menos un archivo al crear el proyecto",
             )
         if workflow_template_uuid is not None:
-            tpl = await self._workflow_templates.get_template_by_uuid(workflow_template_uuid)
-            if tpl is None or tpl.workspace_id != self._workspace_id:
+            tpl = await self._workflow_templates.get_template_by_uuid(workflow_template_uuid, self._workspace_id)
+            if tpl is None:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="La plantilla de flujo no existe",
