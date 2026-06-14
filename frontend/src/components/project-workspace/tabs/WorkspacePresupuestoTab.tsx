@@ -2,7 +2,7 @@ import { canMarkControlReview } from '../../../lib/accessPermissions'
 import { useAuthStore } from '../../../store/authStore'
 import { apiFetch } from '../../../api/client'
 import { Card } from '../../Card'
-import { PrimaryButton } from '../../PrimaryButton'
+import { WorkspaceActionButton } from '../WorkspaceActionButton'
 import type { SubcontractQuoteRow } from '../../../types/projectWorkspace'
 
 type WorkspacePresupuestoTabProps = {
@@ -15,7 +15,7 @@ type WorkspacePresupuestoTabProps = {
   setBpDraft: React.Dispatch<React.SetStateAction<Record<string, unknown>>>
   clientVersion: string
   setClientVersion: React.Dispatch<React.SetStateAction<string>>
-  onSaveBudgetPipeline: () => void
+  onSaveBudgetPipeline: () => boolean | void | Promise<boolean | void>
   newQuoteTitle: string
   setNewQuoteTitle: React.Dispatch<React.SetStateAction<string>>
   activeQuote: string
@@ -129,9 +129,9 @@ export function WorkspacePresupuestoTab({
             />
           </label>
         </div>
-        <PrimaryButton type="button" onClick={onSaveBudgetPipeline}>
+        <WorkspaceActionButton type="button" onAction={onSaveBudgetPipeline} successLabel="Pipeline guardado">
           Guardar estado del pipeline
-        </PrimaryButton>
+        </WorkspaceActionButton>
       </Card>
       <Card className="space-y-4 p-6">
         <h3 className="text-md font-semibold text-ink">Cotizaciones</h3>
@@ -142,23 +142,24 @@ export function WorkspacePresupuestoTab({
             value={newQuoteTitle}
             onChange={(e) => setNewQuoteTitle(e.target.value)}
           />
-          <PrimaryButton
+          <WorkspaceActionButton
             type="button"
-            onClick={async () => {
-              if (!token) return
+            onAction={async () => {
+              if (!token) return false
               const res = await apiFetch(`/api/projects/${projectUuid}/subcontracts`, {
                 method: 'POST',
                 token,
                 body: JSON.stringify({ title: newQuoteTitle.trim() || null }),
               })
-              if (res.ok) {
-                setNewQuoteTitle('')
-                await onLoadAuxLists()
-              }
+              if (!res.ok) return false
+              setNewQuoteTitle('')
+              await onLoadAuxLists()
+              return true
             }}
+            successLabel="Cotización creada"
           >
             Nueva cotización
-          </PrimaryButton>
+          </WorkspaceActionButton>
         </div>
         <label className="block text-sm text-muted">
           Cotización activa para líneas
@@ -185,11 +186,11 @@ export function WorkspacePresupuestoTab({
             value={linePrice}
             onChange={(e) => setLinePrice(e.target.value)}
           />
-          <PrimaryButton
+          <WorkspaceActionButton
             type="button"
             disabled={!activeQuote}
-            onClick={async () => {
-              if (!token || !activeQuote) return
+            onAction={async () => {
+              if (!token || !activeQuote) return false
               const res = await apiFetch(`/api/projects/${projectUuid}/subcontracts/${activeQuote}/lines`, {
                 method: 'POST',
                 token,
@@ -199,15 +200,16 @@ export function WorkspacePresupuestoTab({
                   currency: 'MXN',
                 }),
               })
-              if (res.ok) {
-                setLineItem('')
-                setLinePrice('')
-                await onLoadAuxLists()
-              }
+              if (!res.ok) return false
+              setLineItem('')
+              setLinePrice('')
+              await onLoadAuxLists()
+              return true
             }}
+            successLabel="Línea agregada"
           >
             Agregar línea
-          </PrimaryButton>
+          </WorkspaceActionButton>
         </div>
         {quotes.map((q) => (
           <div key={q.uuid} className="rounded border border-black/5 p-3 text-sm">

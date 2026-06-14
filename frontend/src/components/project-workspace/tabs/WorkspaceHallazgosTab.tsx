@@ -32,6 +32,7 @@ import type {
 } from '../../../types/structuralAnalysisReport'
 import { Card } from '../../Card'
 import { PrimaryButton } from '../../PrimaryButton'
+import { WorkspaceActionButton } from '../WorkspaceActionButton'
 
 const SEVERITY_OPTIONS = ['crítico', 'alto', 'medio', 'bajo'] as const
 
@@ -289,8 +290,8 @@ export function WorkspaceHallazgosTab({
     })
   }, [])
 
-  const submit = useCallback(async () => {
-    if (!token || !discipline.trim() || !title.trim() || !description.trim()) return
+  const submit = useCallback(async (): Promise<boolean> => {
+    if (!token || !discipline.trim() || !title.trim() || !description.trim()) return false
     setSubmitBusy(true)
     setLocalErr(null)
     try {
@@ -309,12 +310,13 @@ export function WorkspaceHallazgosTab({
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         setLocalErr((j as { detail?: string }).detail ?? 'No se pudo guardar el hallazgo')
-        return
+        return false
       }
       setTitle('')
       setDescription('')
       setEvidenceRef('')
       await onRefresh()
+      return true
     } finally {
       setSubmitBusy(false)
     }
@@ -606,9 +608,15 @@ export function WorkspaceHallazgosTab({
                 />
               </label>
             </div>
-            <PrimaryButton type="button" disabled={submitBusy || !token} onClick={() => void submit()}>
-              {submitBusy ? 'Guardando…' : 'Guardar hallazgo'}
-            </PrimaryButton>
+            <WorkspaceActionButton
+              type="button"
+              disabled={submitBusy || !token}
+              onAction={submit}
+              successLabel="Hallazgo guardado"
+              runningLabel="Guardando…"
+            >
+              Guardar hallazgo
+            </WorkspaceActionButton>
           </div>
         </details>
 

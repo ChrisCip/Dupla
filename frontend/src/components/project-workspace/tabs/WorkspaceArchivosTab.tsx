@@ -20,7 +20,7 @@ import {
 } from '../../../lib/projectFileBudget'
 import type { ProjectFileFolderRow, ProjectFileRow, ProjectFileSearchRow } from '../../../types/projectWorkspace'
 import { Card } from '../../Card'
-import { PrimaryButton } from '../../PrimaryButton'
+import { WorkspaceActionButton } from '../WorkspaceActionButton'
 import { ProjectFilesUploadWizard } from '../ProjectFilesUploadWizard'
 import { ProjectWorkspaceFileIcon } from '../ProjectWorkspaceFileIcon'
 
@@ -186,17 +186,18 @@ export function WorkspaceArchivosTab({ projectUuid, token, workflowPhase, flowMs
     }
   }, [hasActiveFilters, loadSearchResults])
 
-  async function createFolderFromModal() {
-    if (!token || !folderModalName.trim()) return
+  async function createFolderFromModal(): Promise<boolean> {
+    if (!token || !folderModalName.trim()) return false
     const res = await apiFetch(`/api/projects/${projectUuid}/file-folders`, {
       method: 'POST',
       token,
       body: JSON.stringify({ name: folderModalName.trim(), parent_uuid: folderUuid }),
     })
-    if (!res.ok) return
+    if (!res.ok) return false
     setFolderModalName('')
     setFolderModalOpen(false)
     await load()
+    return true
   }
 
   async function deleteFolder(f: ProjectFileFolderRow) {
@@ -247,16 +248,16 @@ export function WorkspaceArchivosTab({ projectUuid, token, workflowPhase, flowMs
     setEditError(null)
   }
 
-  async function saveFileEdit() {
-    if (!token || !editingFile) return
+  async function saveFileEdit(): Promise<boolean> {
+    if (!token || !editingFile) return false
     const name = editFileName.trim()
     if (!name) {
       setEditError('El nombre es obligatorio')
-      return
+      return false
     }
     if (!isAllowedProjectFileName(name)) {
       setEditError(`La extensión debe ser una de: ${formatAllowedProjectExtensionsHint()}`)
-      return
+      return false
     }
     setEditSaving(true)
     setEditError(null)
@@ -272,11 +273,12 @@ export function WorkspaceArchivosTab({ projectUuid, token, workflowPhase, flowMs
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         setEditError((j as { detail?: string }).detail ?? 'No se pudo guardar')
-        return
+        return false
       }
       setEditingFile(null)
       if (hasActiveFilters) await loadSearchResults()
       await load()
+      return true
     } finally {
       setEditSaving(false)
     }
@@ -1011,9 +1013,15 @@ export function WorkspaceArchivosTab({ projectUuid, token, workflowPhase, flowMs
               >
                 Cancelar
               </button>
-              <PrimaryButton type="button" disabled={editSaving} onClick={() => void saveFileEdit()}>
-                {editSaving ? 'Guardando…' : 'Guardar'}
-              </PrimaryButton>
+              <WorkspaceActionButton
+                type="button"
+                disabled={editSaving}
+                onAction={saveFileEdit}
+                successLabel="Archivo guardado"
+                runningLabel="Guardando…"
+              >
+                Guardar
+              </WorkspaceActionButton>
             </div>
           </div>
         </div>
@@ -1062,13 +1070,14 @@ export function WorkspaceArchivosTab({ projectUuid, token, workflowPhase, flowMs
               >
                 Cancelar
               </button>
-              <PrimaryButton
+              <WorkspaceActionButton
                 type="button"
                 disabled={!folderModalName.trim() || busy}
-                onClick={() => void createFolderFromModal()}
+                onAction={createFolderFromModal}
+                successLabel="Carpeta creada"
               >
                 Crear
-              </PrimaryButton>
+              </WorkspaceActionButton>
             </div>
           </div>
         </div>

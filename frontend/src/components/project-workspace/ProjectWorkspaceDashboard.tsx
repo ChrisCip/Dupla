@@ -27,6 +27,7 @@ import type { TechnicalFindingRow } from '../../types/projectWorkspace'
 import type { BootstrapCriterion, Project } from '../../types/project'
 import type { TaskBoardDto } from '../../types/taskBoard'
 import { PrimaryButton } from '../PrimaryButton'
+import { WorkspaceActionButton } from './WorkspaceActionButton'
 import { Card } from '../Card'
 import type { TemplateStepProgress } from './WorkflowPhaseStepper'
 
@@ -55,21 +56,19 @@ type ProjectWorkspaceDashboardProps = {
   templateStepProgress: TemplateStepProgress | null
   orderedTemplateSteps: { uuid: string; title: string }[] | null
   flowMsg: string | null
-  flowBusy: boolean
   nextPhase: string | undefined
   role: string | null
   viewBudget: boolean
   memberRows: DirectoryUserRow[]
   quotesCount: number
-  onAdvancePhase: () => void
+  onAdvancePhase: () => boolean | void | Promise<boolean | void>
   onOpenChat: () => void
   onOpenTab: (tab: string) => void
   onOpenBootstrapChecklist: () => void
   bootstrapCriteria: BootstrapCriterion[]
   pliegoApproved: boolean
   canApprovePliego: boolean
-  pliegoApproveBusy: boolean
-  onApprovePliego: () => void
+  onApprovePliego: () => boolean | void | Promise<boolean | void>
 }
 
 function formatBudgetPipelineSummary(bp: Record<string, unknown>): string {
@@ -105,7 +104,6 @@ export function ProjectWorkspaceDashboard({
   templateStepProgress,
   orderedTemplateSteps,
   flowMsg,
-  flowBusy,
   nextPhase,
   role,
   viewBudget,
@@ -118,7 +116,6 @@ export function ProjectWorkspaceDashboard({
   bootstrapCriteria,
   pliegoApproved,
   canApprovePliego,
-  pliegoApproveBusy,
   onApprovePliego,
 }: ProjectWorkspaceDashboardProps) {
   const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
@@ -662,14 +659,15 @@ export function ProjectWorkspaceDashboard({
             >
               Ir al pliego
             </button>
-            <PrimaryButton
+            <WorkspaceActionButton
               type="button"
               className="px-3 py-2 text-xs font-semibold normal-case tracking-normal"
-              disabled={pliegoApproveBusy}
-              onClick={onApprovePliego}
+              onAction={onApprovePliego}
+              successLabel="Pliego aprobado"
+              runningLabel="Aprobando…"
             >
-              {pliegoApproveBusy ? 'Aprobando…' : 'Aprobar pliego'}
-            </PrimaryButton>
+              Aprobar pliego
+            </WorkspaceActionButton>
           </div>
         ) : null}
         <div className="flex flex-wrap gap-2">
@@ -681,15 +679,16 @@ export function ProjectWorkspaceDashboard({
             Ver detalles
           </button>
           {nextPhase ? (
-            <PrimaryButton
+            <WorkspaceActionButton
               type="button"
               className="gap-2 px-4 py-2.5 text-sm font-semibold normal-case tracking-normal"
-              disabled={flowBusy}
-              onClick={onAdvancePhase}
+              onAction={onAdvancePhase}
+              successLabel="Fase actualizada"
+              runningLabel="Procesando…"
             >
-              {flowBusy ? 'Procesando…' : 'Continuar fase'}
+              Continuar fase
               <ArrowRight className="size-4" aria-hidden />
-            </PrimaryButton>
+            </WorkspaceActionButton>
           ) : (
             <span className="self-center text-xs text-muted">Última fase alcanzada.</span>
           )}

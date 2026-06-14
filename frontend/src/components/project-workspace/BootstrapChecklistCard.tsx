@@ -3,12 +3,12 @@ import { ClipboardCheck } from 'lucide-react'
 import { bootstrapRequiredPercent } from '../../lib/bootstrapCriteria'
 import type { BootstrapCriterion } from '../../types/project'
 import { Card } from '../Card'
-import { PrimaryButton } from '../PrimaryButton'
+import { WorkspaceActionButton } from './WorkspaceActionButton'
 
 type Props = {
   criteria: BootstrapCriterion[]
   onChange: (next: BootstrapCriterion[]) => void
-  onSave: () => void
+  onSave: () => boolean | void | Promise<boolean | void>
   prominent?: boolean
   id?: string
 }
@@ -71,7 +71,9 @@ export function BootstrapChecklistCard({
           </li>
         ))}
       </ul>
-      <PrimaryButton type="button" onClick={onSave}>Guardar checklist</PrimaryButton>
+      <WorkspaceActionButton type="button" onAction={onSave} successLabel="Checklist guardado">
+        Guardar checklist
+      </WorkspaceActionButton>
     </Card>
   )
 }

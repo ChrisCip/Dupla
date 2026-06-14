@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom'
 import { hasElevatedAccess } from '../../lib/accessPermissions'
 import { useAuthStore } from '../../store/authStore'
 import { Card } from '../Card'
-import { PrimaryButton } from '../PrimaryButton'
 import { WORKFLOW_PHASE_LABELS } from '../../constants/workflowPhases'
 import { WorkflowPhaseStepper, type TemplateStepProgress } from './WorkflowPhaseStepper'
+import { WorkspaceActionButton } from './WorkspaceActionButton'
 
 type ProjectWorkspaceFlowAsideProps = {
   projectUuid: string
@@ -14,11 +14,10 @@ type ProjectWorkspaceFlowAsideProps = {
   phaseLabel: string
   templateStepProgress?: TemplateStepProgress | null
   nextPhase: string | undefined
-  flowBusy: boolean
   flowMsg: string | null
   role: string | null
   viewBudget: boolean
-  onAdvancePhase: () => void
+  onAdvancePhase: () => boolean | void | Promise<boolean | void>
   onOpenChat: () => void
 }
 
@@ -28,7 +27,6 @@ export function ProjectWorkspaceFlowAside({
   phaseLabel,
   templateStepProgress,
   nextPhase,
-  flowBusy,
   flowMsg,
   role,
   viewBudget,
@@ -56,23 +54,18 @@ export function ProjectWorkspaceFlowAside({
           <p className="mt-2 text-sm font-medium text-ink">{phaseLabel || '—'}</p>
         )}
         {nextPhase ? (
-          <PrimaryButton
+          <WorkspaceActionButton
             type="button"
             className="mt-2 w-full flex-col gap-0.5 px-2.5 py-2 text-xs font-semibold normal-case leading-tight tracking-normal"
-            disabled={flowBusy}
-            onClick={onAdvancePhase}
+            onAction={onAdvancePhase}
+            successLabel="Fase actualizada"
+            runningLabel="Procesando…"
           >
-            {flowBusy ? (
-              'Procesando…'
-            ) : (
-              <>
-                <span className="text-[10px] font-medium uppercase tracking-wide text-white/90">Avanzar a</span>
-                <span className="text-center text-[11px] font-semibold leading-snug">
-                  {WORKFLOW_PHASE_LABELS[nextPhase] ?? nextPhase}
-                </span>
-              </>
-            )}
-          </PrimaryButton>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-white/90">Avanzar a</span>
+            <span className="text-center text-[11px] font-semibold leading-snug">
+              {WORKFLOW_PHASE_LABELS[nextPhase] ?? nextPhase}
+            </span>
+          </WorkspaceActionButton>
         ) : (
           <p className="du-meta mt-2 text-sm">Última fase alcanzada.</p>
         )}

@@ -1,8 +1,6 @@
-import { useState } from 'react'
-
 import { apiFetch } from '../../api/client'
 import { downloadBlob, filenameFromContentDisposition } from '../../lib/download'
-import { PrimaryButton } from '../PrimaryButton'
+import { WorkspaceActionButton } from './WorkspaceActionButton'
 
 type ProjectWorkspaceExportMenuProps = {
   projectUuid: string
@@ -10,19 +8,13 @@ type ProjectWorkspaceExportMenuProps = {
 }
 
 export function ProjectWorkspaceExportMenu({ projectUuid, token }: ProjectWorkspaceExportMenuProps) {
-  const [exportBusy, setExportBusy] = useState<string | null>(null)
-
-  async function exportFile(path: string, filename: string, busyKey: string) {
-    if (!token) return
-    setExportBusy(busyKey)
-    try {
-      const res = await apiFetch(path, { token })
-      if (!res.ok) return
-      const blob = await res.blob()
-      downloadBlob(blob, filenameFromContentDisposition(res, filename))
-    } finally {
-      setExportBusy(null)
-    }
+  async function exportFile(path: string, filename: string): Promise<boolean> {
+    if (!token) return false
+    const res = await apiFetch(path, { token })
+    if (!res.ok) return false
+    const blob = await res.blob()
+    downloadBlob(blob, filenameFromContentDisposition(res, filename))
+    return true
   }
 
   return (
@@ -43,76 +35,70 @@ export function ProjectWorkspaceExportMenu({ projectUuid, token }: ProjectWorksp
       <div className="absolute right-0 top-full z-40 mt-1 w-[min(calc(100vw-2rem),22rem)] rounded-lg border border-black/10 bg-white p-4 text-left shadow-lg">
         <p className="text-xs text-muted">Puede tardar unos segundos en generarse.</p>
         <div className="mt-2 flex flex-col gap-2">
-          <PrimaryButton
+          <WorkspaceActionButton
             type="button"
             className="w-full justify-center text-xs"
-            disabled={exportBusy !== null}
-            onClick={() =>
-              void exportFile(
-                `/api/projects/${projectUuid}/exports/pliego.xlsx`,
-                `pliego-${projectUuid}.xlsx`,
-                'pliego-xlsx',
-              )
+            onAction={() =>
+              exportFile(`/api/projects/${projectUuid}/exports/pliego.xlsx`, `pliego-${projectUuid}.xlsx`)
             }
+            successLabel="Descargado"
+            runningLabel="Generando…"
           >
-            {exportBusy === 'pliego-xlsx' ? 'Generando…' : 'Pliego (Excel)'}
-          </PrimaryButton>
-          <PrimaryButton
+            Pliego (Excel)
+          </WorkspaceActionButton>
+          <WorkspaceActionButton
             type="button"
             className="w-full justify-center text-xs"
-            disabled={exportBusy !== null}
-            onClick={() =>
-              void exportFile(
-                `/api/projects/${projectUuid}/exports/pliego.pdf`,
-                `pliego-${projectUuid}.pdf`,
-                'pliego-pdf',
-              )
+            onAction={() =>
+              exportFile(`/api/projects/${projectUuid}/exports/pliego.pdf`, `pliego-${projectUuid}.pdf`)
             }
+            successLabel="Descargado"
+            runningLabel="Generando…"
           >
-            {exportBusy === 'pliego-pdf' ? 'Generando…' : 'Pliego (PDF)'}
-          </PrimaryButton>
-          <PrimaryButton
+            Pliego (PDF)
+          </WorkspaceActionButton>
+          <WorkspaceActionButton
             type="button"
             className="w-full justify-center text-xs"
-            disabled={exportBusy !== null}
-            onClick={() =>
-              void exportFile(
+            onAction={() =>
+              exportFile(
                 `/api/projects/${projectUuid}/exports/control-planos.xlsx`,
                 `control-planos-${projectUuid}.xlsx`,
-                'control-xlsx',
               )
             }
+            successLabel="Descargado"
+            runningLabel="Generando…"
           >
-            {exportBusy === 'control-xlsx' ? 'Generando…' : 'Control planos (Excel)'}
-          </PrimaryButton>
-          <PrimaryButton
+            Control planos (Excel)
+          </WorkspaceActionButton>
+          <WorkspaceActionButton
             type="button"
             className="w-full justify-center text-xs"
-            disabled={exportBusy !== null}
-            onClick={() =>
-              void exportFile(
+            onAction={() =>
+              exportFile(
                 `/api/projects/${projectUuid}/exports/control-planos.pdf`,
                 `control-planos-${projectUuid}.pdf`,
-                'control-pdf',
               )
             }
+            successLabel="Descargado"
+            runningLabel="Generando…"
           >
-            {exportBusy === 'control-pdf' ? 'Generando…' : 'Control planos (PDF)'}
-          </PrimaryButton>
-          <PrimaryButton
+            Control planos (PDF)
+          </WorkspaceActionButton>
+          <WorkspaceActionButton
             type="button"
             className="w-full justify-center text-xs"
-            disabled={exportBusy !== null}
-            onClick={() =>
-              void exportFile(
+            onAction={() =>
+              exportFile(
                 `/api/projects/${projectUuid}/exports/documentary-report.pdf`,
                 `informe-documental-${projectUuid}.pdf`,
-                'doc-pdf',
               )
             }
+            successLabel="Descargado"
+            runningLabel="Generando…"
           >
-            {exportBusy === 'doc-pdf' ? 'Generando…' : 'Informe documental (PDF)'}
-          </PrimaryButton>
+            Informe documental (PDF)
+          </WorkspaceActionButton>
         </div>
       </div>
     </details>

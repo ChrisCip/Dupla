@@ -8,6 +8,7 @@ import {
   PROJECT_FILE_ACCEPT_ATTR,
 } from '../../constants/projectAllowedFiles'
 import { PrimaryButton } from '../PrimaryButton'
+import { WorkspaceActionButton } from './WorkspaceActionButton'
 import { DuplaLogo } from '../DuplaLogo'
 import {
   PROJECT_FILE_DISCIPLINE_LABELS,
@@ -249,8 +250,8 @@ export function ProjectFilesUploadWizard({
     }
   }
 
-  async function confirmPublish() {
-    if (!token || uploaded.length === 0) return
+  async function confirmPublish(): Promise<boolean> {
+    if (!token || uploaded.length === 0) return false
     setPublishBusy(true)
     setUploadError(null)
     setPublishProgress({ done: 0, total: uploaded.length })
@@ -283,8 +284,10 @@ export function ProjectFilesUploadWizard({
       onCompleted()
       reset()
       onClose()
+      return true
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Error al publicar')
+      return false
     } finally {
       setPublishBusy(false)
       setPublishProgress(null)
@@ -578,15 +581,19 @@ export function ProjectFilesUploadWizard({
                 </PrimaryButton>
               ) : null}
               {step === 3 ? (
-                <PrimaryButton
+                <WorkspaceActionButton
                   type="button"
                   disabled={publishBusy}
-                  onClick={() => void confirmPublish()}
+                  onAction={confirmPublish}
+                  successLabel="Publicado"
+                  runningLabel={
+                    publishBusy && publishProgress
+                      ? `Publicando (${publishProgress.done}/${publishProgress.total})…`
+                      : 'Publicando…'
+                  }
                 >
-                  {publishBusy
-                    ? `Publicando${publishProgress ? ` (${publishProgress.done}/${publishProgress.total})` : ''}…`
-                    : 'Publicar'}
-                </PrimaryButton>
+                  Publicar
+                </WorkspaceActionButton>
               ) : null}
             </div>
           </div>

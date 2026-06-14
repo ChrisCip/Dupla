@@ -11,7 +11,8 @@ import type { SubcontractQuoteRow } from '../../../types/projectWorkspace'
 import type { BootstrapCriterion, Project } from '../../../types/project'
 import { BootstrapChecklistCard } from '../BootstrapChecklistCard'
 import { Card } from '../../Card'
-import { PrimaryButton } from '../../PrimaryButton'
+import { WorkspaceActionButton } from '../WorkspaceActionButton'
+import { WorkspacePillActionButton } from '../WorkspacePillActionButton'
 import { WorkflowPhaseStepper, type TemplateStepProgress } from '../WorkflowPhaseStepper'
 
 type WorkspaceFlujoTabProps = {
@@ -22,23 +23,21 @@ type WorkspaceFlujoTabProps = {
   templateStepProgress?: TemplateStepProgress | null
   orderedTemplateSteps?: { uuid: string; title: string }[] | null
   flowMsg: string | null
-  flowBusy: boolean
   bootstrapDraft: BootstrapCriterion[]
   setBootstrapDraft: React.Dispatch<React.SetStateAction<BootstrapCriterion[]>>
   nextPhase: string | undefined
   role: string | null
-  onSaveBootstrap: () => void
-  onAdvancePhase: () => void
+  onSaveBootstrap: () => boolean | void | Promise<boolean | void>
+  onAdvancePhase: () => boolean | void | Promise<boolean | void>
   pliegoApproved: boolean
   canApprovePliego: boolean
-  pliegoApproveBusy: boolean
-  onApprovePliego: () => void
+  onApprovePliego: () => boolean | void | Promise<boolean | void>
   onOpenPliego: () => void
   bpDraft: Record<string, unknown>
   setBpDraft: React.Dispatch<React.SetStateAction<Record<string, unknown>>>
   clientVersion: string
   setClientVersion: React.Dispatch<React.SetStateAction<string>>
-  onSaveBudgetPipeline: () => void
+  onSaveBudgetPipeline: () => boolean | void | Promise<boolean | void>
   newQuoteTitle: string
   setNewQuoteTitle: React.Dispatch<React.SetStateAction<string>>
   activeQuote: string
@@ -59,7 +58,6 @@ export function WorkspaceFlujoTab({
   templateStepProgress,
   orderedTemplateSteps,
   flowMsg,
-  flowBusy,
   bootstrapDraft,
   setBootstrapDraft,
   nextPhase,
@@ -68,7 +66,6 @@ export function WorkspaceFlujoTab({
   onAdvancePhase,
   pliegoApproved,
   canApprovePliego,
-  pliegoApproveBusy,
   onApprovePliego,
   onOpenPliego,
   bpDraft,
@@ -144,19 +141,6 @@ export function WorkspaceFlujoTab({
     }
   }, [token, projectUuid])
 
-  async function downloadDocumentaryReport() {
-    if (!token) return
-    setDocBusy(true)
-    try {
-      const res = await apiFetch(`/api/projects/${projectUuid}/exports/documentary-report.pdf`, { token })
-      if (!res.ok) return
-      const blob = await res.blob()
-      downloadBlob(blob, filenameFromContentDisposition(res, `informe-documental-${projectUuid}.pdf`))
-    } finally {
-      setDocBusy(false)
-    }
-  }
-
   if (!project) {
     return (
       <Card className="space-y-4 p-6">
@@ -197,14 +181,33 @@ export function WorkspaceFlujoTab({
               Archivos en el proyecto:{' '}
               <strong className="text-ink">{fileTotal != null ? fileTotal : '…'}</strong>
             </p>
-            <button
+            <WorkspacePillActionButton
               type="button"
               disabled={docBusy || !token}
-              className="du-pill-action mt-3 border-primary/30 bg-primary/[0.06] text-sm font-semibold text-primary"
-              onClick={() => void downloadDocumentaryReport()}
+              className="mt-3 border-primary/30 bg-primary/[0.06] text-sm font-semibold text-primary"
+              successLabel="PDF generado"
+              runningLabel="Generando…"
+              onAction={async () => {
+                if (!token) return false
+                setDocBusy(true)
+                try {
+                  const res = await apiFetch(`/api/projects/${projectUuid}/exports/documentary-report.pdf`, {
+                    token,
+                  })
+                  if (!res.ok) return false
+                  const blob = await res.blob()
+                  downloadBlob(
+                    blob,
+                    filenameFromContentDisposition(res, `informe-documental-${projectUuid}.pdf`),
+                  )
+                  return true
+                } finally {
+                  setDocBusy(false)
+                }
+              }}
             >
-              {docBusy ? 'Generando…' : 'Descargar informe documental (PDF)'}
-            </button>
+              Descargar informe documental (PDF)
+            </WorkspacePillActionButton>
           </div>
 
           <p className="rounded-md border border-black/10 bg-black/[0.02] px-3 py-2 text-sm text-muted">
@@ -224,22 +227,26 @@ export function WorkspaceFlujoTab({
               >
                 Ir al pliego
               </button>
-              <PrimaryButton
+              <WorkspaceActionButton
                 type="button"
                 className="px-3 py-2 text-xs font-semibold normal-case tracking-normal"
-                disabled={pliegoApproveBusy}
-                onClick={onApprovePliego}
+                onAction={onApprovePliego}
+                successLabel="Pliego aprobado"
+                runningLabel="Aprobando…"
               >
-                {pliegoApproveBusy ? 'Aprobando…' : 'Aprobar pliego'}
-              </PrimaryButton>
+                Aprobar pliego
+              </WorkspaceActionButton>
             </div>
           ) : null}
           {nextPhase ? (
-            <PrimaryButton type="button" disabled={flowBusy} onClick={onAdvancePhase}>
-              {flowBusy
-                ? 'Procesando…'
-                : `Avanzar a: ${workflowPhaseLabelForRole(nextPhase, roleTyped)}`}
-            </PrimaryButton>
+            <WorkspaceActionButton
+              type="button"
+              onAction={onAdvancePhase}
+              successLabel="Fase actualizada"
+              runningLabel="Procesando…"
+            >
+              Avanzar a: {workflowPhaseLabelForRole(nextPhase, roleTyped)}
+            </WorkspaceActionButton>
           ) : (
             <p className="text-sm text-muted">El proyecto completó el flujo definido.</p>
           )}
@@ -313,9 +320,9 @@ export function WorkspaceFlujoTab({
                     />
                   </label>
                 </div>
-                <PrimaryButton type="button" onClick={onSaveBudgetPipeline}>
+                <WorkspaceActionButton type="button" onAction={onSaveBudgetPipeline} successLabel="Pipeline guardado">
                   Guardar estado del pipeline
-                </PrimaryButton>
+                </WorkspaceActionButton>
               </Card>
               <Card className="space-y-4 p-6">
                 <h3 className="text-base font-semibold text-ink">Cotizaciones</h3>
@@ -326,23 +333,24 @@ export function WorkspaceFlujoTab({
                     value={newQuoteTitle}
                     onChange={(e) => setNewQuoteTitle(e.target.value)}
                   />
-                  <PrimaryButton
+                  <WorkspaceActionButton
                     type="button"
-                    onClick={async () => {
-                      if (!token) return
+                    onAction={async () => {
+                      if (!token) return false
                       const res = await apiFetch(`/api/projects/${projectUuid}/subcontracts`, {
                         method: 'POST',
                         token,
                         body: JSON.stringify({ title: newQuoteTitle.trim() || null }),
                       })
-                      if (res.ok) {
-                        setNewQuoteTitle('')
-                        await onLoadAuxLists()
-                      }
+                      if (!res.ok) return false
+                      setNewQuoteTitle('')
+                      await onLoadAuxLists()
+                      return true
                     }}
+                    successLabel="Cotización creada"
                   >
                     Nueva cotización
-                  </PrimaryButton>
+                  </WorkspaceActionButton>
                 </div>
                 <label className="block text-sm text-muted">
                   Cotización activa para líneas
@@ -369,11 +377,11 @@ export function WorkspaceFlujoTab({
                     value={linePrice}
                     onChange={(e) => setLinePrice(e.target.value)}
                   />
-                  <PrimaryButton
+                  <WorkspaceActionButton
                     type="button"
                     disabled={!activeQuote}
-                    onClick={async () => {
-                      if (!token || !activeQuote) return
+                    onAction={async () => {
+                      if (!token || !activeQuote) return false
                       const res = await apiFetch(`/api/projects/${projectUuid}/subcontracts/${activeQuote}/lines`, {
                         method: 'POST',
                         token,
@@ -383,15 +391,16 @@ export function WorkspaceFlujoTab({
                           currency: 'MXN',
                         }),
                       })
-                      if (res.ok) {
-                        setLineItem('')
-                        setLinePrice('')
-                        await onLoadAuxLists()
-                      }
+                      if (!res.ok) return false
+                      setLineItem('')
+                      setLinePrice('')
+                      await onLoadAuxLists()
+                      return true
                     }}
+                    successLabel="Línea agregada"
                   >
                     Agregar línea
-                  </PrimaryButton>
+                  </WorkspaceActionButton>
                 </div>
                 {quotes.map((q) => (
                   <div key={q.uuid} className="rounded border border-black/5 p-3 text-sm">

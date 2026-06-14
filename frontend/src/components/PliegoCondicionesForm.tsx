@@ -8,7 +8,7 @@ import { PLIEGO_GA_FO_01_ARQUITECTURA } from '../data/pliegoGaFo01Arquitectura'
 import { pliegoProgressPercent } from '../lib/pliegoFormState'
 import type { PliegoItemEstado, PliegoItemState } from '../types/pliegoForm'
 
-import { PrimaryButton } from './PrimaryButton'
+import { WorkspaceActionButton } from './project-workspace/WorkspaceActionButton'
 
 function UploadIcon({ className }: { className?: string }) {
   return (
@@ -52,7 +52,7 @@ type Props = {
   documentTitle: string
   itemStates: Record<string, PliegoItemState>
   onItemStatesChange: (next: Record<string, PliegoItemState>) => void
-  onPersist: () => Promise<void>
+  onPersist: () => boolean | void | Promise<boolean | void>
   persistBusy: boolean
   flowMsg: string | null
   onExportPdf?: () => void
@@ -308,9 +308,15 @@ export function PliegoCondicionesForm({
         </div>
 
         <footer className="flex flex-wrap items-center gap-3 border-t border-black/8 bg-black/[0.02] px-5 py-4 sm:px-6">
-          <PrimaryButton type="button" disabled={persistBusy} onClick={() => void onPersist()}>
-            {persistBusy ? 'Guardando…' : 'Guardar pliego de condiciones'}
-          </PrimaryButton>
+          <WorkspaceActionButton
+            type="button"
+            disabled={persistBusy}
+            onAction={onPersist}
+            successLabel="Pliego guardado"
+            runningLabel="Guardando…"
+          >
+            Guardar pliego de condiciones
+          </WorkspaceActionButton>
           <span className="text-xs text-muted">Guarda para registrar el checklist en el proyecto.</span>
         </footer>
       </div>

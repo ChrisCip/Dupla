@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { FileSpreadsheet, FileText, Package, Trash2, Upload, Users } from 'lucide-react'
 
 import { apiFetch } from '../../../api/client'
-import { PrimaryButton } from '../../PrimaryButton'
+import { WorkspaceActionButton } from '../WorkspaceActionButton'
 
 export type PriceDatabaseFileRow = {
   file_uuid: string
@@ -155,8 +155,8 @@ export function WorkspacePriceDatabaseTab({ projectUuid, token, flowMsg }: Works
     await load()
   }
 
-  async function applyDatabase() {
-    if (!token || !projectUuid) return
+  async function applyDatabase(): Promise<boolean> {
+    if (!token || !projectUuid) return false
     setApplyBusy(true)
     setMsg(null)
     try {
@@ -168,9 +168,10 @@ export function WorkspacePriceDatabaseTab({ projectUuid, token, flowMsg }: Works
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
         setMsg((j as { detail?: string }).detail ?? 'No se pudo confirmar')
-        return
+        return false
       }
       setMsg('Base de precios confirmada para presupuestos activos.')
+      return true
     } finally {
       setApplyBusy(false)
     }
@@ -335,14 +336,16 @@ export function WorkspacePriceDatabaseTab({ projectUuid, token, flowMsg }: Works
         </div>
 
         <div className="mt-8 flex justify-center">
-          <PrimaryButton
+          <WorkspaceActionButton
             type="button"
             className="min-w-[240px] px-8 py-3 text-base"
             disabled={applyBusy}
-            onClick={() => void applyDatabase()}
+            onAction={applyDatabase}
+            successLabel="Base actualizada"
+            runningLabel="Aplicando…"
           >
-            {applyBusy ? 'Aplicando…' : 'Actualizar base de datos'}
-          </PrimaryButton>
+            Actualizar base de datos
+          </WorkspaceActionButton>
         </div>
       </div>
     </div>

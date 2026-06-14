@@ -11,11 +11,10 @@ type WorkspaceEspecificacionesTabProps = {
   role: string | null
   pliegoItemStates: Record<string, PliegoItemState>
   setPliegoItemStates: React.Dispatch<React.SetStateAction<Record<string, PliegoItemState>>>
-  onPersist: () => Promise<void>
+  onPersist: () => Promise<boolean | void>
   specSaveBusy: boolean
   flowMsg: string | null
-  onApprovePliego: () => Promise<void>
-  pliegoApproveBusy: boolean
+  onApprovePliego: () => Promise<boolean | void>
   pliegoApproved: boolean
   pliegoGeneratedAt: string | null
   onExportPliegoPdf?: () => void
@@ -34,7 +33,6 @@ export function WorkspaceEspecificacionesTab({
   specSaveBusy,
   flowMsg,
   onApprovePliego,
-  pliegoApproveBusy,
   pliegoApproved,
   pliegoGeneratedAt,
   onExportPliegoPdf,
@@ -72,7 +70,6 @@ export function WorkspaceEspecificacionesTab({
         generatedAt={pliegoGeneratedAt}
         canApprove={canApprove}
         viewBudget={viewBudget}
-        approveBusy={pliegoApproveBusy}
         onApprove={onApprovePliego}
         onGoPresupuesto={onGoPresupuesto}
       />

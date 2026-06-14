@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { Card } from '../../Card'
 import { PrimaryButton } from '../../PrimaryButton'
+import { WorkspaceActionButton } from '../WorkspaceActionButton'
 import { PLAN_DELIVERY_STATUS_OPTIONS } from '../../../constants/planDeliveryStatus'
 import type { PlanDeliveryRow } from '../../../types/planDelivery'
 
@@ -40,7 +41,7 @@ export function WorkspaceEntregaPlanosTab({
     setModalOpen(true)
   }
 
-  async function submitModal() {
+  async function submitModal(): Promise<boolean> {
     const result = await Promise.resolve(
       onAddRow({
         description: draftDescription,
@@ -48,6 +49,7 @@ export function WorkspaceEntregaPlanosTab({
       }),
     )
     if (result !== false) setModalOpen(false)
+    return result !== false
   }
 
   return (
@@ -242,13 +244,14 @@ export function WorkspaceEntregaPlanosTab({
               >
                 Cancelar
               </button>
-              <PrimaryButton
+              <WorkspaceActionButton
                 type="button"
                 disabled={!token || !projectUuid}
-                onClick={() => void submitModal()}
+                onAction={submitModal}
+                successLabel="Solicitud creada"
               >
                 Crear solicitud
-              </PrimaryButton>
+              </WorkspaceActionButton>
             </div>
           </div>
         </div>

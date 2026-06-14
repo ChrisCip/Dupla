@@ -4,6 +4,7 @@ import { useMemo, useEffect, useRef, useState } from 'react'
 import { useBudgetJob } from '../../../hooks/useBudgetJob'
 import type { Project } from '../../../types/project'
 import { PrimaryButton } from '../../PrimaryButton'
+import { WorkspaceActionButton } from '../WorkspaceActionButton'
 
 // ─── formatters ───────────────────────────────────────────────────────────────
 function fmtDop(n: any): string {
@@ -103,13 +104,17 @@ function EnqueueModal({ onSubmit, onClose }: EnqueueModalProps) {
           >
             Cancelar
           </button>
-          <PrimaryButton
+          <WorkspaceActionButton
             type="button"
             id="enqueue-modal-submit"
-            onClick={() => onSubmit({ discipline })}
+            onAction={() => {
+              onSubmit({ discipline })
+              return true
+            }}
+            successLabel="Proceso iniciado"
           >
             Procesar
-          </PrimaryButton>
+          </WorkspaceActionButton>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { Card } from '../../Card'
-import { PrimaryButton } from '../../PrimaryButton'
+import { WorkspaceActionButton } from '../WorkspaceActionButton'
 import type { RevisionRow } from '../../../types/projectWorkspace'
 
 const REVISION_ROLE_LABELS: Record<string, string> = {
@@ -16,7 +16,7 @@ type WorkspaceRevisionesTabProps = {
   revNotes: string
   setRevNotes: React.Dispatch<React.SetStateAction<string>>
   revisions: RevisionRow[]
-  onSubmitRevision: () => void
+  onSubmitRevision: () => boolean | void | Promise<boolean | void>
 }
 
 export function WorkspaceRevisionesTab({
@@ -51,9 +51,14 @@ export function WorkspaceRevisionesTab({
           Notas
           <textarea className="du-input mt-1 min-h-[80px]" value={revNotes} onChange={(e) => setRevNotes(e.target.value)} />
         </label>
-        <PrimaryButton type="button" onClick={onSubmitRevision}>
+        <WorkspaceActionButton
+          type="button"
+          onAction={onSubmitRevision}
+          successLabel="Revisión registrada"
+          runningLabel="Registrando…"
+        >
           Registrar revisión
-        </PrimaryButton>
+        </WorkspaceActionButton>
       </div>
       <ul className="space-y-2 text-sm">
         {revisions.map((r) => {

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../../api/client'
 import { gaFoSectionProgressRows } from '../../lib/pliegoFormState'
 import type { PliegoItemState } from '../../types/pliegoForm'
-import { PrimaryButton } from '../PrimaryButton'
+import { WorkspaceActionButton } from './WorkspaceActionButton'
 import { PliegoProjectChatSnippet } from './PliegoProjectChatSnippet'
 
 type PliegoSideRailProps = {
@@ -16,8 +16,7 @@ type PliegoSideRailProps = {
   generatedAt: string | null
   canApprove: boolean
   viewBudget: boolean
-  approveBusy: boolean
-  onApprove: () => Promise<void>
+  onApprove: () => boolean | void | Promise<boolean | void>
   onGoPresupuesto?: () => void
 }
 
@@ -30,7 +29,6 @@ export function PliegoSideRail({
   generatedAt,
   canApprove,
   viewBudget,
-  approveBusy,
   onApprove,
   onGoPresupuesto,
 }: PliegoSideRailProps) {
@@ -110,15 +108,17 @@ export function PliegoSideRail({
           </span>
         </p>
         {canApprove ? (
-          <PrimaryButton
+          <WorkspaceActionButton
             type="button"
             className="mt-4 w-full gap-2 py-3 text-sm font-semibold tracking-normal"
-            disabled={approveBusy || approved}
-            onClick={() => void onApprove()}
+            disabled={approved}
+            onAction={onApprove}
+            successLabel="Pliego aprobado"
+            runningLabel="Aprobando…"
           >
             <CheckSquare className="size-4" strokeWidth={2} aria-hidden />
-            {approved ? 'Pliego aprobado' : approveBusy ? 'Aprobando…' : 'Aprobar pliego'}
-          </PrimaryButton>
+            {approved ? 'Pliego aprobado' : 'Aprobar pliego'}
+          </WorkspaceActionButton>
         ) : null}
         <button
           type="button"

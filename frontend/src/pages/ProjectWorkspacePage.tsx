@@ -71,7 +71,6 @@ export function ProjectWorkspacePage() {
   const [flowTemplateDetail, setFlowTemplateDetail] = useState<WorkflowTemplateDetail | null>(null)
   const [projectError, setProjectError] = useState<string | null>(null)
   const [flowMsg, setFlowMsg] = useState<string | null>(null)
-  const [flowBusy, setFlowBusy] = useState(false)
   const [bootstrapDraft, setBootstrapDraft] = useState<BootstrapCriterion[]>([])
   const [specSummary, setSpecSummary] = useState('')
   const [pliegoItemStates, setPliegoItemStates] = useState<Record<string, PliegoItemState>>(() =>
@@ -85,7 +84,6 @@ export function ProjectWorkspacePage() {
     approved: false,
     generatedAt: null,
   })
-  const [pliegoApproveBusy, setPliegoApproveBusy] = useState(false)
   const [revisions, setRevisions] = useState<RevisionRow[]>([])
   const [quotes, setQuotes] = useState<SubcontractQuoteRow[]>([])
   const [revDecision, setRevDecision] = useState('APPROVED')
@@ -433,10 +431,10 @@ export function ProjectWorkspacePage() {
     setMemberSelection(next)
   }, [memberRows, project, projectUuid])
 
-  async function advancePhase() {
-    if (!token || !project) return
+  async function advancePhase(): Promise<boolean> {
+    if (!token || !project) return false
     const next = NEXT_WORKFLOW_PHASE[project.workflow_phase]
-    if (!next) return
+    if (!next) return false
     if (next === 'BUDGETING_PIPELINE') {
       const spec = project.specifications_document
       const specObj = spec && typeof spec === 'object' ? (spec as Record<string, unknown>) : undefined
@@ -449,40 +447,40 @@ export function ProjectWorkspacePage() {
       )
       if (constructionDirty && cpActive) {
         setFlowMsg('Guarda el pliego para registrar las partidas antes de avanzar de fase.')
-        return
+        return false
       }
       if (cpActive) {
         if (!isConstructionPliegoFullyComplete(constructionLines)) {
           setFlowMsg(
             'Completa todas las partidas del pliego (unidad, cantidad y precio unitario en cada ítem) y obtené aprobación de Gerencia o Arquitectura.',
           )
-          return
+          return false
         }
         if (!parsed.approved) {
           setFlowMsg('El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto.')
-          return
+          return false
         }
       } else if (gaIsV1) {
         if (!isGaFoChecklistFullyTerminal(pliegoItemStates)) {
           setFlowMsg(
             'Completa el checklist GA-FO-01 (cada documento en Completo o No aplica) y guarda en la pestaña Pliego.',
           )
-          return
+          return false
         }
         if (!parsed.approved) {
           setFlowMsg('El pliego de condiciones debe estar aprobado antes de iniciar el presupuesto.')
-          return
+          return false
         }
       } else if (hasLegacyBusiness) {
         if (!isBusinessPliegoReady(parsed.sections, parsed.approved)) {
           setFlowMsg(
             'Completa las nueve secciones del pliego (mín. 10 caracteres cada una) y obtén aprobación de Gerencia o Arquitectura.',
           )
-          return
+          return false
         }
       } else if (specSummary.trim().length < 10) {
         setFlowMsg('Completa el pliego: resumen mínimo 10 caracteres o genera el pliego estructurado.')
-        return
+        return false
       }
     }
     if (next === 'BUDGET_APPROVED') {
@@ -490,37 +488,33 @@ export function ProjectWorkspacePage() {
         setFlowMsg(
           'Completa la revisión de Control en la pestaña Flujo (pipeline de presupuesto) antes de avanzar a presupuesto aprobado.',
         )
-        return
+        return false
       }
       if (!clientVersion.trim()) {
         setFlowMsg(
           'Indica la etiqueta de versión aprobada por el cliente en Flujo — pipeline de presupuesto antes de avanzar.',
         )
-        return
+        return false
       }
     }
     setFlowMsg(null)
-    setFlowBusy(true)
-    try {
-      const res = await apiFetch(`/api/projects/${projectUuid}/transitions`, {
-        method: 'POST',
-        token,
-        body: JSON.stringify({ target_phase: next }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setFlowMsg((j as { detail?: string }).detail ?? 'No se pudo avanzar la fase')
-        return
-      }
-      setProject(j as Project)
-      await loadAuxLists()
-    } finally {
-      setFlowBusy(false)
+    const res = await apiFetch(`/api/projects/${projectUuid}/transitions`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ target_phase: next }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setFlowMsg((j as { detail?: string }).detail ?? 'No se pudo avanzar la fase')
+      return false
     }
+    setProject(j as Project)
+    await loadAuxLists()
+    return true
   }
 
-  async function saveBootstrap() {
-    if (!token) return
+  async function saveBootstrap(): Promise<boolean> {
+    if (!token) return false
     setFlowMsg(null)
     const res = await apiFetch(`/api/projects/${projectUuid}/bootstrap`, {
       method: 'PUT',
@@ -530,13 +524,14 @@ export function ProjectWorkspacePage() {
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
       setFlowMsg((j as { detail?: string }).detail ?? 'Error al guardar checklist')
-      return
+      return false
     }
     setProject(j as Project)
+    return true
   }
 
-  async function saveSpecifications() {
-    if (!token || !project) return
+  async function saveSpecifications(): Promise<boolean> {
+    if (!token || !project) return false
     setFlowMsg(null)
     setSpecSaveBusy(true)
     try {
@@ -622,7 +617,7 @@ export function ProjectWorkspacePage() {
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
         setFlowMsg((j as { detail?: string }).detail ?? 'Error al guardar el pliego de condiciones')
-        return
+        return false
       }
       const p = j as Project
       setProject(p)
@@ -633,38 +628,35 @@ export function ProjectWorkspacePage() {
         parseConstructionPliegoFromSpec(p.specifications_document as Record<string, unknown>),
       )
       setConstructionDirty(false)
+      return true
     } finally {
       setSpecSaveBusy(false)
     }
   }
 
-  async function approvePliego() {
-    if (!token) return
+  async function approvePliego(): Promise<boolean> {
+    if (!token) return false
     setFlowMsg(null)
-    setPliegoApproveBusy(true)
-    try {
-      const res = await apiFetch(`/api/projects/${projectUuid}/specifications/approve`, {
-        method: 'POST',
-        token,
-        body: JSON.stringify({}),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setFlowMsg((j as { detail?: string }).detail ?? 'No se pudo aprobar el pliego')
-        return
-      }
-      const p = j as Project
-      setProject(p)
-      const parsed = parseBusinessPliegoFromSpec(p.specifications_document)
-      setBusinessPliegoSections(parsed.sections)
-      setPliegoMeta({ approved: parsed.approved, generatedAt: parsed.generatedAt })
-    } finally {
-      setPliegoApproveBusy(false)
+    const res = await apiFetch(`/api/projects/${projectUuid}/specifications/approve`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({}),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setFlowMsg((j as { detail?: string }).detail ?? 'No se pudo aprobar el pliego')
+      return false
     }
+    const p = j as Project
+    setProject(p)
+    const parsed = parseBusinessPliegoFromSpec(p.specifications_document)
+    setBusinessPliegoSections(parsed.sections)
+    setPliegoMeta({ approved: parsed.approved, generatedAt: parsed.generatedAt })
+    return true
   }
 
-  async function saveBudgetPipeline() {
-    if (!token) return
+  async function saveBudgetPipeline(): Promise<boolean> {
+    if (!token) return false
     setFlowMsg(null)
     const bp = { ...bpDraft, client_approved_version_label: clientVersion || null }
     const res = await apiFetch(`/api/projects/${projectUuid}/workflow-meta`, {
@@ -675,14 +667,15 @@ export function ProjectWorkspacePage() {
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
       setFlowMsg((j as { detail?: string }).detail ?? 'Error al guardar presupuesto')
-      return
+      return false
     }
     setProject(j as Project)
     setBpDraft(budgetPipeline((j as Project).workflow_meta ?? {}))
+    return true
   }
 
-  async function submitRevision() {
-    if (!token) return
+  async function submitRevision(): Promise<boolean> {
+    if (!token) return false
     setFlowMsg(null)
     const res = await apiFetch(`/api/projects/${projectUuid}/architecture-revisions`, {
       method: 'POST',
@@ -696,10 +689,11 @@ export function ProjectWorkspacePage() {
     const j = await res.json().catch(() => ({}))
     if (!res.ok) {
       setFlowMsg((j as { detail?: string }).detail ?? 'Error al registrar revisión')
-      return
+      return false
     }
     setRevNotes('')
     await loadAuxLists()
+    return true
   }
 
   async function openProjectChat() {
@@ -765,21 +759,19 @@ export function ProjectWorkspacePage() {
           templateStepProgress={templateStepProgress}
           orderedTemplateSteps={orderedTemplateSteps}
           flowMsg={flowMsg}
-          flowBusy={flowBusy}
           nextPhase={nextPhase}
           role={role}
           viewBudget={viewBudget}
           memberRows={memberRows}
           quotesCount={quotes.length}
-          onAdvancePhase={() => void advancePhase()}
+          onAdvancePhase={advancePhase}
           onOpenChat={() => void openProjectChat()}
           onOpenTab={selectTab}
           onOpenBootstrapChecklist={openBootstrapChecklist}
           bootstrapCriteria={bootstrapDraft}
           pliegoApproved={pliegoMeta.approved}
           canApprovePliego={canApprovePliego}
-          pliegoApproveBusy={pliegoApproveBusy}
-          onApprovePliego={() => void approvePliego()}
+          onApprovePliego={approvePliego}
         />
       ) : null}
 
@@ -805,23 +797,21 @@ export function ProjectWorkspacePage() {
               templateStepProgress={templateStepProgress}
               orderedTemplateSteps={orderedTemplateSteps}
               flowMsg={flowMsg}
-              flowBusy={flowBusy}
               bootstrapDraft={bootstrapDraft}
               setBootstrapDraft={setBootstrapDraft}
               nextPhase={nextPhase}
               role={role}
-              onSaveBootstrap={() => void saveBootstrap()}
-              onAdvancePhase={() => void advancePhase()}
+              onSaveBootstrap={saveBootstrap}
+              onAdvancePhase={advancePhase}
               pliegoApproved={pliegoMeta.approved}
               canApprovePliego={canApprovePliego}
-              pliegoApproveBusy={pliegoApproveBusy}
-              onApprovePliego={() => void approvePliego()}
+              onApprovePliego={approvePliego}
               onOpenPliego={() => selectTab('pliego')}
               bpDraft={bpDraft}
               setBpDraft={setBpDraft}
               clientVersion={clientVersion}
               setClientVersion={setClientVersion}
-              onSaveBudgetPipeline={() => void saveBudgetPipeline()}
+              onSaveBudgetPipeline={saveBudgetPipeline}
               newQuoteTitle={newQuoteTitle}
               setNewQuoteTitle={setNewQuoteTitle}
               activeQuote={activeQuote}
@@ -869,7 +859,7 @@ export function ProjectWorkspacePage() {
               revNotes={revNotes}
               setRevNotes={setRevNotes}
               revisions={revisions}
-              onSubmitRevision={() => void submitRevision()}
+              onSubmitRevision={submitRevision}
             />
           ) : null}
 
@@ -900,15 +890,10 @@ export function ProjectWorkspacePage() {
               role={role}
               pliegoItemStates={pliegoItemStates}
               setPliegoItemStates={setPliegoItemStates}
-              onPersist={async () => {
-                await saveSpecifications()
-              }}
+              onPersist={saveSpecifications}
               specSaveBusy={specSaveBusy}
               flowMsg={flowMsg}
-              onApprovePliego={async () => {
-                await approvePliego()
-              }}
-              pliegoApproveBusy={pliegoApproveBusy}
+              onApprovePliego={approvePliego}
               pliegoApproved={pliegoMeta.approved}
               pliegoGeneratedAt={pliegoMeta.generatedAt}
               onExportPliegoPdf={() => void exportPliegoPdf()}

@@ -5,7 +5,7 @@ import { CONSTRUCTION_PLIEGO_CHAPTERS } from '../constants/constructionPliegoStr
 import { lineSubtotal } from '../lib/constructionPliegoState'
 import type { ConstructionLineValue } from '../types/constructionPliego'
 
-import { PrimaryButton } from './PrimaryButton'
+import { WorkspaceActionButton } from './project-workspace/WorkspaceActionButton'
 
 type BusinessPliegoFormProps = {
   documentTitle: string
@@ -16,7 +16,7 @@ type BusinessPliegoFormProps = {
   onGenerate: (force: boolean) => Promise<void>
   generateBusy: boolean
   saveBusy: boolean
-  onSave: () => Promise<void>
+  onSave: () => boolean | void | Promise<boolean | void>
   approved: boolean
   generatedAt: string | null
   flowMsg: string | null
@@ -156,9 +156,15 @@ export function BusinessPliegoForm({
           >
             Regenerar
           </button>
-          <PrimaryButton type="button" disabled={saveBusy} onClick={() => void onSave()}>
-            {saveBusy ? 'Guardando…' : 'Guardar'}
-          </PrimaryButton>
+          <WorkspaceActionButton
+            type="button"
+            disabled={saveBusy}
+            onAction={onSave}
+            successLabel="Pliego guardado"
+            runningLabel="Guardando…"
+          >
+            Guardar
+          </WorkspaceActionButton>
         </div>
         {approved ? (
           <p className="mt-3 text-xs font-medium text-emerald-800">Pliego aprobado.</p>
