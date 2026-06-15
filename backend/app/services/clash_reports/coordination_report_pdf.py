@@ -299,8 +299,10 @@ def _cover(meta, items, st, final: bool) -> list:
         "Láminas de comparación DWG A vs DWG B",
         "Bitácora de validación y corrección",
         "Entrega de planos corregidos",
-        "Leyenda de alias de archivos",
     ]
+    if final:
+        contents.append("Lista de chequeo y plano de observaciones (nubes por disciplina)")
+    contents.append("Leyenda de alias de archivos")
     items_flow = [_P("Contenido del entregable", "h3", st)]
     for i, c in enumerate(contents, 1):
         items_flow.append(_P(f"{i}.  {c}", "body", st))
@@ -701,6 +703,13 @@ def build_coordination_report_pdf(
     story += _plates(ordered, output_dir, st, tile_path=tile_path)
     story += _bitacora(ordered, st)
     story += _handover(st)
+    if final:
+        from app.services.clash_reports.observations_plan_pdf import build_observations_flowables
+
+        obs = build_observations_flowables(ordered, meta, st)
+        if obs:
+            # _handover already ends on a fresh page; avoid a leading blank page.
+            story += [*obs, NextPageTemplate("content"), PageBreak()]
     story += _alias_legend(ordered, st)
 
     buf = BytesIO()
