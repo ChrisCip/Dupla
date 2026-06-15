@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from pathlib import Path
 from unittest.mock import MagicMock
 
 from app.models.project_file import ProjectFile
@@ -146,3 +147,24 @@ def test_zoom_command_never_returns_bare_ze():
     cmd, fb = make_zoom_command(None, center=None)
     assert cmd != "Z E"
     assert fb is not None
+
+
+def test_resolve_tiles_root_prefers_uploads_when_coordination_has_no_svgs(tmp_path, monkeypatch):
+    from app.config import get_settings
+    from app.models.project_clash_job import ProjectClashJob
+    from app.services.clash_workflow_service import ClashWorkflowService
+
+    monkeypatch.setenv("UPLOAD_ROOT", str(tmp_path / "uploads"))
+    get_settings.cache_clear()
+
+    job_id = uuid.uuid4()
+    coord_root = tmp_path / "coord"
+    (coord_root / "tiles").mkdir(parents=True)
+    upload_root = Path(get_settings().upload_root) / "clash_tiles" / str(job_id) / "tiles"
+    upload_root.mkdir(parents=True)
+    (upload_root / "incident_0001.svg").write_text("<svg/>", encoding="utf-8")
+
+    job = ProjectClashJob(id=job_id, output_dir=str(coord_root))
+    svc = ClashWorkflowService(session=MagicMock())
+    assert svc.resolve_tiles_root(job) == str(upload_root.parent)
+    assert svc.tile_path_for_export(job, "incident_0001", annotated=False) == upload_root / "incident_0001.svg"

@@ -4,6 +4,9 @@ from app.models.chat_message import ChatMessage
 from app.models.module import Module
 from app.models.plan_delivery_request import PlanDeliveryRequest
 from app.models.project_budget_job import ProjectBudgetJob
+from app.models.project_clash_correction import ProjectClashCorrection
+from app.models.project_clash_event import ProjectClashEvent
+from app.models.project_clash_item import ProjectClashItem
 from app.models.project_clash_job import ProjectClashJob
 from app.models.project_technical_finding import ProjectTechnicalFinding
 from app.models.project import Project, ProjectArchitectureData
@@ -28,6 +31,9 @@ __all__ = [
     "Module",
     "PlanDeliveryRequest",
     "ProjectBudgetJob",
+    "ProjectClashCorrection",
+    "ProjectClashEvent",
+    "ProjectClashItem",
     "ProjectClashJob",
     "ProjectTechnicalFinding",
     "Project",

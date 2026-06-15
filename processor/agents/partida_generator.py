@@ -95,6 +95,7 @@ _ITEM_TYPE_TO_CHAPTER: dict[str, str] = {
     "footing_volume": "01",
     "footing_area": "01",
     "footing_perimeter": "01",
+    "excavation_volume": "01",
     # Estructural — columnas/vigas
     "column_concrete_volume": "02",
     "column_volume": "02",
@@ -204,7 +205,7 @@ _MODEL = os.getenv("DUPLA_PARTIDA_MODEL", "gpt-4o")
 _TEMPERATURE = 0.2
 
 # Bump when system prompt or batch format changes; invalidates cache.
-PARTIDA_PROMPT_VERSION = "v2-json-schema"
+PARTIDA_PROMPT_VERSION = "v3-strip-cad-slugs"
 
 _SYSTEM_PROMPT = """\
 Eres un presupuestista dominicano senior especializado en proyectos residenciales

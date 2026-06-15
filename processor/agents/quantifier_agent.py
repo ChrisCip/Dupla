@@ -60,6 +60,52 @@ _REBAR_KG_PER_M3: dict[str, float] = {
 }
 
 
+_CAD_INTERNAL_ID_PREFIXES: tuple[str, ...] = (
+    "json-wall-",
+    "json-beam-",
+    "json-column-",
+    "json-slab-",
+    "json-footing-",
+    "vis-wall-",
+    "vis-beam-",
+    "vis-column-",
+    "vis-slab-",
+    "vis-footing-",
+    "vis-door-",
+    "vis-window-",
+    "vis-stair-",
+    "vis-kitchen-",
+    "vis-wetarea-",
+)
+
+_CAD_INTERNAL_ID_TOKENS: tuple[str, ...] = (
+    "json-wall",
+    "json-beam",
+    "json-column",
+    "json-slab",
+    "json-footing",
+    "xref",
+    "hatch ",
+    "anndt",
+    "annobj",
+    "no identificado",
+    "tipo no identificado",
+)
+
+
+def _is_cad_internal_id(value: str) -> bool:
+    """True when a string is a raw CAD layer slug or internal id token that
+    must not appear in human-facing budget descriptions."""
+    if not value:
+        return True
+    lowered = value.lower().strip()
+    if any(lowered.startswith(prefix) for prefix in _CAD_INTERNAL_ID_PREFIXES):
+        return True
+    if any(token in lowered for token in _CAD_INTERNAL_ID_TOKENS):
+        return True
+    return False
+
+
 def _merge_inputs_with_description(base: dict[str, Any], description: str) -> dict[str, Any]:
     merged = dict(base)
     merged["takeoff_description"] = description
@@ -84,20 +130,20 @@ def _wall_entity_description(wall: Wall) -> str:
     loc = str(raw.get("ubicacion") or "").strip()
     
     parts: list[str] = []
-    if typ:
+    if typ and not _is_cad_internal_id(typ):
         parts.append(f"Muro tipo {typ}")
     else:
         wid = str(getattr(wall, "id", "") or "").strip()
-        if wid:
-            if wid.lower().startswith("json-wall-"):
-                layer_name = wid[len("json-wall-"):]
-                parts.append(f"Muro de capa CAD '{layer_name}'")
-            elif not wid.lower().startswith("vis-wall-"):
-                parts.append(f"Muro tipo {wid}")
-            else:
-                parts.append("Muro (detectado por visión)")
+        # Internal CAD ids ("json-wall-…", "vis-wall-…") and bare layer slugs
+        # ("a-wall", "muros bajitos") must NEVER appear in the description —
+        # the LLM honors prior text and would otherwise propagate raw layer
+        # names into the final budget line per Dupla spec rule 1.
+        if wid and not _is_cad_internal_id(wid):
+            parts.append(f"Muro tipo {wid}")
+        elif wall.source == "vision":
+            parts.append("Muro (detectado por visión)")
         else:
-            parts.append("[Tipo no identificado en plano] — muro")
+            parts.append("Muro sin etiqueta de plano")
 
     if mat_code.startswith("block_"):
         parts.append(f"bloque {mat_code.replace('block_', '').replace('in', '')}\"")
@@ -156,7 +202,12 @@ def _window_entity_description(window: Window) -> str:
 
 
 def _structural_entity_description(element: StructuralElement) -> str:
-    """Human-readable label from rotulo, tipo y sección (B1 — partidas específicas)."""
+    """Human-readable label from rotulo, tipo y sección (B1 — partidas específicas).
+
+    CAD internal ids ("json-beam-vigas", "json-column-col") are dropped from
+    the description so the LLM partida generator does not propagate them into
+    the budget line summary (Dupla spec rule 1).
+    """
     inp = getattr(element, "inputs", None) or {}
     raw = inp.get("raw") if isinstance(inp.get("raw"), dict) else {}
     label = str(inp.get("structural_label") or element.id or "").strip()
@@ -168,6 +219,8 @@ def _structural_entity_description(element: StructuralElement) -> str:
         "footing": "Zapata",
         "other": "Elemento estructural",
     }.get(etype, str(etype).replace("_", " "))
+    if label and _is_cad_internal_id(label):
+        label = ""
     head = f"{type_es} {label}".strip() if label else type_es
     parts: list[str] = [head]
     sw, sh = element.section_width_m, element.section_height_m
@@ -225,7 +278,16 @@ def _make_takeoff(
     assumptions: list[str],
     source_refs: list[str],
     trace: QuantityTrace,
+    confidence: float | None = None,
+    requiere_revision: bool | None = None,
 ) -> QuantityTakeoff:
+    conf, needs_review = _derive_confidence_and_review_flag(
+        inputs=inputs,
+        assumptions=assumptions,
+        trace_metadata=trace.metadata,
+        explicit_confidence=confidence,
+        explicit_requiere_revision=requiere_revision,
+    )
     return QuantityTakeoff(
         item_key=item_key,
         item_type=item_type,
@@ -237,7 +299,53 @@ def _make_takeoff(
         assumptions=assumptions,
         source_refs=source_refs,
         trace=trace,
+        confidence=conf,
+        requiere_revision=needs_review,
     )
+
+
+_REVIEW_INPUT_FLAGS = ("height_assumed", "thickness_assumed", "length_assumed", "depth_assumed")
+_REVIEW_QUANTITY_SOURCES = {"ratio_estimate", "default_estimate", "mixed_measurement"}
+
+
+def _derive_confidence_and_review_flag(
+    *,
+    inputs: dict[str, Any],
+    assumptions: list[str],
+    trace_metadata: dict[str, Any],
+    explicit_confidence: float | None,
+    explicit_requiere_revision: bool | None,
+) -> tuple[float, bool]:
+    """Infer confidence and revision flag from quantifier evidence.
+
+    Explicit kwargs win. Otherwise: any *_assumed input flag, ratio/default
+    quantity_source, or non-empty assumptions list triggers revision.
+    """
+    qty_src = str(
+        trace_metadata.get("quantity_source") or inputs.get("quantity_source") or ""
+    ).strip()
+    has_assumed_flag = any(bool(inputs.get(flag)) for flag in _REVIEW_INPUT_FLAGS)
+    has_review_source = qty_src in _REVIEW_QUANTITY_SOURCES
+
+    if explicit_requiere_revision is not None:
+        needs_review = explicit_requiere_revision
+    else:
+        needs_review = has_assumed_flag or has_review_source
+
+    if explicit_confidence is not None:
+        conf = max(0.0, min(1.0, float(explicit_confidence)))
+    else:
+        conf = 1.0
+        if has_assumed_flag:
+            conf -= 0.2
+        if qty_src == "ratio_estimate":
+            conf -= 0.2
+        elif qty_src == "default_estimate":
+            conf -= 0.15
+        if assumptions:
+            conf -= 0.05 * min(len(assumptions), 3)
+        conf = max(0.1, conf)
+    return conf, needs_review
 
 
 def _trace_from_entities(
@@ -368,6 +476,28 @@ def _structural_volume_payload(
             [],
         )
 
+    diameter_m, shape = _circular_section_descriptor(element)
+    if (
+        element.element_type == "column"
+        and length_quantity is not None
+        and diameter_m is not None
+        and diameter_m > 0
+    ):
+        import math
+        radius = diameter_m / 2.0
+        return (
+            length_quantity * math.pi * radius * radius,
+            f"{length_formula} * pi * (structural_element.section_diameter_m / 2) ** 2",
+            {
+                **length_inputs,
+                "section_diameter_m": diameter_m,
+                "cross_section_shape": shape,
+            },
+            [
+                f"Column {element.id} treated as circular section (diameter {diameter_m:.3f} m).",
+            ],
+        )
+
     if (
         element.element_type in {"beam", "column"}
         and length_quantity is not None
@@ -381,6 +511,7 @@ def _structural_volume_payload(
                 **length_inputs,
                 "section_width_m": element.section_width_m,
                 "section_height_m": element.section_height_m,
+                "cross_section_shape": "rectangular",
             },
             [],
         )
@@ -434,20 +565,36 @@ def _structural_formwork_payload(
     if (
         element.element_type == "column"
         and length_quantity is not None
-        and element.section_width_m is not None
-        and element.section_height_m is not None
     ):
-        return (
-            2 * (element.section_width_m + element.section_height_m) * length_quantity,
-            "2 * (structural_element.section_width_m + structural_element.section_height_m) * structural_length_total_m",
-            {
-                **length_inputs,
-                "structural_length_total_m": length_quantity,
-                "section_width_m": element.section_width_m,
-                "section_height_m": element.section_height_m,
-            },
-            [],
-        )
+        diameter_m, _shape = _circular_section_descriptor(element)
+        if diameter_m is not None and diameter_m > 0:
+            import math
+            return (
+                math.pi * diameter_m * length_quantity,
+                "pi * structural_element.section_diameter_m * structural_length_total_m",
+                {
+                    **length_inputs,
+                    "structural_length_total_m": length_quantity,
+                    "section_diameter_m": diameter_m,
+                    "cross_section_shape": "circular",
+                },
+                [],
+            )
+        if (
+            element.section_width_m is not None
+            and element.section_height_m is not None
+        ):
+            return (
+                2 * (element.section_width_m + element.section_height_m) * length_quantity,
+                "2 * (structural_element.section_width_m + structural_element.section_height_m) * structural_length_total_m",
+                {
+                    **length_inputs,
+                    "structural_length_total_m": length_quantity,
+                    "section_width_m": element.section_width_m,
+                    "section_height_m": element.section_height_m,
+                },
+                [],
+            )
 
     if element.element_type == "slab" and element.area_m2 is not None:
         return (
@@ -460,6 +607,40 @@ def _structural_formwork_payload(
         )
 
     return None, None, {}, []
+
+
+def _circular_section_descriptor(
+    element: StructuralElement,
+) -> tuple[float | None, str | None]:
+    """Return (diameter_m, shape_label) for circular columns; (None, None) otherwise.
+
+    A column is treated as circular when its inputs.raw block carries an
+    explicit section_diameter_m, or when cross_section_shape is "circular"
+    and a diameter-like field is available.
+    """
+    raw = element.inputs.get("raw") if isinstance(element.inputs, dict) else None
+    raw = raw if isinstance(raw, dict) else {}
+    shape_hint = str(
+        element.inputs.get("cross_section_shape")
+        or raw.get("cross_section_shape")
+        or ""
+    ).strip().lower()
+
+    diameter = (
+        raw.get("section_diameter_m")
+        or raw.get("diameter_m")
+        or element.inputs.get("section_diameter_m")
+    )
+    try:
+        diameter_f = float(diameter) if diameter is not None else None
+    except (TypeError, ValueError):
+        diameter_f = None
+
+    if diameter_f and diameter_f > 0:
+        return diameter_f, "circular"
+    if shape_hint in {"circular", "redonda", "round"} and element.section_width_m:
+        return float(element.section_width_m), "circular"
+    return None, None
 
 
 def _structural_requires_reinforcement_hint(element: StructuralElement) -> bool:
@@ -1405,6 +1586,7 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     for element in level.structural_elements:
         element, default_assumptions = _apply_structural_defaults(element)
         base_context_tags = _entity_context_tags(element, "structural", element.element_type)
+        defaults_applied = list(default_assumptions)
         base_inputs = {
             "element_type": element.element_type,
             "material_hint": element.material_hint,
@@ -1419,6 +1601,8 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
             "steel_grade_hint": element.steel_grade_hint,
             "host_level": element.host_level,
             "adjacent_elements": list(element.adjacent_elements),
+            "depth_assumed": bool(defaults_applied),
+            "quantity_source": "default_estimate" if defaults_applied else "plan_measurement",
         }
         base_metadata = {
             "context_tags": base_context_tags,
@@ -1831,6 +2015,131 @@ def _structural_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
     return takeoffs
 
 
+def _excavation_takeoffs(level: LevelInventory) -> list[QuantityTakeoff]:
+    """Emit earthworks excavation takeoffs from level.inputs.excavations.
+
+    Each entry shape:
+        {
+          "id": "excav-cisterna" | optional,
+          "area_m2": <float>,
+          "depth_m": <float, mean depth>,
+          "profiles": [  # optional, when topography provided
+              {"chainage_m": 0.0, "area_m2": A1},
+              {"chainage_m": L,   "area_m2": A2},
+              ...
+          ],
+          "ocr_depth_m": <float, optional cota OCR — wins via reconciler later>,
+          "source_refs": [...],
+        }
+
+    With 2+ profiles, prismoidal volume = (A1 + A2 + 4*Am) * L / 6 using the
+    end and midpoint cross-section areas.
+    """
+    raw_excavations = level.inputs.get("excavations") if isinstance(level.inputs, dict) else None
+    if not isinstance(raw_excavations, list):
+        return []
+
+    takeoffs: list[QuantityTakeoff] = []
+    for index, entry in enumerate(raw_excavations, start=1):
+        if not isinstance(entry, dict):
+            continue
+        ex_id = str(entry.get("id") or f"{level.level_id}-excav-{index:02d}")
+        profiles = entry.get("profiles") if isinstance(entry.get("profiles"), list) else []
+        clean_profiles = [
+            {
+                "chainage_m": float(p.get("chainage_m")),
+                "area_m2": float(p.get("area_m2")),
+            }
+            for p in profiles
+            if isinstance(p, dict)
+            and p.get("chainage_m") is not None
+            and p.get("area_m2") is not None
+        ]
+        clean_profiles.sort(key=lambda p: p["chainage_m"])
+
+        volume_m3: float | None = None
+        formula = ""
+        method = "simple"
+        inputs_payload: dict[str, Any] = {
+            "area_m2": entry.get("area_m2"),
+            "depth_m": entry.get("depth_m"),
+        }
+
+        if len(clean_profiles) >= 2:
+            length_total = clean_profiles[-1]["chainage_m"] - clean_profiles[0]["chainage_m"]
+            if length_total > 0:
+                a1 = clean_profiles[0]["area_m2"]
+                a2 = clean_profiles[-1]["area_m2"]
+                mid_index = len(clean_profiles) // 2
+                am = clean_profiles[mid_index]["area_m2"]
+                volume_m3 = (a1 + a2 + 4 * am) * length_total / 6.0
+                formula = "(A1 + A2 + 4 * Am) * L / 6"
+                method = "prismoidal"
+                inputs_payload.update(
+                    {
+                        "profiles": clean_profiles,
+                        "A1_m2": a1,
+                        "A2_m2": a2,
+                        "Am_m2": am,
+                        "L_m": length_total,
+                    }
+                )
+
+        if volume_m3 is None:
+            area = entry.get("area_m2")
+            depth = entry.get("depth_m")
+            try:
+                area_f = float(area) if area is not None else None
+                depth_f = float(depth) if depth is not None else None
+            except (TypeError, ValueError):
+                area_f = depth_f = None
+            if area_f is not None and depth_f is not None and area_f > 0 and depth_f > 0:
+                volume_m3 = area_f * depth_f
+                formula = "area_m2 * depth_m"
+                method = "simple"
+                inputs_payload.update({"area_m2": area_f, "depth_m": depth_f})
+
+        if volume_m3 is None or volume_m3 <= 0:
+            continue
+
+        inputs_payload["excavation_method"] = method
+        inputs_payload["takeoff_description"] = (
+            f"Excavación en material común — {ex_id} ({method})"
+        )
+        if entry.get("ocr_depth_m") is not None:
+            inputs_payload["ocr_depth_m"] = entry["ocr_depth_m"]
+            inputs_payload["depth_assumed"] = False
+
+        source_refs = list(entry.get("source_refs") or [])
+
+        takeoffs.append(
+            _make_takeoff(
+                item_key=f"{ex_id}:excavation_volume",
+                item_type="excavation_volume",
+                level_id=level.level_id,
+                unit="m3",
+                quantity=float(volume_m3),
+                formula=formula,
+                inputs=inputs_payload,
+                assumptions=[
+                    f"Excavation {ex_id} computed via {method} formula from level inventory data.",
+                ],
+                source_refs=source_refs,
+                trace=QuantityTrace(
+                    source_entity_ids=[ex_id],
+                    source_entity_sources=[level.source],
+                    steps=[f"Computed excavation volume using {method} method."],
+                    metadata={
+                        "excavation_method": method,
+                        "context_tags": ["earthworks", "excavation"],
+                        "source_discipline": "estructural",
+                    },
+                ),
+            )
+        )
+    return takeoffs
+
+
 def quantify_inventory(
     levels: Iterable[LevelInventory],
     *,
@@ -1857,6 +2166,7 @@ def quantify_inventory(
             )
         )
         level_takeoffs.extend(_structural_takeoffs(level))
+        level_takeoffs.extend(_excavation_takeoffs(level))
 
         if multi_level and level.level_id:
             # Wall and structural IDs are layer-based (e.g. json-wall-muros) and

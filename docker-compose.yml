@@ -42,10 +42,13 @@ services:
 
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://frontend:80,http://app.grupodupla.com
       FRONTEND_URL: http://app.grupodupla.com
+      DUPLA_ROOT: /dupla
     ports:
       - "8000:8000"
     volumes:
       - dupla_uploads:/app/var/uploads
+      - dupla_coord_outputs:/app/output:ro
+      - ${DUPLA_PATH:-../Dupla}:/dupla:ro
     depends_on:
       postgres:
         condition: service_healthy

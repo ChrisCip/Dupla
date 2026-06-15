@@ -55,6 +55,9 @@ export type StructuralAnalysisReport = {
     errors: number
     warnings: number
     ok: number
+    total_clashes?: number
+    critical?: number
+    non_critical?: number
   }
   clashes: StructuralClash[]
   clash_relationships: StructuralClashRelationship[]

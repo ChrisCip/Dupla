@@ -262,6 +262,21 @@ def _merge_inputs(json_inputs: dict[str, Any], vision_inputs: dict[str, Any]) ->
     return {}
 
 
+_OCR_AUTHORITATIVE_DIMENSION_FIELDS: frozenset[str] = frozenset(
+    {
+        "length_m",
+        "height_m",
+        "width_m",
+        "thickness_m",
+        "area_m2",
+        "volume_m3",
+        "section_width_m",
+        "section_height_m",
+        "span_m",
+    }
+)
+
+
 def _scalar_merge(
     field_name: str,
     json_value: Any,
@@ -276,6 +291,24 @@ def _scalar_merge(
         return json_value
     if json_value == vision_value:
         return json_value
+
+    if field_name in _OCR_AUTHORITATIVE_DIMENSION_FIELDS:
+        from core.ocr_reconciler import reconcile
+
+        result = reconcile(
+            geometric_value=json_value,
+            ocr_value=vision_value,
+            label=field_name,
+            unit="m2" if field_name == "area_m2" else ("m3" if field_name == "volume_m3" else "m"),
+        )
+        if result.override_note:
+            conflict_notes.append(result.override_note)
+        elif result.value == vision_value and json_value != vision_value:
+            conflict_notes.append(
+                f"Conflict on {field_name}: OCR ({vision_value!r}) confirmó dentro de tolerancia "
+                f"frente a geometría ({json_value!r})."
+            )
+        return result.value if result.value is not None else json_value
 
     if prefer_vision:
         conflict_notes.append(
@@ -576,6 +609,42 @@ def _gpt_classify_cad_layers(cad_facts: dict[str, Any]) -> dict[str, str]:
     return result
 
 
+_PSEUDO_ELEMENT_LAYER_TOKENS: tuple[str, ...] = (
+    "acero",
+    "rebar",
+    "armad",
+    "textos",
+    "texto",
+    "leyenda",
+    "dim",
+    "dims",
+    "dimens",
+    "cota",
+    "cotas",
+    "perfil",
+    "xref",
+    "hatch",
+    "detalle",
+    "detalles",
+    "anotac",
+    "anndt",
+    "annobj",
+    "annotation",
+    "label",
+    "title",
+    "marker",
+    "simbol",
+    "ref-",
+)
+
+
+def _is_pseudo_element_layer(*values: Any) -> bool:
+    """True when the layer/name is a CAD annotation that should never be
+    treated as a real construction element (acero/textos/dim/perfil/xref/hatch)."""
+    blob = _joined_hint_text(*values)
+    return _contains_token(blob, _PSEUDO_ELEMENT_LAYER_TOKENS)
+
+
 def _gpt_role_to_wall(role: str) -> bool:
     return role in {"wall_masonry", "wall_partition"}
 
@@ -648,6 +717,8 @@ def _build_json_walls(
         canon = _canon_layer(layer)
         if not canon:
             continue
+        if _is_pseudo_element_layer(layer):
+            continue
         if _contains_token(layer, _WALL_TOKENS):
             length = hint.get("length")
             if length is None:
@@ -665,6 +736,8 @@ def _build_json_walls(
         if not canon or canon in token_wall_layers:
             continue
         if _structural_or_opening_layer_tokens(layer):
+            continue
+        if _is_pseudo_element_layer(layer):
             continue
         role = gpt_layer_roles.get(layer) or gpt_layer_roles.get(canon)
         if not _gpt_role_to_wall(role):
@@ -879,6 +952,13 @@ def _build_json_structural_elements(
         if not canon:
             continue
         name_hint = str(hint.get("name", ""))
+        if _is_pseudo_element_layer(layer, name_hint):
+            logger.debug(
+                "Structural skip: pseudo-element layer '%s' (name=%r) is annotation, not a real element.",
+                layer,
+                name_hint,
+            )
+            continue
         entity_type_from_tokens = _infer_structural_element_type(layer, name_hint)
         gpt_role = gpt_layer_roles.get(layer) or gpt_layer_roles.get(canon)
         entity_type = entity_type_from_tokens or _gpt_role_to_structural_type(gpt_role or "")
@@ -903,6 +983,8 @@ def _build_json_structural_elements(
         if not canon:
             continue
         block_name = str(block.get("block_name", ""))
+        if _is_pseudo_element_layer(layer, block_name):
+            continue
         element_type_from_tokens = _infer_structural_element_type(layer, block_name)
         gpt_role = gpt_layer_roles.get(layer) or gpt_layer_roles.get(canon)
         element_type = element_type_from_tokens or _gpt_role_to_structural_type(gpt_role or "")
@@ -926,6 +1008,8 @@ def _build_json_structural_elements(
         if not canon:
             continue
         pattern_name = str(hatch.get("pattern_name", ""))
+        if _is_pseudo_element_layer(layer, pattern_name):
+            continue
         entity_type_from_tokens = _infer_structural_element_type(layer, pattern_name)
         gpt_role = gpt_layer_roles.get(layer) or gpt_layer_roles.get(canon)
         element_type = entity_type_from_tokens or _gpt_role_to_structural_type(gpt_role or "")

@@ -12,12 +12,17 @@ import {
 
 import { apiFetch } from '../../../api/client'
 import {
+  downloadFinalHumanPdf,
+  downloadFinalTechnicalExcel,
+  downloadClashTechnicalExcel,
+} from '../../../api/clashWorkflow'
+import {
   downloadClashHumanPdf,
-  downloadClashTechnicalPdf,
   getCoordinationFolders,
   getCoordinationInventory,
   type CoordinationInventory,
 } from '../../../api/structuralAnalysis'
+import { ClashWorkflowPanel } from '../../clash-workflow/ClashWorkflowPanel'
 import { useStructuralAnalysisJob } from '../../../hooks/useStructuralAnalysisJob'
 import { formatCoordinationInventorySummary } from '../../../lib/coordinationInventory'
 import type { Project } from '../../../types/project'
@@ -210,7 +215,9 @@ export function WorkspaceHallazgosTab({
 }: WorkspaceHallazgosTabProps) {
   const { report, job, isPolling, error: jobError, enqueue } = useStructuralAnalysisJob(projectUuid, token)
   const [expandedClashIds, setExpandedClashIds] = useState<Set<string>>(() => new Set())
-  const [pdfBusy, setPdfBusy] = useState<'technical' | 'human' | null>(null)
+  const [pdfBusy, setPdfBusy] = useState<
+    'technical_excel' | 'human' | 'final_technical_excel' | 'final_human' | null
+  >(null)
   const [pdfError, setPdfError] = useState<string | null>(null)
   const [folderOptions, setFolderOptions] = useState<Array<{ uuid: string; path: string }>>([])
   const [selectedFolderUuid, setSelectedFolderUuid] = useState<string>('')
@@ -254,21 +261,43 @@ export function WorkspaceHallazgosTab({
 
   const canDownloadPdf = report.run_status === 'completed' && Boolean(job) && Boolean(token)
 
-  async function handleDownloadPdf(kind: 'technical' | 'human') {
-    if (!token || !canDownloadPdf) return
-    setPdfError(null)
-    setPdfBusy(kind)
-    try {
-      if (kind === 'technical') {
-        await downloadClashTechnicalPdf(projectUuid, token, job?.id)
-      } else {
-        await downloadClashHumanPdf(projectUuid, token, job?.id)
+  const summaryTotal =
+    report.summary.total_clashes ?? report.summary.errors
+  const summaryCritical = report.summary.critical ?? report.summary.warnings
+  const summaryNonCritical = report.summary.non_critical ?? report.summary.ok
+
+  const showWorkflow = report.run_status === 'completed' && Boolean(job)
+
+  function handleDownload(
+    kind: 'technical_excel' | 'human' | 'final_technical_excel' | 'final_human',
+  ) {
+    if (!token) return
+    if ((kind === 'technical_excel' || kind === 'human') && !canDownloadPdf) return
+    if (kind.startsWith('final') && report.run_status !== 'completed') return
+    void (async () => {
+      setPdfError(null)
+      setPdfBusy(kind)
+      try {
+        switch (kind) {
+          case 'technical_excel':
+            await downloadClashTechnicalExcel(projectUuid, token, job?.id)
+            break
+          case 'human':
+            await downloadClashHumanPdf(projectUuid, token, job?.id)
+            break
+          case 'final_technical_excel':
+            await downloadFinalTechnicalExcel(projectUuid, token)
+            break
+          case 'final_human':
+            await downloadFinalHumanPdf(projectUuid, token)
+            break
+        }
+      } catch (e) {
+        setPdfError(e instanceof Error ? e.message : 'No se pudo descargar el archivo')
+      } finally {
+        setPdfBusy(null)
       }
-    } catch (e) {
-      setPdfError(e instanceof Error ? e.message : 'No se pudo descargar el PDF')
-    } finally {
-      setPdfBusy(null)
-    }
+    })()
   }
 
   const [discipline, setDiscipline] = useState('')
@@ -406,30 +435,34 @@ export function WorkspaceHallazgosTab({
               </PrimaryButton>
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <Card className="flex flex-col items-center justify-center gap-1 border-primary/20 bg-primary/[0.06] p-3 sm:p-4">
-                <span className="text-xs font-semibold uppercase tracking-wide text-primary">Errores</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-primary">Total de Clashes</span>
                 <span className="flex items-center gap-1 text-2xl font-bold tabular-nums text-primary sm:text-3xl">
                   <CircleAlert className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" aria-hidden />
-                  {String(report.summary.errors).padStart(2, '0')}
+                  {String(summaryTotal).padStart(2, '0')}
                 </span>
               </Card>
-              <Card className="flex flex-col items-center justify-center gap-1 border-amber-500/25 bg-amber-500/8 p-3 sm:p-4">
-                <span className="text-xs font-semibold uppercase tracking-wide text-amber-900">Avisos</span>
-                <span className="flex items-center gap-1 text-2xl font-bold tabular-nums text-amber-950 sm:text-3xl">
-                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-700 sm:h-6 sm:w-6" aria-hidden />
-                  {String(report.summary.warnings).padStart(2, '0')}
+              <Card className="flex flex-col items-center justify-center gap-1 border-primary/30 bg-primary/[0.1] p-3 sm:p-4">
+                <span className="text-xs font-semibold uppercase tracking-wide text-primary">Críticos</span>
+                <span className="flex items-center gap-1 text-2xl font-bold tabular-nums text-primary sm:text-3xl">
+                  <AlertTriangle className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" aria-hidden />
+                  {String(summaryCritical).padStart(2, '0')}
                 </span>
               </Card>
               <Card className="flex flex-col items-center justify-center gap-1 border-emerald-600/20 bg-emerald-600/8 p-3 sm:p-4">
-                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-900">Correcto</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-900">No Críticos</span>
                 <span className="flex items-center gap-1 text-2xl font-bold tabular-nums text-emerald-900 sm:text-3xl">
                   <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-700 sm:h-6 sm:w-6" aria-hidden />
-                  {report.summary.ok}
+                  {summaryNonCritical}
                 </span>
               </Card>
             </div>
             </div>
           </div>
         </header>
+
+      {showWorkflow ? (
+        <ClashWorkflowPanel projectUuid={projectUuid} token={token} visible={showWorkflow} />
+      ) : null}
 
         {report.run_status === 'pending' && report.clashes.length === 0 && !job ? (
           <Card className="border-dashed p-6 text-center">
@@ -620,30 +653,65 @@ export function WorkspaceHallazgosTab({
           </div>
         </details>
 
+      {showWorkflow ? (
+        <section className="space-y-4" aria-label="Reportes de corrida">
+          <h3 className="text-sm font-semibold text-ink">Reportes de corrida</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="du-pill-action disabled:opacity-50"
+              disabled={!canDownloadPdf || pdfBusy !== null}
+              onClick={() => handleDownload('technical_excel')}
+            >
+              <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
+              {pdfBusy === 'technical_excel' ? 'Descargando…' : 'Reporte técnico de corrida (Excel)'}
+            </button>
+            <button
+              type="button"
+              className="du-pill-action disabled:opacity-50"
+              disabled={!canDownloadPdf || pdfBusy !== null}
+              onClick={() => handleDownload('human')}
+            >
+              <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
+              {pdfBusy === 'human' ? 'Descargando…' : 'Reporte de coordinación (PDF)'}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {showWorkflow ? (
+        <section className="space-y-4 border-t border-black/10 pt-6" aria-label="Informes finales">
+          <h3 className="text-sm font-semibold text-ink">Exportar informe final</h3>
+          <p className="text-xs text-muted">
+            Incluye las decisiones registradas o el estado inicial detectado por el motor si aún no se revisó.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="du-pill-action disabled:opacity-50"
+              disabled={pdfBusy !== null}
+              onClick={() => handleDownload('final_technical_excel')}
+            >
+              {pdfBusy === 'final_technical_excel' ? 'Descargando…' : 'Exportar informe técnico final (Excel)'}
+            </button>
+            <button
+              type="button"
+              className="du-pill-action disabled:opacity-50"
+              disabled={pdfBusy !== null}
+              onClick={() => handleDownload('final_human')}
+            >
+              {pdfBusy === 'final_human' ? 'Descargando…' : 'Informe final de coordinación (PDF)'}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       <footer className="flex flex-col gap-3 border-t border-black/10 bg-white pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1 text-sm text-muted">
           <p>{report.footer_status_message}</p>
           {pdfError ? <p className="mt-1 text-xs text-primary">{pdfError}</p> : null}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="du-pill-action disabled:opacity-50"
-            disabled={!canDownloadPdf || pdfBusy !== null}
-            onClick={() => void handleDownloadPdf('technical')}
-          >
-            <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
-            {pdfBusy === 'technical' ? 'Descargando…' : 'Reporte técnico (PDF)'}
-          </button>
-          <button
-            type="button"
-            className="du-pill-action disabled:opacity-50"
-            disabled={!canDownloadPdf || pdfBusy !== null}
-            onClick={() => void handleDownloadPdf('human')}
-          >
-            <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
-            {pdfBusy === 'human' ? 'Descargando…' : 'Reporte humano (PDF)'}
-          </button>
           <PrimaryButton
             type="button"
             className="inline-flex items-center gap-2 normal-case tracking-normal"

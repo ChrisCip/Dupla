@@ -29,6 +29,7 @@ from .chapter_rules import (
     default_bc3_code_for_takeoff,
     select_strong_candidate,
 )
+from .waste_policy import apply_waste
 
 def infer_source_discipline(takeoff: QuantityTakeoff, context: ProjectContext | None) -> str:
     if context and context.metadata:
@@ -175,6 +176,18 @@ def _line_bc3_origin(
     return str(c.get("bc3_origin") or "").strip()
 
 
+def _unit_family_compatible(takeoff_unit: str, candidate_unit: str | None) -> bool:
+    """True when both units share the same coarse family (count/length/area/volume/mass)
+    or either family cannot be determined."""
+    if not candidate_unit:
+        return True
+    fam_t = _normalize_unit_family(takeoff_unit)
+    fam_c = _normalize_unit_family(candidate_unit)
+    if fam_t is None or fam_c is None:
+        return True
+    return fam_t == fam_c
+
+
 def _extract_unit_price(
     candidate: BudgetCandidate | None,
     bc3_catalog: dict[str, Any] | None,
@@ -184,7 +197,12 @@ def _extract_unit_price(
     summary: str = "",
     unit: str = "",
 ) -> tuple[float | None, str]:
-    """Resolve unit price: ConstruCosto (APU → materiales → equipos → mano de obra) then BC3; never BC3-first."""
+    """Resolve unit price: ConstruCosto (APU → materiales → equipos → mano de obra) then BC3; never BC3-first.
+
+    Unit-family guard: a kg-takeoff (rebar) will not accept an m3-priced match
+    (concrete) even when the summary text is fuzzy-similar — that previously
+    drove the RD$3 billion rebar mispricing.
+    """
     summary_s = (summary or "").strip()
     unit_s = (unit or "").strip()
 
@@ -202,6 +220,16 @@ def _extract_unit_price(
                 allowed_sources=sources,
             )
             if match is not None and match.unit_price and match.unit_price > 0:
+                matched_unit = getattr(match.entry, "unit", "") or ""
+                if not _unit_family_compatible(unit_s, matched_unit):
+                    logger.info(
+                        "ConstruCosto (%s) match rejected for '%s' — unit family mismatch (%r vs %r)",
+                        label,
+                        summary_s[:60],
+                        unit_s,
+                        matched_unit,
+                    )
+                    continue
                 logger.debug(
                     "ConstruCosto (%s) price for '%s': RD$%.2f (score=%.2f, matched='%s')",
                     label,
@@ -215,7 +243,7 @@ def _extract_unit_price(
     if candidate is not None and bc3_catalog and candidate.bc3_code:
         concept = bc3_catalog.get("concepts_by_code", {}).get(candidate.bc3_code, {})
         price = concept.get("price")
-        if price:
+        if price and _unit_family_compatible(unit_s, str(concept.get("unit") or "")):
             try:
                 p = float(price)
                 if p > 0:
@@ -226,7 +254,7 @@ def _extract_unit_price(
     if fallback_bc3_code and bc3_catalog:
         concept = bc3_catalog.get("concepts_by_code", {}).get(fallback_bc3_code, {})
         price = concept.get("price")
-        if price:
+        if price and _unit_family_compatible(unit_s, str(concept.get("unit") or "")):
             try:
                 p = float(price)
                 if p > 0:
@@ -734,6 +762,8 @@ def compose_budget_rows(
             "candidate_rationale": prepared.candidate.rationale if prepared.candidate else None,
             "candidate_source": prepared.candidate.source if prepared.candidate else None,
             "trace_metadata": dict(prepared.takeoff.trace.metadata),
+            "requiere_revision": bool(getattr(prepared.takeoff, "requiere_revision", False)),
+            "confidence": float(getattr(prepared.takeoff, "confidence", 1.0)),
         }
         if prepared.bc3_guard_drop_reason:
             line_metadata["bc3_guard_drop_reason"] = prepared.bc3_guard_drop_reason
@@ -755,6 +785,17 @@ def compose_budget_rows(
         resolved_price: float | None
         price_source: str
         source_type: str
+
+        if apu_match is not None and not _unit_family_compatible(
+            prepared.takeoff.unit, getattr(apu_match, "unit", "") or ""
+        ):
+            logger.info(
+                "APU match rejected for %s — unit family mismatch (takeoff=%r apu=%r)",
+                prepared.takeoff.item_key,
+                prepared.takeoff.unit,
+                getattr(apu_match, "unit", ""),
+            )
+            apu_match = None
 
         if apu_match is not None:
             line_code = str(apu_match.code).strip() or line_code
@@ -799,6 +840,22 @@ def compose_budget_rows(
             prepared.candidate, bc3_catalog or {}, line_code
         )
 
+        apply_waste_flag = bool(meta.get("apply_waste_policy", True))
+        waste_overrides = meta.get("waste_policy_overrides") if isinstance(meta.get("waste_policy_overrides"), dict) else None
+        quantity_neta = float(prepared.takeoff.quantity)
+        if apply_waste_flag:
+            line_quantity, waste_fraction, waste_note = apply_waste(
+                quantity_neta,
+                prepared.takeoff.item_type,
+                overrides=waste_overrides,
+            )
+        else:
+            line_quantity, waste_fraction, waste_note = quantity_neta, 0.0, ""
+        if waste_fraction > 0.0:
+            line_metadata["quantity_neta"] = quantity_neta
+            line_metadata["waste_fraction"] = waste_fraction
+            line_metadata["waste_formula_note"] = waste_note
+
         budget_line = BudgetLine(
             line_id=f"BLINE-{line_index:04d}",
             takeoff_key=prepared.takeoff.item_key,
@@ -807,7 +864,7 @@ def compose_budget_rows(
             nat="Partida",
             unit=prepared.takeoff.unit,
             summary=prepared.summary,
-            quantity=prepared.takeoff.quantity,
+            quantity=line_quantity,
             unit_price=resolved_price,
             candidate_code=(
                 apu_match.code
