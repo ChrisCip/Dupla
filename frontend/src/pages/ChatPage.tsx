@@ -6,6 +6,7 @@ import { apiFetch } from '../api/client'
 import { generateUuid } from '../lib/uuid'
 import { ChatComposer } from '../components/chat/ChatComposer'
 import { ChatConversationSidebar } from '../components/chat/ChatConversationSidebar'
+import { ChatMembersButton } from '../components/chat/ChatMembersButton'
 import { ChatProjectContextPanel } from '../components/chat/ChatProjectContextPanel'
 import { ChatDirectModal } from '../components/chat/ChatDirectModal'
 import { ChatGroupModal } from '../components/chat/ChatGroupModal'
@@ -13,7 +14,6 @@ import { ChatMessageList } from '../components/chat/ChatMessageList'
 import { WorkspaceContextSelect } from '../components/WorkspaceContextSelect'
 import {
   canDeleteChatConversation,
-  formatChatParticipantsLabel,
   isGroupChatKind,
 } from '../lib/chatUi'
 import { userDisplayInitials } from '../lib/taskboard'
@@ -400,26 +400,25 @@ export function ChatPage() {
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-lg font-bold text-ink">{activeMeta?.display_title ?? 'Chat'}</h2>
               {activeMeta ? (
-                <p
-                  className={`mt-0.5 text-xs text-muted ${
-                    isGroupChatKind(activeMeta.kind) && activeMeta.participants?.length ? 'line-clamp-2' : ''
-                  }`}
-                >
-                  {activeMeta.kind === 'GENERAL' && 'Canal visible para todo el equipo.'}
-                  {activeMeta.kind === 'DIRECT' && 'Mensaje directo.'}
-                  {isGroupChatKind(activeMeta.kind) &&
-                    (formatChatParticipantsLabel(activeMeta.participants) ||
-                      (activeMeta.participant_count != null
-                        ? `${activeMeta.participant_count} integrantes`
-                        : activeMeta.kind === 'GROUP'
-                          ? 'Grupo'
-                          : 'Chat grupal de la obra'))}
+                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted">
+                  {activeMeta.kind === 'GENERAL' && <span>Canal visible para todo el equipo.</span>}
+                  {activeMeta.kind === 'DIRECT' && <span>Mensaje directo.</span>}
+                  {isGroupChatKind(activeMeta.kind) ? (
+                    <>
+                      <span>
+                        {activeMeta.kind === 'GROUP'
+                          ? 'Grupo.'
+                          : 'Chat grupal de la obra.'}
+                      </span>
+                      <ChatMembersButton participants={activeMeta.participants} />
+                    </>
+                  ) : null}
                   {activeMeta.participant_count != null &&
                   activeMeta.kind !== 'DIRECT' &&
                   !isGroupChatKind(activeMeta.kind) ? (
-                    <span className="ml-1">· {activeMeta.participant_count} en línea (aprox.)</span>
+                    <span>· {activeMeta.participant_count} en línea (aprox.)</span>
                   ) : null}
-                </p>
+                </div>
               ) : null}
             </div>
             {activeMeta && canDeleteChatConversation(activeMeta.kind) ? (

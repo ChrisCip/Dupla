@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Send } from 'lucide-react'
 
 import { apiFetch } from '../../api/client'
-import { formatChatParticipantsLabel } from '../../lib/chatUi'
+import { ChatMembersButton } from '../chat/ChatMembersButton'
 import { formatPersonFullName } from '../../lib/personDisplay'
 import type { ChatMessage, ChatParticipantRef } from '../../types/chat'
 
@@ -76,9 +76,12 @@ export function PliegoProjectChatSnippet({ projectUuid, token, userUuid }: Plieg
     <div className="flex flex-col rounded-xl border border-black/10 bg-white">
       <div className="border-b border-black/8 px-3 py-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-primary">Comentarios del equipo</h4>
-        <p className="mt-0.5 text-[11px] text-muted">
-          {formatChatParticipantsLabel(participants) || 'Canal grupal de esta obra'}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <ChatMembersButton participants={participants} size="xs" />
+          {participants.length === 0 ? (
+            <span className="text-[11px] text-muted">Canal grupal de esta obra</span>
+          ) : null}
+        </div>
       </div>
       <div className="max-h-52 space-y-3 overflow-y-auto px-3 py-3">
         {messages.length === 0 ? (
