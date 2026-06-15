@@ -12,7 +12,6 @@ from sqlalchemy.orm import selectinload
 from app.config import get_settings
 from app.models.project import Project
 from app.models.task_board import TaskCard, TaskCardComment, TaskList
-from app.domain.tutorial_project import TASK_LIST_TODO_UUID
 from app.models.user import User, UserModule, UserRole
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
@@ -25,6 +24,7 @@ from app.schemas.task_board import (
     TaskCardResponse,
     TaskListResponse,
 )
+from app.services.workspace_bootstrap_service import task_list_uuid_for_workspace
 
 
 class TaskBoardService:
@@ -536,7 +536,7 @@ class TaskBoardService:
                     assignee = ids[0]
                     break
         body = TaskCardCreateRequest(
-            list_uuid=TASK_LIST_TODO_UUID,
+            list_uuid=task_list_uuid_for_workspace(self._workspace_id, 0),
             title=title.strip(),
             description=(description.strip() if description else None),
             assignee_uuid=assignee,
