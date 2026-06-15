@@ -11,6 +11,7 @@ from app.routes import (
     budget,
     chat,
     clash,
+    clash_workflow,
     dashboard,
     modules,
     project_lifecycle,
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(projects.router)
     app.include_router(budget.router)
     app.include_router(clash.router)
+    app.include_router(clash_workflow.router)
     app.include_router(workflow_templates.router)
     app.include_router(project_lifecycle.router)
     app.include_router(admin.router)

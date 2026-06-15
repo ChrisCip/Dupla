@@ -25,7 +25,10 @@ HEADERS = (
     "Fuente Precio",
     "BC3 Origen",
     "Método de Precio",
+    "Revisión",
+    "Confianza",
 )
+REVIEW_FILL = PatternFill("solid", fgColor="FCE4D6")
 PENDING_FILL = PatternFill("solid", fgColor="FFFF00")
 THIN_SIDE = Side(style="thin", color="BFBFBF")
 ALL_BORDER = Border(left=THIN_SIDE, right=THIN_SIDE, top=THIN_SIDE, bottom=THIN_SIDE)
@@ -182,11 +185,22 @@ def export_budget_workbook(
         quantity_source = ""
         bc3_origin = ""
         candidate_source = ""
+        requiere_revision_text = ""
+        confidence_value: float | str = ""
+        needs_review = False
         if row.row_type == "line":
             price_source = str(row.metadata.get("price_source") or "")
             quantity_source = str(row.metadata.get("quantity_source_display") or "")
             bc3_origin = str(row.metadata.get("bc3_origin") or "")
             candidate_source = str(row.metadata.get("candidate_source") or "")
+            needs_review = bool(row.metadata.get("requiere_revision"))
+            requiere_revision_text = "Sí" if needs_review else "No"
+            raw_conf = row.metadata.get("confidence")
+            if raw_conf is not None:
+                try:
+                    confidence_value = round(float(raw_conf), 2)
+                except (TypeError, ValueError):
+                    confidence_value = ""
 
         values = (
             row.code,
@@ -200,6 +214,8 @@ def export_budget_workbook(
             price_source,
             bc3_origin,
             candidate_source,
+            requiere_revision_text,
+            confidence_value,
         )
         for column_index, value in enumerate(values, start=1):
             cell = worksheet.cell(row=target_row, column=column_index)
@@ -216,8 +232,10 @@ def export_budget_workbook(
         elif row.row_type == "subtotal":
             row_fill = SUBTOTAL_FILL
             row_font = Font(bold=True)
+        elif row.row_type == "line" and needs_review:
+            row_fill = REVIEW_FILL
 
-        for column_index in range(1, 12):
+        for column_index in range(1, len(HEADERS) + 1):
             cell = worksheet.cell(row=target_row, column=column_index)
             cell.font = row_font
             cell.alignment = Alignment(
@@ -240,6 +258,8 @@ def export_budget_workbook(
     worksheet.column_dimensions["I"].width = 28
     worksheet.column_dimensions["J"].width = 22
     worksheet.column_dimensions["K"].width = 22
+    worksheet.column_dimensions["L"].width = 12
+    worksheet.column_dimensions["M"].width = 12
 
     if quality_report:
         _append_quality_sheet(workbook, quality_report)
