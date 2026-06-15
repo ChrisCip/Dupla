@@ -370,6 +370,88 @@ async def test_team_leader_dashboard_and_projects(client, master_auth_headers_as
 
 
 @pytest.mark.asyncio
+async def test_delete_workflow_template_without_projects(client, master_auth_headers_async: dict[str, str]):
+    template = await client.post(
+        "/api/workflow-templates",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"name": "Flujo a borrar", "description": "temp"},
+    )
+    assert template.status_code == 201, template.text
+    template_uuid = template.json()["uuid"]
+
+    steps = await client.put(
+        f"/api/workflow-templates/{template_uuid}/steps",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "steps": [
+                {
+                    "stable_key": "paso1",
+                    "title": "Paso 1",
+                    "behavior_kind": "CUSTOM_AUTOMATION",
+                },
+            ],
+        },
+    )
+    assert steps.status_code == 200, steps.text
+
+    delete = await client.delete(
+        f"/api/workflow-templates/{template_uuid}",
+        headers=master_auth_headers_async,
+    )
+    assert delete.status_code == 204, delete.text
+
+    missing = await client.get(
+        f"/api/workflow-templates/{template_uuid}",
+        headers=master_auth_headers_async,
+    )
+    assert missing.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_workflow_template_with_projects_blocked(client, master_auth_headers_async: dict[str, str]):
+    template = await client.post(
+        "/api/workflow-templates",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={"name": "Flujo con obra", "description": ""},
+    )
+    assert template.status_code == 201, template.text
+    template_uuid = template.json()["uuid"]
+
+    steps = await client.put(
+        f"/api/workflow-templates/{template_uuid}/steps",
+        headers={**master_auth_headers_async, "Content-Type": "application/json"},
+        json={
+            "steps": [
+                {
+                    "stable_key": "inicio",
+                    "title": "Inicio",
+                    "behavior_kind": "CUSTOM_AUTOMATION",
+                },
+            ],
+        },
+    )
+    assert steps.status_code == 200, steps.text
+
+    project = await client.post(
+        "/api/projects",
+        headers=master_auth_headers_async,
+        data={
+            "name": "Obra en flujo",
+            "client_name": "Cliente",
+            "project_kind": "CLIENT",
+            "workflow_template_uuid": str(template_uuid),
+        },
+    )
+    assert project.status_code == 201, project.text
+
+    delete = await client.delete(
+        f"/api/workflow-templates/{template_uuid}",
+        headers=master_auth_headers_async,
+    )
+    assert delete.status_code == 409, delete.text
+
+
+@pytest.mark.asyncio
 async def test_chat_flow(client, auth_headers_async: dict[str, str]):
     convs = await client.get("/api/chat/conversations", headers=auth_headers_async)
     assert convs.status_code == 200

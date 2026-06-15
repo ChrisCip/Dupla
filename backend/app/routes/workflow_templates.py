@@ -69,6 +69,23 @@ async def list_active_templates_short(
     return [WorkflowTemplateDetailResponse.from_template(t) for t in rows]
 
 
+@router.delete(
+    "/{template_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar flujo",
+    description="Solo si ningún proyecto del workspace usa esta plantilla.",
+)
+async def delete_workflow_template(
+    template_uuid: UUID,
+    current: Annotated[User, Depends(require_elevated_access)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
+) -> None:
+    svc = WorkflowTemplateService(session, ws_ctx.workspace_id)
+    await svc.delete_template(template_uuid)
+    await session.commit()
+
+
 @router.get("/{template_uuid}", response_model=WorkflowTemplateDetailResponse)
 async def get_workflow_template(
     template_uuid: UUID,

@@ -7,12 +7,16 @@ import { ProjectsBoardView } from '../components/projects/ProjectsBoardView'
 import { PROJECT_CARD_MIME } from '../constants/projectsPage'
 import type { Project } from '../types/project'
 import type { WorkflowTemplateDetail } from '../types/workflowTemplate'
+import { hasElevatedAccess } from '../lib/accessPermissions'
 import { useAuthStore } from '../store/authStore'
 
 export function FlowBoardPage() {
   const { flowUuid } = useParams<{ flowUuid: string }>()
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)
+  const role = useAuthStore((s) => s.role)
+  const isTeamLeader = useAuthStore((s) => s.isTeamLeader)
+  const elevated = hasElevatedAccess(role, isTeamLeader)
 
   const [template, setTemplate] = useState<WorkflowTemplateDetail | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
@@ -134,6 +138,29 @@ export function FlowBoardPage() {
     void transitionProjectOnBoard(p, columnId)
   }
 
+  async function deleteFlow() {
+    if (!token || !flowUuid || !template) return
+    if (projects.length > 0) {
+      setBoardMsg('No se puede eliminar un flujo con proyectos asociados.')
+      return
+    }
+    if (
+      !window.confirm(
+        `¿Eliminar el flujo «${template.name}»? Se borrarán todos sus pasos. No se puede deshacer.`,
+      )
+    ) {
+      return
+    }
+    setBoardMsg(null)
+    const res = await apiFetch(`/api/workflow-templates/${flowUuid}`, { method: 'DELETE', token })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setBoardMsg((j as { detail?: string }).detail ?? 'No se pudo eliminar el flujo')
+      return
+    }
+    navigate('/app/flows')
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -166,6 +193,15 @@ export function FlowBoardPage() {
             onChange={(e) => setProjectSearch(e.target.value)}
           />
         </label>
+        {elevated && projects.length === 0 && template ? (
+          <button
+            type="button"
+            className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+            onClick={() => void deleteFlow()}
+          >
+            Eliminar flujo
+          </button>
+        ) : null}
       </div>
 
       <Card className="border-primary/15 bg-primary/[0.04] p-4">

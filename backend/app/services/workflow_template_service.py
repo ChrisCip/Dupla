@@ -5,7 +5,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.workflow_step_behavior import VALID_WORKFLOW_STEP_BEHAVIORS
@@ -255,3 +255,27 @@ class WorkflowTemplateService:
         if t is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plantilla no encontrada")
         return t
+
+    async def delete_template(self, template_uuid: UUID) -> None:
+        t = await self._repo.get_template_by_uuid(template_uuid, self._workspace_id)
+        if t is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plantilla no encontrada")
+        proj_count_q = (
+            select(func.count())
+            .select_from(Project)
+            .where(
+                Project.workflow_template_id == t.id,
+                Project.workspace_id == self._workspace_id,
+            )
+        )
+        proj_count = int((await self._session.execute(proj_count_q)).scalar_one() or 0)
+        if proj_count > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"No se puede eliminar: {proj_count} proyecto(s) usan este flujo. "
+                    "Elimina o reasigna esos proyectos primero."
+                ),
+            )
+        await self._session.delete(t)
+        await self._session.flush()

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Settings } from 'lucide-react'
+import { Plus, Settings, Trash2 } from 'lucide-react'
 
 import { apiFetch } from '../api/client'
 import { Card } from '../components/Card'
@@ -40,6 +40,7 @@ export function FlowsHubPage() {
   const [cfgName, setCfgName] = useState('')
   const [cfgDesc, setCfgDesc] = useState('')
   const [cfgBusy, setCfgBusy] = useState(false)
+  const [cfgErr, setCfgErr] = useState<string | null>(null)
 
   const [editOpen, setEditOpen] = useState(false)
   const [editDetail, setEditDetail] = useState<WorkflowTemplateDetail | null>(null)
@@ -191,7 +192,33 @@ export function FlowsHubPage() {
     setCfgUuid(row.uuid)
     setCfgName(row.name)
     setCfgDesc(row.description)
+    setCfgErr(null)
     setCfgOpen(true)
+  }
+
+  async function deleteFlow(row: WorkflowTemplateListItem) {
+    if (!token) return
+    if (row.preview_projects.length > 0) {
+      setLoadErr('No se puede eliminar un flujo con proyectos asociados.')
+      return
+    }
+    if (
+      !window.confirm(
+        `¿Eliminar el flujo «${row.name}»? Se borrarán todos sus pasos. No se puede deshacer.`,
+      )
+    ) {
+      return
+    }
+    setLoadErr(null)
+    const res = await apiFetch(`/api/workflow-templates/${row.uuid}`, { method: 'DELETE', token })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setLoadErr((j as { detail?: string }).detail ?? 'No se pudo eliminar el flujo')
+      return
+    }
+    if (cfgUuid === row.uuid) setCfgOpen(false)
+    if (editDetail?.uuid === row.uuid) setEditOpen(false)
+    await refresh()
   }
 
   if (!elevated) {
@@ -253,6 +280,20 @@ export function FlowsHubPage() {
                     onClick={() => openCfg(r)}
                   >
                     <Settings className="h-4 w-4" strokeWidth={2} />
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md p-2 text-muted hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
+                    title={
+                      r.preview_projects.length > 0
+                        ? 'Elimina los proyectos del flujo antes de borrarlo'
+                        : 'Eliminar flujo'
+                    }
+                    aria-label="Eliminar flujo"
+                    disabled={r.preview_projects.length > 0}
+                    onClick={() => void deleteFlow(r)}
+                  >
+                    <Trash2 className="h-4 w-4" strokeWidth={2} />
                   </button>
                 </div>
               </div>
@@ -344,7 +385,20 @@ export function FlowsHubPage() {
               <span className="du-label">Descripción</span>
               <textarea className="du-input mt-1 min-h-[88px] w-full" value={cfgDesc} onChange={(e) => setCfgDesc(e.target.value)} />
             </label>
-            <div className="mt-4 flex justify-end gap-2">
+            {cfgErr ? <p className="mt-2 text-sm text-primary">{cfgErr}</p> : null}
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              {cfgUuid && rows.find((r) => r.uuid === cfgUuid)?.preview_projects.length === 0 ? (
+                <button
+                  type="button"
+                  className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                  onClick={() => {
+                    const row = rows.find((r) => r.uuid === cfgUuid)
+                    if (row) void deleteFlow(row)
+                  }}
+                >
+                  Eliminar flujo
+                </button>
+              ) : null}
               <button type="button" className="rounded-lg px-3 py-2 text-sm text-muted hover:bg-black/5" onClick={() => setCfgOpen(false)}>
                 Cerrar
               </button>
