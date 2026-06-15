@@ -495,6 +495,64 @@ async def test_chat_create_group(client, auth_headers_async: dict[str, str]):
 
 
 @pytest.mark.asyncio
+async def test_chat_delete_direct_and_group(client, auth_headers_async: dict[str, str]):
+    worker_login = await client.post(
+        "/api/auth/token",
+        data={"username": "worker@dupla.demo", "password": "workerpass123"},
+    )
+    assert worker_login.status_code == 200
+    worker_headers = {"Authorization": f"Bearer {worker_login.json()['access_token']}"}
+    worker_me = await client.get("/api/me", headers=worker_headers)
+    assert worker_me.status_code == 200
+    worker_uuid = worker_me.json()["uuid"]
+
+    dm = await client.post(
+        "/api/chat/conversations/direct",
+        headers={**auth_headers_async, "Content-Type": "application/json"},
+        json={"user_uuid": str(worker_uuid)},
+    )
+    assert dm.status_code == 200, dm.text
+    dm_uuid = dm.json()["uuid"]
+
+    grp = await client.post(
+        "/api/chat/conversations/group",
+        headers={**auth_headers_async, "Content-Type": "application/json"},
+        json={"title": "Grupo temporal", "member_uuids": [str(worker_uuid)]},
+    )
+    assert grp.status_code == 201, grp.text
+    gid = grp.json()["uuid"]
+
+    convs = await client.get("/api/chat/conversations", headers=auth_headers_async)
+    assert convs.status_code == 200
+    conv_uuids = {c["uuid"] for c in convs.json()}
+    assert dm_uuid in conv_uuids
+    assert gid in conv_uuids
+
+    del_dm = await client.delete(f"/api/chat/conversations/{dm_uuid}", headers=auth_headers_async)
+    assert del_dm.status_code == 204, del_dm.text
+
+    del_grp = await client.delete(f"/api/chat/conversations/{gid}", headers=worker_headers)
+    assert del_grp.status_code == 204, del_grp.text
+
+    after = await client.get("/api/chat/conversations", headers=auth_headers_async)
+    assert after.status_code == 200
+    after_uuids = {c["uuid"] for c in after.json()}
+    assert dm_uuid not in after_uuids
+    assert gid not in after_uuids
+
+    worker_after = await client.get("/api/chat/conversations", headers=worker_headers)
+    assert worker_after.status_code == 200
+    worker_uuids = {c["uuid"] for c in worker_after.json()}
+    assert dm_uuid not in worker_uuids
+    assert gid not in worker_uuids
+
+    convs2 = await client.get("/api/chat/conversations", headers=auth_headers_async)
+    general_uuid = next(c["uuid"] for c in convs2.json() if c["kind"] == "GENERAL")
+    del_general = await client.delete(f"/api/chat/conversations/{general_uuid}", headers=auth_headers_async)
+    assert del_general.status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_task_board_gerencia_can_create_and_patch(client, master_auth_headers_async: dict[str, str]):
     board = await client.get("/api/tasks/board", headers=master_auth_headers_async)
     assert board.status_code == 200

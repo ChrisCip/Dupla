@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bell, CircleHelp, PanelLeft, Settings } from 'lucide-react'
+import { Bell, CircleHelp, PanelLeft, Settings, Trash2 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../api/client'
@@ -11,7 +11,11 @@ import { ChatDirectModal } from '../components/chat/ChatDirectModal'
 import { ChatGroupModal } from '../components/chat/ChatGroupModal'
 import { ChatMessageList } from '../components/chat/ChatMessageList'
 import { WorkspaceContextSelect } from '../components/WorkspaceContextSelect'
-import { formatChatParticipantsLabel, isGroupChatKind } from '../lib/chatUi'
+import {
+  canDeleteChatConversation,
+  formatChatParticipantsLabel,
+  isGroupChatKind,
+} from '../lib/chatUi'
 import { userDisplayInitials } from '../lib/taskboard'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
@@ -128,6 +132,34 @@ export function ChatPage() {
     },
     [setActiveConversationUuid],
   )
+
+  async function deleteActiveConversation() {
+    if (!token || !activeConversationUuid) return
+    const meta = conversations.find((c) => c.uuid === activeConversationUuid)
+    if (!meta || !canDeleteChatConversation(meta.kind)) return
+    const label = meta.display_title.trim() || 'este chat'
+    if (
+      !window.confirm(
+        `¿Eliminar "${label}"? Se borrarán todos los mensajes para todos los participantes. No se puede deshacer.`,
+      )
+    ) {
+      return
+    }
+    setError(null)
+    const convUuid = meta.uuid
+    const res = await apiFetch(`/api/chat/conversations/${convUuid}`, {
+      method: 'DELETE',
+      token,
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setError((body as { detail?: string }).detail ?? 'No se pudo eliminar el chat')
+      return
+    }
+    setActiveConversationUuid(null)
+    setMessages([])
+    await refreshConversations()
+  }
 
   async function openDirect() {
     if (!token || !dmTarget) return
@@ -390,6 +422,17 @@ export function ChatPage() {
                 </p>
               ) : null}
             </div>
+            {activeMeta && canDeleteChatConversation(activeMeta.kind) ? (
+              <button
+                type="button"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 shadow-sm hover:bg-red-50"
+                onClick={() => void deleteActiveConversation()}
+                title="Eliminar chat"
+              >
+                <Trash2 className="size-4" strokeWidth={2} aria-hidden />
+                Eliminar
+              </button>
+            ) : null}
           </div>
 
           <div className="relative flex min-h-0 flex-1 flex-col bg-[#fafafa]">

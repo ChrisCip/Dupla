@@ -533,6 +533,19 @@ class ChatService:
         general = await self._get_general_conversation()
         return await self.post_conversation_message(author, general.id, body)
 
+    async def delete_conversation(self, user: User, conversation_uuid: uuid.UUID) -> None:
+        conv = await self._get_conversation(conversation_uuid)
+        if conv.workspace_id != self._workspace_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversación no encontrada")
+        if conv.kind in (ChatConversationKind.GENERAL, ChatConversationKind.PROJECT):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Esta conversación no se puede eliminar",
+            )
+        await self._assert_can_access(user, conv)
+        await self._session.delete(conv)
+        await self._session.flush()
+
     async def get_or_create_project_conversation(
         self,
         user: User,

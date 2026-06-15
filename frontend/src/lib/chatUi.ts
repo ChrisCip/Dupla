@@ -21,6 +21,10 @@ export function isGroupChatKind(kind: ChatConversationKind): boolean {
   return kind === 'GROUP' || kind === 'PROJECT'
 }
 
+export function canDeleteChatConversation(kind: ChatConversationKind): boolean {
+  return kind === 'DIRECT' || kind === 'GROUP'
+}
+
 export function formatChatParticipantsLabel(
   participants: ChatParticipantRef[] | null | undefined,
 ): string {

@@ -88,6 +88,24 @@ async def chat_directory(
     return await svc.list_directory(current)
 
 
+@router.delete(
+    "/conversations/{conversation_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar conversación",
+    description="Solo chats directos o grupos. No aplica al canal general ni a chats de proyecto.",
+)
+async def delete_conversation(
+    conversation_uuid: UUID,
+    current: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
+) -> None:
+    svc = ChatService(session, ws_ctx.workspace_id)
+    await svc.delete_conversation(current, conversation_uuid)
+    await session.commit()
+    await chat_message_epoch_bump(conversation_uuid, ws_ctx.workspace_id)
+
+
 @router.get(
     "/conversations/{conversation_uuid}/messages",
     response_model=list[ChatMessageResponse],
