@@ -16,6 +16,7 @@ import {
   canDeleteChatConversation,
   isGroupChatKind,
 } from '../lib/chatUi'
+import { confirmDestructive } from '../lib/duplaAlert'
 import { userDisplayInitials } from '../lib/taskboard'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
@@ -139,9 +140,10 @@ export function ChatPage() {
     if (!meta || !canDeleteChatConversation(meta.kind)) return
     const label = meta.display_title.trim() || 'este chat'
     if (
-      !window.confirm(
-        `¿Eliminar "${label}"? Se borrarán todos los mensajes para todos los participantes. No se puede deshacer.`,
-      )
+      !(await confirmDestructive({
+        title: `¿Eliminar "${label}"?`,
+        text: 'Se borrarán todos los mensajes para todos los participantes. No se puede deshacer.',
+      }))
     ) {
       return
     }

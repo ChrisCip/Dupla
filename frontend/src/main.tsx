@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 
 import './index.css'
 import 'driver.js/dist/driver.css'
+import 'sweetalert2/dist/sweetalert2.min.css'
 import App from './App.tsx'
 import { ToastProvider } from './components/ToastProvider'
 

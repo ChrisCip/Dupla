@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { apiFetch } from '../api/client'
 import { WORKFLOW_PHASE_LABELS } from '../constants/workflowPhases'
 import { formatPersonFullName } from '../lib/personDisplay'
+import { confirmDestructive } from '../lib/duplaAlert'
 import { PrimaryButton } from './PrimaryButton'
 import type { TaskAssigneeOption, TaskCardCommentDto, TaskCardDto } from '../types/taskBoard'
 
@@ -137,7 +138,14 @@ export function TaskboardCardModal({ token, card, assignees, readOnly, onClose, 
 
   async function deletePermanently() {
     if (readOnly) return
-    if (!window.confirm('¿Eliminar esta tarea de forma permanente? No se puede deshacer.')) return
+    if (
+      !(await confirmDestructive({
+        title: '¿Eliminar esta tarea de forma permanente?',
+        text: 'No se puede deshacer.',
+      }))
+    ) {
+      return
+    }
     setError(null)
     setDeleting(true)
     try {

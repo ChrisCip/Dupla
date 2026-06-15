@@ -3,6 +3,7 @@ import { ChevronRight, Printer, Download } from 'lucide-react'
 
 import { CONSTRUCTION_PLIEGO_CHAPTERS } from '../constants/constructionPliegoStructure'
 import { lineSubtotal } from '../lib/constructionPliegoState'
+import { confirmAction } from '../lib/duplaAlert'
 import type { ConstructionLineValue } from '../types/constructionPliego'
 
 import { WorkspaceActionButton } from './project-workspace/WorkspaceActionButton'
@@ -145,13 +146,17 @@ export function BusinessPliegoForm({
             className="rounded-lg border border-black/15 bg-white px-3 py-2 text-xs font-medium text-ink hover:bg-black/[0.03] disabled:opacity-50"
             disabled={generateBusy}
             onClick={() => {
-              if (
-                window.confirm(
-                  '¿Regenerar? Se reemplaza el borrador de texto auxiliar y se anula un pliego aprobado previo al guardar.',
-                )
-              ) {
-                void onGenerate(true)
-              }
+              void (async () => {
+                if (
+                  await confirmAction({
+                    title: '¿Regenerar?',
+                    text: 'Se reemplaza el borrador de texto auxiliar y se anula un pliego aprobado previo al guardar.',
+                    confirmLabel: 'Regenerar',
+                  })
+                ) {
+                  void onGenerate(true)
+                }
+              })()
             }}
           >
             Regenerar

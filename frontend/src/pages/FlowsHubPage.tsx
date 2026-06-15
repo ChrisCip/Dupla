@@ -16,6 +16,7 @@ import { FlowTemplateIcon } from '../components/flows/FlowTemplateIcon'
 import { coerceFlowTemplateIconKey, DEFAULT_FLOW_TEMPLATE_ICON } from '../constants/flowTemplateIcons'
 import type { WorkflowTemplateDetail, WorkflowTemplateListItem } from '../types/workflowTemplate'
 import { hasElevatedAccess } from '../lib/accessPermissions'
+import { confirmDestructive } from '../lib/duplaAlert'
 import { useAuthStore } from '../store/authStore'
 
 export function FlowsHubPage() {
@@ -203,9 +204,10 @@ export function FlowsHubPage() {
       return
     }
     if (
-      !window.confirm(
-        `¿Eliminar el flujo «${row.name}»? Se borrarán todos sus pasos. No se puede deshacer.`,
-      )
+      !(await confirmDestructive({
+        title: `¿Eliminar el flujo «${row.name}»?`,
+        text: 'Se borrarán todos sus pasos. No se puede deshacer.',
+      }))
     ) {
       return
     }

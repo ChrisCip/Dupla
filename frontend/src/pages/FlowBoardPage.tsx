@@ -8,6 +8,7 @@ import { PROJECT_CARD_MIME } from '../constants/projectsPage'
 import type { Project } from '../types/project'
 import type { WorkflowTemplateDetail } from '../types/workflowTemplate'
 import { hasElevatedAccess } from '../lib/accessPermissions'
+import { confirmDestructive } from '../lib/duplaAlert'
 import { useAuthStore } from '../store/authStore'
 
 export function FlowBoardPage() {
@@ -145,9 +146,10 @@ export function FlowBoardPage() {
       return
     }
     if (
-      !window.confirm(
-        `¿Eliminar el flujo «${template.name}»? Se borrarán todos sus pasos. No se puede deshacer.`,
-      )
+      !(await confirmDestructive({
+        title: `¿Eliminar el flujo «${template.name}»?`,
+        text: 'Se borrarán todos sus pasos. No se puede deshacer.',
+      }))
     ) {
       return
     }

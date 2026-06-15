@@ -70,3 +70,105 @@ body {
   to   { width: 0%; }
 }
 
+/* SweetAlert2 — tema Dupla */
+.swal2-container {
+  backdrop-filter: blur(2px);
+}
+
+.du-swal-popup.swal2-popup {
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 1.5rem 1.25rem 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  font-family: var(--font-sans);
+}
+
+.du-swal-title.swal2-title {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: 1.4;
+}
+
+.du-swal-text.swal2-html-container {
+  margin: 0;
+  padding: 0;
+  font-size: 0.9375rem;
+  color: var(--color-muted);
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.du-swal-icon.swal2-icon {
+  margin: 0.25rem auto 1rem;
+  transform: scale(0.85);
+}
+
+.du-swal-icon.swal2-warning {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.du-swal-icon.swal2-question {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.du-swal-icon.swal2-info {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.du-swal-actions.swal2-actions {
+  gap: 0.625rem;
+  margin: 1.25rem 0 0;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.du-swal-confirm.swal2-confirm,
+.du-swal-cancel.swal2-cancel {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+  outline: none;
+  transition: background-color 150ms, border-color 150ms, box-shadow 150ms;
+}
+
+.du-swal-confirm.swal2-confirm {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.du-swal-confirm.swal2-confirm:hover {
+  background: #a80b10;
+  border-color: #a80b10;
+}
+
+.du-swal-confirm.swal2-confirm:focus-visible {
+  box-shadow: 0 0 0 3px rgba(193, 13, 18, 0.25);
+}
+
+.du-swal-cancel.swal2-cancel {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: #fff;
+  color: var(--color-ink);
+}
+
+.du-swal-cancel.swal2-cancel:hover {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.du-swal-cancel.swal2-cancel:focus-visible {
+  box-shadow: 0 0 0 3px rgba(193, 13, 18, 0.15);
+}
+

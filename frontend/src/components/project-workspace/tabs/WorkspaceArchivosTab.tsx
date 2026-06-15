@@ -13,6 +13,7 @@ import {
   type ProjectFileDisciplineValue,
 } from '../../../constants/projectFileDisciplines'
 import { downloadBlob } from '../../../lib/download'
+import { confirmDestructive } from '../../../lib/duplaAlert'
 import {
   BUDGET_EXCLUDED_FILE_BADGE,
   BUDGET_EXCLUDED_UPLOAD_NOTICE,
@@ -201,7 +202,15 @@ export function WorkspaceArchivosTab({ projectUuid, token, workflowPhase, flowMs
   }
 
   async function deleteFolder(f: ProjectFileFolderRow) {
-    if (!token || !window.confirm(`¿Eliminar carpeta "${f.name}"? (debe estar vacía)`)) return
+    if (!token) return
+    if (
+      !(await confirmDestructive({
+        title: `¿Eliminar carpeta "${f.name}"?`,
+        text: 'La carpeta debe estar vacía.',
+      }))
+    ) {
+      return
+    }
     const res = await apiFetch(`/api/projects/${projectUuid}/file-folders/${f.uuid}`, {
       method: 'DELETE',
       token,
@@ -211,7 +220,14 @@ export function WorkspaceArchivosTab({ projectUuid, token, workflowPhase, flowMs
   }
 
   async function deleteFile(f: ProjectFileRow) {
-    if (!token || !window.confirm(`¿Eliminar "${f.original_name}"?`)) return
+    if (!token) return
+    if (
+      !(await confirmDestructive({
+        title: `¿Eliminar "${f.original_name}"?`,
+      }))
+    ) {
+      return
+    }
     const res = await apiFetch(`/api/projects/${projectUuid}/files/${f.uuid}`, {
       method: 'DELETE',
       token,

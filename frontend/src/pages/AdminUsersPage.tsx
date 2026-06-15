@@ -10,6 +10,7 @@ import { ROLE_LABELS, type UserRole } from '../constants/userRoles'
 import { canCreateUsers } from '../lib/accessPermissions'
 import { invalidateAdminUsersDirectoryCache } from '../lib/adminUsersDirectoryCache'
 import { formatPersonFullName } from '../lib/personDisplay'
+import { confirmDestructive } from '../lib/duplaAlert'
 import { useAuthStore } from '../store/authStore'
 
 type ListedUser = {
@@ -88,9 +89,10 @@ export function AdminUsersPage() {
 
     const name = formatPersonFullName(u.first_name, u.last_name, u.email)
     if (
-      !window.confirm(
-        `¿Eliminar a ${name}?\n\nSe revocará su acceso de inmediato. Esta acción no se puede deshacer.`,
-      )
+      !(await confirmDestructive({
+        title: `¿Eliminar a ${name}?`,
+        text: 'Se revocará su acceso de inmediato. Esta acción no se puede deshacer.',
+      }))
     ) {
       return
     }

@@ -19,5 +19,13 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      'no-alert': 'error',
+      'no-restricted-globals': [
+        'error',
+        { name: 'confirm', message: 'Use confirmDestructive/confirmAction from lib/duplaAlert instead.' },
+        { name: 'alert', message: 'Use alertInfo from lib/duplaAlert instead.' },
+      ],
+    },
   },
 ])

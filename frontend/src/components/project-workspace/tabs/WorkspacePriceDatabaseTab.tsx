@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { FileSpreadsheet, FileText, Package, Trash2, Upload, Users } from 'lucide-react'
 
 import { apiFetch } from '../../../api/client'
+import { confirmDestructive } from '../../../lib/duplaAlert'
 import { WorkspaceActionButton } from '../WorkspaceActionButton'
 
 export type PriceDatabaseFileRow = {
@@ -143,7 +144,13 @@ export function WorkspacePriceDatabaseTab({ projectUuid, token, flowMsg }: Works
 
   async function removeFile(fileUuid: string) {
     if (!token || !projectUuid) return
-    if (!window.confirm('¿Eliminar este archivo de la base de precios?')) return
+    if (
+      !(await confirmDestructive({
+        title: '¿Eliminar este archivo de la base de precios?',
+      }))
+    ) {
+      return
+    }
     const res = await apiFetch(`/api/projects/${projectUuid}/price-database/files/${fileUuid}`, {
       method: 'DELETE',
       token,
