@@ -1,5 +1,5 @@
 import { PLIEGO_GA_FO_01_ARQUITECTURA } from '../data/pliegoGaFo01Arquitectura'
-import type { PliegoItemEstado, PliegoItemState } from '../types/pliegoForm'
+import type { PliegoItemEstado, PliegoItemState, PliegoSectionApproval } from '../types/pliegoForm'
 
 export function catalogItemIds(): string[] {
   const ids: string[] = []
@@ -84,4 +84,52 @@ export function gaFoSectionProgressRows(states: Record<string, PliegoItemState>)
     }
     return { id: sec.id, titulo: sec.titulo, done, total }
   })
+}
+
+export function gaFoSectionIdForItem(itemId: string): string | null {
+  for (const sec of PLIEGO_GA_FO_01_ARQUITECTURA.secciones) {
+    if (sec.items.some((it) => it.id === itemId)) return sec.id
+  }
+  return null
+}
+
+export function markGaFoSectionItemsComplete(
+  states: Record<string, PliegoItemState>,
+  sectionId: string,
+): Record<string, PliegoItemState> {
+  const sec = PLIEGO_GA_FO_01_ARQUITECTURA.secciones.find((s) => s.id === sectionId)
+  if (!sec) return states
+  const next = { ...states }
+  for (const it of sec.items) {
+    const prev = next[it.id] ?? { estado: 'PENDIENTE' as const, notas: '', file_uuid: null, file_name: null }
+    next[it.id] = { ...prev, estado: 'COMPLETO' }
+  }
+  return next
+}
+
+export function parseGaFoApprovedSections(
+  spec: Record<string, unknown> | undefined,
+): Record<string, string> {
+  if (!spec || typeof spec !== 'object') return {}
+  const ga = spec.ga_fo_01_arquitectura
+  if (!ga || typeof ga !== 'object') return {}
+  const raw = (ga as Record<string, unknown>).approved_sections
+  if (!raw || typeof raw !== 'object') return {}
+  const out: Record<string, string> = {}
+  for (const [key, val] of Object.entries(raw)) {
+    if (val && typeof val === 'object' && typeof (val as PliegoSectionApproval).approved_at === 'string') {
+      out[key] = (val as PliegoSectionApproval).approved_at
+    }
+  }
+  return out
+}
+
+export function serializeGaFoApprovedSections(
+  approved: Record<string, string>,
+): Record<string, PliegoSectionApproval> {
+  const out: Record<string, PliegoSectionApproval> = {}
+  for (const [sectionId, approvedAt] of Object.entries(approved)) {
+    if (approvedAt) out[sectionId] = { approved_at: approvedAt }
+  }
+  return out
 }

@@ -46,6 +46,20 @@ export async function confirmAction(options: DuplaAlertOptions): Promise<boolean
   return result.isConfirmed
 }
 
+export async function confirmPliegoSectionApproval(options: {
+  sectionTitle: string
+  costHint?: string
+}): Promise<boolean> {
+  const costLine =
+    options.costHint ??
+    'Al aprobar esta sección, su contenido se considerará validado y los costos asociados se asumirán como base para el presupuesto maestro del proyecto.'
+  return confirmAction({
+    title: `¿Aprobar «${options.sectionTitle}»?`,
+    text: costLine,
+    confirmLabel: 'Aprobar sección',
+  })
+}
+
 export async function alertInfo(options: DuplaAlertOptions): Promise<void> {
   await duplaSwal.fire({
     icon: 'info',

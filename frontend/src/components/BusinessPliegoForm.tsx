@@ -2,7 +2,12 @@ import { useMemo, useState } from 'react'
 import { ChevronRight, Printer, Download } from 'lucide-react'
 
 import { CONSTRUCTION_PLIEGO_CHAPTERS } from '../constants/constructionPliegoStructure'
-import { lineSubtotal } from '../lib/constructionPliegoState'
+import { confirmPliegoSectionApproval } from '../lib/duplaAlert'
+import {
+  constructionChapterProgress,
+  isConstructionChapterComplete,
+  lineSubtotal,
+} from '../lib/constructionPliegoState'
 import { confirmAction } from '../lib/duplaAlert'
 import type { ConstructionLineValue } from '../types/constructionPliego'
 
@@ -23,6 +28,9 @@ type BusinessPliegoFormProps = {
   flowMsg: string | null
   onExportPdf?: () => void
   onExportXlsx?: () => void
+  approvedChapters?: Record<number, string>
+  canApproveChapter?: boolean
+  onApproveChapter?: (chapterNum: number) => void
 }
 
 function fmtMoney(n: number): string {
@@ -44,6 +52,9 @@ export function BusinessPliegoForm({
   flowMsg,
   onExportPdf,
   onExportXlsx,
+  approvedChapters = {},
+  canApproveChapter = false,
+  onApproveChapter,
 }: BusinessPliegoFormProps) {
   const [open, setOpen] = useState<Record<number, boolean>>(() => {
     const o: Record<number, boolean> = {}
@@ -73,6 +84,21 @@ export function BusinessPliegoForm({
 
   function toggleChapter(num: number) {
     setOpen((prev) => ({ ...prev, [num]: !prev[num] }))
+  }
+
+  async function approveChapter(chapterNum: number, chapterTitle: string, chapterSubtotal: number) {
+    if (!canApproveChapter || !onApproveChapter || approvedChapters[chapterNum]) return
+    if (!isConstructionChapterComplete(chapterNum, lineValues)) return
+    const costHint = `El subtotal de esta sección (${fmtMoney(chapterSubtotal)}) se asumirá como base para el presupuesto maestro del proyecto.`
+    if (
+      !(await confirmPliegoSectionApproval({
+        sectionTitle: `${chapterNum}. ${chapterTitle}`,
+        costHint,
+      }))
+    ) {
+      return
+    }
+    onApproveChapter(chapterNum)
   }
 
   return (
@@ -199,29 +225,58 @@ export function BusinessPliegoForm({
           const isOpen = open[chapter.num]
           const numLabel = String(chapter.num).padStart(2, '0')
           const chSub = chapterSubtotals[chapter.num] ?? 0
+          const chapterApprovedAt = approvedChapters[chapter.num]
+          const chapterComplete = isConstructionChapterComplete(chapter.num, lineValues)
+          const progress = constructionChapterProgress(chapter.num, lineValues)
 
           return (
             <div key={chapter.num} className="bg-white">
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 px-2 py-3 text-left transition hover:bg-black/[0.02] sm:px-3"
-                aria-expanded={isOpen}
-                onClick={() => toggleChapter(chapter.num)}
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-white">
-                  {numLabel}
-                </span>
-                <span className="min-w-0 flex-1 font-semibold text-ink">
-                  {chapter.num}. {chapter.titulo}
-                </span>
-                <span className="hidden shrink-0 text-xs tabular-nums text-muted sm:inline">
-                  Subtotal cap. {fmtMoney(chSub)}
-                </span>
-                <ChevronRight
-                  className={`size-5 shrink-0 text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}
-                  aria-hidden
-                />
-              </button>
+              <div className="flex items-stretch gap-0">
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-3 px-2 py-3 text-left transition hover:bg-black/[0.02] sm:px-3"
+                  aria-expanded={isOpen}
+                  onClick={() => toggleChapter(chapter.num)}
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-white">
+                    {numLabel}
+                  </span>
+                  <span className="min-w-0 flex-1 font-semibold text-ink">
+                    {chapter.num}. {chapter.titulo}
+                  </span>
+                  {chapterApprovedAt ? (
+                    <span className="shrink-0 rounded-md border border-emerald-600/25 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-900">
+                      Aprobada
+                    </span>
+                  ) : (
+                    <span className="hidden shrink-0 text-[10px] tabular-nums text-muted sm:inline">
+                      {progress.done}/{progress.total} partidas
+                    </span>
+                  )}
+                  <span className="hidden shrink-0 text-xs tabular-nums text-muted sm:inline">
+                    Subtotal cap. {fmtMoney(chSub)}
+                  </span>
+                  <ChevronRight
+                    className={`size-5 shrink-0 text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                    aria-hidden
+                  />
+                </button>
+                {canApproveChapter && !chapterApprovedAt ? (
+                  <button
+                    type="button"
+                    className="shrink-0 border-l border-black/8 px-3 text-[11px] font-semibold uppercase tracking-wide text-primary transition hover:bg-primary/[0.06] disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
+                    disabled={!chapterComplete}
+                    title={
+                      chapterComplete
+                        ? undefined
+                        : 'Completa unidad, cantidad y precio unitario en todas las partidas del capítulo'
+                    }
+                    onClick={() => void approveChapter(chapter.num, chapter.titulo, chSub)}
+                  >
+                    Aprobar sección
+                  </button>
+                ) : null}
+              </div>
               {isOpen ? (
                 <div className="border-t border-black/6 px-2 pb-4 pt-3 sm:px-4">
                   <div className="overflow-x-auto rounded-lg border border-black/10">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { apiFetch } from '../../api/client'
 import { gaFoSectionProgressRows } from '../../lib/pliegoFormState'
+import { confirmPliegoSectionApproval } from '../../lib/duplaAlert'
 import type { PliegoItemState } from '../../types/pliegoForm'
 import { WorkspaceActionButton } from './WorkspaceActionButton'
 import { PliegoProjectChatSnippet } from './PliegoProjectChatSnippet'
@@ -12,11 +13,13 @@ type PliegoSideRailProps = {
   token: string | null
   userUuid: string | null
   itemStates: Record<string, PliegoItemState>
+  approvedSections: Record<string, string>
   approved: boolean
   generatedAt: string | null
   canApprove: boolean
   viewBudget: boolean
   onApprove: () => boolean | void | Promise<boolean | void>
+  onApproveSection: (sectionId: string, _sectionTitle?: string) => void
   onGoPresupuesto?: () => void
 }
 
@@ -25,11 +28,13 @@ export function PliegoSideRail({
   token,
   userUuid,
   itemStates,
+  approvedSections,
   approved,
   generatedAt,
   canApprove,
   viewBudget,
   onApprove,
+  onApproveSection,
   onGoPresupuesto,
 }: PliegoSideRailProps) {
   const navigate = useNavigate()
@@ -69,6 +74,7 @@ export function PliegoSideRail({
         <ul className="mt-3 max-h-[min(52vh,28rem)] space-y-2 overflow-y-auto pr-0.5">
           {rows.map((row) => {
             const ok = row.done === row.total && row.total > 0
+            const sectionApproved = Boolean(approvedSections[row.id])
             return (
               <li
                 key={row.id}
@@ -76,18 +82,41 @@ export function PliegoSideRail({
               >
                 <span
                   className={`mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded border ${
-                    ok ? 'border-primary bg-primary text-white' : 'border-black/18 bg-white'
+                    ok || sectionApproved ? 'border-primary bg-primary text-white' : 'border-black/18 bg-white'
                   }`}
                   aria-hidden
                 >
-                  {ok ? <Check className="size-3 stroke-[3]" aria-hidden /> : null}
+                  {ok || sectionApproved ? <Check className="size-3 stroke-[3]" aria-hidden /> : null}
                 </span>
-                <span className={`min-w-0 leading-snug ${ok ? 'text-muted' : 'text-ink'}`}>
-                  <span className={`block font-semibold ${ok ? 'line-through' : ''}`}>{row.titulo}</span>
-                  <span className="mt-0.5 block text-[10px] tabular-nums text-muted">
-                    {row.done} de {row.total} documentos listos
+                <div className="min-w-0 flex-1">
+                  <span className={`block font-semibold leading-snug ${ok || sectionApproved ? 'text-muted line-through' : 'text-ink'}`}>
+                    {row.titulo}
                   </span>
-                </span>
+                  <span className="mt-0.5 block text-[10px] tabular-nums text-muted">
+                    {sectionApproved
+                      ? `Aprobada · ${new Date(approvedSections[row.id]).toLocaleString()}`
+                      : `${row.done} de ${row.total} documentos listos`}
+                  </span>
+                  {canApprove && !sectionApproved ? (
+                    <button
+                      type="button"
+                      className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-primary underline-offset-2 hover:underline"
+                      onClick={() => {
+                        void (async () => {
+                          if (
+                            await confirmPliegoSectionApproval({
+                              sectionTitle: row.titulo,
+                            })
+                          ) {
+                            onApproveSection(row.id, row.titulo)
+                          }
+                        })()
+                      }}
+                    >
+                      Aprobar sección
+                    </button>
+                  ) : null}
+                </div>
               </li>
             )
           })}

@@ -37,17 +37,22 @@ import {
   emptyConstructionLineValues,
   isConstructionPliegoFullyComplete,
   isConstructionPliegoSchemaActive,
+  parseConstructionApprovedChapters,
   parseConstructionPliegoFromSpec,
+  serializeConstructionApprovedChapters,
   synthesizeBusinessSectionsFromConstruction,
 } from '../lib/constructionPliegoState'
 import {
   isGaFoChecklistFullyTerminal,
   mergePliegoItemStates,
+  parseGaFoApprovedSections,
+  serializeGaFoApprovedSections,
   stablePliegoItemStatesSignature,
 } from '../lib/pliegoFormState'
 import { userDisplayInitials } from '../lib/taskboard'
 import { hasElevatedAccess, canViewBudget, isBudgetWorkspaceTab, workflowPhaseLabelForRole, workflowStepTitleForRole, canApproveSpecifications } from '../lib/accessPermissions'
 import { useAuthStore } from '../store/authStore'
+import type { ConstructionLineValue } from '../types/constructionPliego'
 import type { PlanDeliveryRow } from '../types/planDelivery'
 import type { PliegoItemState } from '../types/pliegoForm'
 import type { RevisionRow, SubcontractQuoteRow, TechnicalFindingRow } from '../types/projectWorkspace'
@@ -80,6 +85,9 @@ export function ProjectWorkspacePage() {
   const [businessPliegoSections, setBusinessPliegoSections] = useState(() => emptyBusinessPliegoSections())
   const [constructionLines, setConstructionLines] = useState(() => emptyConstructionLineValues())
   const [constructionDirty, setConstructionDirty] = useState(false)
+  const [pliegoApprovedSections, setPliegoApprovedSections] = useState<Record<string, string>>({})
+  const [constructionApprovedChapters, setConstructionApprovedChapters] = useState<Record<number, string>>({})
+  const [generateConstructionBusy, setGenerateConstructionBusy] = useState(false)
   const [pliegoMeta, setPliegoMeta] = useState<{ approved: boolean; generatedAt: string | null }>({
     approved: false,
     generatedAt: null,
@@ -205,6 +213,12 @@ export function ProjectWorkspacePage() {
     setPliegoMeta({ approved: bpParsed.approved, generatedAt: bpParsed.generatedAt })
     setConstructionLines(
       parseConstructionPliegoFromSpec(body.specifications_document as Record<string, unknown>),
+    )
+    setPliegoApprovedSections(
+      parseGaFoApprovedSections(body.specifications_document as Record<string, unknown>),
+    )
+    setConstructionApprovedChapters(
+      parseConstructionApprovedChapters(body.specifications_document as Record<string, unknown>),
     )
     setConstructionDirty(false)
     setBpDraft(budgetPipeline(body.workflow_meta ?? {}))
@@ -562,21 +576,24 @@ export function ProjectWorkspacePage() {
         stablePliegoItemStatesSignature(pliegoItemStates) === stablePliegoItemStatesSignature(serverMergedStates) &&
         Boolean(prevGa?.approved)
 
+      const gaBlockBase = {
+        schema_version: 1 as const,
+        item_states: pliegoItemStates,
+        approved_sections: serializeGaFoApprovedSections(pliegoApprovedSections),
+      }
       const doc: Record<string, unknown> = {
         ...prev,
         summary: specSummary,
         ga_fo_01_arquitectura: keepGaApproval
           ? {
-              schema_version: 1 as const,
-              item_states: pliegoItemStates,
+              ...gaBlockBase,
               approved: true,
               approved_at: typeof prevGa?.approved_at === 'string' ? prevGa.approved_at : null,
               approved_by_user_uuid:
                 typeof prevGa?.approved_by_user_uuid === 'string' ? prevGa.approved_by_user_uuid : null,
             }
           : {
-              schema_version: 1 as const,
-              item_states: pliegoItemStates,
+              ...gaBlockBase,
               approved: false,
               approved_at: null,
               approved_by_user_uuid: null,
@@ -586,6 +603,7 @@ export function ProjectWorkspacePage() {
         doc.construction_pliego = {
           schema_version: 1 as const,
           lines: constructionLines,
+          approved_chapters: serializeConstructionApprovedChapters(constructionApprovedChapters),
         }
       }
       if (includeBusinessPliego) {
@@ -627,11 +645,54 @@ export function ProjectWorkspacePage() {
       setConstructionLines(
         parseConstructionPliegoFromSpec(p.specifications_document as Record<string, unknown>),
       )
+      setPliegoApprovedSections(
+        parseGaFoApprovedSections(p.specifications_document as Record<string, unknown>),
+      )
+      setConstructionApprovedChapters(
+        parseConstructionApprovedChapters(p.specifications_document as Record<string, unknown>),
+      )
       setConstructionDirty(false)
       return true
     } finally {
       setSpecSaveBusy(false)
     }
+  }
+
+  async function generateConstructionPliego(force: boolean): Promise<void> {
+    if (!token) return
+    setGenerateConstructionBusy(true)
+    setFlowMsg(null)
+    try {
+      const res = await apiFetch(`/api/projects/${projectUuid}/specifications/generate`, {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ force }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setFlowMsg((j as { detail?: string }).detail ?? 'No se pudo generar el borrador')
+        return
+      }
+      const p = j as Project
+      setProject(p)
+      setConstructionLines(
+        parseConstructionPliegoFromSpec(p.specifications_document as Record<string, unknown>),
+      )
+      setConstructionApprovedChapters(
+        parseConstructionApprovedChapters(p.specifications_document as Record<string, unknown>),
+      )
+      setConstructionDirty(false)
+    } finally {
+      setGenerateConstructionBusy(false)
+    }
+  }
+
+  function handleConstructionLineChange(idItem: string, patch: Partial<ConstructionLineValue>) {
+    setConstructionDirty(true)
+    setConstructionLines((prev) => ({
+      ...prev,
+      [idItem]: { ...(prev[idItem] ?? { unidad: '', cantidad: '', unitario: '' }), ...patch },
+    }))
   }
 
   async function approvePliego(): Promise<boolean> {
@@ -884,12 +945,23 @@ export function ProjectWorkspacePage() {
 
           {tab === 'pliego' ? (
             <WorkspaceEspecificacionesTab
+              project={project}
               projectUuid={projectUuid}
               projectDisplayName={displayTitle}
               token={token}
               role={role}
               pliegoItemStates={pliegoItemStates}
               setPliegoItemStates={setPliegoItemStates}
+              pliegoApprovedSections={pliegoApprovedSections}
+              setPliegoApprovedSections={setPliegoApprovedSections}
+              constructionLines={constructionLines}
+              onConstructionLineChange={handleConstructionLineChange}
+              constructionApprovedChapters={constructionApprovedChapters}
+              setConstructionApprovedChapters={setConstructionApprovedChapters}
+              specSummary={specSummary}
+              onSpecSummaryChange={setSpecSummary}
+              onGenerateConstruction={generateConstructionPliego}
+              generateConstructionBusy={generateConstructionBusy}
               onPersist={saveSpecifications}
               specSaveBusy={specSaveBusy}
               flowMsg={flowMsg}

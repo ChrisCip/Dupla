@@ -5,7 +5,8 @@ import { ChevronDown, ChevronRight, Download, Printer } from 'lucide-react'
 import { apiFetch } from '../api/client'
 import { PLIEGO_ITEM_ESTADO_OPTIONS, pliegoEstadoLabel } from '../constants/pliegoItemEstado'
 import { PLIEGO_GA_FO_01_ARQUITECTURA } from '../data/pliegoGaFo01Arquitectura'
-import { pliegoProgressPercent } from '../lib/pliegoFormState'
+import { confirmPliegoSectionApproval } from '../lib/duplaAlert'
+import { markGaFoSectionItemsComplete, pliegoProgressPercent } from '../lib/pliegoFormState'
 import type { PliegoItemEstado, PliegoItemState } from '../types/pliegoForm'
 
 import { WorkspaceActionButton } from './project-workspace/WorkspaceActionButton'
@@ -52,6 +53,10 @@ type Props = {
   documentTitle: string
   itemStates: Record<string, PliegoItemState>
   onItemStatesChange: (next: Record<string, PliegoItemState>) => void
+  approvedSections: Record<string, string>
+  canApproveSection: boolean
+  onSectionApproved: (sectionId: string) => void
+  onClearSectionApproval: (sectionId: string) => void
   onPersist: () => boolean | void | Promise<boolean | void>
   persistBusy: boolean
   flowMsg: string | null
@@ -65,6 +70,10 @@ export function PliegoCondicionesForm({
   documentTitle,
   itemStates,
   onItemStatesChange,
+  approvedSections,
+  canApproveSection,
+  onSectionApproved,
+  onClearSectionApproval,
   onPersist,
   persistBusy,
   flowMsg,
@@ -86,10 +95,33 @@ export function PliegoCondicionesForm({
 
   function patchItem(itemId: string, partial: Partial<PliegoItemState>) {
     const prev = itemStates[itemId] ?? { estado: 'PENDIENTE' as const, notas: '', file_uuid: null, file_name: null }
+    const nextRow = { ...prev, ...partial }
     onItemStatesChange({
       ...itemStates,
-      [itemId]: { ...prev, ...partial },
+      [itemId]: nextRow,
     })
+    const sec = PLIEGO_GA_FO_01_ARQUITECTURA.secciones.find((s) => s.items.some((it) => it.id === itemId))
+    if (sec && approvedSections[sec.id]) {
+      if (partial.estado !== undefined && partial.estado !== prev.estado) {
+        onClearSectionApproval(sec.id)
+      }
+      if (partial.file_uuid !== undefined && partial.file_uuid !== prev.file_uuid) {
+        onClearSectionApproval(sec.id)
+      }
+    }
+  }
+
+  async function approveSection(sectionId: string, sectionTitle: string) {
+    if (!canApproveSection || approvedSections[sectionId]) return
+    if (
+      !(await confirmPliegoSectionApproval({
+        sectionTitle,
+      }))
+    ) {
+      return
+    }
+    onItemStatesChange(markGaFoSectionItemsComplete(itemStates, sectionId))
+    onSectionApproved(sectionId)
   }
 
   function openFilePicker(itemId: string) {
@@ -190,34 +222,51 @@ export function PliegoCondicionesForm({
           {PLIEGO_GA_FO_01_ARQUITECTURA.secciones.map((sec, secIdx) => {
             const isOpen = expanded[sec.id] ?? false
             const numLabel = String(secIdx + 1).padStart(2, '0')
+            const sectionApprovedAt = approvedSections[sec.id]
             return (
               <section key={sec.id} className="bg-white">
-                <h3 className="m-0">
-                  <button
-                    type="button"
-                    onClick={() => toggleSection(sec.id)}
-                    aria-expanded={isOpen}
-                    className="flex w-full items-center gap-3 bg-black/[0.025] px-4 py-3.5 text-left transition-colors hover:bg-black/[0.04] sm:px-5"
-                  >
-                    <span
-                      className="flex size-8 shrink-0 items-center justify-center rounded bg-primary text-[11px] font-bold text-white"
-                      aria-hidden
+                <div className="flex items-stretch gap-0 bg-black/[0.025]">
+                  <h3 className="m-0 min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(sec.id)}
+                      aria-expanded={isOpen}
+                      className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-black/[0.04] sm:px-5"
                     >
-                      {numLabel}
-                    </span>
-                    <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-ink sm:text-[15px]">
-                      {sec.titulo}
-                    </span>
-                    <span className="shrink-0 text-[11px] tabular-nums text-muted">{sec.items.length} docs</span>
-                    <span className="flex size-8 shrink-0 items-center justify-center text-muted" aria-hidden>
-                      {isOpen ? (
-                        <ChevronDown className="size-5" strokeWidth={2} />
-                      ) : (
-                        <ChevronRight className="size-5" strokeWidth={2} />
-                      )}
-                    </span>
-                  </button>
-                </h3>
+                      <span
+                        className="flex size-8 shrink-0 items-center justify-center rounded bg-primary text-[11px] font-bold text-white"
+                        aria-hidden
+                      >
+                        {numLabel}
+                      </span>
+                      <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-ink sm:text-[15px]">
+                        {sec.titulo}
+                      </span>
+                      {sectionApprovedAt ? (
+                        <span className="shrink-0 rounded-md border border-emerald-600/25 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-900">
+                          Aprobada
+                        </span>
+                      ) : null}
+                      <span className="shrink-0 text-[11px] tabular-nums text-muted">{sec.items.length} docs</span>
+                      <span className="flex size-8 shrink-0 items-center justify-center text-muted" aria-hidden>
+                        {isOpen ? (
+                          <ChevronDown className="size-5" strokeWidth={2} />
+                        ) : (
+                          <ChevronRight className="size-5" strokeWidth={2} />
+                        )}
+                      </span>
+                    </button>
+                  </h3>
+                  {canApproveSection && !sectionApprovedAt ? (
+                    <button
+                      type="button"
+                      className="shrink-0 border-l border-black/8 px-3 text-[11px] font-semibold uppercase tracking-wide text-primary transition hover:bg-primary/[0.06] sm:px-4"
+                      onClick={() => void approveSection(sec.id, sec.titulo)}
+                    >
+                      Aprobar sección
+                    </button>
+                  ) : null}
+                </div>
                 {isOpen ? (
                   <ul className="m-0 list-none divide-y divide-black/6 border-t border-black/6 bg-white p-0">
                     {sec.items.map((it) => {

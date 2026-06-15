@@ -50,6 +50,43 @@ export function parseConstructionPliegoFromSpec(
   return base
 }
 
+export function parseConstructionApprovedChapters(
+  spec: Record<string, unknown> | undefined,
+): Record<number, string> {
+  if (!spec || typeof spec !== 'object') return {}
+  const raw = spec.construction_pliego
+  if (!raw || typeof raw !== 'object') return {}
+  const approved = (raw as ConstructionPliegoPersisted).approved_chapters
+  if (!approved || typeof approved !== 'object') return {}
+  const out: Record<number, string> = {}
+  for (const [key, val] of Object.entries(approved)) {
+    const num = Number(key)
+    if (!Number.isFinite(num)) continue
+    if (val && typeof val === 'object' && typeof val.approved_at === 'string') {
+      out[num] = val.approved_at
+    }
+  }
+  return out
+}
+
+export function serializeConstructionApprovedChapters(
+  approved: Record<number, string>,
+): Record<string, { approved_at: string }> {
+  const out: Record<string, { approved_at: string }> = {}
+  for (const [num, approvedAt] of Object.entries(approved)) {
+    if (approvedAt) out[String(num)] = { approved_at: approvedAt }
+  }
+  return out
+}
+
+export function isConstructionChapterComplete(
+  chapterNum: number,
+  lines: Record<string, ConstructionLineValue>,
+): boolean {
+  const { done, total } = constructionChapterProgress(chapterNum, lines)
+  return total > 0 && done === total
+}
+
 function parseNum(s: string): number | null {
   const t = s.trim().replace(',', '.')
   if (!t) return null

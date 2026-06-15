@@ -17,7 +17,7 @@ export type PriceDatabaseFileRow = {
   created_at: string
 }
 
-const ACCEPT = '.pdf,.xlsx,.xls,.csv'
+const ACCEPT = '.pdf,.xlsx,.xls,.csv,'
 
 const CATEGORY_CARDS = [
   {
