@@ -1,0 +1,4 @@
+role_pairs:
+  - left: TERRAIN
+    right: WALL
+    enabled: false

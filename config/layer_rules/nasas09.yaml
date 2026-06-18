@@ -1,0 +1,35 @@
+rules:
+  - discipline: ARQUITECTURA
+    pattern: "\\b(A[-_ ]?WALL|MUROS?)\\b"
+    role: WALL
+    priority: 250
+    confidence: high
+    reason: nasas_arq_walls
+
+  - discipline: ESTRUCTURA
+    pattern: "\\b(EST[ ._-]*MUROS?|STRUCT[ ._-]*WALL)\\b"
+    role: WALL
+    priority: 250
+    confidence: high
+    reason: nasas_est_walls
+
+  - discipline: ESTRUCTURA
+    pattern: "\\b(EST[ ._-]*COLUMNAS?|COLUMN)\\b"
+    role: COLUMN
+    priority: 240
+    confidence: high
+    reason: nasas_est_columns
+
+  - discipline: ESTRUCTURA
+    pattern: "\\b(VIGA|VIGAS|BEAM|EJE DE VIGA)\\b"
+    role: BEAM
+    priority: 235
+    confidence: medium
+    reason: nasas_est_beams
+
+  - discipline: "*"
+    pattern: "\\b(NOTA|NOTAS|TEXTO|TEXT|DIM|DIMENSION|TARJETA|LEYENDA)\\b"
+    role: ANNOTATION
+    priority: 300
+    confidence: high
+    reason: nasas_annotation

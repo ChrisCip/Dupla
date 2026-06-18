@@ -111,7 +111,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       DUPLA_ROOT: /dupla
       COORDINATION_OUTPUT_ROOT: /app/output
-      COORDINATION_SMOKE_MODE: "true"
+      COORDINATION_SMOKE_MODE: "false"
       PYTHONPATH: /dupla:/app
     ports:
       - "8002:8000"
@@ -134,7 +134,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       DUPLA_ROOT: /dupla
       COORDINATION_OUTPUT_ROOT: /app/output
-      COORDINATION_SMOKE_MODE: "true"
+      COORDINATION_SMOKE_MODE: "false"
       PYTHONPATH: /dupla:/app
     volumes:
       - dupla_coord_outputs:/app/output
