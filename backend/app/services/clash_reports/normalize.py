@@ -357,7 +357,13 @@ def normalize_incident_for_reports(
     except (TypeError, ValueError):
         z_val = None
 
-    severity = str(enriched.get("severity") or compute_severity(area_mm2=area_mm2, z_depth_mm=z_val))
+    severity = str(enriched.get("severity") or "")
+    from app.domain.clash_severity import normalize_severity, resolve_incident_severity
+
+    normalized = normalize_severity(severity)
+    if normalized is None:
+        normalized = resolve_incident_severity(raw, enriched=enriched)
+    severity = normalized
     confidence = confidence_es(raw.get("confidence") or rep.get("confidence") or enriched.get("report_confidence"))
     ha, hb = handles_from_incident(raw)
 

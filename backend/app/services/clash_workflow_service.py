@@ -38,9 +38,15 @@ from app.models.project_clash_event import ProjectClashEvent
 from app.models.project_clash_item import ProjectClashItem
 from app.models.project_clash_job import ProjectClashJob
 from app.models.user import User
+from app.domain.clash_incident_contract import (
+    PlanAliasState,
+    build_incident_contract,
+    is_confirmed_workflow_incident,
+)
+from app.domain.clash_severity import severity_label_es
 from app.services.clash_service import ClashService, extract_clash_artifacts, extract_output_dir
 from app.services.clash_tile_placeholder import ensure_placeholder_tiles
-from app.services.clash_reports.formatting import compute_severity
+from app.services.clash_reports.formatting import layers_from_incident
 from app.services.project_service import ProjectService
 
 WORKFLOW_INGEST_RESULT_KEY = "workflow_ingest"
@@ -107,20 +113,35 @@ def _priority_from_severity(severity: str) -> str:
     return Priority.P3.value
 
 
-def _incident_to_fields(incident: dict[str, Any]) -> dict[str, Any]:
+def _enriched_card_index(artifacts: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    context = _parse_json_field(artifacts.get("coordination_context"))
+    index: dict[str, dict[str, Any]] = {}
+    for key in ("all_incidents", "defendable_incidents", "validation_incidents"):
+        for card in context.get(key) or []:
+            if isinstance(card, dict) and card.get("incident_id"):
+                index[str(card["incident_id"])] = card
+    return index
+
+
+def _incident_to_fields(
+    incident: dict[str, Any],
+    *,
+    plan_state: PlanAliasState,
+    enriched: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     rep = incident.get("representative_conflict") or {}
     pair = incident.get("file_pair") or ("", "")
     file_names = [Path(str(p)).name for p in pair] if isinstance(pair, list) else ["", ""]
     while len(file_names) < 2:
         file_names.append("")
 
-    area = float(rep.get("plan_intersection_area_mm2") or 0.0)
-    z_depth = rep.get("overlap_depth_z_mm")
-    z_val = float(z_depth) if z_depth is not None else None
-    severity = compute_severity(area_mm2=area, z_depth_mm=z_val)
+    contract = build_incident_contract(incident, plan_state=plan_state, enriched=enriched)
+    severity = contract.severity
     layers = rep.get("raw_layers") or []
     layer_a = str(layers[0]) if len(layers) > 0 and layers[0] else None
     layer_b = str(layers[1]) if len(layers) > 1 and layers[1] else None
+    if layer_a is None and layer_b is None:
+        layer_a, layer_b = layers_from_incident(incident)
 
     bounds = incident.get("plan_bounds_mm") or rep.get("plan_intersection_bounds_mm")
     if not bounds or len(bounds) != 4:
@@ -129,8 +150,17 @@ def _incident_to_fields(incident: dict[str, Any]) -> dict[str, Any]:
     if not centroid or len(centroid) != 2:
         centroid = (0.0, 0.0)
 
+    area = float(rep.get("plan_intersection_area_mm2") or 0.0)
+    z_depth = rep.get("overlap_depth_z_mm")
+    z_val = float(z_depth) if z_depth is not None else None
+
+    incident_payload = dict(incident)
+    incident_payload["_workflow_contract"] = contract.workflow_metadata
+
+    clash_code = str(incident.get("incident_id") or "unknown")
+
     return {
-        "clash_code": str(incident.get("incident_id") or "unknown"),
+        "clash_code": clash_code,
         "priority": _priority_from_severity(severity),
         "severity": _safe_enum(severity, {s.value for s in Severity}, Severity.LOW.value),
         "report_confidence": _safe_enum(
@@ -147,7 +177,7 @@ def _incident_to_fields(incident: dict[str, Any]) -> dict[str, Any]:
         "layer_a": layer_a,
         "layer_b": layer_b,
         "observation": None,
-        "recommended_action": "Revisar el par directamente en planta.",
+        "recommended_action": contract.short_label,
         "action_owner": None,
         "centroid_x_mm": float(centroid[0]),
         "centroid_y_mm": float(centroid[1]),
@@ -158,7 +188,14 @@ def _incident_to_fields(incident: dict[str, Any]) -> dict[str, Any]:
         "area_mm2": area,
         "overlap_depth_mm": z_val,
         "member_count": int(incident.get("member_count") or 0),
-        "raw_json": incident,
+        "raw_json": incident_payload,
+        "title_semantic": contract.title_semantic,
+        "short_label": contract.short_label,
+        "table_comment": contract.table_comment,
+        "base_plan_number": contract.base_plan_number,
+        "compared_plan_number": contract.compared_plan_number,
+        "base_full_plan_tile_path": None,
+        "zoom_tile_path": None,
     }
 
 
@@ -205,7 +242,10 @@ class ClashWorkflowService:
                 ensure_placeholder_tiles(upload_root, primary)
         incidents = primary.get("incidents") or []
         if not isinstance(incidents, list) or not incidents:
-            return {"created": 0, "updated": 0, "total": 0}
+            return {"created": 0, "updated": 0, "total": 0, "skipped_candidates": 0}
+
+        enriched_index = _enriched_card_index(artifacts)
+        plan_state = PlanAliasState()
 
         existing = await self._session.execute(
             select(ProjectClashItem.clash_code).where(ProjectClashItem.job_id == job.id)
@@ -214,10 +254,19 @@ class ClashWorkflowService:
 
         created = 0
         updated = 0
+        skipped_candidates = 0
         for inc in incidents:
             if not isinstance(inc, dict):
                 continue
-            fields = _incident_to_fields(inc)
+            if not is_confirmed_workflow_incident(inc):
+                skipped_candidates += 1
+                continue
+            inc_id = str(inc.get("incident_id") or "")
+            fields = _incident_to_fields(
+                inc,
+                plan_state=plan_state,
+                enriched=enriched_index.get(inc_id),
+            )
             code = fields["clash_code"]
             row = await self._session.execute(
                 select(ProjectClashItem).where(
@@ -251,7 +300,12 @@ class ClashWorkflowService:
                 item.updated_at = _now()
                 updated += 1
 
-        return {"created": created, "updated": updated, "total": created + updated}
+        return {
+            "created": created,
+            "updated": updated,
+            "total": created + updated,
+            "skipped_candidates": skipped_candidates,
+        }
 
     def _item_location(self, item: ProjectClashItem):
         offset = None
@@ -329,6 +383,7 @@ class ClashWorkflowService:
             "job_id": str(job.id),
             "priority": pr.value,
             "severity": sev.value,
+            "severity_label": severity_label_es(sev.value),
             "report_confidence": item.report_confidence,
             "status": st.value,
             "status_label": status_label(st),
@@ -345,6 +400,13 @@ class ClashWorkflowService:
             "layers_involved": layers,
             "observation": item.observation,
             "recommended_action": item.recommended_action,
+            "title_semantic": item.title_semantic,
+            "short_label": item.short_label,
+            "table_comment": item.table_comment,
+            "base_plan_number": item.base_plan_number,
+            "compared_plan_number": item.compared_plan_number,
+            "base_full_plan_tile_path": item.base_full_plan_tile_path,
+            "zoom_tile_path": item.zoom_tile_path,
             "action_owner": item.action_owner,
             "assigned_to": item.assigned_to,
             "member_count": item.member_count,

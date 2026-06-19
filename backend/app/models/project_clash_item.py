@@ -56,6 +56,13 @@ class ProjectClashItem(Base):
     alignment_dx_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     alignment_dy_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     raw_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    title_semantic: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
+    short_label: Mapped[Optional[str]] = mapped_column(String(96), nullable=True)
+    table_comment: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
+    base_plan_number: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    compared_plan_number: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    base_full_plan_tile_path: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
+    zoom_tile_path: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
