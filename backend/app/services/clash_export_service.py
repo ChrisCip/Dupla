@@ -144,7 +144,7 @@ class ClashExportService:
         job_id: UUID | None = None,
     ) -> tuple[bytes, str]:
         project = await self._project_svc.get_project(user, project_uuid)
-        workflow = ClashWorkflowService(self._session)
+        workflow = ClashWorkflowService(self._session, self._workspace_id)
         job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
         meta = await self._export_meta(user, project, job)
         revision = self._bump_revision(job, "human")
@@ -183,7 +183,7 @@ class ClashExportService:
         job_id: UUID | None = None,
     ) -> tuple[bytes, str]:
         project = await self._project_svc.get_project(user, project_uuid)
-        workflow = ClashWorkflowService(self._session)
+        workflow = ClashWorkflowService(self._session, self._workspace_id)
         job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
         artifacts = extract_clash_artifacts(job.result if isinstance(job.result, dict) else None)
         meta = await self._export_meta(user, project, job)
@@ -200,7 +200,7 @@ class ClashExportService:
         job_id: UUID | None = None,
     ) -> tuple[bytes, str]:
         project = await self._project_svc.get_project(user, project_uuid)
-        workflow = ClashWorkflowService(self._session)
+        workflow = ClashWorkflowService(self._session, self._workspace_id)
         job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
         meta = await self._export_meta(user, project, job)
         revision = self._bump_revision(job, "final_technical_excel")
@@ -215,7 +215,7 @@ class ClashExportService:
         job_id: UUID | None = None,
     ) -> tuple[bytes, str]:
         project = await self._project_svc.get_project(user, project_uuid)
-        workflow = ClashWorkflowService(self._session)
+        workflow = ClashWorkflowService(self._session, self._workspace_id)
         job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
         meta = await self._export_meta(user, project, job)
         revision = self._bump_revision(job, "final_human")

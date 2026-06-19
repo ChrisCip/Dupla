@@ -43,8 +43,40 @@ from app.services.clash_tile_placeholder import ensure_placeholder_tiles
 from app.services.clash_reports.formatting import compute_severity
 from app.services.project_service import ProjectService
 
+WORKFLOW_INGEST_RESULT_KEY = "workflow_ingest"
+
+
 class WorkflowError(ValueError):
     pass
+
+
+def apply_workflow_ingest_result(
+    job: ProjectClashJob,
+    *,
+    status: str,
+    error: str | None = None,
+    stats: dict[str, int] | None = None,
+) -> None:
+    """Persist workflow ingest outcome on the job result for API visibility and tests."""
+    base: dict[str, Any]
+    if isinstance(job.result, dict):
+        base = dict(job.result)
+    else:
+        base = {}
+    payload: dict[str, Any] = {"status": status, "at": _now().isoformat()}
+    if error:
+        payload["error"] = error
+    if stats is not None:
+        payload["stats"] = stats
+    base[WORKFLOW_INGEST_RESULT_KEY] = payload
+    job.result = base
+
+
+def workflow_ingest_result(job: ProjectClashJob) -> dict[str, Any] | None:
+    if not isinstance(job.result, dict):
+        return None
+    raw = job.result.get(WORKFLOW_INGEST_RESULT_KEY)
+    return raw if isinstance(raw, dict) else None
 
 
 def _now() -> datetime:
@@ -131,10 +163,11 @@ def _incident_to_fields(incident: dict[str, Any]) -> dict[str, Any]:
 
 
 class ClashWorkflowService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
-        self._clash_svc = ClashService(session)
-        self._project_svc = ProjectService(session)
+        self._workspace_id = workspace_id
+        self._clash_svc = ClashService(session, workspace_id)
+        self._project_svc = ProjectService(session, workspace_id)
 
     async def _latest_completed_job(self, user: User, project_uuid: UUID) -> ProjectClashJob:
         job = await self._clash_svc.get_latest_job(user, project_uuid)
