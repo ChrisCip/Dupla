@@ -247,10 +247,10 @@ async def clash_workflow_reanalysis(
     return data
 
 
-@router.get("/{project_uuid}/clash-workflow/tiles/{filename}")
+@router.get("/{project_uuid}/clash-workflow/tiles/{tile_path:path}")
 async def clash_workflow_tile(
     project_uuid: UUID,
-    filename: str,
+    tile_path: str,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
     ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
@@ -261,7 +261,7 @@ async def clash_workflow_tile(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tile not found")
     wf = _workflow_service(session, ws_ctx)
     await wf.ensure_ingested(job, actor=current.email)
-    path = wf.resolve_tile(job, filename)
+    path = wf.resolve_tile(job, tile_path)
     if path is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tile not found")
     await session.commit()

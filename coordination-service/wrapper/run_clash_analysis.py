@@ -207,6 +207,9 @@ def run_clash_analysis(
         "analyzed_documents": artifact_bundle["analyzed_documents"],
         "output_dir": artifact_bundle["paths"]["output_dir"],
     }
+    manifest_path = output_dir / "incident_visual_manifest.json"
+    if manifest_path.is_file():
+        artifacts["incident_visual_manifest"] = manifest_path.read_text(encoding="utf-8")
 
     return {
         "report": report,
