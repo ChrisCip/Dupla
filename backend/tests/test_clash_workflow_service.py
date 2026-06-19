@@ -192,5 +192,6 @@ def test_clash_export_service_requires_workspace_id():
     session = MagicMock()
     workspace_id = uuid.uuid4()
     svc = ClashExportService(session, workspace_id)
+    assert svc._workspace_id == workspace_id
     assert svc._clash_svc._workspace_id == workspace_id
     assert svc._project_svc._workspace_id == workspace_id
