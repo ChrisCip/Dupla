@@ -16,6 +16,7 @@ from app.models.project_clash_job import ProjectClashJob
 from app.models.user import User
 from app.services.clash_excel_export import build_corrida_technical_excel, build_final_technical_excel
 from app.services.clash_reports.coordination_report_pdf import build_coordination_report_pdf
+from app.services.clash_reports.incident_pages_pdf import build_incident_checklist_pdf
 from app.services.clash_reports.data import build_report_bundle
 from app.services.clash_reports.final_pdf import build_final_technical_pdf
 from app.services.clash_reports.human_pdf import build_human_pdf
@@ -76,6 +77,7 @@ def content_disposition_header(filename: str) -> dict[str, str]:
 class ClashExportService:
     def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
+        self._workspace_id = workspace_id
         self._clash_svc = ClashService(session, workspace_id)
         self._project_svc = ProjectService(session, workspace_id)
 
@@ -144,7 +146,7 @@ class ClashExportService:
         job_id: UUID | None = None,
     ) -> tuple[bytes, str]:
         project = await self._project_svc.get_project(user, project_uuid)
-        workflow = ClashWorkflowService(self._session)
+        workflow = ClashWorkflowService(self._session, self._workspace_id)
         job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
         meta = await self._export_meta(user, project, job)
         revision = self._bump_revision(job, "human")
@@ -183,7 +185,7 @@ class ClashExportService:
         job_id: UUID | None = None,
     ) -> tuple[bytes, str]:
         project = await self._project_svc.get_project(user, project_uuid)
-        workflow = ClashWorkflowService(self._session)
+        workflow = ClashWorkflowService(self._session, self._workspace_id)
         job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
         artifacts = extract_clash_artifacts(job.result if isinstance(job.result, dict) else None)
         meta = await self._export_meta(user, project, job)
@@ -200,7 +202,7 @@ class ClashExportService:
         job_id: UUID | None = None,
     ) -> tuple[bytes, str]:
         project = await self._project_svc.get_project(user, project_uuid)
-        workflow = ClashWorkflowService(self._session)
+        workflow = ClashWorkflowService(self._session, self._workspace_id)
         job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
         meta = await self._export_meta(user, project, job)
         revision = self._bump_revision(job, "final_technical_excel")
@@ -215,18 +217,31 @@ class ClashExportService:
         job_id: UUID | None = None,
     ) -> tuple[bytes, str]:
         project = await self._project_svc.get_project(user, project_uuid)
-        workflow = ClashWorkflowService(self._session)
+        workflow = ClashWorkflowService(self._session, self._workspace_id)
         job, items = await workflow.list_workflow_rows_for_export(user, project_uuid, job_id=job_id)
         meta = await self._export_meta(user, project, job)
         revision = self._bump_revision(job, "final_human")
-        tiles_root = workflow.resolve_tiles_root(job)
-        pdf_bytes = build_coordination_report_pdf(
+
+        def _item_tile(item, kind: str):
+            contract = (item.raw_json or {}).get("_workflow_contract") or {}
+            if not contract.get("has_real_visual"):
+                return None
+            if kind == "composed":
+                rel = contract.get("composed_full_page_tile_path")
+            elif kind == "zoom":
+                rel = item.zoom_tile_path or contract.get("zoom_tile_path")
+            else:
+                return None
+            if not rel:
+                return None
+            return workflow._tile_file(job, str(rel))
+
+        pdf_bytes = build_incident_checklist_pdf(
             meta=meta,
             items=items,
-            output_dir=tiles_root,
-            final=True,
             revision_label=f"V.{revision:02d}",
-            tile_path=lambda code, annotated: workflow.tile_path_for_export(job, code, annotated=annotated),
+            tile_resolver=_item_tile,
+            job_id=job.job_id,
         )
         filename = build_export_filename("final_human", meta, revision)
         return pdf_bytes, filename

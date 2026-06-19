@@ -91,6 +91,7 @@ def _is_cad_filename(name: str) -> bool:
 class ClashService:
     def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
+        self._workspace_id = workspace_id
         self._project_svc = ProjectService(session, workspace_id)
 
     async def _all_folders(self, project_id: UUID) -> list[ProjectFileFolder]:
@@ -491,13 +492,7 @@ class ClashService:
                         job.output_dir = output_dir
             else:
                 job.result = raw_result
-            try:
-                from app.services.clash_workflow_service import ClashWorkflowService
-
-                wf = ClashWorkflowService(self._session)
-                await wf.ensure_ingested(job, actor="system")
-            except Exception as exc:
-                logger.warning("Clash workflow ingest after job complete failed: %s", exc)
+            await self._ingest_workflow_after_job_complete(job)
         elif remote_status == "failed":
             job.status = "failed"
             job.error = str(data.get("error") or "Unknown error")
@@ -505,6 +500,20 @@ class ClashService:
             job.status = "processing" if remote_status == "started" else "queued"
 
         return job
+
+    async def _ingest_workflow_after_job_complete(self, job: ProjectClashJob) -> None:
+        from app.services.clash_workflow_service import (
+            ClashWorkflowService,
+            apply_workflow_ingest_result,
+        )
+
+        wf = ClashWorkflowService(self._session, self._workspace_id)
+        try:
+            stats = await wf.ensure_ingested(job, actor="system")
+            apply_workflow_ingest_result(job, status="ok", stats=stats)
+        except Exception as exc:
+            apply_workflow_ingest_result(job, status="failed", error=str(exc))
+            logger.exception("Clash workflow ingest after job complete failed")
 
     async def get_structural_analysis_report(self, user: User, project_uuid: UUID) -> dict[str, Any]:
         job = await self.get_latest_job(user, project_uuid)

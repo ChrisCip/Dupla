@@ -61,6 +61,7 @@ from coordination.reporting.reporting import (
     render_primary_incidents_markdown,
 )
 from coordination.reporting.revision_report import write_revision_reports
+from coordination.reporting.incident_visual_renderer import render_all_incident_visual_artifacts
 from coordination.reporting.tile_renderer import render_all_annotated_tiles, render_all_incident_tiles
 from coordination.selection.coordinate_audit import (
     apply_coordinate_band_gating,
@@ -1671,6 +1672,22 @@ def _run_fast_compare(
             logger.info("Rendered %d incident tiles", len(rendered_tiles))
         except Exception as exc:
             logger.warning("Tile rendering failed: %s", exc)
+    visual_manifest: dict[str, object] = {}
+    if primary_incidents:
+        try:
+            visual_manifest = render_all_incident_visual_artifacts(
+                incidents=primary_incidents,
+                all_elements=all_elements,
+                output_dir=args.output.parent,
+                width_px=800,
+            )
+            logger.info(
+                "Rendered incident visual artifacts: %d base plans, %d overlays",
+                len(visual_manifest.get("base_plans") or {}),
+                len(visual_manifest.get("incidents") or {}),
+            )
+        except Exception as exc:
+            logger.warning("Incident visual artifact rendering failed: %s", exc)
     vision_overrides = {}
     if args.enable_vision_validation and rendered_tiles:
         try:

@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_workspace_context
+from app.domain.workspace_context import WorkspaceContext
 from app.models.user import User
 from app.services.clash_export_service import ClashExportService, content_disposition_header
 from app.services.clash_service import ClashService
@@ -42,11 +43,24 @@ def _query_filters(**kwargs: str | None) -> dict[str, str]:
     return {k: v for k, v in kwargs.items() if v}
 
 
+def _workflow_service(session: AsyncSession, ws_ctx: WorkspaceContext) -> ClashWorkflowService:
+    return ClashWorkflowService(session, ws_ctx.workspace_id)
+
+
+def _export_service(session: AsyncSession, ws_ctx: WorkspaceContext) -> ClashExportService:
+    return ClashExportService(session, ws_ctx.workspace_id)
+
+
+def _clash_service(session: AsyncSession, ws_ctx: WorkspaceContext) -> ClashService:
+    return ClashService(session, ws_ctx.workspace_id)
+
+
 @router.get("/{project_uuid}/clash-workflow/dashboard")
 async def clash_workflow_dashboard(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     priority: Annotated[Optional[str], Query()] = None,
     severity: Annotated[Optional[str], Query()] = None,
     status_filter: Annotated[Optional[str], Query(alias="status")] = None,
@@ -55,7 +69,7 @@ async def clash_workflow_dashboard(
     assigned_to: Annotated[Optional[str], Query()] = None,
     dwg: Annotated[Optional[str], Query()] = None,
 ) -> dict[str, Any]:
-    svc = ClashWorkflowService(session)
+    svc = _workflow_service(session, ws_ctx)
     data = await svc.get_dashboard(
         current,
         project_uuid,
@@ -78,8 +92,9 @@ async def clash_workflow_filters(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> dict[str, Any]:
-    svc = ClashWorkflowService(session)
+    svc = _workflow_service(session, ws_ctx)
     data = await svc.get_filters(current, project_uuid)
     await session.commit()
     return data
@@ -90,6 +105,7 @@ async def clash_workflow_list(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     priority: Annotated[Optional[str], Query()] = None,
     severity: Annotated[Optional[str], Query()] = None,
     status_filter: Annotated[Optional[str], Query(alias="status")] = None,
@@ -98,7 +114,7 @@ async def clash_workflow_list(
     assigned_to: Annotated[Optional[str], Query()] = None,
     dwg: Annotated[Optional[str], Query()] = None,
 ) -> list[dict[str, Any]]:
-    svc = ClashWorkflowService(session)
+    svc = _workflow_service(session, ws_ctx)
     rows = await svc.list_clashes(
         current,
         project_uuid,
@@ -122,8 +138,9 @@ async def clash_workflow_detail(
     item_id: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> dict[str, Any]:
-    svc = ClashWorkflowService(session)
+    svc = _workflow_service(session, ws_ctx)
     data = await svc.get_clash_detail(current, project_uuid, item_id)
     await session.commit()
     return data
@@ -136,8 +153,9 @@ async def clash_workflow_status(
     body: StatusBody,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> dict[str, Any]:
-    svc = ClashWorkflowService(session)
+    svc = _workflow_service(session, ws_ctx)
     data = await svc.change_status(current, project_uuid, item_id, body.status, body.comment)
     await session.commit()
     return data
@@ -150,8 +168,9 @@ async def clash_workflow_decision(
     body: DecisionBody,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> dict[str, Any]:
-    svc = ClashWorkflowService(session)
+    svc = _workflow_service(session, ws_ctx)
     data = await svc.record_decision(current, project_uuid, item_id, body.decision, body.comment)
     await session.commit()
     return data
@@ -164,8 +183,9 @@ async def clash_workflow_assign(
     body: AssignBody,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> dict[str, Any]:
-    svc = ClashWorkflowService(session)
+    svc = _workflow_service(session, ws_ctx)
     data = await svc.assign(current, project_uuid, item_id, body.assigned_to)
     await session.commit()
     return data
@@ -178,8 +198,9 @@ async def clash_workflow_comment(
     body: CommentBody,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> dict[str, Any]:
-    svc = ClashWorkflowService(session)
+    svc = _workflow_service(session, ws_ctx)
     data = await svc.add_comment(current, project_uuid, item_id, body.comment)
     await session.commit()
     return data
@@ -191,12 +212,13 @@ async def clash_workflow_upload_correction(
     item_id: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
     target: Annotated[str, Form()],
     revision_name: Annotated[str, Form()],
     file: Annotated[UploadFile, File()],
 ) -> dict[str, Any]:
     content = await file.read()
-    svc = ClashWorkflowService(session)
+    svc = _workflow_service(session, ws_ctx)
     data = await svc.upload_correction(
         current,
         project_uuid,
@@ -217,29 +239,32 @@ async def clash_workflow_reanalysis(
     body: ReanalysisBody,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> dict[str, Any]:
-    svc = ClashWorkflowService(session)
+    svc = _workflow_service(session, ws_ctx)
     data = await svc.request_reanalysis(current, project_uuid, item_id, outcome=body.outcome)
     await session.commit()
     return data
 
 
-@router.get("/{project_uuid}/clash-workflow/tiles/{filename}")
+@router.get("/{project_uuid}/clash-workflow/tiles/{tile_path:path}")
 async def clash_workflow_tile(
     project_uuid: UUID,
-    filename: str,
+    tile_path: str,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> FileResponse:
-    clash_svc = ClashService(session)
+    clash_svc = _clash_service(session, ws_ctx)
     job = await clash_svc.get_latest_job(current, project_uuid)
     if job is None or job.status != "completed":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tile not found")
-    wf = ClashWorkflowService(session)
+    wf = _workflow_service(session, ws_ctx)
     await wf.ensure_ingested(job, actor=current.email)
-    path = wf.resolve_tile(job, filename)
+    path = wf.resolve_tile(job, tile_path)
     if path is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tile not found")
+    await session.commit()
     return FileResponse(path, media_type="image/svg+xml")
 
 
@@ -248,8 +273,9 @@ async def export_latest_clash_technical_excel(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ClashExportService(session)
+    svc = _export_service(session, ws_ctx)
     data, filename = await svc.export_technical_excel(current, project_uuid)
     await session.commit()
     return Response(
@@ -265,8 +291,9 @@ async def export_clash_technical_excel(
     job_id: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ClashExportService(session)
+    svc = _export_service(session, ws_ctx)
     data, filename = await svc.export_technical_excel(current, project_uuid, job_id=job_id)
     await session.commit()
     return Response(
@@ -281,8 +308,9 @@ async def export_final_technical_pdf(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ClashExportService(session)
+    svc = _export_service(session, ws_ctx)
     data, filename = await svc.export_final_technical_pdf(current, project_uuid)
     await session.commit()
     return Response(content=data, media_type="application/pdf", headers=content_disposition_header(filename))
@@ -293,8 +321,9 @@ async def export_final_technical_excel(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ClashExportService(session)
+    svc = _export_service(session, ws_ctx)
     data, filename = await svc.export_final_technical_excel(current, project_uuid)
     await session.commit()
     return Response(
@@ -309,8 +338,9 @@ async def export_final_human_pdf(
     project_uuid: UUID,
     current: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    ws_ctx: Annotated[WorkspaceContext, Depends(get_workspace_context)],
 ) -> Response:
-    svc = ClashExportService(session)
+    svc = _export_service(session, ws_ctx)
     data, filename = await svc.export_final_human_pdf(current, project_uuid)
     await session.commit()
     return Response(content=data, media_type="application/pdf", headers=content_disposition_header(filename))

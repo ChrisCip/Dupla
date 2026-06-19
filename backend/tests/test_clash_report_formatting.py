@@ -56,6 +56,6 @@ def test_layers_from_source_refs():
 
 
 def test_severity_rule_thresholds():
-    assert compute_severity(area_mm2=300_000, z_depth_mm=10) == "Alta"
-    assert compute_severity(area_mm2=10_000, z_depth_mm=80) == "Media"
-    assert compute_severity(area_mm2=1_000, z_depth_mm=10) == "Baja"
+    assert compute_severity(area_mm2=2_000_000, z_depth_mm=10, member_count=6) == "high"
+    assert compute_severity(area_mm2=750_000, z_depth_mm=250) == "medium"
+    assert compute_severity(area_mm2=1_000, z_depth_mm=10) == "low"

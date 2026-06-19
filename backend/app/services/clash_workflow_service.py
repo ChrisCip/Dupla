@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -38,13 +39,54 @@ from app.models.project_clash_event import ProjectClashEvent
 from app.models.project_clash_item import ProjectClashItem
 from app.models.project_clash_job import ProjectClashJob
 from app.models.user import User
+from app.domain.clash_incident_contract import (
+    PlanAliasState,
+    build_incident_contract,
+    is_confirmed_workflow_incident,
+)
+from app.domain.clash_severity import severity_label_es
 from app.services.clash_service import ClashService, extract_clash_artifacts, extract_output_dir
 from app.services.clash_tile_placeholder import ensure_placeholder_tiles
-from app.services.clash_reports.formatting import compute_severity
+from app.services.clash_reports.formatting import layers_from_incident
 from app.services.project_service import ProjectService
+
+WORKFLOW_INGEST_RESULT_KEY = "workflow_ingest"
+
+_ALLOWED_TILE_PREFIXES = ("base_full/", "overlays/", "composed/", "zoom/")
+_LEGACY_TILE_NAME_RE = re.compile(r"^[\w.-]+\.svg$", re.IGNORECASE)
+
 
 class WorkflowError(ValueError):
     pass
+
+
+def apply_workflow_ingest_result(
+    job: ProjectClashJob,
+    *,
+    status: str,
+    error: str | None = None,
+    stats: dict[str, int] | None = None,
+) -> None:
+    """Persist workflow ingest outcome on the job result for API visibility and tests."""
+    base: dict[str, Any]
+    if isinstance(job.result, dict):
+        base = dict(job.result)
+    else:
+        base = {}
+    payload: dict[str, Any] = {"status": status, "at": _now().isoformat()}
+    if error:
+        payload["error"] = error
+    if stats is not None:
+        payload["stats"] = stats
+    base[WORKFLOW_INGEST_RESULT_KEY] = payload
+    job.result = base
+
+
+def workflow_ingest_result(job: ProjectClashJob) -> dict[str, Any] | None:
+    if not isinstance(job.result, dict):
+        return None
+    raw = job.result.get(WORKFLOW_INGEST_RESULT_KEY)
+    return raw if isinstance(raw, dict) else None
 
 
 def _now() -> datetime:
@@ -75,20 +117,66 @@ def _priority_from_severity(severity: str) -> str:
     return Priority.P3.value
 
 
-def _incident_to_fields(incident: dict[str, Any]) -> dict[str, Any]:
+def _enriched_card_index(artifacts: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    context = _parse_json_field(artifacts.get("coordination_context"))
+    index: dict[str, dict[str, Any]] = {}
+    for key in ("all_incidents", "defendable_incidents", "validation_incidents"):
+        for card in context.get(key) or []:
+            if isinstance(card, dict) and card.get("incident_id"):
+                index[str(card["incident_id"])] = card
+    return index
+
+
+def _load_visual_manifest(artifacts: dict[str, Any], output_dir: str | None) -> dict[str, Any]:
+    raw = artifacts.get("incident_visual_manifest")
+    if isinstance(raw, str) and raw.strip():
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+    if isinstance(raw, dict):
+        return raw
+    if output_dir:
+        manifest_path = Path(output_dir) / "incident_visual_manifest.json"
+        if manifest_path.is_file():
+            try:
+                parsed = json.loads(manifest_path.read_text(encoding="utf-8"))
+                return parsed if isinstance(parsed, dict) else {}
+            except (OSError, json.JSONDecodeError):
+                return {}
+    return {}
+
+
+def _visual_entry_for_incident(manifest: dict[str, Any], incident_id: str) -> dict[str, Any] | None:
+    incidents = manifest.get("incidents")
+    if not isinstance(incidents, dict):
+        return None
+    entry = incidents.get(incident_id)
+    return entry if isinstance(entry, dict) else None
+
+
+def _incident_to_fields(
+    incident: dict[str, Any],
+    *,
+    plan_state: PlanAliasState,
+    enriched: dict[str, Any] | None = None,
+    visual_entry: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     rep = incident.get("representative_conflict") or {}
     pair = incident.get("file_pair") or ("", "")
     file_names = [Path(str(p)).name for p in pair] if isinstance(pair, list) else ["", ""]
     while len(file_names) < 2:
         file_names.append("")
 
-    area = float(rep.get("plan_intersection_area_mm2") or 0.0)
-    z_depth = rep.get("overlap_depth_z_mm")
-    z_val = float(z_depth) if z_depth is not None else None
-    severity = compute_severity(area_mm2=area, z_depth_mm=z_val)
+    contract = build_incident_contract(incident, plan_state=plan_state, enriched=enriched)
+    severity = contract.severity
     layers = rep.get("raw_layers") or []
     layer_a = str(layers[0]) if len(layers) > 0 and layers[0] else None
     layer_b = str(layers[1]) if len(layers) > 1 and layers[1] else None
+    if layer_a is None and layer_b is None:
+        layer_a, layer_b = layers_from_incident(incident)
 
     bounds = incident.get("plan_bounds_mm") or rep.get("plan_intersection_bounds_mm")
     if not bounds or len(bounds) != 4:
@@ -97,8 +185,39 @@ def _incident_to_fields(incident: dict[str, Any]) -> dict[str, Any]:
     if not centroid or len(centroid) != 2:
         centroid = (0.0, 0.0)
 
+    area = float(rep.get("plan_intersection_area_mm2") or 0.0)
+    z_depth = rep.get("overlap_depth_z_mm")
+    z_val = float(z_depth) if z_depth is not None else None
+
+    incident_payload = dict(incident)
+    workflow_meta = dict(contract.workflow_metadata)
+    if visual_entry:
+        workflow_meta.update(
+            {
+                "has_real_visual": bool(visual_entry.get("has_real_visual")),
+                "visual_provenance": visual_entry.get("visual_provenance"),
+                "visual_warnings": visual_entry.get("visual_warnings") or [],
+                "cad_viewbox": visual_entry.get("cad_viewbox"),
+                "incident_overlay_tile_path": visual_entry.get("incident_overlay_tile_path"),
+                "composed_full_page_tile_path": visual_entry.get("composed_full_page_tile_path"),
+            }
+        )
+    else:
+        workflow_meta.update(
+            {
+                "has_real_visual": False,
+                "visual_provenance": "missing_visual_artifacts",
+                "visual_warnings": ["no_incident_visual_manifest_entry"],
+            }
+        )
+    incident_payload["_workflow_contract"] = workflow_meta
+
+    clash_code = str(incident.get("incident_id") or "unknown")
+    base_full_plan_tile_path = (visual_entry or {}).get("base_full_plan_tile_path")
+    zoom_tile_path = (visual_entry or {}).get("zoom_tile_path")
+
     return {
-        "clash_code": str(incident.get("incident_id") or "unknown"),
+        "clash_code": clash_code,
         "priority": _priority_from_severity(severity),
         "severity": _safe_enum(severity, {s.value for s in Severity}, Severity.LOW.value),
         "report_confidence": _safe_enum(
@@ -115,7 +234,7 @@ def _incident_to_fields(incident: dict[str, Any]) -> dict[str, Any]:
         "layer_a": layer_a,
         "layer_b": layer_b,
         "observation": None,
-        "recommended_action": "Revisar el par directamente en planta.",
+        "recommended_action": contract.short_label,
         "action_owner": None,
         "centroid_x_mm": float(centroid[0]),
         "centroid_y_mm": float(centroid[1]),
@@ -126,15 +245,23 @@ def _incident_to_fields(incident: dict[str, Any]) -> dict[str, Any]:
         "area_mm2": area,
         "overlap_depth_mm": z_val,
         "member_count": int(incident.get("member_count") or 0),
-        "raw_json": incident,
+        "raw_json": incident_payload,
+        "title_semantic": contract.title_semantic,
+        "short_label": contract.short_label,
+        "table_comment": contract.table_comment,
+        "base_plan_number": contract.base_plan_number,
+        "compared_plan_number": contract.compared_plan_number,
+        "base_full_plan_tile_path": base_full_plan_tile_path,
+        "zoom_tile_path": zoom_tile_path,
     }
 
 
 class ClashWorkflowService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, workspace_id: UUID) -> None:
         self._session = session
-        self._clash_svc = ClashService(session)
-        self._project_svc = ProjectService(session)
+        self._workspace_id = workspace_id
+        self._clash_svc = ClashService(session, workspace_id)
+        self._project_svc = ProjectService(session, workspace_id)
 
     async def _latest_completed_job(self, user: User, project_uuid: UUID) -> ProjectClashJob:
         job = await self._clash_svc.get_latest_job(user, project_uuid)
@@ -161,18 +288,25 @@ class ClashWorkflowService:
             job.output_dir = str(output_dir)
 
         primary = _parse_json_field(artifacts.get("primary_incidents"))
+        visual_manifest = _load_visual_manifest(artifacts, output_dir)
         if primary.get("incidents"):
             coord_has_tiles = bool(
-                output_dir
-                and (Path(output_dir) / "tiles").is_dir()
-                and any((Path(output_dir) / "tiles").glob("*.svg"))
+                visual_manifest.get("incidents")
+                or (
+                    output_dir
+                    and (Path(output_dir) / "tiles").is_dir()
+                    and any((Path(output_dir) / "tiles").glob("**/*.svg"))
+                )
             )
             if not coord_has_tiles:
                 upload_root = Path(get_settings().upload_root) / "clash_tiles" / str(job.id)
                 ensure_placeholder_tiles(upload_root, primary)
         incidents = primary.get("incidents") or []
         if not isinstance(incidents, list) or not incidents:
-            return {"created": 0, "updated": 0, "total": 0}
+            return {"created": 0, "updated": 0, "total": 0, "skipped_candidates": 0}
+
+        enriched_index = _enriched_card_index(artifacts)
+        plan_state = PlanAliasState()
 
         existing = await self._session.execute(
             select(ProjectClashItem.clash_code).where(ProjectClashItem.job_id == job.id)
@@ -181,10 +315,20 @@ class ClashWorkflowService:
 
         created = 0
         updated = 0
+        skipped_candidates = 0
         for inc in incidents:
             if not isinstance(inc, dict):
                 continue
-            fields = _incident_to_fields(inc)
+            if not is_confirmed_workflow_incident(inc):
+                skipped_candidates += 1
+                continue
+            inc_id = str(inc.get("incident_id") or "")
+            fields = _incident_to_fields(
+                inc,
+                plan_state=plan_state,
+                enriched=enriched_index.get(inc_id),
+                visual_entry=_visual_entry_for_incident(visual_manifest, inc_id),
+            )
             code = fields["clash_code"]
             row = await self._session.execute(
                 select(ProjectClashItem).where(
@@ -218,7 +362,12 @@ class ClashWorkflowService:
                 item.updated_at = _now()
                 updated += 1
 
-        return {"created": created, "updated": updated, "total": created + updated}
+        return {
+            "created": created,
+            "updated": updated,
+            "total": created + updated,
+            "skipped_candidates": skipped_candidates,
+        }
 
     def _item_location(self, item: ProjectClashItem):
         offset = None
@@ -236,21 +385,50 @@ class ClashWorkflowService:
         )
 
     def _tile_file(self, job: ProjectClashJob, filename: str) -> Path | None:
-        if ".." in filename or "/" in filename or "\\" in filename or not filename.endswith(".svg"):
+        """Resolve a tile SVG path safely inside ``{output}/tiles``."""
+        if not filename or not str(filename).strip():
             return None
-        candidates: list[Path] = []
+        raw = str(filename).replace("\\", "/").strip()
+        if raw.startswith("/") or Path(raw).is_absolute():
+            return None
+        if ".." in raw.split("/"):
+            return None
+        if not raw.lower().endswith(".svg"):
+            return None
+
+        rel = raw[6:] if raw.startswith("tiles/") else raw
+        is_legacy_flat = "/" not in rel and bool(_LEGACY_TILE_NAME_RE.match(rel))
+        if not is_legacy_flat and not any(rel.startswith(prefix) for prefix in _ALLOWED_TILE_PREFIXES):
+            return None
+
+        roots: list[Path] = []
         if job.output_dir:
-            candidates.append(Path(job.output_dir) / "tiles" / filename)
-        candidates.append(
-            Path(get_settings().upload_root) / "clash_tiles" / str(job.id) / "tiles" / filename
-        )
-        for path in candidates:
-            if path.is_file():
-                return path
+            roots.append(Path(job.output_dir).resolve())
+        roots.append((Path(get_settings().upload_root) / "clash_tiles" / str(job.id)).resolve())
+
+        for root in roots:
+            tiles_root = (root / "tiles").resolve()
+            if not tiles_root.is_dir():
+                continue
+            candidate = (tiles_root / rel).resolve()
+            try:
+                candidate.relative_to(tiles_root)
+            except ValueError:
+                continue
+            if candidate.is_file() and candidate.suffix.lower() == ".svg":
+                return candidate
+            if is_legacy_flat:
+                flat = (tiles_root / Path(rel).name).resolve()
+                try:
+                    flat.relative_to(tiles_root)
+                except ValueError:
+                    continue
+                if flat.is_file():
+                    return flat
         return None
 
     def _preview_payload(
-        self, project_uuid: UUID, job: ProjectClashJob, clash_code: str
+        self, project_uuid: UUID, job: ProjectClashJob, clash_code: str, item: ProjectClashItem | None = None
     ) -> dict[str, Any]:
         annotated_name = f"{clash_code}_annotated.svg"
         plain_name = f"{clash_code}.svg"
@@ -259,11 +437,37 @@ class ClashWorkflowService:
         base = f"/api/projects/{project_uuid}/clash-workflow/tiles"
         annotated_url = f"{base}/{annotated_name}" if annotated else None
         plain_url = f"{base}/{plain_name}" if plain else None
+
+        composed_url = overlay_url = zoom_url = base_full_url = None
+        has_real_visual = False
+        visual_warnings: list[str] = []
+        if item and item.raw_json:
+            contract = item.raw_json.get("_workflow_contract") or {}
+            has_real_visual = bool(contract.get("has_real_visual"))
+            visual_warnings = list(contract.get("visual_warnings") or [])
+            overlay_rel = contract.get("incident_overlay_tile_path")
+            composed_rel = contract.get("composed_full_page_tile_path")
+            if item.base_full_plan_tile_path and self._tile_file(job, item.base_full_plan_tile_path):
+                base_full_url = f"{base}/{item.base_full_plan_tile_path}"
+            if overlay_rel and self._tile_file(job, str(overlay_rel)):
+                overlay_url = f"{base}/{overlay_rel}"
+            if composed_rel and self._tile_file(job, str(composed_rel)):
+                composed_url = f"{base}/{composed_rel}"
+            if item.zoom_tile_path and self._tile_file(job, item.zoom_tile_path):
+                zoom_url = f"{base}/{item.zoom_tile_path}"
+
+        default_url = composed_url or annotated_url or plain_url
         return {
-            "available": bool(annotated_url or plain_url),
+            "available": bool(default_url),
             "annotated_url": annotated_url,
             "plain_url": plain_url,
-            "default_url": annotated_url or plain_url,
+            "composed_full_page_url": composed_url,
+            "overlay_url": overlay_url,
+            "base_full_plan_url": base_full_url,
+            "zoom_url": zoom_url,
+            "default_url": default_url,
+            "has_real_visual": has_real_visual,
+            "visual_warnings": visual_warnings,
             "format": "svg",
             "description": "Vista de planta con geometría superpuesta de ambos DWG.",
         }
@@ -296,6 +500,7 @@ class ClashWorkflowService:
             "job_id": str(job.id),
             "priority": pr.value,
             "severity": sev.value,
+            "severity_label": severity_label_es(sev.value),
             "report_confidence": item.report_confidence,
             "status": st.value,
             "status_label": status_label(st),
@@ -312,6 +517,13 @@ class ClashWorkflowService:
             "layers_involved": layers,
             "observation": item.observation,
             "recommended_action": item.recommended_action,
+            "title_semantic": item.title_semantic,
+            "short_label": item.short_label,
+            "table_comment": item.table_comment,
+            "base_plan_number": item.base_plan_number,
+            "compared_plan_number": item.compared_plan_number,
+            "base_full_plan_tile_path": item.base_full_plan_tile_path,
+            "zoom_tile_path": item.zoom_tile_path,
             "action_owner": item.action_owner,
             "assigned_to": item.assigned_to,
             "member_count": item.member_count,
@@ -480,7 +692,7 @@ class ClashWorkflowService:
             self._correction_payload(c)
             for c in sorted(item.corrections, key=lambda c: c.uploaded_at or _now())
         ]
-        payload["visual_preview"] = self._preview_payload(project_uuid, job, item.clash_code)
+        payload["visual_preview"] = self._preview_payload(project_uuid, job, item.clash_code, item)
         payload["dwg_comparison"] = {
             "dwg_a": {
                 "file_name": item.dwg_a,

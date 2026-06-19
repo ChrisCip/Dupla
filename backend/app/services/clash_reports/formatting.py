@@ -125,22 +125,24 @@ def format_bounds(bounds: Any) -> str:
     ).replace(",", ".")
 
 
-def compute_severity(*, area_mm2: Any, z_depth_mm: Any) -> str:
-    area_m2 = 0.0
-    z_depth = 0.0
+def compute_severity(*, area_mm2: Any, z_depth_mm: Any, member_count: int = 1) -> str:
+    """Return internal severity enum value (critical/high/medium/low)."""
+    from app.domain.clash_severity import score_to_severity
+
     try:
-        area_m2 = float(area_mm2 or 0) / 1_000_000.0
+        area = float(area_mm2 or 0.0)
     except (TypeError, ValueError):
-        pass
+        area = 0.0
     try:
-        z_depth = float(z_depth_mm or 0)
+        z_depth = float(z_depth_mm or 0.0) if z_depth_mm is not None else 0.0
     except (TypeError, ValueError):
-        pass
-    if z_depth >= SEVERITY_HIGH_Z_MM or area_m2 >= SEVERITY_HIGH_AREA_M2:
-        return "Alta"
-    if z_depth >= SEVERITY_MEDIUM_Z_MM or area_m2 >= SEVERITY_MEDIUM_AREA_M2:
-        return "Media"
-    return "Baja"
+        z_depth = 0.0
+    return score_to_severity(
+        member_count=member_count,
+        area_mm2=area,
+        overlap_depth_mm=z_depth,
+        report_confidence="medium",
+    )
 
 
 def confidence_es(value: Any) -> str:
