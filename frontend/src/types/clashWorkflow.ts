@@ -21,12 +21,33 @@ export type ReviewerDecision =
 export type Priority = 'P1' | 'P2' | 'P3'
 export type Severity = 'critical' | 'high' | 'medium' | 'low'
 
+export type ClashVisualPreview = {
+  available: boolean
+  annotated_url: string | null
+  plain_url: string | null
+  composed_full_page_url: string | null
+  base_full_plan_url: string | null
+  overlay_url: string | null
+  zoom_url: string | null
+  default_url: string | null
+  has_real_visual?: boolean
+  visual_warnings?: string[]
+  format: string
+  description: string
+}
+
 export type ClashRow = {
   id: string
   clash_code: string
   job_id: string
   priority: Priority
   severity: Severity
+  severity_label?: string | null
+  title_semantic?: string | null
+  short_label?: string | null
+  table_comment?: string | null
+  base_plan_number?: string | null
+  compared_plan_number?: string | null
   report_confidence: string
   status: ClashStatus
   status_label: string
@@ -92,14 +113,7 @@ export type ClashCorrection = {
 export type ClashDetail = ClashRow & {
   audit_trail: ClashEvent[]
   corrections: ClashCorrection[]
-  visual_preview?: {
-    available: boolean
-    annotated_url: string | null
-    plain_url: string | null
-    default_url: string | null
-    format: string
-    description: string
-  }
+  visual_preview?: ClashVisualPreview
   dwg_comparison?: {
     dwg_a: { file_name: string | null; discipline: string | null; layer: string | null }
     dwg_b: { file_name: string | null; discipline: string | null; layer: string | null }

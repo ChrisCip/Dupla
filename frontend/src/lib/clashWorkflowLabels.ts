@@ -48,7 +48,7 @@ export const SEVERITY_CLASSES: Record<Severity, string> = {
   critical: 'bg-primary/15 text-primary border border-primary/30',
   high: 'bg-orange-500/12 text-orange-900 border border-orange-500/30',
   medium: 'bg-amber-500/12 text-amber-900 border border-amber-500/30',
-  low: 'bg-black/[0.06] text-muted border border-black/10',
+  low: 'bg-blue-500/12 text-blue-900 border border-blue-500/30',
 }
 
 export const PRIORITY_CLASSES: Record<Priority, string> = {
