@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import {
@@ -12,7 +12,6 @@ import {
   updateClashWorkflowStatus,
   uploadClashCorrection,
 } from '../../api/clashWorkflow'
-import { apiFetch } from '../../api/client'
 import {
   DECISION_LABELS,
   DECISION_ORDER,
@@ -22,6 +21,7 @@ import {
   STATUS_LABELS,
   STATUS_TRANSITIONS,
 } from '../../lib/clashWorkflowLabels'
+import { incidentSubtitle, incidentTitle, severityDisplayLabel } from '../../lib/clashSeverity'
 import type {
   ClashDetail,
   ClashFilters,
@@ -34,6 +34,7 @@ import type {
   Severity,
 } from '../../types/clashWorkflow'
 import { Card } from '../Card'
+import { IncidentVisualPreview } from './IncidentVisualPreview'
 
 const CORRECTION_TARGET_OPTIONS: { value: CorrectionTarget; label: string }[] = [
   { value: 'dwg_a', label: 'DWG A' },
@@ -79,8 +80,29 @@ function PriorityBadge({ priority }: { priority: Priority }) {
   return <Badge className={PRIORITY_CLASSES[priority]}>{priority}</Badge>
 }
 
-function SeverityBadge({ severity }: { severity: Severity }) {
-  return <Badge className={SEVERITY_CLASSES[severity]}>{severity}</Badge>
+function SeverityBadge({ severity, label }: { severity: Severity; label: string }) {
+  return <Badge className={SEVERITY_CLASSES[severity]}>{label}</Badge>
+}
+
+function planLabel(base: string | null | undefined, fallback: string | null | undefined): string {
+  return base?.trim() || fallback?.trim() || '—'
+}
+
+function IncidentPlans({ clash }: { clash: ClashRow }) {
+  const base = planLabel(clash.base_plan_number, clash.dwg_a)
+  const compared = planLabel(clash.compared_plan_number, clash.dwg_b)
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <div className="min-w-0 rounded-md border border-primary/20 bg-primary/[0.05] px-2 py-1.5">
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-primary">Plano base</div>
+        <div className="truncate text-xs font-medium text-ink">{base}</div>
+      </div>
+      <div className="min-w-0 rounded-md border border-black/15 bg-black/[0.03] px-2 py-1.5">
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">Plano comparado</div>
+        <div className="truncate text-xs font-medium text-ink">{compared}</div>
+      </div>
+    </div>
+  )
 }
 
 function StatusBadge({ status }: { status: ClashStatus }) {
@@ -118,87 +140,19 @@ function MetricCard({
   )
 }
 
-function AuthenticatedSvg({ path, token, alt }: { path: string; token: string | null; alt: string }) {
-  const [src, setSrc] = useState<string | null>(null)
-  useEffect(() => {
-    if (!token || !path) return
-    let cancelled = false
-    let objectUrl: string | null = null
-    void (async () => {
-      const res = await apiFetch(path, { token })
-      if (!res.ok || cancelled) return
-      const blob = await res.blob()
-      objectUrl = URL.createObjectURL(blob)
-      if (!cancelled) setSrc(objectUrl)
-    })()
-    return () => {
-      cancelled = true
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [path, token])
-  if (!src) {
-    return <div className="aspect-[2/1] animate-pulse bg-black/[0.04]" />
-  }
-  return <img src={src} alt={alt} className="block w-full bg-white" loading="lazy" />
-}
-
-function DwgComparisonView({ clash, token }: { clash: ClashDetail; token: string | null }) {
+function IncidentVisualSection({ clash, token }: { clash: ClashDetail; token: string | null }) {
   const preview = clash.visual_preview
-  const [mode, setMode] = useState<'annotated' | 'plain'>('annotated')
-  const tilePath = useMemo(() => {
-    if (!preview?.available) return null
-    if (mode === 'annotated' && preview.annotated_url) return preview.annotated_url
-    if (mode === 'plain' && preview.plain_url) return preview.plain_url
-    return preview.default_url
-  }, [preview, mode])
-
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="min-w-0 rounded-md border border-primary/20 bg-primary/[0.05] px-2 py-1.5">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-primary">DWG A</div>
-          <div className="truncate text-xs font-medium text-ink">{clash.dwg_a ?? '—'}</div>
-        </div>
-        <div className="min-w-0 rounded-md border border-black/15 bg-black/[0.03] px-2 py-1.5">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">DWG B</div>
-          <div className="truncate text-xs font-medium text-ink">{clash.dwg_b ?? '—'}</div>
-        </div>
-      </div>
-      {preview?.available && (preview.annotated_url || preview.plain_url) ? (
-        <div className="flex gap-1">
-          {preview.annotated_url ? (
-            <button
-              type="button"
-              onClick={() => setMode('annotated')}
-              className={`rounded px-2 py-0.5 text-[10px] ${
-                mode === 'annotated' ? 'bg-primary text-white' : 'bg-black/[0.06] text-muted'
-              }`}
-            >
-              Anotado
-            </button>
-          ) : null}
-          {preview.plain_url ? (
-            <button
-              type="button"
-              onClick={() => setMode('plain')}
-              className={`rounded px-2 py-0.5 text-[10px] ${
-                mode === 'plain' ? 'bg-primary text-white' : 'bg-black/[0.06] text-muted'
-              }`}
-            >
-              Plano
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-      <div className="overflow-hidden rounded-lg border border-black/10 bg-white">
-        {tilePath ? (
-          <AuthenticatedSvg path={tilePath} token={token} alt={`Comparación ${clash.clash_code}`} />
-        ) : (
-          <div className="flex aspect-[2/1] items-center justify-center text-xs text-muted">
-            Sin vista SVG para esta incidencia
-          </div>
-        )}
-      </div>
+      <IncidentPlans clash={clash} />
+      <IncidentVisualPreview
+        token={token}
+        composedFullPageUrl={preview?.composed_full_page_url}
+        zoomUrl={preview?.zoom_url}
+        hasRealVisual={preview?.has_real_visual}
+        visualWarnings={preview?.visual_warnings}
+        title={incidentTitle(clash)}
+      />
     </div>
   )
 }
@@ -405,11 +359,15 @@ function ClashDetailPanel({
   return (
     <aside className="sticky top-4 max-h-[calc(100vh-8rem)] w-full shrink-0 overflow-y-auto border-l border-black/10 bg-white lg:w-[420px]">
       <div className="flex items-start justify-between p-4 pb-0">
-        <div>
-          <div className="font-mono text-sm text-muted">{clash.clash_code}</div>
-          <div className="mt-1 flex flex-wrap gap-2">
+        <div className="min-w-0 flex-1">
+          <h4 className="text-sm font-semibold leading-snug text-ink break-words">{incidentTitle(clash)}</h4>
+          {incidentSubtitle(clash) ? (
+            <p className="mt-1 text-xs text-muted break-words">{incidentSubtitle(clash)}</p>
+          ) : null}
+          <p className="mt-1 font-mono text-[10px] text-muted">{clash.clash_code}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
             <PriorityBadge priority={clash.priority} />
-            <SeverityBadge severity={clash.severity} />
+            <SeverityBadge severity={clash.severity} label={severityDisplayLabel(clash)} />
             <StatusBadge status={clash.status} />
           </div>
         </div>
@@ -419,7 +377,19 @@ function ClashDetailPanel({
       </div>
       <div className="space-y-4 p-4">
         {error ? <p className="text-sm text-primary">{error}</p> : null}
-        <DwgComparisonView clash={clash} token={token} />
+        <IncidentVisualSection clash={clash} token={token} />
+        {clash.table_comment?.trim() ? (
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">Observación</h4>
+            <p className="mt-1 text-sm text-ink break-words whitespace-pre-wrap">{clash.table_comment}</p>
+          </div>
+        ) : null}
+        {clash.recommended_action?.trim() ? (
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">Acción sugerida</h4>
+            <p className="mt-1 text-sm text-ink break-words">{clash.recommended_action}</p>
+          </div>
+        ) : null}
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">Decisión del revisor</h4>
           <p className="mt-1 text-sm text-ink">
@@ -693,7 +663,8 @@ export function ClashWorkflowPanel({ projectUuid, token, visible }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-black/10 text-left text-xs font-semibold uppercase tracking-wide text-muted">
-                <th className="px-3 py-2">Código</th>
+                <th className="px-3 py-2">Incidencia</th>
+                <th className="px-3 py-2">Subtítulo</th>
                 <th className="px-3 py-2">Prio</th>
                 <th className="px-3 py-2">Sev</th>
                 <th className="px-3 py-2">Estado</th>
@@ -713,12 +684,20 @@ export function ClashWorkflowPanel({ projectUuid, token, visible }: Props) {
                     selected === r.id ? 'bg-primary/[0.08]' : ''
                   }`}
                 >
-                  <td className="px-3 py-2 font-mono text-xs">{r.clash_code}</td>
+                  <td className="max-w-[200px] px-3 py-2">
+                    <div className="truncate text-xs font-medium text-ink" title={incidentTitle(r)}>
+                      {incidentTitle(r)}
+                    </div>
+                    <div className="truncate font-mono text-[10px] text-muted">{r.clash_code}</div>
+                  </td>
+                  <td className="max-w-[140px] truncate px-3 py-2 text-xs text-muted" title={r.short_label ?? ''}>
+                    {incidentSubtitle(r) ?? '—'}
+                  </td>
                   <td className="px-3 py-2">
                     <PriorityBadge priority={r.priority} />
                   </td>
                   <td className="px-3 py-2">
-                    <SeverityBadge severity={r.severity} />
+                    <SeverityBadge severity={r.severity} label={severityDisplayLabel(r)} />
                   </td>
                   <td className="px-3 py-2">
                     <StatusBadge status={r.status} />
@@ -736,7 +715,7 @@ export function ClashWorkflowPanel({ projectUuid, token, visible }: Props) {
               ))}
               {!loading && rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-muted">
+                  <td colSpan={10} className="px-3 py-8 text-center text-muted">
                     No hay clashes para estos filtros.
                   </td>
                 </tr>

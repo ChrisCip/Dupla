@@ -673,7 +673,7 @@ export function WorkspaceHallazgosTab({
               onClick={() => handleDownload('human')}
             >
               <FileWarning className="mr-2 h-4 w-4 text-muted" aria-hidden />
-              {pdfBusy === 'human' ? 'Descargando…' : 'Reporte de coordinación (PDF)'}
+              {pdfBusy === 'human' ? 'Descargando…' : 'Descargar reporte intermedio'}
             </button>
           </div>
         </section>
@@ -700,7 +700,7 @@ export function WorkspaceHallazgosTab({
               disabled={pdfBusy !== null}
               onClick={() => handleDownload('final_human')}
             >
-              {pdfBusy === 'final_human' ? 'Descargando…' : 'Informe final de coordinación (PDF)'}
+              {pdfBusy === 'final_human' ? 'Descargando…' : 'Descargar reporte final checklist'}
             </button>
           </div>
         </section>
