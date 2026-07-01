@@ -8,6 +8,7 @@ from coordination.selection.coordinate_audit import (
     apply_coordinate_band_gating,
     build_pair_schedule,
     build_source_audit,
+    filter_conflicts_by_scheduled_pairs,
 )
 from coordination.selection.fast_compare import PreMatchCandidate
 from coordination.core.models_25d import Discipline, Element25D, ZInterval
@@ -340,3 +341,223 @@ def test_build_pair_schedule_promotes_cross_cohort_pair_from_audit() -> None:
     assert schedule[0].selection_reason == "promoted_from_coordinate_audit"
     assert schedule[0].documentary_cohort_relation == "cross_cohort_promoted"
     assert "audit_promoted" in schedule[0].reason_codes
+
+
+def test_build_pair_schedule_arq_est_unchanged_with_compared_roles() -> None:
+    arch = SourceAudit(
+        rel_path="PLANOS/ARQ/PLANTA.dwg",
+        file_name="PLANTA.dwg",
+        suffix=".dwg",
+        issue_key="dir:arq",
+        cohort_id="tortuga_smoke",
+        discipline=Discipline.ARCH.value,
+        level_id="NPT_P1",
+        level_source="default_level",
+        coordinate_band_key=(0, -1),
+        coordinate_band="X~0.29M, Y~-0.10M",
+        audit_status="eligible",
+        roles_detected=["WALL", "SLAB"],
+    )
+    struc = arch.model_copy(
+        update={
+            "rel_path": "PLANOS/EST/E03.dwg",
+            "file_name": "E03.dwg",
+            "discipline": Discipline.STRUC.value,
+            "roles_detected": ["BEAM", "SLAB"],
+        }
+    )
+    pre_match = PreMatchCandidate(
+        file_a=arch.rel_path,
+        file_b=struc.rel_path,
+        file_name_a=arch.file_name,
+        file_name_b=struc.file_name,
+        issue_key_a="dir:arq",
+        issue_key_b="dir:est",
+        discipline_a=Discipline.ARCH.value,
+        discipline_b=Discipline.STRUC.value,
+        level_id="NPT_P1",
+        drawing_type_a="generic",
+        drawing_type_b="generic",
+        drawing_type_compatibility=1.0,
+        revision_proximity=1.0,
+        geometry_overlap_hint=1.0,
+        anchor_quality=1.0,
+        score=1.0,
+        decision="auto_comparable",
+        reason_codes=(),
+        documentary_cohort_relation="same_cohort",
+    )
+
+    schedule = build_pair_schedule(
+        [arch, struc],
+        required_disciplines=(Discipline.ARCH, Discipline.STRUC),
+        pre_match_candidates=[pre_match],
+        trust_cohort_bands=True,
+    )
+
+    assert len(schedule) == 1
+    assert schedule[0].scheduled is True
+    assert schedule[0].arq_roles_present == ["SLAB", "WALL"]
+    assert schedule[0].est_roles_present == ["BEAM", "SLAB"]
+
+
+def test_build_pair_schedule_arq_elec_not_blocked_role_missing() -> None:
+    arch = SourceAudit(
+        rel_path="PLANOS/ARQ/PLANTA.dwg",
+        file_name="PLANTA.dwg",
+        suffix=".dwg",
+        issue_key="dir:arq",
+        cohort_id="tortuga_smoke",
+        discipline=Discipline.ARCH.value,
+        level_id="NPT_P1",
+        level_source="default_level",
+        coordinate_band_key=(0, -1),
+        coordinate_band="X~0.29M, Y~-0.10M",
+        audit_status="eligible",
+        roles_detected=["WALL", "SLAB"],
+    )
+    elec = arch.model_copy(
+        update={
+            "rel_path": "PLANOS/ELEC/E01.dwg",
+            "file_name": "E01.dwg",
+            "discipline": Discipline.MEP_ELEC.value,
+            "roles_detected": ["ELECTRICAL_ROUTE", "LIGHTING_FIXTURE"],
+        }
+    )
+    pre_match = PreMatchCandidate(
+        file_a=arch.rel_path,
+        file_b=elec.rel_path,
+        file_name_a=arch.file_name,
+        file_name_b=elec.file_name,
+        issue_key_a="dir:arq",
+        issue_key_b="dir:elec",
+        discipline_a=Discipline.ARCH.value,
+        discipline_b=Discipline.MEP_ELEC.value,
+        level_id="NPT_P1",
+        drawing_type_a="generic",
+        drawing_type_b="generic",
+        drawing_type_compatibility=1.0,
+        revision_proximity=1.0,
+        geometry_overlap_hint=1.0,
+        anchor_quality=1.0,
+        score=1.0,
+        decision="auto_comparable",
+        reason_codes=(),
+        documentary_cohort_relation="same_cohort",
+    )
+
+    schedule = build_pair_schedule(
+        [arch, elec],
+        required_disciplines=(Discipline.ARCH, Discipline.STRUC, Discipline.MEP_ELEC),
+        pre_match_candidates=[pre_match],
+        trust_cohort_bands=True,
+    )
+
+    assert len(schedule) == 1
+    assert schedule[0].scheduled is True
+    assert schedule[0].readiness != "BLOCKED_ROLE_MISSING"
+    assert schedule[0].est_roles_present == ["ELECTRICAL_ROUTE", "LIGHTING_FIXTURE"]
+
+
+def test_build_pair_schedule_elec_est_stays_blocked_without_arq() -> None:
+    elec = SourceAudit(
+        rel_path="PLANOS/ELEC/E01.dwg",
+        file_name="E01.dwg",
+        suffix=".dwg",
+        issue_key="dir:elec",
+        cohort_id="tortuga_smoke",
+        discipline=Discipline.MEP_ELEC.value,
+        level_id="NPT_P1",
+        level_source="default_level",
+        coordinate_band_key=(0, -1),
+        coordinate_band="X~0.32M, Y~-0.22M",
+        audit_status="eligible",
+        roles_detected=["ELECTRICAL_ROUTE"],
+    )
+    struc = elec.model_copy(
+        update={
+            "rel_path": "PLANOS/EST/E03.dwg",
+            "file_name": "E03.dwg",
+            "discipline": Discipline.STRUC.value,
+            "roles_detected": ["BEAM", "SLAB"],
+        }
+    )
+    pre_match = PreMatchCandidate(
+        file_a=elec.rel_path,
+        file_b=struc.rel_path,
+        file_name_a=elec.file_name,
+        file_name_b=struc.file_name,
+        issue_key_a="dir:elec",
+        issue_key_b="dir:est",
+        discipline_a=Discipline.MEP_ELEC.value,
+        discipline_b=Discipline.STRUC.value,
+        level_id="NPT_P1",
+        drawing_type_a="generic",
+        drawing_type_b="generic",
+        drawing_type_compatibility=1.0,
+        revision_proximity=1.0,
+        geometry_overlap_hint=1.0,
+        anchor_quality=1.0,
+        score=1.0,
+        decision="auto_comparable",
+        reason_codes=(),
+        documentary_cohort_relation="same_cohort",
+    )
+
+    schedule = build_pair_schedule(
+        [elec, struc],
+        required_disciplines=(Discipline.STRUC, Discipline.MEP_ELEC),
+        pre_match_candidates=[pre_match],
+        trust_cohort_bands=True,
+    )
+
+    assert len(schedule) == 1
+    assert schedule[0].scheduled is False
+    assert schedule[0].block_reason == "role_missing"
+    assert schedule[0].readiness == "BLOCKED_ROLE_MISSING"
+
+
+def test_filter_conflicts_by_scheduled_pairs_suppresses_elec_est() -> None:
+    """Conflicts from unscheduled discipline pairs (ELEC↔EST) are suppressed.
+
+    Given ARQ↔EST scheduled=True and ARQ↔ELEC scheduled=True but ELEC↔EST scheduled=False,
+    any primary conflict between ELECTRICIDAD and ESTRUCTURA must be filtered out.
+    """
+    arq_est = PairScheduleItem(
+        cohort_id="tortuga",
+        file_a="ARQ/PLANTA.dwg",
+        file_b="EST/E03.dwg",
+        level_ids=("NPT_P1", "NPT_P1"),
+        scheduled=True,
+        discipline_a=Discipline.ARCH.value,
+        discipline_b=Discipline.STRUC.value,
+    )
+    arq_elec = arq_est.model_copy(
+        update={
+            "file_b": "ELEC/E01.dwg",
+            "discipline_b": Discipline.MEP_ELEC.value,
+        }
+    )
+    scheduled = [arq_est, arq_elec]
+
+    _Conflict = SimpleNamespace
+
+    conflicts = [
+        _Conflict(discipline_a=Discipline.ARCH, discipline_b=Discipline.STRUC),    # ARQ↔EST — keep
+        _Conflict(discipline_a=Discipline.ARCH, discipline_b=Discipline.MEP_ELEC),  # ARQ↔ELEC — keep
+        _Conflict(discipline_a=Discipline.MEP_ELEC, discipline_b=Discipline.STRUC), # ELEC↔EST — suppress
+        _Conflict(discipline_a=Discipline.STRUC, discipline_b=Discipline.MEP_ELEC), # EST↔ELEC — suppress
+    ]
+
+    filtered, suppressed = filter_conflicts_by_scheduled_pairs(conflicts, scheduled)
+
+    assert len(filtered) == 2
+    assert suppressed == 2
+    for conflict in filtered:
+        pair = frozenset({
+            str(getattr(conflict.discipline_a, "value", conflict.discipline_a)),
+            str(getattr(conflict.discipline_b, "value", conflict.discipline_b)),
+        })
+        assert Discipline.STRUC.value not in pair or Discipline.ARCH.value in pair, (
+            f"Conflict {pair} should not appear without ARQ"
+        )

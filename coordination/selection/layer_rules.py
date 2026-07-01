@@ -24,6 +24,10 @@ class CanonicalRole(str, Enum):
     OPENING = "OPENING"
     STAIR = "STAIR"
     FURNITURE = "FURNITURE"
+    ELECTRICAL_ROUTE = "ELECTRICAL_ROUTE"
+    ELECTRICAL_FIXTURE = "ELECTRICAL_FIXTURE"
+    LIGHTING_FIXTURE = "LIGHTING_FIXTURE"
+    ELECTRICAL_PANEL = "ELECTRICAL_PANEL"
     ANNOTATION = "ANNOTATION"
     AXIS = "AXIS"
     TERRAIN = "TERRAIN"
@@ -129,6 +133,9 @@ def role_pair_allowed(
     *,
     role_matrix: dict[tuple[str, str], bool] | None,
     allow_same_role: bool,
+    discipline_pair_constraints: dict[tuple[str, str], list[frozenset[str]]] | None = None,
+    discipline_a: str | None = None,
+    discipline_b: str | None = None,
 ) -> bool:
     if not allow_same_role and role_a == role_b:
         return False
@@ -136,14 +143,28 @@ def role_pair_allowed(
         return True
     key = (str(role_a).upper(), str(role_b).upper())
     rev = (key[1], key[0])
-    return bool(role_matrix.get(key) or role_matrix.get(rev))
+    if not (role_matrix.get(key) or role_matrix.get(rev)):
+        return False
+    if (
+        discipline_pair_constraints is not None
+        and discipline_a is not None
+        and discipline_b is not None
+    ):
+        constraints = discipline_pair_constraints.get(key) or discipline_pair_constraints.get(rev)
+        if constraints:
+            pair = frozenset({str(discipline_a).upper(), str(discipline_b).upper()})
+            return any(
+                frozenset({d.upper() for d in allowed}) == pair
+                for allowed in constraints
+            )
+    return True
 
 
 def load_role_matrix(
     *,
     project_name: str,
     config_dir: Path | None = None,
-) -> tuple[dict[tuple[str, str], bool], set[str]]:
+) -> tuple[dict[tuple[str, str], bool], set[str], dict[tuple[str, str], list[frozenset[str]]]]:
     root = config_dir or (REPO_ROOT / "config" / "clash_role_matrix")
     default_path = root / "default.yaml"
     project_path = root / f"{_project_slug(project_name)}.yaml"
@@ -159,6 +180,7 @@ def load_role_matrix(
         if isinstance(payload.get("suppress_roles"), list):
             merged["suppress_roles"] = payload["suppress_roles"]
     role_matrix: dict[tuple[str, str], bool] = {}
+    discipline_pair_constraints: dict[tuple[str, str], list[frozenset[str]]] = {}
     for item in merged["role_pairs"]:
         if not isinstance(item, dict):
             continue
@@ -167,8 +189,18 @@ def load_role_matrix(
         enabled = bool(item.get("enabled", True))
         if left and right:
             role_matrix[(left, right)] = enabled
+            raw_pairs = item.get("discipline_pairs")
+            if isinstance(raw_pairs, list) and raw_pairs:
+                constraints: list[frozenset[str]] = []
+                for pair_spec in raw_pairs:
+                    if isinstance(pair_spec, (list, tuple)) and len(pair_spec) == 2:
+                        constraints.append(
+                            frozenset({str(pair_spec[0]).upper(), str(pair_spec[1]).upper()})
+                        )
+                if constraints:
+                    discipline_pair_constraints[(left, right)] = constraints
     suppress_roles = {str(item).upper().strip() for item in merged["suppress_roles"] if str(item).strip()}
-    return role_matrix, suppress_roles
+    return role_matrix, suppress_roles, discipline_pair_constraints
 
 
 def _discipline_matches(rule_discipline: str, discipline_name: str) -> bool:

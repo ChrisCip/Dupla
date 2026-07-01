@@ -67,6 +67,7 @@ from coordination.selection.coordinate_audit import (
     apply_coordinate_band_gating,
     build_pair_schedule,
     build_source_audit,
+    filter_conflicts_by_scheduled_pairs,
     render_coordinate_audit_markdown,
     render_hotspot_markdown,
 )
@@ -323,7 +324,7 @@ def main() -> int:
     default_level_id = "NPT_P1" if "NPT_P1" in registry.root else "NASAS_ARQ_P1_NPT"
     tolerances = load_project_tolerances(project_name=doc.project_name or "")
     layer_rules = load_project_layer_rules(project_name=doc.project_name or "")
-    role_matrix, suppress_roles = load_role_matrix(project_name=doc.project_name or "")
+    role_matrix, suppress_roles, discipline_pair_constraints = load_role_matrix(project_name=doc.project_name or "")
 
     nasas_root = args.nasas_root.resolve()
     media, scan_skips = collect_coordination_media(
@@ -347,6 +348,7 @@ def main() -> int:
             layer_rules=layer_rules,
             role_matrix=role_matrix,
             suppress_roles=suppress_roles,
+            discipline_pair_constraints=discipline_pair_constraints,
         )
 
     summary: dict[str, object] = {
@@ -1213,11 +1215,13 @@ def _run_fast_compare(
     layer_rules: list | None = None,
     role_matrix: dict[tuple[str, str], bool] | None = None,
     suppress_roles: set[str] | None = None,
+    discipline_pair_constraints: dict[tuple[str, str], list[frozenset[str]]] | None = None,
 ) -> int:
     active_tolerances = tolerances or ClashTolerances()
     active_layer_rules = layer_rules or load_project_layer_rules(project_name=doc.project_name or "")
     active_role_matrix = role_matrix or {}
     active_suppress_roles = suppress_roles or set()
+    active_discipline_pair_constraints = discipline_pair_constraints or {}
     overall_metrics: dict[str, object] = {
         "audit_seconds": 0.0,
         "schedule_seconds": 0.0,
@@ -1594,7 +1598,17 @@ def _run_fast_compare(
         tolerances=active_tolerances,
         role_matrix=active_role_matrix,
         suppress_roles=active_suppress_roles,
+        discipline_pair_constraints=active_discipline_pair_constraints,
     )
+    primary_conflicts, suppressed_unscheduled = filter_conflicts_by_scheduled_pairs(
+        primary_conflicts, scheduled_pairs
+    )
+    overall_metrics["suppressed_unscheduled_pair_conflicts"] = suppressed_unscheduled
+    if suppressed_unscheduled:
+        logger.info(
+            "Fast compare: %d conflictos suprimidos por par de disciplinas no programado (scheduled=false)",
+            suppressed_unscheduled,
+        )
     primary_incidents = group_conflicts_into_incidents(primary_conflicts)
 
     debug_conflicts = _build_fast_compare_debug_conflicts(
@@ -1607,6 +1621,7 @@ def _run_fast_compare(
         tolerances=active_tolerances,
         role_matrix=active_role_matrix,
         suppress_roles=active_suppress_roles,
+        discipline_pair_constraints=active_discipline_pair_constraints,
     )
     overall_metrics["clash_seconds"] = round(perf_counter() - clash_start, 3)
     logger.info(
@@ -1987,6 +2002,7 @@ def _build_fast_compare_primary_conflicts(
     tolerances: ClashTolerances | None = None,
     role_matrix: dict[tuple[str, str], bool] | None = None,
     suppress_roles: set[str] | None = None,
+    discipline_pair_constraints: dict[tuple[str, str], list[frozenset[str]]] | None = None,
 ) -> list[ClashConflict]:
     grouped: dict[tuple[str, str], list[Element25D]] = defaultdict(list)
     for element in all_elements:
@@ -2017,6 +2033,7 @@ def _build_fast_compare_primary_conflicts(
                 suppress_roles=suppress_roles,
                 require_cross_discipline=True,
                 allow_same_role=True,
+                discipline_pair_constraints=discipline_pair_constraints,
             )
         )
     conflicts.sort(key=lambda item: (-item.overlap_depth_z_mm, -item.plan_intersection_area_mm2))
@@ -2034,6 +2051,7 @@ def _build_fast_compare_debug_conflicts(
     tolerances: ClashTolerances | None = None,
     role_matrix: dict[tuple[str, str], bool] | None = None,
     suppress_roles: set[str] | None = None,
+    discipline_pair_constraints: dict[tuple[str, str], list[frozenset[str]]] | None = None,
 ) -> list[ClashConflict]:
     primary_keys = {(conflict.element_id_a, conflict.element_id_b) for conflict in primary_conflicts}
     grouped: dict[str, list[Element25D]] = defaultdict(list)
@@ -2056,6 +2074,7 @@ def _build_fast_compare_debug_conflicts(
             role_matrix=role_matrix,
             suppress_roles=suppress_roles,
             include_debug_roles=True,
+            discipline_pair_constraints=discipline_pair_constraints,
         ):
             if (conflict.element_id_a, conflict.element_id_b) in primary_keys:
                 continue
