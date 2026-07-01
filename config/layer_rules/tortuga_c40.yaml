@@ -150,3 +150,46 @@ rules:
     priority: 270
     confidence: medium
     reason: tortuga_aflor_detail
+
+  # ── Electricidad / MEP ELEC (priority above generic LOSA/slab heuristics) ──
+  - discipline: ELECTRICIDAD
+    pattern: "(?i)^E TUBERIA"
+    role: ELECTRICAL_ROUTE
+    priority: 320
+    confidence: high
+    reason: tortuga_elec_conduit
+
+  - discipline: ELECTRICIDAD
+    pattern: "(?i)^E SALIDA"
+    role: ELECTRICAL_FIXTURE
+    priority: 318
+    confidence: high
+    reason: tortuga_elec_fixture
+
+  - discipline: ELECTRICIDAD
+    pattern: "(?i)^MAVA LUM"
+    role: LIGHTING_FIXTURE
+    priority: 318
+    confidence: high
+    reason: tortuga_elec_luminaire
+
+  - discipline: ELECTRICIDAD
+    pattern: "(?i)^E (TABLAS|PANELES|BREAKER|BARRAS)"
+    role: ELECTRICAL_PANEL
+    priority: 316
+    confidence: high
+    reason: tortuga_elec_panel
+
+  - discipline: ELECTRICIDAD
+    pattern: "(?i)^E TEXTOS"
+    role: ANNOTATION
+    priority: 315
+    confidence: high
+    reason: tortuga_elec_annotation
+
+  - discipline: "*"
+    pattern: "(?i)^MOBILIARIOS$"
+    role: FURNITURE
+    priority: 310
+    confidence: high
+    reason: tortuga_mobiliarios_furniture

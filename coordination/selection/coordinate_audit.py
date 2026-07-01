@@ -617,12 +617,16 @@ def _counter_label(counter: Counter[str]) -> str:
 
 
 def _roles_by_discipline(left: SourceAudit, right: SourceAudit) -> tuple[set[str], set[str]]:
+    """Return ARQ roles and compared-side roles (legacy JSON field: est_roles_present)."""
     audits = [left, right]
     arq = next((item for item in audits if item.discipline == "ARQUITECTURA"), None)
-    est = next((item for item in audits if item.discipline == "ESTRUCTURA"), None)
-    arq_roles = set(arq.roles_detected) if arq else set()
-    est_roles = set(est.roles_detected) if est else set()
-    return arq_roles, est_roles
+    if arq is not None:
+        compared = next((item for item in audits if item is not arq), None)
+        arq_roles = set(arq.roles_detected)
+        compared_roles = set(compared.roles_detected) if compared else set()
+        return arq_roles, compared_roles
+    # Pairs without ARQ (e.g. ELEC↔EST) keep empty arq_roles so scheduling stays blocked.
+    return set(), set()
 
 
 def _pair_readiness(
@@ -698,3 +702,32 @@ def _dominant_entity_types(elements: list[Element25D]) -> list[str]:
         if len(parts) >= 3:
             counts[parts[2]] += 1
     return [entity_type for entity_type, _count in counts.most_common(5)]
+
+
+def filter_conflicts_by_scheduled_pairs(
+    conflicts: list[Any],
+    scheduled_pairs: list[PairScheduleItem],
+) -> tuple[list[Any], int]:
+    """Return (filtered_conflicts, suppressed_count).
+
+    Only conflicts whose discipline pair matches a scheduled=True entry in pair_schedule pass.
+    Unscheduled-pair conflicts (e.g. ELEC↔EST when that pair is blocked) are counted but
+    not raised as primary incidents.  The caller logs/stores suppressed_count for audit.
+    """
+    scheduled_discipline_pairs: set[frozenset[str]] = {
+        frozenset({item.discipline_a or "", item.discipline_b or ""})
+        for item in scheduled_pairs
+        if item.discipline_a and item.discipline_b
+    }
+    if not scheduled_discipline_pairs:
+        return list(conflicts), 0
+    filtered: list[Any] = []
+    suppressed = 0
+    for conflict in conflicts:
+        disc_a = str(getattr(conflict.discipline_a, "value", conflict.discipline_a))
+        disc_b = str(getattr(conflict.discipline_b, "value", conflict.discipline_b))
+        if frozenset({disc_a, disc_b}) in scheduled_discipline_pairs:
+            filtered.append(conflict)
+        else:
+            suppressed += 1
+    return filtered, suppressed

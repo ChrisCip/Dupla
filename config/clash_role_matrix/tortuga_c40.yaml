@@ -26,9 +26,12 @@ role_pairs:
     enabled: true
   # TORTUGA-specific: main clash types are SLAB/SLAB (ARQ PLAFON/SOLAR vs EST SOLAR)
   # and SLAB/BEAM (ARQ ceiling slab vs EST vigas)
+  # discipline_pairs restricts this rule to ARQ↔EST only; prevents ELEC SOLAR from firing SLAB↔SLAB
   - left: SLAB
     right: SLAB
     enabled: true
+    discipline_pairs:
+      - [ARQUITECTURA, ESTRUCTURA]
   - left: SLAB
     right: BEAM
     enabled: true
@@ -42,3 +45,19 @@ role_pairs:
   - left: DETAIL
     right: COLUMN
     enabled: false
+  # ARQ ↔ ELECTRICIDAD (Smoke 2B): routes, fixtures, panels vs walls/slabs/openings
+  - left: WALL
+    right: ELECTRICAL_ROUTE
+    enabled: true
+  - left: SLAB
+    right: ELECTRICAL_ROUTE
+    enabled: true
+  - left: SLAB
+    right: LIGHTING_FIXTURE
+    enabled: true
+  - left: WALL
+    right: ELECTRICAL_PANEL
+    enabled: true
+  - left: OPENING
+    right: ELECTRICAL_ROUTE
+    enabled: true

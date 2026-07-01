@@ -121,6 +121,7 @@ def clash_pairs(
     require_cross_discipline: bool = True,
     allow_same_role: bool = True,
     include_debug_roles: bool = False,
+    discipline_pair_constraints: dict[tuple[str, str], list[frozenset[str]]] | None = None,
 ) -> list[ClashConflict]:
     active_tolerances = tolerances or ClashTolerances(
         min_plan_area_mm2=max(min_plan_area_mm2, 0.0),
@@ -155,6 +156,9 @@ def clash_pairs(
             role_b,
             role_matrix=role_matrix,
             allow_same_role=allow_same_role,
+            discipline_pair_constraints=discipline_pair_constraints,
+            discipline_a=ea.discipline.value,
+            discipline_b=eb.discipline.value,
         ):
             return
         if require_same_metadata_key:
